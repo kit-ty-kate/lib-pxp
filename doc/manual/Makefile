@@ -6,9 +6,9 @@ SRC = $(PWD)/src
 
 default: html ps
 
-html: html/book1.htm
+html: html/book1.htm html/pic/done
 
-ps: ps/markup.ps
+ps: ps/markup.ps ps/pic/done
 
 
 src/readme.ent: ../../examples/readme/to_html.ml
@@ -25,8 +25,14 @@ html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	cp src/markup.css html; \
 	cd html; \
 	rm -f *.htm*; \
-	jade -t sgml -D$(DOCBOOK_HTML) -D$(SRC) markup.sgml; \
+	jade -t sgml -D$(DOCBOOK_HTML) -D$(SRC) -ihtml markup.sgml; \
 	true
+
+html/pic/done: src/pic/*.fig
+	mkdir -p html/pic
+	l=`cd src/pic; echo *.fig`; \
+	for x in $$l; do fig2dev -L gif src/pic/$$x html/pic/`basename $$x .fig`.gif; done
+	touch html/pic/done
 
 #man: src/findlib_reference.xml
 #	mkdir -p man
@@ -40,7 +46,7 @@ ps/markup.tex: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	jade -t tex -D$(DOCBOOK_PRINT) -D$(SRC) markup.sgml; \
 	true
 
-ps/markup.dvi: ps/markup.tex
+ps/markup.dvi: ps/markup.tex ps/pic/done
 	cd ps; \
 	jadetex markup.tex; \
 	jadetex markup.tex; \
@@ -49,6 +55,12 @@ ps/markup.dvi: ps/markup.tex
 ps/markup.ps: ps/markup.dvi
 	cd ps; \
 	dvips -f <markup.dvi >markup.ps
+
+ps/pic/done: src/pic/*.fig
+	mkdir -p ps/pic
+	l=`cd src/pic; echo *.fig`; \
+	for x in $$l; do fig2dev -L ps -m 0.8 src/pic/$$x ps/pic/`basename $$x .fig`.ps; done
+	touch ps/pic/done
 
 .SUFFIXES: .xml .sgml
 
