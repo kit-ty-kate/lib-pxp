@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.2 2000/07/04 22:14:05 gerd Exp $
+(* $Id: pxp_types.ml,v 1.3 2000/07/08 16:23:50 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -148,6 +148,8 @@ exception Validation_error of string
 
 exception WF_error of string
 
+exception Error of string
+
 exception Character_not_supported
 
 exception Bad_character_stream
@@ -168,12 +170,16 @@ let rec string_of_exn x0 =
         "ERROR (Validity constraint): "  ^ s
     | WF_error s ->
         "ERROR (Well-formedness constraint): " ^ s
+    | Error s ->
+	"ERROR: " ^ s
     | Character_not_supported ->
         "RESTRICTION: Character not supported"
     | Bad_character_stream ->
         "ERROR: Bad character stream"
     | Undeclared ->
         "INFORMATION: Undeclared"
+    | Parsing.Parse_error ->
+	"SYNTAX ERROR"
     | _ ->
         "Other exception: " ^ Printexc.to_string x0
 ;;
@@ -197,6 +203,9 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.3  2000/07/08 16:23:50  gerd
+ * 	Added the exception 'Error'.
+ *
  * Revision 1.2  2000/07/04 22:14:05  gerd
  * 	Implemented the changes of rev. 1.2 of pxp_types.mli.
  *

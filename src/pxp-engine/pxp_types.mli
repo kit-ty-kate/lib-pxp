@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.2 2000/07/04 22:08:26 gerd Exp $
+(* $Id: pxp_types.mli,v 1.3 2000/07/08 16:23:50 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -133,8 +133,13 @@ exception Illegal_character of int
   (* at this position relative to the current lexeme *)
 
 exception Validation_error of string
+  (* Violation of a validity constraint *)
 
 exception WF_error of string
+  (* Violation of a well-formedness constraint *)
+
+exception Error of string
+  (* Other error *)
 
 exception Character_not_supported
 
@@ -168,6 +173,9 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.3  2000/07/08 16:23:50  gerd
+ * 	Added the exception 'Error'.
+ *
  * Revision 1.2  2000/07/04 22:08:26  gerd
  * 	type ext_id: New variant Anonymous. - The System and Public
  * variants are now encoded as UTF-8.
