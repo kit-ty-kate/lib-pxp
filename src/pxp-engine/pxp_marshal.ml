@@ -364,14 +364,10 @@ let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
       (* p is mapped to the primary URI of mng, and then mapped
        * to the normprefix of dest_mng
        *)
-      try
-	let primary_uri = mng # get_primary_uri p in
-	let normprefix = 
-	  dest_mng # lookup_or_add_namespace p primary_uri in
-	normprefix ^ ":" ^ l
-      with
-	  Not_found ->
-	    failwith "Pxp_marshal.subtree_from_cmd_sequence: Found an undeclared namespace prefix"
+      let primary_uri = mng # get_primary_uri p in
+      let normprefix = 
+	dest_mng # lookup_or_add_namespace p primary_uri in
+      normprefix ^ ":" ^ l
     end
   in
   let rec read_node dont_add first_cmd =

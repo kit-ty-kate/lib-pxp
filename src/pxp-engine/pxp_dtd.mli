@@ -78,10 +78,14 @@ class namespace_manager :
     method add_uri : string -> string -> unit
       (* add_uri np uri: adds uri as alias URI to the namespace identified
        * by the normprefix np (see above for detailed semantics). The method
-       * raises Not_found if the normprefix np is unknown to the object,
+       * raises Namespace_prefix_not_managed if the normprefix np is unknown
+       * to the object,
        * and it fails (Namespace_error) if the uri is member of a
        * different namespace. Nothing happens if the uri is already member
        * of the namespace np.
+       *
+       * CHANGE IN PXP 1.2: Using exception Namespace_prefix_not_managed
+       * instead of Not_found.
        *)
     method add_namespace : string -> string -> unit
       (* add_namespace np uri: adds a new namespace to the object. The
@@ -102,8 +106,12 @@ class namespace_manager :
        * the normprefix.
        *)
     method get_primary_uri : string -> string
-      (* Return the primary URI for a normprefix, or raises Not_found.
-       * get_uri "" raises always Not_found.
+      (* Return the primary URI for a normprefix, or raises
+       * Namespace_prefix_not_managed. get_uri "" raises always this
+       * exception.
+       *
+       * CHANGE IN PXP 1.2: Using exception Namespace_prefix_not_managed
+       * instead of Not_found.
        *)
     method get_uri_list : string -> string list
       (* Return all URIs for a normprefix, or [] if the normprefix is
@@ -111,11 +119,21 @@ class namespace_manager :
        * returned list is the primary URI.
        *)
     method get_normprefix : string -> string
-      (* Return the normprefix for a URI, or raises Not_found *)
+      (* Return the normprefix for a URI, or raises 
+       * Namespace_not_managed.
+       *
+       * CHANGE IN PXP 1.2: Using exception Namespace_not_managed
+       * instead of Not_found.
+       *)
     method iter_namespaces : (string -> unit) -> unit
       (* Iterates over all namespaces contained in the object, and
        * calls the passed function for every namespace. The argument of the
        * invoked function is the normprefix of the namespace.
+       *)
+    method as_declaration : (string * string) list
+      (* Returns the list of normprefixes and primary URIs. Useful
+       * to create the corresponding namespace scope, e.g.
+       * new namespace_scope_impl mng None (mng#as_declaration)
        *)
 
     (* Encodings: prefixes and URIs are always encoded in the default
@@ -168,13 +186,14 @@ object
      *)
   method display_prefix_of_uri : string -> string
     (** Translates the URI to the corresponding display prefix as declared
-     * in this object or any parent object. Raises [Not_found] when the
-     * declaration cannot be found.
+     * in this object or any parent object. Raises [Namespace_not_in_scope]
+     * when the declaration cannot be found.
      *)
   method display_prefix_of_normprefix : string -> string
     (** Translates the normalized prefix to the corresponding display
      * prefix as declared in this object or any parent object. Raises
-     * [Not_found] when the declaration cannot be found, or the 
+     * [Namespace_not_in_scope] when the declaration cannot be found, and
+     * [Namespace_prefix_not_managed] when the
      * normalized prefix is unknown to the namespace manager.
      *)
   method uri_of_display_prefix : string -> string
@@ -185,7 +204,8 @@ object
   method normprefix_of_display_prefix : string -> string
     (** Translates the display prefix to the corresponding normalized
      * prefix as declared in this object or any parent object. Raises
-     * [Not_found] when the declaration cannot be found, or the
+     * [Not_found] when the declaration cannot be found, and
+     * [Namespace_not_managed] when the
      * namespace manager does not know the namespace.
      *)
 end

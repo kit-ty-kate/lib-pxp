@@ -56,6 +56,11 @@ for PXP; if you are looking for the stable distribution, please go
 	<p>Revised namespace handling: There are now namespace_scope
 	  objects keeping the scoping structure of the namespaces.
 	  The namespace_info stuff has been removed.</p>
+	<p>New exceptions Namespace_not_managed, Namespace_prefix_not_managed,
+	  Namespace_not_in_scope (all replacing Not_found). Methods
+	  of namespace_manager may raise these exceptions.
+	</p>
+	<p>Addition of pxp-pp, the PXP preprocessor.</p>
       </li>
 
       <li><p><em>1.1.94.2:</em> Again fixes for the combination of

@@ -2956,14 +2956,7 @@ class [ 'ext ] namespace_element_impl an_ext =
       let mng = self # namespace_manager in
 
       List.map
-	(fun p -> 
-	   try
-	     p, Value (mng # get_primary_uri p)
-	   with
-	       Not_found -> (* raised by get_primary_uri *)
-		 failwith ("Pxp_document.namespace_element_impl#write: cannot map the prefix `" ^ p ^ "' to any URI")
-	)
-
+	(fun p ->  p, Value (mng # get_primary_uri p) )
 	prefixes'
 
     method private make_attribute_node element_name att_name value dtd =
@@ -3045,7 +3038,7 @@ class [ 'ext ] namespace_element_impl an_ext =
 	else
 	  let d = 
 	    try scope # display_prefix_of_normprefix p 
-	    with Not_found -> 
+	    with Namespace_not_in_scope _ -> 
 	      (* Display prefix is missing. This is an error, but we
 	       * can search or invent a new prefix on the fly.
 	       *)
@@ -3061,7 +3054,7 @@ class [ 'ext ] namespace_element_impl an_ext =
 	
       let this_display_prefix = 
 	try self # display_prefix
-	with Not_found -> 
+	with Namespace_not_in_scope _ -> 
 	  (* Display prefix is missing. This is an error, but we
 	   * can search or invent a new prefix on the fly.
 	   *)

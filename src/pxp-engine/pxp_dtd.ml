@@ -39,7 +39,8 @@ object (self)
       ignore(self # add_namespace "xml" "http://www.w3.org/XML/1998/namespace")
 
     method add_uri (np:string) (uri:string) =
-      if not (Hashtbl.mem uri_of_prefix np) then raise Not_found;
+      if not (Hashtbl.mem uri_of_prefix np) then 
+	raise(Namespace_prefix_not_managed np);
       try
 	let np' = Hashtbl.find prefix_of_uri uri in
 	if np <> np' then
@@ -84,18 +85,34 @@ object (self)
 	      (* prefix = "": make sure that such a prefix is never added *)
 
     method get_primary_uri normprefix =
-      Hashtbl.find primary_uri_of_prefix normprefix
+      try
+	Hashtbl.find primary_uri_of_prefix normprefix
+      with
+	  Not_found -> 
+	    raise(Namespace_prefix_not_managed normprefix)
 
     method get_uri_list normprefix =
       Hashtbl.find_all uri_of_prefix normprefix
 
     method get_normprefix uri =
-      Hashtbl.find prefix_of_uri uri
+      try
+	Hashtbl.find prefix_of_uri uri
+      with
+	  Not_found ->
+	    raise(Namespace_not_managed uri)
 
     method iter_namespaces f =
       Hashtbl.iter 
 	(fun p uri -> f p)
 	primary_uri_of_prefix
+
+    method as_declaration =
+      let l = ref [] in
+      Hashtbl.iter 
+	(fun p uri -> l := (p, uri) :: !l)
+	primary_uri_of_prefix;
+      !l
+      
   end
 ;;
 
@@ -153,18 +170,20 @@ object(self)
 	Not_found ->
 	  ( match parent_opt with
 		Some pa -> pa # display_prefix_of_uri uri
-	      | None    -> raise Not_found
+	      | None    -> raise(Namespace_not_in_scope uri)
 	  )
 
   method display_prefix_of_normprefix np =
     let uris = mng # get_uri_list np in
+    if uris = [] then raise(Namespace_prefix_not_managed np);
     try
       fst(List.find (fun (p,u) -> List.mem u uris) decl)
     with
 	Not_found ->
 	  ( match parent_opt with
 		Some pa -> pa # display_prefix_of_normprefix np
-	      | None    -> raise Not_found
+	      | None    -> raise(Namespace_not_in_scope
+				   (List.hd(List.rev uris)))
 	  )
 
   method uri_of_display_prefix dp =
@@ -404,7 +423,7 @@ class dtd  ?swarner the_warner init_encoding =
 			    raise(Error("Cannot do pxp:dtd instruction: namespaces not enabled"))
 			| Some m ->
 			    ( try m # add_uri prefix uri
-			      with Not_found ->
+			      with Namespace_prefix_not_managed _ ->
 				m # add_namespace prefix uri
 			    )
 		    )

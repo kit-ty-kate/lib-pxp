@@ -275,6 +275,23 @@ module type CORE_TYPES = sig
   exception Not_resolvable of exn
     (* While opening the entity, the nested exception occurred *)
 
+  exception Namespace_not_managed of string
+    (* A namespace URI is used but not declared in the namespace manager.
+     * The string argument is the URI in question.
+     * (New in PXP 1.2)
+     *)
+
+  exception Namespace_prefix_not_managed of string
+    (* A namespace prefix is used but not declared in the namespace manager.
+     * The string argument is the prefix in question.
+     * (New in PXP 1.2)
+     *)
+
+  exception Namespace_not_in_scope of string
+    (* The namespace scope does not know the URI *)
+    (* (New in PXP 1.2) *)
+
+
   val string_of_exn : exn -> string
 	(* Converts a PXP exception into a readable string *)
 

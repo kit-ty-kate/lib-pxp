@@ -254,7 +254,7 @@ class virtual core_parser
 	  | Some uri ->
 	      let normprefix =
 		try mng # get_normprefix uri
-		with Not_found ->
+		with Namespace_not_managed _ ->
 		  mng # lookup_or_add_namespace "default" uri
 	      in
 	      ns_default_normprefix <- normprefix;

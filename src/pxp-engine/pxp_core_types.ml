@@ -238,6 +238,13 @@ exception Not_competent
 
 exception Not_resolvable of exn
 
+exception Namespace_not_managed of string
+
+exception Namespace_prefix_not_managed of string
+
+exception Namespace_not_in_scope of string
+
+
 let rec string_of_exn x0 =
   match x0 with
       At (s, x) ->
@@ -256,12 +263,20 @@ let rec string_of_exn x0 =
         "INFORMATION: Undeclared"
     | Method_not_applicable mname ->
 	"INTERNAL ERROR (method `" ^ mname ^ "' not applicable)"
+    | Namespace_method_not_applicable mname ->
+	"INTERNAL ERROR (namespace method `" ^ mname ^ "' not applicable)"
     | Parsing.Parse_error ->
 	"SYNTAX ERROR"
     | Not_competent ->
 	"NO COMPETENT RESOLVER FOUND"
     | Not_resolvable x ->
 	"NOT RESOLVABLE: " ^ string_of_exn x
+    | Namespace_not_managed uri ->
+	"ERROR: NAMESPACE NOT MANAGED: " ^ uri
+    | Namespace_prefix_not_managed p ->
+	"ERROR: NAMESPACE PREFIX NOT MANAGED: " ^ p
+    | Namespace_not_in_scope uri ->
+	"ERROR: NAMESPACE NOT IN SCOPE: " ^ uri
     | _ ->
         "Other exception: " ^ Printexc.to_string x0
 ;;
