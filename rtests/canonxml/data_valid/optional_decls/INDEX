@@ -1,0 +1,14 @@
+<?pxp:dtd optional-element-and-notation-declarations?>
+
+001.xml		Whether it works for undeclared elements
+002.xml		Whether it works for undeclared elements with attributes
+003.xml		Whether it works for undeclared elements in declarations
+004.xml		Whether it works for undeclared root elements
+005.xml		Whether it works for undeclared notations
+006.xml		Whether it works for undeclared notations which are actually
+		referred to
+
+<?pxp:dtd optional-attribute-declarations?>
+
+007.xml		Whether it works
+

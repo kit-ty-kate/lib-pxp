@@ -1,0 +1,5 @@
+<!DOCTYPE a [
+  <!ELEMENT a (b)>
+  <?pxp:dtd optional-element-and-notation-declarations?>
+]>
+<a><b/></a>

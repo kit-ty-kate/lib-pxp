@@ -1,0 +1,6 @@
+<!DOCTYPE a [
+  <!ELEMENT a ANY>
+  <!ENTITY x SYSTEM "sample" NDATA m>
+  <?pxp:dtd optional-element-and-notation-declarations?>
+]>
+<a/>
