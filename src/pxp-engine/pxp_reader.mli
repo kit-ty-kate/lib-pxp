@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.4 2000/07/08 16:24:56 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.5 2000/07/09 01:05:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -146,6 +146,9 @@ class type resolver =
      * with the external object, i.e. it is initially closed.
      *)
     method clone : resolver
+
+    method close_all : unit
+      (* Closes this resolver and every clone *)
 
   end
 ;;
@@ -337,6 +340,9 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
  * History:
  * 
  * $Log: pxp_reader.mli,v $
+ * Revision 1.5  2000/07/09 01:05:33  gerd
+ * 	New methode 'close_all' that closes the clones, too.
+ *
  * Revision 1.4  2000/07/08 16:24:56  gerd
  * 	Introduced the exception 'Not_resolvable' to indicate that
  * 'combine' should not try the next resolver of the list.

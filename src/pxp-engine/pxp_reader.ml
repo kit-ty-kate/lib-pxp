@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.5 2000/07/08 16:24:56 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.6 2000/07/09 01:05:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -7,6 +7,8 @@
 (* TODO: need a strategy when to close channels if I/O errors or parser
  * errors happen
  *)
+
+(* TODO: clone-Verbot? *)
 
 open Pxp_types;;
 exception Not_competent;;
@@ -19,6 +21,7 @@ class type resolver =
     method rep_encoding : rep_encoding
     method open_in : ext_id -> Lexing.lexbuf
     method close_in : unit
+    method close_all : unit
     method change_encoding : string -> unit
     method clone : resolver
   end
@@ -37,6 +40,8 @@ class virtual resolve_general
 
     val mutable enc_initialized = false
     val mutable wrn_initialized = false
+
+    val mutable clones = []
 
     method init_rep_encoding e =
       internal_encoding <- e;
@@ -90,6 +95,9 @@ class virtual resolve_general
     method private virtual next_string : string -> int -> int -> int
     method private virtual init_in : ext_id -> unit
     method virtual close_in : unit
+
+    method close_all =
+      List.iter (fun r -> r # close_in) clones
 
     method open_in xid =
       assert(enc_initialized && wrn_initialized);
@@ -224,6 +232,7 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id =
 		?auto_close:(Some auto_close) f_open in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       (c :> resolver)
 
   end
@@ -269,6 +278,7 @@ class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       (c :> resolver)
 
   end
@@ -318,6 +328,7 @@ class resolve_read_any_string ~string_of_id =
       let c = new resolve_read_any_string f_open in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       (c :> resolver)
   end
 ;;
@@ -355,6 +366,7 @@ class resolve_read_this_string1 is_clone ?id ?fixenc str =
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       (c :> resolver)
   end
 ;;
@@ -423,6 +435,7 @@ class resolve_read_url_channel
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       (c :> resolve_read_url_channel)
   end
 ;;
@@ -563,6 +576,7 @@ class combine ?prefer rl =
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
     val mutable active_resolver = None
+    val mutable clones = []
 
     method init_rep_encoding enc =
       List.iter
@@ -607,6 +621,9 @@ class combine ?prefer rl =
 	| Some r -> r # close_in;
 	            active_resolver <- None
 
+    method close_all =
+      List.iter (fun r -> r # close_in) clones
+
     method change_encoding (enc:string) =
       match active_resolver with
 	  None   -> failwith "Pxp_reader.combine # change_encoding"
@@ -627,6 +644,7 @@ class combine ?prefer rl =
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
+      clones <- c :: clones;
       c
   end
 
@@ -636,6 +654,9 @@ class combine ?prefer rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.6  2000/07/09 01:05:33  gerd
+ * 	New methode 'close_all' that closes the clones, too.
+ *
  * Revision 1.5  2000/07/08 16:24:56  gerd
  * 	Introduced the exception 'Not_resolvable' to indicate that
  * 'combine' should not try the next resolver of the list.
