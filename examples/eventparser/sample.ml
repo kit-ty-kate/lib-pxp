@@ -1,4 +1,4 @@
-(* $Id: sample.ml,v 1.2 2002/08/03 17:40:19 gerd Exp $
+(* $Id: sample.ml,v 1.3 2002/08/05 22:36:06 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -126,7 +126,7 @@ let curly_parse s =
       | _ -> assert false
   in
 
-  let escape_attributes tok mng =
+  let escape_attributes tok pos mng =
     (* This function is called when "{", "{{", "}", or "}}" are found in
      * attribute values.
      *)
@@ -173,7 +173,7 @@ class any_entity_id = object end ;;
 
 let rec_curly_parse s =
   let ent_id_guard = new any_entity_id in
-  let base_config = { default_config with debugging_mode = true } in
+  let base_config = default_config in
 
   let rec escape ent_id tok mng =
     (* ent_id: is the entity ID containing the last Lcurly, or ent_id_guard
@@ -196,7 +196,7 @@ let rec_curly_parse s =
 	  let sub_config =
 	    { base_config with
 		escape_contents = Some (escape sub_ent_id) ;
-		escape_attributes = Some (escape sub_ent_id) ;
+		escape_attributes = Some (escape_att sub_ent_id) ;
 	    }
 	  in
 	  (* Pushing sub_ent makes it the top-level entity: *)
@@ -235,11 +235,12 @@ let rec_curly_parse s =
 	
       | RRcurly -> "}"
       | _ -> assert false
+  and escape_att ent_id tok pos mng = escape ent_id tok mng
   in
   let config = 
     { base_config with 
 	escape_contents = Some (escape ent_id_guard);
-	escape_attributes = Some (escape ent_id_guard);
+	escape_attributes = Some (escape_att ent_id_guard);
     } in
 
   process_entity
@@ -254,6 +255,9 @@ let rec_curly_parse s =
  * History:
  * 
  * $Log: sample.ml,v $
+ * Revision 1.3  2002/08/05 22:36:06  gerd
+ * 	escape_attributes has an additional position argument
+ *
  * Revision 1.2  2002/08/03 17:40:19  gerd
  * 	Support for curly braces in attribute values.
  *
