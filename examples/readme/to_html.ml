@@ -1,4 +1,4 @@
-(* $Id: to_html.ml,v 1.6 2000/08/22 14:34:25 gerd Exp $
+(* $Id: to_html.ml,v 1.7 2001/07/02 23:21:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -7,6 +7,7 @@
 (*$ readme.code.header *)
 open Pxp_types
 open Pxp_document
+open Pxp_dtd.Entity
 (*$-*)
 
 
@@ -139,38 +140,38 @@ class readme =
 	    Value s -> s
 	  | _ -> assert false
       in
-      let html_header, _ =
-	try (self # node # dtd # par_entity "readme:html:header") 
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_trailer, _ =
-	try (self # node # dtd # par_entity "readme:html:trailer")
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_bgcolor, _ =
-	try (self # node # dtd # par_entity "readme:html:bgcolor")
-            # replacement_text
-	with WF_error _ -> "white", false in
-      let html_textcolor, _ =
-	try (self # node # dtd # par_entity "readme:html:textcolor")
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_alinkcolor, _ =
-	try (self # node # dtd # par_entity "readme:html:alinkcolor")
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_vlinkcolor, _ =
-	try (self # node # dtd # par_entity "readme:html:vlinkcolor")
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_linkcolor, _ =
-	try (self # node # dtd # par_entity "readme:html:linkcolor")
-            # replacement_text
-	with WF_error _ -> "", false in
-      let html_background, _ =
-	try (self # node # dtd # par_entity "readme:html:background")
-            # replacement_text
-	with WF_error _ -> "", false in
+      let html_header =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:header") 
+	with WF_error _ -> "" in
+      let html_trailer =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:trailer")
+	with WF_error _ -> "" in
+      let html_bgcolor =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:bgcolor")
+	with WF_error _ -> "white" in
+      let html_textcolor =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:textcolor")
+	with WF_error _ -> "" in
+      let html_alinkcolor =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:alinkcolor")
+	with WF_error _ -> "" in
+      let html_vlinkcolor =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:vlinkcolor")
+	with WF_error _ -> "" in
+      let html_linkcolor =
+	try replacement_text 
+	    (self # node # dtd # par_entity "readme:html:linkcolor")
+	with WF_error _ -> "" in
+      let html_background =
+	try replacement_text
+	    (self # node # dtd # par_entity "readme:html:background")
+	with WF_error _ -> "" in
 
       output_string ch "<html><header><title>\n";
       output_string ch (escape_html title);
@@ -405,6 +406,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.7  2001/07/02 23:21:11  gerd
+ * 	Using Pxp_dtd.Entity
+ *
  * Revision 1.6  2000/08/22 14:34:25  gerd
  * 	Using make_spec_from_alist instead of make_spec_from_mapping.
  *
