@@ -10,13 +10,13 @@ OCAMLDEP  = ocamldep $(OCAMLDEP_OPTIONS)
 OCAMLFIND = ocamlfind
 OCAMLYACC = ocamlyacc
 OCAMLLEX  = ocamllex
+WLEX      = wlex
 
 TOOLS_DIR = $(TOP_DIR)/tools
 
 M2PARSERGEN    = $(TOOLS_DIR)/m2parsergen
-UCS2_TO_UTF8   = $(TOOLS_DIR)/ucs2_to_utf8
+LEXPP	       = $(TOOLS_DIR)/lexpp
 COLLECT_FILES  = $(TOOLS_DIR)/collect_files
-INSERT_VARIANT = ocaml $(TOOLS_DIR)/insert_variant
 
 # Files to remove everywhere by "make clean":
 

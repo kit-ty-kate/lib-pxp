@@ -3,29 +3,33 @@
 # make install: installs the configured packages
 # make clean: cleans everything up
 
-# Inclusion of Makefile.conf may fail when cleaning up:
--include Makefile.conf
-
 NAME=pxp
 TOP_DIR=.
+
+include Makefile.rules
 
 .PHONY: all
 all:
 	$(MAKE) -C tools all
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg all || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg generate || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg all || exit; done
 
 .PHONY: opt
 opt:
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg opt || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg opt || exit; done
 
 # The following PHONY rule is important for Cygwin:
 .PHONY: install
 install:
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg install || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg install || exit; done
 
 .PHONY: uninstall
 uninstall:
 	$(MAKE) -C src uninstall	
+	for pkg in $(ALLGENPKGLIST); do $(OCAMLFIND) remove $$pkg; done
 
 .PHONY: clean
 clean:

@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.8 2002/08/03 17:55:21 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.9 2002/08/28 23:54:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -10,55 +10,34 @@ open Pxp_lexer_types
 
 let lexer_sets = Hashtbl.create 5;;
 
-(*
-let lexer_set_iso88591 = 
+let dummy_lexer_set =
+  let dummy _ = 
+    failwith "No lexical analyzer available! (Badly linked executable?)" in
   { lex_encoding         = `Enc_iso88591;
-    scan_document        = Pxp_lex_document_iso88591.scan_document;
-    scan_content         = Pxp_lex_content_iso88591.scan_content;
-    scan_within_tag      = Pxp_lex_within_tag_iso88591.scan_within_tag;
-    scan_document_type   = Pxp_lex_document_type_iso88591.
-			     scan_document_type;
-    scan_declaration     = Pxp_lex_declaration_iso88591.scan_declaration;
-    scan_content_comment  = Pxp_lex_misc_iso88591.scan_content_comment;
-    scan_decl_comment     = Pxp_lex_misc_iso88591.scan_decl_comment;
-    scan_document_comment = Pxp_lex_misc_iso88591.scan_document_comment;
-    scan_ignored_section = Pxp_lex_name_string_iso88591.
-                             scan_ignored_section;
-    scan_xml_pi          = Pxp_lex_misc_iso88591.scan_xml_pi;
-    scan_dtd_string      = Pxp_lex_dtd_string_iso88591.scan_dtd_string;
-    scan_content_string  = Pxp_lex_content_string_iso88591.
-			     scan_content_string;
-    scan_name_string     = Pxp_lex_name_string_iso88591.scan_name_string;
-    scan_only_xml_decl   = Pxp_lex_misc_iso88591.scan_only_xml_decl;
-    scan_for_crlf        = Pxp_lex_misc_iso88591.scan_for_crlf;
+    scan_document        = dummy;
+    scan_content         = dummy;
+    scan_within_tag      = dummy;
+    scan_document_type   = dummy;
+    scan_declaration     = dummy;
+    scan_content_comment = dummy;
+    scan_decl_comment    = dummy;
+    scan_document_comment= dummy;
+    scan_ignored_section = dummy;
+    scan_xml_pi          = dummy;
+    scan_dtd_string      = dummy;
+    scan_content_string  = dummy;
+    scan_name_string     = dummy;
+    scan_only_xml_decl   = dummy;
+    scan_for_crlf        = dummy;
+    scan_characters      = dummy;
+    scan_tag_eb          = dummy;
+    scan_tag_eb_att      = dummy;
   }
 ;;
-*)
 
 
-let current_lexer_set = 
-  let dummy _ = failwith "No lexical analyzer available! (Badly linked executable?)" in
-  ref
-    { lex_encoding         = `Enc_iso88591;
-      scan_document        = dummy;
-      scan_content         = dummy;
-      scan_within_tag      = dummy;
-      scan_document_type   = dummy;
-      scan_declaration     = dummy;
-      scan_content_comment = dummy;
-      scan_decl_comment    = dummy;
-      scan_document_comment= dummy;
-      scan_ignored_section = dummy;
-      scan_xml_pi          = dummy;
-      scan_dtd_string      = dummy;
-      scan_content_string  = dummy;
-      scan_name_string     = dummy;
-      scan_only_xml_decl   = dummy;
-      scan_for_crlf        = dummy;
-      scan_tag_eb          = dummy;
-      scan_tag_eb_att      = dummy;
-    }
-;;
+let current_lexer_set = ref dummy_lexer_set
+
 
 let current_lexer_set_encoding = ref `Enc_iso88591;;
 
@@ -88,6 +67,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.9  2002/08/28 23:54:34  gerd
+ * 	Support for new lexer definition style.
+ *
  * Revision 1.8  2002/08/03 17:55:21  gerd
  * 	Followup of pxp_lexer_types.mli rev 1.8
  *

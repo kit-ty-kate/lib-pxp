@@ -1,3 +1,13 @@
+- Check:
+  Pxp_lexers: Thread-safe? Reentrant?
+
+- Unicode:
+  Include Characters > 0xFFFF
+
+- Lexers:
+  einchecken,
+  wlex-Support
+
 - Event-based parsers:
 
   * Parse a single element, PI, comment, ... instead of misc* element misc*
@@ -24,9 +34,9 @@
 
   * Examples
 
-  * Pull parser
+  * Pull parser DONE
 
-    Parse a single tag!
+  * Review Pullparser + Entry_expr
 
 - Follow-Ups:
 

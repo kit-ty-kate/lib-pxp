@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.14 2001/06/27 23:33:53 gerd Exp $
+(* $Id: pxp_types.mli,v 1.15 2002/08/28 23:54:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -135,7 +135,49 @@ type rep_encoding =
    * property used throughout the whole PXP code.
    *)
   [ `Enc_utf8       (* UTF-8 *)
+  | `Enc_usascii
   | `Enc_iso88591   (* ISO-8859-1 *)
+  | `Enc_iso88592
+  | `Enc_iso88593
+  | `Enc_iso88594
+  | `Enc_iso88595
+  | `Enc_iso88596
+  | `Enc_iso88597
+  | `Enc_iso88598
+  | `Enc_iso88599
+  | `Enc_iso885910
+  | `Enc_iso885913
+  | `Enc_iso885914
+  | `Enc_iso885915
+  | `Enc_koi8r
+  | `Enc_windows1250
+  | `Enc_windows1251
+  | `Enc_windows1252
+  | `Enc_windows1253
+  | `Enc_windows1254
+  | `Enc_windows1255
+  | `Enc_windows1256
+  | `Enc_windows1257
+  | `Enc_windows1258
+  | `Enc_cp437
+  | `Enc_cp737
+  | `Enc_cp775
+  | `Enc_cp850
+  | `Enc_cp852
+  | `Enc_cp855
+  | `Enc_cp856
+  | `Enc_cp857
+  | `Enc_cp860
+  | `Enc_cp861
+  | `Enc_cp862
+  | `Enc_cp863
+  | `Enc_cp864
+  | `Enc_cp865
+  | `Enc_cp866
+  | `Enc_cp869
+  | `Enc_cp874
+  | `Enc_cp1006
+  | `Enc_macroman
   ]
 ;;
 
@@ -215,6 +257,9 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.15  2002/08/28 23:54:34  gerd
+ * 	Support for new lexer definition style.
+ *
  * Revision 1.14  2001/06/27 23:33:53  gerd
  * 	Type output_stream is now a polymorphic variant
  *

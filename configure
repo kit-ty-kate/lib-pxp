@@ -1,19 +1,21 @@
 #! /bin/sh
 
-# $Id: configure,v 1.12 2002/08/17 23:53:06 gerd Exp $
+# $Id: configure,v 1.13 2002/08/28 23:54:51 gerd Exp $
 
 # defaults:
-with_lex_iso88591=1
-with_lex_utf8=1
+with_lex=1
 with_wlex=1
+with_wlex_compat=1
+lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915"
 version="1.1.91"
 exec_suffix=""
 
-help_lex_iso88591="Enable/disable ocamllex-based lexical analyzer for ISO-8859-1"
-help_lex_utf8="Enable/disable ocamllex-based lexical analyzer for UTF-8"
-help_wlex="Enable/disable wlex-based lexical analyzer for ISO-8859-1 and UTF-8"
+help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
+help_wlex="Enable/disable wlex-based lexical analyzer for UTF-8"
+help_wlex_compat="Enable/disable wlex-style compatibility package for UTF-8 and ISO-8859-1"
 
-options="lex_iso88591 lex_utf8 wlex"
+options="lex wlex wlex_compat"
+lexlist_options="utf8 usascii iso88591 iso88592 iso88593 iso88594 iso88595 iso88596 iso88597 iso88598 iso88599 iso885910 iso885913 iso885914 iso885915 koi8r windows1250 windows1251 windows1252 windows1253 windows1254 windows1255 windows1256 windows1257 windows1258 cp437 cp737 cp775 cp850 cp852 cp855 cp856 cp857 cp860 cp861 cp862 cp863 cp864 cp865 cp866 cp869 cp874 cp1006 macroman"
 
 print_options () {
 	for opt in $options; do
@@ -26,10 +28,22 @@ print_options () {
 			echo "    -without-$uopt"
 		fi
 	done
+	printf '    -lexlist %s\n' "$lexlist"
 }
 
 
 usage () {
+    formatted_lexlist=""
+    n=0
+    for lexname in $lexlist_options; do
+	formatted_lexlist=`printf '%s%-12s' "$formatted_lexlist" $lexname`
+	n=`expr $n + 1`
+	if [ $n -eq 5 ]; then
+	    n=0
+	    formatted_lexlist=`printf '%s\n    ' "$formatted_lexlist"`
+	fi
+    done
+
 	cat <<_EOF_ >&2
 usage: ./configure [ options ]
 
@@ -43,6 +57,10 @@ _EOF_
 		echo "        $help" >&2
 	done
 	cat <<_EOF_ >&2
+-lexlist <comma-separated-list-of-encodings>:
+  Supported encodings are:
+    $formatted_lexlist
+    all: selects all of them
 
 Defaults are:
 
@@ -75,6 +93,15 @@ while [ "$#" -gt 0 ]; do
 			opt=`echo "$1" | sed -e 's/-without-//' -e 's/-/_/g'`
 			check_opt "$opt"
 			eval "with_$opt=0"
+			shift
+			;;
+	        -lexlist)
+		        if [ "$2" = "all" ]; then
+			    lexlist="$lexlist_options"
+			else
+			    lexlist="$2"
+			fi
+			shift
 			shift
 			;;
 		-version*)
@@ -116,6 +143,28 @@ fi
 ######################################################################
 # Check wlex
 
+if [ $with_wlex_compat -gt 0 ]; then
+    if [ $with_wlex -eq 0 ]; then
+	echo "WARNING! -with-wlex-compat implies -with-wlex"
+	with_wlex=1
+    fi
+
+    if [ $with_lex -eq 0 ]; then
+	echo "WARNING! -with-wlex-compat implies -with-lex for ISO-8859-1"
+	with_lex=1
+	lexlist="iso88591"
+    fi
+
+    if grep iso88591 >/dev/null 2>/dev/null <<EOF
+$lexlist
+EOF
+    then :
+    else
+	echo "WARNING! -with-wlex-compat implies -lexlist iso88591"
+	lexlist="$lexlist,iso88591"
+    fi
+fi
+
 if [ $with_wlex -gt 0 ]; then
 	printf "%s" "Checking for wlexing... "
 	if ocamlfind query wlexing >/dev/null 2>/dev/null; then
@@ -125,26 +174,6 @@ if [ $with_wlex -gt 0 ]; then
 		echo "wlex support is disabled"
 		with_wlex=0
 	fi
-fi
-
-######################################################################
-# Check Lexing module
-
-printf "%s" "Checking Lexing.lexbuf type... "
-
-cat <<EOF >.testscript
-open Lexing;;
-let f b = b.lex_buffer_len;;
-EOF
-
-ocaml .testscript >.testout 2>&1
-
-if [ -s .testout ]; then
-    echo "new style"
-    lex_buffer_len=lex_buffer_end
-else
-    echo "old style (up to O'Caml 3.04)"
-    lex_buffer_len=lex_buffer_len
 fi
 
 ######################################################################
@@ -171,29 +200,45 @@ print_options
 echo
 
 pkglist="pxp pxp-engine"
+# Currently pkglist is constant
+
+genpkglist=""
+# Generated packages
+
+allgenpkglist=""
+# Package names that can possibly be generated
+
+lexlist=`echo "$lexlist" | sed -e 's/,/ /g'`
+
+# reqall: the predecessor list for package "pxp":
 reqall="pxp-engine"
-for opt in $options; do
-	e="o=\$with_$opt"
-	eval "$e"
-	if [ $o -gt 0 ]; then
-		uopt=`echo "$opt" | sed -e 's/_/-/g'`
-		pkglist="$pkglist pxp-$uopt"
-		# Don't include pxp-lex* into reqall if pxp-wlex is available
-		if [ "$with_wlex" -gt 0 ]; then
-			case "$opt" in
-				lex_*)
-					true ;;
-				*)
-					reqall="$reqall pxp-$uopt" ;;
-			esac
-		else
-			reqall="$reqall pxp-$uopt"
-		fi
-	fi
+for lexname in $lexlist; do
+    if [ $with_wlex -gt 0 -a "$lexname" = "utf8" ] ; then
+	# Leave UTF-8 out
+	:
+    else
+	reqall="$reqall pxp-lex-$lexname"
+    fi
+    genpkglist="$genpkglist pxp-lex-$lexname"
 done
 
+if [ $with_wlex -gt 0 ]; then
+    reqall="$reqall pxp-wlex-utf8"
+    genpkglist="$genpkglist pxp-wlex-utf8"
+fi
+
+if [ $with_wlex_compat -gt 0 ]; then
+    genpkglist="$genpkglist pxp-wlex"
+fi
+
+for lexname in $lexlist_options; do
+    allgenpkglist="$allgenpkglist pxp-lex-$lexname"
+done
+
+allgenpkglist="$allgenpkglist pxp-wlex pxp-wlex-utf8"
+
 ######################################################################
-# Write META.in
+# Write META for pkglist
 
 for pkg in $pkglist; do
 	echo "Writing src/$pkg/META"
@@ -203,14 +248,49 @@ for pkg in $pkglist; do
 done
 
 ######################################################################
+# Write META and Makefile for lexlist
+
+for enc in $lexlist; do
+        pkg="pxp-lex-$enc"
+	echo "Writing gensrc/$pkg/META and Makefile"
+	mkdir -p "gensrc/$pkg"
+	sed -e "s/@VERSION@/$version/g" \
+	    -e "s/@ENCNAME@/$enc/g" \
+	    gensrc/pxp-lex-pattern/META.in >gensrc/$pkg/META
+	echo "# THIS IS A GENERATED FILE - DO NOT EDIT MANUALLY!" >gensrc/$pkg/Makefile
+	sed -e "s/@ENCNAME@/$enc/g" \
+	    gensrc/pxp-lex-pattern/Makefile.in >>gensrc/$pkg/Makefile
+done
+
+######################################################################
+# Write META for wlex
+
+if [ $with_wlex -gt 0 ]; then
+    pkg="pxp-wlex-utf8"
+    echo "Writing gensrc/$pkg/META"
+    sed -e "s/@VERSION@/$version/g" \
+	-e "s/@ENCNAME@/$enc/g" \
+	gensrc/$pkg/META.in >gensrc/$pkg/META
+fi
+
+if [ $with_wlex_compat -gt 0 ]; then
+    pkg="pxp-wlex"
+    echo "Writing gensrc/$pkg/META"
+    sed -e "s/@VERSION@/$version/g" \
+	-e "s/@ENCNAME@/$enc/g" \
+	gensrc/$pkg/META.in >gensrc/$pkg/META
+fi
+
+######################################################################
 # Write Makefile.conf
 
 echo "Writing Makefile.conf"
 cat <<_EOF_ >Makefile.conf
 VERSION = $version
 PKGLIST = $pkglist
+GENPKGLIST = $genpkglist
+ALLGENPKGLIST = $allgenpkglist
 EXEC_SUFFIX = $exec_suffix
-LEX_BUFFER_LEN = $lex_buffer_len
 _EOF_
 
 ######################################################################

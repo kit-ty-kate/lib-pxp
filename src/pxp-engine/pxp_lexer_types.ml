@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.9 2002/08/05 22:33:33 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.10 2002/08/28 23:54:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -203,6 +203,7 @@ type lexer_set =
       scan_name_string     : Lexing.lexbuf -> token;
       scan_only_xml_decl   : Lexing.lexbuf -> token;
       scan_for_crlf        : Lexing.lexbuf -> token;
+      scan_characters      : Lexing.lexbuf -> unit;
       scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
       scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
     }
@@ -211,6 +212,9 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.10  2002/08/28 23:54:34  gerd
+ * 	Support for new lexer definition style.
+ *
  * Revision 1.9  2002/08/05 22:33:33  gerd
  * 	New token LineEnd_att for newline characters inside
  * attribute values (event-based parser).
