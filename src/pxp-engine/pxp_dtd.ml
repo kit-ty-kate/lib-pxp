@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.17 2001/06/08 01:15:46 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.18 2001/06/29 13:57:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -623,8 +623,12 @@ and dtd_element the_dtd the_name =
 	    "xml:space" ->
 	      begin match t with
 		  A_enum l ->
-		    let l' = Sort.list ( <= ) l in
-		    if l' <> [ "default"; "preserve" ] then
+		    let ok =
+		      List.for_all
+			(fun tok -> List.mem tok ["default";"preserve"])
+			l
+		    in
+		    if not ok then
 		      raise(Validation_error("Declaration of attribute `xml:space' does not conform to XML specification"))
 		| _ ->
 		    raise(Validation_error("Declaration of attribute `xml:space' does not conform to XML specification"))
@@ -1107,6 +1111,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.18  2001/06/29 13:57:30  gerd
+ * 	Weakened the xml:space check.
+ *
  * Revision 1.17  2001/06/08 01:15:46  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions
