@@ -15,7 +15,7 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm dumpfiles
+	rm -f dumpfiles
 	$(MAKE) -C canonxml distclean
 	$(MAKE) -C negative distclean
 
