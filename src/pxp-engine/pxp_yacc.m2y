@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.42 2002/08/17 23:51:56 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.43 2002/08/31 23:28:01 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2518,7 +2518,7 @@ comment():
    (* The method "parse" continues here... *)
 
    try
-     match start_symbol with
+     begin match start_symbol with
 	 `Entry_document flags ->
 	   parse_entry_document context.current context.get_next
        | `Entry_declarations flags ->
@@ -2529,10 +2529,14 @@ comment():
 	   parse_entry_expr context.current context.get_next
        | `Entry_continuation _ ->
 	   parse_content_pull context.current context.get_next
+     end;
+     raise End_of_parsing
    with
        Not_found ->
 	 raise Parsing.Parse_error
      | End_of_parsing ->
+	 if n_entities_open > 0 then
+	   raise(WF_error("Illegal token"));
 	 ()
      (* The exception Interrupt_parsing is not caught here, but by the
       * caller
@@ -3286,6 +3290,10 @@ let create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.43  2002/08/31 23:28:01  gerd
+ * 	Bugfix: It is checked whether all entities are closed when
+ * the parser stops. If not, an error is generated.
+ *
  * Revision 1.42  2002/08/17 23:51:56  gerd
  * 	Added pull parsing.
  *
