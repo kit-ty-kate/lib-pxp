@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.20 2002/08/17 19:53:53 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.21 2002/08/17 23:51:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -593,6 +593,7 @@ val create_entity_manager :
    *   nesting rules are respected by parameter entities.
    *)
 
+
 type entry =
   [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
   | `Entry_declarations of [ `Extend_dtd_fully ] list
@@ -600,13 +601,13 @@ type entry =
   | `Entry_expr         of [ `Dummy ] list
   ]
    (* Entry points for the parser (used to call [process_entity]:
-    * - Entry_document: The parser reads a complete document that
+    * - `Entry_document: The parser reads a complete document that
     *   may have a DOCTYPE and a DTD.
-    * - Entry_declarations: The parser reads the external subset
+    * - `Entry_declarations: The parser reads the external subset
     *   of a DTD
-    * - Entry_content: The parser reads an entity containing contents,
+    * - `Entry_content: The parser reads an entity containing contents,
     *   i.e. misc* element misc*.
-    * - Entry_expr: The parser reads a single element, a single
+    * - `Entry_expr: The parser reads a single element, a single
     *   processing instruction or a single comment, or whitespace, whatever is
     *   found. In contrast to the other entry points, the expression
     *   need not to be a complete entity, but can start and end in 
@@ -696,6 +697,26 @@ val process_expr :
    *    hard to change!
    *)
 
+val create_pull_parser :
+      config -> 
+      entry ->
+      Pxp_entity_manager.entity_manager ->
+        ('a -> event option)
+  (* let next_event = create_pull_parser cfg entry mng in
+   * let ev = next_event()
+   *
+   * This function parses the XML document in "pull mode". [next_event]
+   * should be invoked repeatedly until it returns [None], indicating the
+   * end of the document. The events are encoded as [Some ev].
+   *
+   * The function returns exactly the same events as [process_entity].
+   *
+   * In contrast to [process_entity], no exception is raised when an
+   * error happens. Only the E_error event is generated (as last event).
+   *
+   * To create a stream of events, just do:
+   * let stream = Stream.from(create_pull_parser cfg entry mng)
+   *)
 
 (*$-*)
 
@@ -704,6 +725,9 @@ val process_expr :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.21  2002/08/17 23:51:56  gerd
+ * 	Added pull parsing.
+ *
  * Revision 1.20  2002/08/17 19:53:53  gerd
  * 	Changed type [entry] into a polymorphic variant. New variant
  * `Entry_expr. New: flags for [entry].

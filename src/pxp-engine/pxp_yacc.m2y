@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.41 2002/08/17 19:53:53 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.42 2002/08/17 23:51:56 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -73,6 +73,20 @@ type event =
   | E_end_of_stream
 
 
+type context =
+    { mutable current : unit -> token;  (* get the current token *)
+      mutable get_next : unit -> token; (* go on to the next token; return it *)
+      mutable current_token : token;    (* This is the current token *)
+      mutable manager : entity_manager; (* The entity manager *)
+    }
+
+
+type continuation_state =
+  { cont_context : context;
+    cont_extend_dtd : bool;
+    cont_process_xmldecl : bool;
+  }
+
 type entry =
   [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
   | `Entry_declarations of [ `Extend_dtd_fully ] list
@@ -80,12 +94,16 @@ type entry =
   | `Entry_expr         of [ `Dummy ] list
   ]
 
-type context =
-    { mutable current : unit -> token;  (* get the current token *)
-      mutable get_next : unit -> token; (* go on to the next token; return it *)
-      mutable current_token : token;    (* This is the current token *)
-      mutable manager : entity_manager; (* The entity manager *)
-    }
+type extended_entry =
+  [ entry
+  | `Entry_continuation of continuation_state
+  ]
+
+exception End_of_parsing
+  (* One way to signal that parsing is done *)
+
+exception Interrupt_parsing of continuation_state
+  (* Interrupt the parsing loop to process pull-style events *)
 
 
 let make_context ?first_token entity_manager =
@@ -250,7 +268,7 @@ let stack_pop st =
 
 class ['ext] tree_parser
   (init_doc:'ext document) init_dtd init_config init_spec
-  transform_dtd id_index
+  transform_dtd id_index init_pull_counter
   =
 let make_pool_string = pool_string init_config.name_pool in
   object (self)
@@ -310,6 +328,19 @@ let make_pool_string = pool_string init_config.name_pool in
 	(* Number of begin tags that have been parsed and whose corresponding
 	 * end tags have not yet been parsed
 	 *)
+
+    val mutable n_entities_open = 0
+        (* Number of open Begin_entity tokens. If this number decreases to 0
+	 * the parser will terminate.
+	 *)
+
+    val pull_counter_limit = init_pull_counter
+    val mutable pull_counter = init_pull_counter
+        (* If < 0, pull parsing is disabled.
+         * If >= 0: pull_counter is decreased for every parsing loop. If
+	 * zero, pull_counter is reinitialized to pull_counter_limit, and
+	 * an Interrupt_parsing exception is raised.
+         *)
 
     val mutable p_internal_subset = false
         (* true while parsing the internal subset - there are some additional
@@ -770,7 +801,7 @@ let make_pool_string = pool_string init_config.name_pool in
        *         transformed to a local function of this method
        *)
 
-      method parse context (start_symbol : entry) =
+      method parse context (start_symbol : extended_entry) =
 
 	(* extend_dtd:
 	 * Whether the DTD should be extended by ELEMENT, ATTLIST, and
@@ -784,6 +815,8 @@ let make_pool_string = pool_string init_config.name_pool in
 		List.mem `Extend_dtd_fully flags
 	    | `Entry_declarations flags ->
 		List.mem `Extend_dtd_fully flags
+	    | `Entry_continuation st ->
+		st.cont_extend_dtd
 	    | _ -> false
 	in
 
@@ -796,6 +829,8 @@ let make_pool_string = pool_string init_config.name_pool in
 	  match start_symbol with
 	      `Entry_document flags ->
 		List.mem `Parse_xml_decl flags
+	    | `Entry_continuation st ->
+		st.cont_process_xmldecl
 	    | _ -> false
 	in
 
@@ -1012,10 +1047,11 @@ let make_pool_string = pool_string init_config.name_pool in
 
 entry_document():
   Begin_entity
-  doc_xmldecl_then_misc_then_prolog_then_rest() End_entity
+  $ {{ n_entities_open <- n_entities_open + 1; }}
+  doc_xmldecl_then_misc_then_prolog_then_rest()
     {{
-      if n_tags_open <> 0 then
-	raise(WF_error("Missing end tag"))
+      (* Note: In pull parsing mode, the following code won't be executed! *)
+      ()
     }}
 
 
@@ -1059,10 +1095,12 @@ doc_prolog_then_rest():
 
 
 entry_content():
-  Begin_entity el_xmldecl_then_misc_then_rest() End_entity
+  Begin_entity 
+  $ {{ n_entities_open <- n_entities_open + 1; }}
+  el_xmldecl_then_misc_then_rest() 
     {{
-      if n_tags_open <> 0 then
-	raise(WF_error("Missing end tag"))
+      (* Note: In pull parsing mode the following code won't be executed! *)
+      ()
     }}
 
 
@@ -1086,6 +1124,9 @@ el_xmldecl_then_misc_then_rest():
 entry_declarations():
   /* Parses a sequence of declarations given by an entity. As side-effect,
    * the parsed declarations are put into the dtd object.
+   *
+   * Note: The following Begin_entity is not counted because this entity
+   * will certainly be closed when pull parsing mode is entered.
    */
   Begin_entity decl_xmldecl_then_rest()
    {{ () }}
@@ -1194,6 +1235,7 @@ doctypedecl_material(doctype_entid):
 		spec
 		(fun x -> x)
 		None
+		(-1)
 	    in
 	    let en = new external_entity resolver dtd "[dtd]"
 		         config.warner id false
@@ -2050,8 +2092,14 @@ contents_start():
    * object only back via a global variable). The only solution is to
    * modify the object that has been passed to the parsing function directly.
    */
-  $ {{ self # init_for_xml_body(); }}
-  start_tag() content()*
+  $ {{ self # init_for_xml_body(); 
+       let parser = 
+	 if pull_counter < 0 then 
+	   parse_content_push
+	 else 
+	   parse_content_pull in
+    }}
+  start_tag() [parser]()
     {{ () }}
 
 
@@ -2095,6 +2143,26 @@ entry_expr_space():
      }}
 
 
+content_push():
+  content() content()*
+    {{ () }}
+
+
+content_pull():
+  content()
+  $ {{ pull_counter <- pull_counter - 1;
+       if pull_counter <= 0 then begin
+	 pull_counter <- pull_counter_limit;
+	 let state = { cont_context = context;
+	               cont_extend_dtd = extend_dtd;
+		       cont_process_xmldecl = process_xmldecl;
+		     } in
+         raise(Interrupt_parsing state)
+       end;
+    }}
+  content_pull()
+    {{ () }}
+
 content():
   /* parses: start tags, end tags, content, or processing
    * instructions. That the tags are properly nested is dynamically checked.
@@ -2112,34 +2180,34 @@ content():
     {{ () }}
 | pi()
     {{ () }}
-| entity_ref()
-    {{ () }}
 | comment()
     {{ () }}
-
-
-entity_ref():
-   Begin_entity eref_xmldecl_then_rest()
-    {{ if n_tags_open = 0 then
-	raise(WF_error("Entity reference not allowed here"))
+| Begin_entity
+  $ {{ if n_tags_open = 0 then
+	 raise(WF_error("Entity reference not allowed here"));
+       n_entities_open <- n_entities_open + 1;
+    }}
+  init_inner_entity()
+    {{ () }}
+| End_entity
+    {{ n_entities_open <- n_entities_open - 1;
+       if n_entities_open = 0 then begin
+         if n_tags_open <> 0 then raise(WF_error("Missing end tag"));
+         raise End_of_parsing
+       end;
     }}
 
 
 /* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
 
-eref_xmldecl_then_rest():
+init_inner_entity():
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl;
     }}
-  content()* End_entity
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  content() content()* End_entity
-    {{ () }}
-
-| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  End_entity
+  content()
     {{ () }}
 
 
@@ -2459,9 +2527,16 @@ comment():
 	   parse_entry_content context.current context.get_next
        | `Entry_expr flags ->
 	   parse_entry_expr context.current context.get_next
+       | `Entry_continuation _ ->
+	   parse_content_pull context.current context.get_next
    with
        Not_found ->
 	 raise Parsing.Parse_error
+     | End_of_parsing ->
+	 ()
+     (* The exception Interrupt_parsing is not caught here, but by the
+      * caller
+      *)
 
   (*********** The method "parse" ends here *************)
 
@@ -2536,7 +2611,7 @@ let default_namespace_spec =
 class any_entity_id = object end ;;
 
 class event_parser init_dtd init_config init_event_handler 
-                   init_want_start_doc =
+                   init_want_start_doc init_pull_counter =
 let fake_doc = new document init_config.warner init_config.encoding in
 object (self)
   inherit [ ('a node extension) as 'a ] tree_parser
@@ -2546,6 +2621,7 @@ object (self)
 					  default_spec
 					  (fun dtd -> dtd)
 					  None
+					  init_pull_counter
 
   val event_handler = init_event_handler
   val want_start_doc = init_want_start_doc
@@ -2742,6 +2818,7 @@ let call_tree_parser ~configuration:cfg
       spec
       transform_dtd
       (id_index :> 'ext index option)
+      (-1)
   in
   let mgr = new entity_manager en dtd in
   let gen_att_events = cfg.escape_attributes <> None in
@@ -3032,6 +3109,7 @@ let process_entity
       cfg
       eh
       have_document_entry
+      (-1)
   in
   let resolver = mgr # current_resolver in
   let init_lexer =
@@ -3047,7 +3125,7 @@ let process_entity
   begin try
     let context = make_context mgr in
 
-    pobj # parse context entry;
+    pobj # parse context (entry : entry :> extended_entry);
     if en # is_open then ignore(en # close_entity);
     if have_document_entry then eh (E_end_doc);
     eh E_end_of_stream;
@@ -3073,7 +3151,7 @@ let process_expr
       ?first_token
       ?following_token
       cfg mgr eh =
-  let pobj = new event_parser mgr#dtd cfg eh false in
+  let pobj = new event_parser mgr#dtd cfg eh false (-1) in
   let resolver = mgr # current_resolver in
   let en = mgr # current_entity in
   begin try
@@ -3101,10 +3179,116 @@ let process_expr
 ;;
 
 
+let create_pull_parser
+      cfg entry mgr =
+
+  (* Do control inversion with a queue serving as buffer, and a very special
+   * kind of continuations 
+   *)
+
+  let pull_queue = Queue.create() in
+  let pull_queue_eof = ref false in
+
+  let eh event =
+    prerr_endline("Adding event!");
+    Queue.add event pull_queue
+  in
+
+  let have_document_entry = 
+    match entry with `Entry_document _ -> true | _ -> false in
+  let pobj =
+    new event_parser
+      mgr#dtd
+      cfg
+      eh
+      have_document_entry
+      100                   (* the number of loops until Interrupt_parsing *)
+  in
+  let resolver = mgr # current_resolver in
+  let init_lexer =
+    match entry with
+	`Entry_document _     -> Document
+      | `Entry_declarations _ -> failwith "Pxp_yacc.process_entity: bad entry point"
+      | `Entry_content _      -> Content
+      | `Entry_expr _         -> Content
+  in
+  let en = mgr # current_entity in
+  let gen_att_events = Some(cfg.escape_attributes <> None) in
+  en # open_entity ?gen_att_events true init_lexer;
+
+  let fill = ref (fun () -> ()) in
+    (* This function is called when the queue is empty to add more elements *)
+
+  let rec return_result x =
+    prerr_endline "return_result";
+    try
+      Some(Queue.take pull_queue)
+    with
+	Queue.Empty ->
+	  prerr_endline "Empty";
+	  if !pull_queue_eof then
+	    None
+	  else begin
+	    !fill();
+	    return_result x
+	  end
+  in
+
+  let record_error exn =
+    match exn with
+      | Failure "Invalid UTF-8 stream" ->
+	  (* raised by the wlex-generated lexers only: map to Malformed_code *)
+	  let pos = mgr # position_string in
+	  mgr # pop_entity_until en;
+	  let e = At(pos, Netconversion.Malformed_code) in
+	  eh (E_error e);
+	  pull_queue_eof := true;
+      | error ->
+	  let pos = mgr # position_string in
+	  mgr # pop_entity_until en;
+	  let e = At(pos, error) in
+	  eh (E_error e);
+	  pull_queue_eof := true;
+  in
+  
+  let rec parse_slice context e () =
+    try
+      prerr_endline "parse...";
+      pobj # parse context e;
+      prerr_endline "parse(eof)!";
+      (* If the [parse] method terminates, the end of the stream is reached!
+       *)
+      if en # is_open then ignore(en # close_entity);
+      if have_document_entry then eh (E_end_doc);
+      eh E_end_of_stream;
+      pull_queue_eof := true;
+    with
+      | Interrupt_parsing st ->
+	  prerr_endline "interrupt";
+	  fill := parse_slice st.cont_context (`Entry_continuation st);
+	  ()
+      | exn ->
+	  record_error exn
+  in
+
+  try
+    let context =  make_context mgr  in
+    fill := parse_slice context (entry : entry :> extended_entry);
+    return_result
+  with
+    | exn -> 
+	record_error exn;
+	return_result
+;;
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.42  2002/08/17 23:51:56  gerd
+ * 	Added pull parsing.
+ *
  * Revision 1.41  2002/08/17 19:53:53  gerd
  * 	Changed type [entry] into a polymorphic variant. New variant
  * `Entry_expr. New: flags for [entry].
