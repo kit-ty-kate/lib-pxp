@@ -1,4 +1,4 @@
-(* $Id: pxp_dfa.ml,v 1.2 2001/06/27 23:34:35 gerd Exp $
+(* $Id: pxp_dfa.ml,v 1.3 2002/02/20 10:01:36 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -7,40 +7,35 @@ open Pxp_aux
 
 
 module Graph = struct
+  class id_obj = object end
+
   type vertex =
       { mutable edges_out : (string * vertex) list;
 	mutable edges_out_map : vertex StringMap.t;
 	mutable edges_in : (vertex * string) list;
-	mutable graph : graph;
-	mutable id : int;
+	mutable id : id_obj;
       }
   and graph =
-      { mutable vertexes : vertex list;
-	mutable mid : int;   (* maximum id + 1 *)
-      }
+      (* Currently not managed *)
+      unit
 
   exception Edge_not_unique
 
-  let create () =
-    { vertexes = [];
-      mid = 0;
-    }
+  let create () = ()
 
   let new_vertex g =
     let v =
       { edges_out = [];
 	edges_out_map = StringMap.empty;
 	edges_in = [];
-	graph = g;
-	id = g.mid;
+	id = new id_obj;
       } in
-    g.vertexes <- v :: g.vertexes;
-    g.mid <- g.mid + 1;
     v
 
   let new_edge v_from e v_to =
-    if v_from.graph != v_to.graph then
-      invalid_arg "Pxp_dfa.Graph.new_edge";
+    (* if v_from.graph != v_to.graph then
+          invalid_arg "Pxp_dfa.Graph.new_edge";
+    *)
     try 
       let v = StringMap.find e v_from.edges_out_map in
       if v != v_to then
@@ -52,19 +47,9 @@ module Graph = struct
 	  v_to.edges_in        <- (v_from, e) :: v_to.edges_in;
 	  ()
 
-  let graph_of_vertex v = v.graph
+  (* let graph_of_vertex v = v.graph *)
 
-  let union g1 g2 =
-    List.iter
-      (fun v ->
-	 v.graph <- g1;
-	 v.id <- v.id + g1.mid;
-      )
-      g2.vertexes;
-    g1.vertexes <- g2.vertexes @ g1.vertexes;
-    g1.mid <- g1.mid + g2.mid;
-    g2.vertexes <- [];
-    g2.mid <- 0
+  let union g1 g2 = ()
 
   let outgoing_edges v =
     v.edges_out
@@ -81,9 +66,10 @@ end
 module VertexOrd = struct
   type t = Graph.vertex
   let compare v1 v2 =
-    if v1.Graph.graph != v2.Graph.graph then
-      invalid_arg "Pxp_dfa.VertexOrd.compare";
-    compare v1.Graph.id v2.Graph.id
+    (* if v1.Graph.graph != v2.Graph.graph then
+        invalid_arg "Pxp_dfa.VertexOrd.compare";
+    *)
+    compare v1.Graph.id v2.Graph.id  (* compares the OIDs *)
 end
 ;;
 
@@ -256,6 +242,11 @@ let dfa_of_regexp_content_model re =
  * History:
  * 
  * $Log: pxp_dfa.ml,v $
+ * Revision 1.3  2002/02/20 10:01:36  gerd
+ * 	Simplified the representation of the DFA graphs, resulting
+ * in performance improvements (but less protection against programming
+ * errors)
+ *
  * Revision 1.2  2001/06/27 23:34:35  gerd
  * 	Moved module StringMap to Pxp_aux.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_dfa.mli,v 1.1 2000/07/23 02:16:08 gerd Exp $
+(* $Id: pxp_dfa.mli,v 1.2 2002/02/20 10:01:36 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -28,7 +28,7 @@ module Graph : sig
        * at v_from to a different vertex than v_to.
        *)
 
-  val graph_of_vertex : vertex -> graph
+  (* val graph_of_vertex : vertex -> graph *)
       (* Returns the graph the passed vertex is contained in. *)
 
   val union : graph -> graph -> unit
@@ -67,6 +67,11 @@ val dfa_of_regexp_content_model : Pxp_types.regexp_spec -> dfa_definition
  * History:
  * 
  * $Log: pxp_dfa.mli,v $
+ * Revision 1.2  2002/02/20 10:01:36  gerd
+ * 	Simplified the representation of the DFA graphs, resulting
+ * in performance improvements (but less protection against programming
+ * errors)
+ *
  * Revision 1.1  2000/07/23 02:16:08  gerd
  * 	Initial revision.
  *
