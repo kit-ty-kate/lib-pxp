@@ -1,3 +1,10 @@
 #! /bin/sh
 
+echo "*** test_codewriter"
 ./test_codewriter sample001.xml
+
+echo "*** marshal_simple"
+./marshal_simple
+
+echo "*** marshal_namespace"
+./marshal_namespace

@@ -7,13 +7,13 @@
 
 OCAMLPATH=../..
 
-all: compile marshal marshal_namespace
+all: compile marshal_simple marshal_namespace
 
 compile: compile.ml
 	ocamlfind ocamlc -g -custom -o compile -package .,str -linkpkg compile.ml
 
-marshal: marshal.ml
-	ocamlfind ocamlc -g -custom -o marshal -package .,str -linkpkg marshal.ml
+marshal_simple: marshal_simple.ml
+	ocamlfind ocamlc -g -custom -o marshal_simple -package .,str -linkpkg marshal_simple.ml
 
 marshal_namespace: marshal_namespace.ml
 	ocamlfind ocamlc -g -custom -o marshal_namespace -package .,str -linkpkg marshal_namespace.ml
@@ -33,5 +33,5 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f compile marshal marshal_namespace
+	rm -f compile marshal_simple marshal_namespace
 
