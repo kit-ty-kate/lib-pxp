@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.2 2000/06/14 22:19:06 gerd Exp $
+(* $Id: pxp_document.ml,v 1.3 2000/07/04 22:10:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -70,6 +70,27 @@ class type [ 'ext ] node =
     method internal_delete : 'ext node -> unit
     method internal_init : dtd -> string -> (string * string) list -> unit
   end
+;;
+
+type 'ext spec_table =
+    { mapping : (string, 'ext node) Hashtbl.t;
+      data_node : 'ext node;
+      default_element : 'ext node;
+    }
+;;
+
+type 'ext spec =
+  Spec_table of 'ext spec_table
+;;
+
+
+let make_spec_from_mapping
+      ~data_exemplar ~default_element_exemplar ~element_mapping =
+  Spec_table
+    { mapping = element_mapping;
+      data_node = data_exemplar;
+      default_element = default_element_exemplar;
+    }
 ;;
 
 (**********************************************************************)
@@ -299,10 +320,10 @@ class virtual ['ext] node_impl an_ext =
 (**********************************************************************)
 
 
-class ['ext] data_impl an_ext str : ['ext] node =
+class ['ext] data_impl an_ext : ['ext] node =
   object (self)
     inherit ['ext] node_impl an_ext
-    val mutable content = (str : string)
+    val mutable content = ("" : string)
 
     method find id =
       if parent = None then
@@ -873,6 +894,30 @@ class ['ext] element_impl an_ext : ['ext] node =
 ;;
 
 
+let spec_table_find_exemplar tab eltype =
+  try
+    Hashtbl.find tab.mapping eltype
+  with
+      Not_found -> tab.default_element
+;;
+
+
+let create_data_node spec dtd str =
+  match spec with
+      Spec_table tab ->
+	let exemplar = tab.data_node in
+	exemplar # create_data dtd str
+;;
+
+
+let create_element_node spec dtd eltype atts =
+   match spec with
+      Spec_table tab ->
+	let exemplar = spec_table_find_exemplar tab eltype in
+	exemplar # create_element dtd (T_element eltype) atts
+;;
+
+
 class ['ext] document the_warner =
   object (self)
     val mutable xml_version = "1.0"
@@ -1012,6 +1057,10 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.3  2000/07/04 22:10:06  gerd
+ * 	Implemented rev 1.3 of pxp_document.mli in a straight-
+ * forward fashion.
+ *
  * Revision 1.2  2000/06/14 22:19:06  gerd
  * 	Added checks such that it is impossible to mix encodings.
  *
