@@ -238,6 +238,8 @@ elements and notations are undeclared. However, the elements for which
 declarations exist are still validated. The main effect is that the
 keyword ALL in element declarations means that also undeclared elements
 are permitted at this location.</p>
+	  <p>Bugfix in method "set_nodes" of class Markup_document.node_impl.
+</p>
 	</li>
 	<li>
 	  <p>Changed in 0.2.5:</p>
