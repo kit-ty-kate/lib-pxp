@@ -21,51 +21,142 @@
 open Pxp_types
 open Pxp_lexer_types
 
-let lexer_set = 
-  { lex_encoding          = `Enc_${encoding};
-    scan_document         = ${scan_document}.scan_document;
-    scan_content          = ${scan_content}.scan_content;
-    scan_within_tag       = ${scan_within_tag}.scan_within_tag;
-    scan_document_type    = ${scan_document_type}.scan_document_type;
-    scan_declaration      = ${scan_declaration}.scan_declaration;
-    scan_comment          = ${scan_comment}.scan_comment;
-    scan_ignored_section  = ${scan_ignored_section}.scan_ignored_section;
-    detect_xml_pi         = ${detect_xml_pi}.detect_xml_pi;
-    scan_xml_pi           = ${scan_xml_pi}.scan_xml_pi;
-    scan_pi_string        = ${scan_pi_string}.scan_pi_string;
-    scan_dtd_string       = ${scan_dtd_string}.scan_dtd_string;
-    scan_content_string   = ${scan_content_string}.scan_content_string;
-    scan_name_string      = ${scan_name_string}.scan_name_string;
-    scan_for_crlf         = ${scan_for_crlf}.scan_for_crlf;
-    scan_characters       = ${scan_characters}.scan_characters;
-    scan_character        = ${scan_character}.scan_character;
-    scan_tag_eb           = ${scan_tag_eb}.scan_tag_eb;
-    scan_tag_eb_att       = ${scan_tag_eb_att}.scan_tag_eb_att;
-  }
+class lfactory : lexer_factory =
+object(self)
+  method encoding = `Enc_${encoding}
+
+  method open_source src = 
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (Lexing.from_function (fun s n -> src s 0 n)) false
+
+  method open_string s =
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (Lexing.from_string s) true
+
+  method open_string_inplace s =
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (Pxp_lexing.from_string_inplace s) true
+end
+
+and lobj factory _lexbuf _lexbuf_from_string : lexer_obj =
+object(self)
+  val mutable lexbuf = _lexbuf
+  val mutable lexbuf_from_string = _lexbuf_from_string
+
+  method factory = factory
+
+  method encoding = `Enc_${encoding}
+
+  method open_source src =
+    lexbuf <- Lexing.from_function (fun s n -> src s 0 n);
+    lexbuf_from_string <- false
+
+  method open_string s =
+    lexbuf <- Lexing.from_string s;
+    lexbuf_from_string <- true
+
+  method open_string_inplace s =
+    if lexbuf_from_string then (
+      Pxp_lexing.from_another_string_inplace lexbuf s
+    )
+    else (
+      lexbuf <- Pxp_lexing.from_string_inplace s;
+      lexbuf_from_string <- true
+    )
+
+  method lexeme =
+    Lexing.lexeme lexbuf
+
+  method lexeme_len =
+    Pxp_lexing.lexeme_len lexbuf
+    
+  method scan_document =
+    fun () -> 
+      ${scan_document}.scan_document (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_content =
+    fun () -> 
+      ${scan_content}.scan_content (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_within_tag = 
+    fun () -> 
+      ${scan_within_tag}.scan_within_tag
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_document_type = 
+    fun () -> 
+      ${scan_document_type}.scan_document_type
+        (self : #lexer_obj :> lexer_obj) lexbuf
+    
+  method scan_declaration = 
+    fun () -> 
+      ${scan_declaration}.scan_declaration 
+        (self : #lexer_obj :> lexer_obj) lexbuf
+    
+  method scan_comment = 
+    fun () -> 
+      ${scan_comment}.scan_comment (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_ignored_section = 
+    fun () -> 
+      ${scan_ignored_section}.scan_ignored_section
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method detect_xml_pi = 
+    fun () -> 
+      ${detect_xml_pi}.detect_xml_pi (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_xml_pi = 
+    fun () -> 
+      ${scan_xml_pi}.scan_xml_pi (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_pi_string = 
+    fun () -> 
+      ${scan_pi_string}.scan_pi_string (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_dtd_string = 
+    fun () -> 
+      ${scan_dtd_string}.scan_dtd_string (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_content_string = 
+    fun () -> 
+      ${scan_content_string}.scan_content_string
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_name_string =
+    fun () -> 
+      ${scan_name_string}.scan_name_string
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_for_crlf = 
+    fun () -> 
+      ${scan_for_crlf}.scan_for_crlf (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_characters = 
+    fun () -> 
+      ${scan_characters}.scan_characters (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_character = 
+    fun () -> 
+      ${scan_character}.scan_character (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_tag_eb = 
+    fun () -> 
+      ${scan_tag_eb}.scan_tag_eb (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_tag_eb_att = 
+    fun () -> 
+      ${scan_tag_eb_att}.scan_tag_eb_att (self : #lexer_obj :> lexer_obj) lexbuf
+
+end
 ;;
 
 
-Pxp_lexers.init lexer_set
+Pxp_lexers.init (new lfactory)
 ;;
-
-${scan_document}.lexerset := lexer_set;;
-${scan_content}.lexerset := lexer_set;;
-${scan_within_tag}.lexerset := lexer_set;;
-${scan_document_type}.lexerset := lexer_set;;
-${scan_declaration}.lexerset := lexer_set;;
-${scan_comment}.lexerset := lexer_set;;
-${scan_ignored_section}.lexerset := lexer_set;;
-${detect_xml_pi}.lexerset := lexer_set;;
-${scan_xml_pi}.lexerset := lexer_set;;
-${scan_pi_string}.lexerset := lexer_set;;
-${scan_dtd_string}.lexerset := lexer_set;;
-${scan_content_string}.lexerset := lexer_set;;
-${scan_name_string}.lexerset := lexer_set;;
-${scan_for_crlf}.lexerset := lexer_set;;
-${scan_characters}.lexerset := lexer_set;;
-${scan_character}.lexerset := lexer_set;;
-${scan_tag_eb}.lexerset := lexer_set;;
-${scan_tag_eb_att}.lexerset := lexer_set;;
 
 
 (* [END] *)

@@ -60,13 +60,14 @@ let check_name ?swarner warner name =
 ;;
 
 
-let tokens_of_content_string lexerset s =
+let tokens_of_content_string lfactory s =
   (* tokenizes general entities and character entities *)
-  let lexbuf = Pxp_lexing.from_string_inplace s in
+  let lexobj = lfactory # open_string_inplace s in
+  let scan   = lexobj # scan_content_string in
   let rec next_token () =
-    match lexerset.scan_content_string lexbuf with
+    match scan() with
 	Eof        -> []
-      | CharData _ -> let tok = CharData (Lexing.lexeme lexbuf) in
+      | CharData _ -> let tok = CharData lexobj#lexeme in
 	              tok :: next_token()
       | tok        -> tok :: next_token()
   in
@@ -76,14 +77,14 @@ let tokens_of_content_string lexerset s =
 
 exception Quick_exit;;
 
-let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd entities norm_crlf =
+let rec expand_attvalue_with_rec_check (lexobj : lexer_obj) l dtd entities norm_crlf =
   (* recursively expands general entities and character entities;
    * checks "standalone" document declaration;
    * normalizes whitespace
    *
    * Exception: Quick_exit: the expanded value is equal to s
    *)
-  match lexerset.scan_content_string lexbuf with
+  match lexobj # scan_content_string () with
       Eof -> []
     | ERef n ->
 	if List.mem n entities then
@@ -98,52 +99,53 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd entities norm_crlf 
 	let l' =
 	  try
 	    expand_attvalue_with_rec_check
-	      (Pxp_lexing.from_string_inplace rtext)
+	      (lexobj # factory # open_string_inplace rtext)
 	      (String.length rtext)
-	      lexerset dtd (n :: entities) false
+	      dtd (n :: entities) false
 	  with
 	      Quick_exit -> [rtext]
 	  in
 	  l' @ expand_attvalue_with_rec_check
-	         lexbuf l lexerset dtd entities norm_crlf
+	         lexobj l dtd entities norm_crlf
     | CRef(-1) ->
 	if norm_crlf then begin
 	  " " :: expand_attvalue_with_rec_check
-	             lexbuf l lexerset dtd entities norm_crlf
+	             lexobj l dtd entities norm_crlf
 	end
 	else begin
 	  "  " :: expand_attvalue_with_rec_check
- 	              lexbuf l lexerset dtd entities norm_crlf
+ 	              lexobj l dtd entities norm_crlf
 	end
     | CRef n ->
-	(character ?swarner:dtd#swarner lexerset.lex_encoding dtd#warner n) ::
+	(character ?swarner:dtd#swarner lexobj#encoding dtd#warner n) ::
 	expand_attvalue_with_rec_check
- 	    lexbuf l lexerset dtd entities norm_crlf
+ 	    lexobj l dtd entities norm_crlf
     | CharData _  ->
-	if Lexing.lexeme_char lexbuf 0 = '<' then
-	  raise
-	    (WF_error
-	       ("Attribute value contains character '<' literally"));
-	if Pxp_lexing.lexeme_len lexbuf = l then
+	let ll = lexobj # lexeme_len in
+	if ll > 1 && ll = l then
 	   raise Quick_exit
 	else
-	  let x = Lexing.lexeme lexbuf in
+	  let x = lexobj # lexeme in
+	  if x.[0] = '<' then  (* or better: x = "<", ensured by the lexer *)
+	    raise
+	      (WF_error
+		 ("Attribute value contains character '<' literally"));
 	  x :: expand_attvalue_with_rec_check
- 	           lexbuf l lexerset dtd entities norm_crlf
+ 	           lexobj l dtd entities norm_crlf
     | _ -> assert false
 ;;
 
 
-let expand_attvalue lexbuf lexerset dtd s norm_crlf =
+let expand_attvalue (lexobj : lexer_obj) dtd s norm_crlf =
   (* norm_crlf: whether the sequence CRLF is recognized as one character or
    * not (i.e. two characters).
    * lexbuf: must result from a previous Lexing.from_string
    *)
   try
-    Pxp_lexing.from_another_string_inplace lexbuf s;
+    lexobj # open_string_inplace s;
     let l =
       expand_attvalue_with_rec_check
-	lexbuf (String.length s) lexerset dtd [] norm_crlf in
+	lexobj (String.length s) dtd [] norm_crlf in
     String.concat "" l
   with
       Quick_exit ->
@@ -185,10 +187,11 @@ let count_lines lc s =
 ;;
 
 
-let tokens_of_xml_pi lexers s =
-  let lexbuf = Pxp_lexing.from_string_inplace (s ^ " ") in
+let tokens_of_xml_pi (lfactory : lexer_factory) s =
+  let lexobj = lfactory # open_string_inplace (s ^ " ") in
+  let scan = lexobj # scan_xml_pi in
   let rec collect () =
-    let t = lexers.scan_xml_pi lexbuf in
+    let t = scan() in
     match t with
 	Pro_eof -> []
       | _       -> t :: collect()
@@ -283,7 +286,7 @@ let rec count pred l =
 (**********************************************************************)
 (* attributes *)
 
-let check_attribute_value_lexically lexerset x t v =
+let check_attribute_value_lexically (lfactory:lexer_factory) x t v =
   (* raises x if the attribute value v does not match the lexical rules
    * for attribute type t:
    * - t = A_id: v must be a <name>
@@ -297,9 +300,10 @@ let check_attribute_value_lexically lexerset x t v =
    * - t = A_enum _: v must match <nmtoken>
    * - t = A_cdata: not checked
    *)
-  let lexbuf = Pxp_lexing.from_string_inplace v in
+  let lexobj = lfactory # open_string_inplace v in
+  let scan = lexobj#scan_name_string in
   let rec get_name_list() =
-    match lexerset.scan_name_string lexbuf with
+    match scan() with
 	Eof    -> []
       | Ignore -> get_name_list()
       | tok    -> tok :: get_name_list()
@@ -335,13 +339,14 @@ let check_attribute_value_lexically lexerset x t v =
 ;;
 
 
-let split_attribute_value lexerset v =
+let split_attribute_value (lfactory:lexer_factory) v =
   (* splits 'v' into a list of names or nmtokens. The white space separating
    * the names/nmtokens in 'v' is suppressed and not returned.
    *)
-  let lexbuf = Pxp_lexing.from_string_inplace v in
+  let lexobj = lfactory # open_string_inplace v in
+  let scan = lexobj # scan_name_string in
   let rec get_name_list() =
-    match lexerset.scan_name_string lexbuf with
+    match scan() with
 	Eof         -> []
       | Ignore      -> get_name_list()
       | Name s      -> s :: get_name_list()
@@ -371,11 +376,12 @@ let rev_concat l =
 ;;
 
 
-let normalize_line_separators lexerset s =
+let normalize_line_separators (lfactory:lexer_factory) s =
   (* Note: Returns [s] if [s] does not contain LFs *)
-  let lexbuf = Pxp_lexing.from_string_inplace s in
+  let lexobj = lfactory # open_string_inplace s in
+  let scan = lexobj # scan_for_crlf in
   let rec get_string l =
-    match lexerset.scan_for_crlf lexbuf with
+    match scan() with
 	Eof        -> l
       | CharData s -> get_string (s::l)
       | _          -> assert false
@@ -387,7 +393,7 @@ let normalize_line_separators lexerset s =
 ;;
 
 
-let value_of_attribute_aux lexerset dtd n atype v =
+let value_of_attribute_aux (lfactory:lexer_factory) dtd n atype v =
   (* See value_of_attribute below. *)
 
   let lexical_error() =
@@ -395,7 +401,7 @@ let value_of_attribute_aux lexerset dtd n atype v =
 
   let remove_leading_and_trailing_spaces u =
     (* Precondition: 'u' matches <name> or <nmtoken> *)
-    match split_attribute_value lexerset u with
+    match split_attribute_value lfactory u with
 	[ u' ] -> u'
       | _      -> assert false
   in
@@ -415,26 +421,26 @@ let value_of_attribute_aux lexerset dtd n atype v =
 	Value v
 
     | (A_id | A_idref | A_nmtoken) ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	Value (remove_leading_and_trailing_spaces v)
     | A_entity ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	let v' = remove_leading_and_trailing_spaces v in
 	check_ndata_entity v';
 	Value v'
 
     | (A_idrefs | A_nmtokens) ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
-	Valuelist (split_attribute_value lexerset v)
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
+	Valuelist (split_attribute_value lfactory v)
 
     | A_entities ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
-	let l = split_attribute_value lexerset v in
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
+	let l = split_attribute_value lfactory v in
 	List.iter check_ndata_entity l;
 	Valuelist l
 
     | A_notation nl ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	let v' = remove_leading_and_trailing_spaces v in
 	if not (List.mem v' nl) then
 	  raise(Validation_error
@@ -443,7 +449,7 @@ let value_of_attribute_aux lexerset dtd n atype v =
 	Value v'
 
     | A_enum enuml ->
-	check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	let v' = remove_leading_and_trailing_spaces v in
 	if not (List.mem v' enuml) then
 	  raise(Validation_error
@@ -453,7 +459,7 @@ let value_of_attribute_aux lexerset dtd n atype v =
 ;;
 
 
-let value_of_attribute lexerset dtd n atype v =
+let value_of_attribute (lfactory:lexer_factory) dtd n atype v =
   (* The attribute with name 'n', type 'atype' and string value 'v' is
    * decomposed, and the att_value is returned:
    * - It is checked whether 'v' conforms to the lexical rules for attributes
@@ -485,13 +491,13 @@ let value_of_attribute lexerset dtd n atype v =
     (* The most frequent case *)
     Value v
   else
-    value_of_attribute_aux lexerset dtd n atype v
+    value_of_attribute_aux lfactory dtd n atype v
       (* Note that value_of_attribute_aux allocates memory for the local
        * functions even if they are not called at all.
        *)
 ;;
 
-let check_value_of_attribute lexerset dtd n atype av =
+let check_value_of_attribute (lfactory:lexer_factory) dtd n atype av =
   (* This function checks whether the decomposed attribute value av
    * matches the attribute type, i.e. it checks whether av is the
    * result of the above function value_of_attribute for some
@@ -542,7 +548,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	(match av with
 	   | Valuelist _ -> unexpected_valuelist()
 	   | Value v ->
-	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	       no_leading_and_trailing_spaces v
 	   | _ -> ()
 	)
@@ -550,7 +556,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	(match av with
 	   | Valuelist _ -> unexpected_valuelist()
 	   | Value v ->
-	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	       no_leading_and_trailing_spaces v;
 	       check_ndata_entity v
 	   | _ -> ()
@@ -564,7 +570,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 		 if atype = A_idrefs then A_id else A_nmtoken in
 	       List.iter
 		 (check_attribute_value_lexically 
-		    lexerset (lexical_error()) subst_type) 
+		    lfactory (lexical_error()) subst_type) 
 		 l
 	   | _ -> ()
 	)
@@ -575,7 +581,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	       List.iter no_leading_and_trailing_spaces l;
 	       List.iter
 		 (check_attribute_value_lexically 
-		    lexerset (lexical_error()) A_entity) 
+		    lfactory (lexical_error()) A_entity) 
 		 l;
 	       List.iter check_ndata_entity l
 	   | _ -> ()
@@ -584,7 +590,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	(match av with
 	   | Valuelist _ -> unexpected_valuelist()
 	   | Value v ->
-	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	       no_leading_and_trailing_spaces v;
 	       if not (List.mem v nl) then
 		 raise(Validation_error
@@ -596,7 +602,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	(match av with
 	   | Valuelist _ -> unexpected_valuelist()
 	   | Value v ->
-	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       check_attribute_value_lexically lfactory (lexical_error()) atype v;
 	       no_leading_and_trailing_spaces v;
 	       if not (List.mem v enuml) then
 		 raise(Validation_error
@@ -606,7 +612,7 @@ let check_value_of_attribute lexerset dtd n atype av =
 	)
 ;;
 
-let normalization_changes_value lexerset atype v =
+let normalization_changes_value (lfactory:lexer_factory) atype v =
   (* Returns true if:
    * - 'atype' is a "single-value" type, and the normalization of the string
    *   value 'v' of this type discards leading and/or trailing spaces
@@ -635,7 +641,7 @@ let normalization_changes_value lexerset atype v =
 	 * a different string than 'v'.
 	 * This check works for both ISO-8859-1 and UTF-8.
 	 *)
-	let l = split_attribute_value lexerset v in
+	let l = split_attribute_value lfactory v in
 	let v' = String.concat " " l in
 	v <> v'
 ;;

@@ -10,13 +10,16 @@ open Netchannels;;
 exception Not_competent;;
 exception Not_resolvable of exn;;
 
+type lexer_source =
+    string -> int -> int -> int
+
 class type resolver =
   object
     method init_rep_encoding : rep_encoding -> unit
     method init_warner : symbolic_warnings option -> collect_warnings -> unit
     method rep_encoding : rep_encoding
-    method open_in : ext_id -> Lexing.lexbuf
-    method open_rid : resolver_id -> Lexing.lexbuf
+    method open_in : ext_id -> lexer_source
+    method open_rid : resolver_id -> lexer_source
     method active_id : resolver_id
     method close_in : unit
     (* method close_all : unit *)
@@ -151,52 +154,51 @@ class virtual resolve_general
       fillup();
       if not encoding_requested then self # autodetect buffer;
 
-      Pxp_lexing.from_function
-	(fun s n ->
-	   (* TODO: if encoding = internal_encoding, it is possible to
-	    * avoid copying buffer to s because s can be directly used
-	    * as buffer.
-	    *)
+      (fun s p n ->
+	 (* TODO: if encoding = internal_encoding, it is possible to
+	  * avoid copying buffer to s because s can be directly used
+	  * as buffer.
+	  *)
+	 
+	 if not is_open then
+	   failwith "trying to read from resolver, but resolver is not open";
 
-	   if not is_open then
-	     failwith "trying to read from resolver, but resolver is not open";
-
-	   fillup();
-	   if !buffer_len = 0 then
-	     0
-	   else begin
-	     let m_in  = !buffer_len in
-	     let m_max = if encoding_requested then n else 1 in
-	     let n_in, n_out, encoding' =
-	       if encoding = (internal_encoding : rep_encoding :> encoding) &&
-	          encoding_requested
-	       then begin
-		 (* Special case encoding = internal_encoding *)
-		 String.blit buffer 0 s 0 m_in;
-		 m_in, m_in, encoding
-	       end
-	       else
-		 Netconversion.recode
-		   ~in_enc:encoding
-		   ~in_buf:buffer
-		   ~in_pos:0
-		   ~in_len:m_in
-		   ~out_enc:(internal_encoding : rep_encoding :> encoding)
-		   ~out_buf:s
-		   ~out_pos:0
-		   ~out_len:n
-		   ~max_chars:m_max
-		   ~subst:(fun k -> self # warn k; "")
-	     in
-	     if n_in = 0 then
-	       (* An incomplete character at the end of the stream: *)
-	       raise Netconversion.Malformed_code;
-	       (* failwith "Badly encoded character"; *)
-	     encoding <- encoding';
-	     consume n_in;
-	     assert(n_out <> 0);
-	     n_out
-	   end)
+	 fillup();
+	 if !buffer_len = 0 then
+	   0
+	 else begin
+	   let m_in  = !buffer_len in
+	   let m_max = if encoding_requested then n else 1 in
+	   let n_in, n_out, encoding' =
+	     if encoding = (internal_encoding : rep_encoding :> encoding) &&
+	       encoding_requested
+	     then begin
+	       (* Special case encoding = internal_encoding *)
+	       String.blit buffer 0 s p m_in;  (* CHECK m_in > n *)
+	       m_in, m_in, encoding
+	     end
+	     else
+	       Netconversion.recode
+		 ~in_enc:encoding
+		 ~in_buf:buffer
+		 ~in_pos:0
+		 ~in_len:m_in
+		 ~out_enc:(internal_encoding : rep_encoding :> encoding)
+		 ~out_buf:s
+		 ~out_pos:p
+		 ~out_len:n
+		 ~max_chars:m_max
+		 ~subst:(fun k -> self # warn k; "")
+	   in
+	   if n_in = 0 then
+	     (* An incomplete character at the end of the stream: *)
+	     raise Netconversion.Malformed_code;
+	   (* failwith "Badly encoded character"; *)
+	   encoding <- encoding';
+	   consume n_in;
+	   assert(n_out <> 0);
+	   n_out
+	 end)
 
     method change_encoding enc =
       if not is_open then

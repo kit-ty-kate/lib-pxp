@@ -76,18 +76,22 @@ type 'entity entity_variables =
       mutable warner : collect_warnings;
       
       mutable encoding : rep_encoding;
-      mutable lexerset : lexer_set;
+      mutable lfactory : lexer_factory;
 
-      mutable lexerset_scan_document : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_document_type : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_content : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_within_tag : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_declaration : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_comment : Lexing.lexbuf -> lexers -> (token * lexers);
-      mutable lexerset_scan_tag_eb : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_tag_eb_att : Lexing.lexbuf -> bool -> (token * lexers);
-      mutable lexbuf : Lexing.lexbuf;
+      mutable l_scan_document : unit -> (token * lexers);
+      mutable l_scan_document_type : unit -> (token * lexers);
+      mutable l_scan_content : unit -> (token * lexers);
+      mutable l_scan_within_tag : unit -> (token * lexers);
+      mutable l_scan_declaration : unit -> (token * lexers);
+      mutable l_scan_comment : unit -> lexers -> (token * lexers);
+      mutable l_scan_tag_eb : unit -> (token * lexers);
+      mutable l_scan_tag_eb_att : unit -> bool -> (token * lexers);
+      mutable lexobj : lexer_obj;
         (* The lexical buffer currently used as character source. *)
+
+      (* Caution: whenever lexobj is changed, the l_* functions must be
+       * updated, too (update_lexobj)
+       *)
 
       mutable prolog : prolog_token list option;
         (* Stores the initial <?xml ...?> token as PI_xml *)
@@ -141,25 +145,26 @@ type 'entity entity_variables =
 
 
 let make_variables the_dtd the_name the_swarner the_warner init_encoding =
-  let ls = Pxp_lexers.get_lexer_set init_encoding in
+  let lf = Pxp_lexers.get_lexer_factory init_encoding in
+  let lobj = lf # open_string "" in
   { dtd = (the_dtd : 'entity #preliminary_dtd :> 'entity preliminary_dtd);
     name = the_name;
     warner = the_warner;
     swarner = the_swarner;
     
     encoding = init_encoding;
-    lexerset = ls;
+    lfactory = lf;
 
-    lexerset_scan_document         = ls.scan_document;
-    lexerset_scan_document_type    = ls.scan_document_type;
-    lexerset_scan_content          = ls.scan_content;
-    lexerset_scan_within_tag       = ls.scan_within_tag;
-    lexerset_scan_declaration      = ls.scan_declaration;
-    lexerset_scan_comment          = ls.scan_comment;
-    lexerset_scan_tag_eb           = ls.scan_tag_eb;
-    lexerset_scan_tag_eb_att       = ls.scan_tag_eb_att;
+    l_scan_document         = lobj#scan_document;
+    l_scan_document_type    = lobj#scan_document_type;
+    l_scan_content          = lobj#scan_content;
+    l_scan_within_tag       = lobj#scan_within_tag;
+    l_scan_declaration      = lobj#scan_declaration;
+    l_scan_comment          = lobj#scan_comment;
+    l_scan_tag_eb           = lobj#scan_tag_eb;
+    l_scan_tag_eb_att       = lobj#scan_tag_eb_att;
     
-    lexbuf = Pxp_lexing.from_string "";
+    lexobj = lobj;
     
     prolog = None;
     prolog_pairs = [];
@@ -189,6 +194,19 @@ let make_variables the_dtd the_name the_swarner the_warner init_encoding =
   }
 ;;
 
+let update_lexobj v lobj =
+  v.lexobj <- lobj;
+  v.l_scan_document         <- lobj#scan_document;
+  v.l_scan_document_type    <- lobj#scan_document_type;
+  v.l_scan_content          <- lobj#scan_content;
+  v.l_scan_within_tag       <- lobj#scan_within_tag;
+  v.l_scan_declaration      <- lobj#scan_declaration;
+  v.l_scan_comment          <- lobj#scan_comment;
+  v.l_scan_tag_eb           <- lobj#scan_tag_eb;
+  v.l_scan_tag_eb_att       <- lobj#scan_tag_eb_att;
+;;
+
+
 let update_lines v =
   let n_lines = v.linecount.lines in
   let n_columns = v.linecount.columns in
@@ -202,10 +220,10 @@ let update_content_lines v tok =
 	v.line <- v.line + 1;
 	v.column <- 0;
     | (PI(_,_)|PI_xml _|Cdata _) ->
-	count_lines v.linecount (Lexing.lexeme v.lexbuf);
+	count_lines v.linecount v.lexobj#lexeme;
 	update_lines v;
     | _ -> 
-	v.column <- v.column + Pxp_lexing.lexeme_len v.lexbuf
+	v.column <- v.column + v.lexobj#lexeme_len
 ;;
 
 let update_lines_within_tag v tok =
@@ -223,11 +241,11 @@ let update_lines_within_tag v tok =
 	v.line <- v.line + 1;
 	v.column <- 0;
     | _ -> 
-	v.column <- v.column + Pxp_lexing.lexeme_len v.lexbuf 
+	v.column <- v.column + v.lexobj#lexeme_len
 ;;
 
 let update_other_lines v tok =
-  count_lines v.linecount (Lexing.lexeme v.lexbuf);
+  count_lines v.linecount v.lexobj#lexeme;
   update_lines v;
 ;;
 
@@ -279,7 +297,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
     method set_counts_as_external =
       v.counts_as_external <- true
 
-    method lexbuf = v.lexbuf
+    method lexer_obj = v.lexobj
 
     method virtual resolver : resolver option
 
@@ -336,7 +354,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 	 *)
 
 
-    method lexbuf = v.lexbuf
+    method lexer_obj = v.lexobj
 
 
     method xml_declaration =
@@ -387,29 +405,29 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 	    let tok, lex_id' =
 	      match v.lex_id with
 		  Document         -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document v.lexbuf 
+                                      v.l_scan_document () 
 		| Document_type    -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document_type v.lexbuf
-		| Content          -> v.lexerset_scan_content v.lexbuf
+                                      v.l_scan_document_type ()
+		| Content          -> v.l_scan_content ()
 		| Within_tag       -> update_fn := update_lines_within_tag;
-                                      v.lexerset_scan_within_tag v.lexbuf
+                                      v.l_scan_within_tag ()
 		| Within_tag_entry -> if v.generate_attribute_events then (
 		                        (* like Tag_eb: *)
 		                        update_fn := update_lines_within_tag;
-                                        v.lexerset_scan_tag_eb v.lexbuf
+                                        v.l_scan_tag_eb ()
                                       ) else (
 		                        (* like Within_tag: *)
 		                        update_fn := update_lines_within_tag;
-                                        v.lexerset_scan_within_tag v.lexbuf
+                                        v.l_scan_within_tag ()
 		                      )
 		| Declaration      -> update_fn := update_other_lines;
-                                      v.lexerset_scan_declaration v.lexbuf
+                                      v.l_scan_declaration ()
 		| Comment flw_id   -> update_fn := update_other_lines;
-		                      v.lexerset_scan_comment v.lexbuf flw_id
+		                      v.l_scan_comment () flw_id
 		| Tag_eb           -> update_fn := update_lines_within_tag;
-                                      v.lexerset_scan_tag_eb v.lexbuf
+                                      v.l_scan_tag_eb ()
 		| Tag_eb_att b     -> (* keep update_content_lines! *)
-                                      v.lexerset_scan_tag_eb_att v.lexbuf b
+                                      v.l_scan_tag_eb_att () b
 		| Ignored_section  -> assert false
   	                           (* only used by method next_ignored_token *)
 		| Closed           -> (Eof, Closed)
@@ -477,14 +495,14 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
           (* Also normalize CDATA sections *)
 		| Cdata value as cd ->
 		    if v.normalize_newline then 
-		      Cdata(normalize_line_separators v.lexerset value)
+		      Cdata(normalize_line_separators v.lfactory value)
 		    else
 		      cd
 
           (* If there are CRLF sequences in a PI value, normalize them, too *)
 		| PI(name,value) as pi ->
 		    if v.normalize_newline then
-		      PI(name, normalize_line_separators v.lexerset value)
+		      PI(name, normalize_line_separators v.lfactory value)
 		    else
 		      pi
          
@@ -500,7 +518,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
           (* Another CRLF normalization case: Unparsed_string *)
 		| Unparsed_string value as ustr ->
 		    if v.normalize_newline then
-		      Unparsed_string(normalize_line_separators v.lexerset value)
+		      Unparsed_string(normalize_line_separators v.lfactory value)
 		    else
 		      ustr
 
@@ -603,7 +621,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
         if v.lex_id = Closed then
 	  Eof
 	else
-	  let tok, lex_id' = v.lexerset.scan_ignored_section v.lexbuf in
+	  let tok, lex_id' = v.lexobj#scan_ignored_section() in
 	  if v.debug then
 	    prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok ^ " (Ignored)");
 	  update_other_lines v tok;
@@ -731,9 +749,9 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
 
     method set_debugging_mode (_:bool) = ()
 
-    method lexbuf =
+    method lexer_obj =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
-	  : Lexing.lexbuf )
+	  : lexer_obj )
 
     method open_entity ?(gen_att_events:bool option) (_:bool) (_:lexers) =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
@@ -749,9 +767,9 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : (string * bool) )
 
-    method lexbuf =
+    method lexer_obj =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
-	  : Lexing.lexbuf )
+	  : lexer_obj )
 
     method next_token =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
@@ -848,7 +866,7 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
        *)
       if resolver_is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
-      let lex = 
+      let lex_src = 
 	try
 	  resolver # open_rid (self # resolver_id)
 	with
@@ -863,8 +881,10 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
 			   self # full_name ^ "; reason: " ^ 
 			   string_of_exn e))
       in
+
+      let lexobj = v.lfactory#open_source lex_src in
+      update_lexobj v lexobj;
       resolver_is_open <- true;
-      v.lexbuf  <- lex;
       v.prolog  <- None;
       v.lex_id  <- init_lex_id;
       state <- At_beginning;
@@ -930,7 +950,7 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
        *)
       if resolver_is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
-      let lex = 
+      let lex_src = 
 	try
 	  resolver # open_rid (self # resolver_id)
 	with
@@ -945,8 +965,10 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
 			   self # full_name ^ "; reason: " ^ 
 			   string_of_exn e))
       in
+
+      let lexobj = v.lfactory#open_source lex_src in
+      update_lexobj v lexobj;
       resolver_is_open <- true;
-      v.lexbuf  <- lex;
       v.prolog  <- None;
       (* arbitrary:    lex_id  <- init_lex_id; *)
       state <- At_beginning;
@@ -954,14 +976,14 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
       v.column <- 0;
       v.at_bof <- true;
       (* First check if the first token of 'lex' is <?xml...?> *)
-      if v.lexerset.detect_xml_pi lex then begin
+      if lexobj#detect_xml_pi() then begin
 	(* detect_xml_pi scans "<?xml" ws+. Read the rest of the XML
 	 * declaration.
 	 *)
-	match v.lexerset.scan_pi_string lex with
+	match lexobj#scan_pi_string() with
 	    Some pi ->
 	      begin match
-		Pxp_lex_aux.scan_pi ("xml " ^ pi) v.lexerset.scan_xml_pi
+		Pxp_lex_aux.scan_pi ("xml " ^ pi) v.lfactory
 	      with
 		  PI_xml pl ->
 		    self # process_xmldecl pl
@@ -978,7 +1000,7 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
 	self # process_missing_xmldecl;
       (* Then create the replacement text. *)
       let rec scan_and_expand () =
-	match v.lexerset.scan_dtd_string v.lexbuf with
+	match lexobj#scan_dtd_string() with
 	    ERef n -> "&" ^ n ^ ";" ^ scan_and_expand()
 	  | CRef(-1) -> "\n" ^ scan_and_expand()
 	  | CRef(-2) -> "\n" ^ scan_and_expand()
@@ -1065,9 +1087,9 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
 
 
     initializer
-    let lexbuf = Pxp_lexing.from_string the_literal_value in
+    let lexobj = v.lfactory#open_string the_literal_value in
     let rec scan_and_expand () =
-      match v.lexerset.scan_dtd_string lexbuf with
+      match lexobj#scan_dtd_string() with
 	  ERef n -> "&" ^ n ^ ";" ^ scan_and_expand()
 	| CRef(-1) -> "\r\n" ^ scan_and_expand()
 	| CRef(-2) -> "\r" ^ scan_and_expand()
@@ -1114,11 +1136,12 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
 
       p_parsed_actually <- force_parsing;
-      v.lexbuf  <- Pxp_lexing.from_string 
+      let lexobj = v.lfactory#open_string
 	             (if is_parameter_entity then
 			(" " ^ replacement_text ^ " ")
 		      else
-			replacement_text);
+			replacement_text) in
+      update_lexobj v lexobj;
       v.prolog  <- None;
       v.lex_id  <- init_lex_id;
       state <- At_beginning;
@@ -1244,7 +1267,7 @@ object (self)
   method counts_as_external = ent # counts_as_external
   method set_counts_as_external : unit = 
     failwith "Pxp_entity.entity_section#set_counts_as_external: not possible";
-  method lexbuf = ent # lexbuf
+  method lexer_obj = ent # lexer_obj
   method resolver = ent # resolver
   method resolver_id = ent # resolver_id
   method open_entity ?(gen_att_events:bool option) (_:bool) (lid:lexers) = 

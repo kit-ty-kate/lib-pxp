@@ -28,7 +28,8 @@ let t001 () =
   let r = new resolve_to_any_obj_channel ~channel_of_id () in
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in xid in
+  let lsrc = r # open_in xid in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let aid = r # active_id in
   assert(aid.rid_private = Some pid);
   assert(aid.rid_public = None);
@@ -322,26 +323,29 @@ let t021 () =
   res_a # init_rep_encoding `Enc_iso88591;
   res_a # init_warner None (new drop_warnings);
 
-  let lex_a = res_a # open_rid { null_rid with
-				   rid_private = Some pid_a;
-				   rid_system_base = Some "http://host/x/y"
-			       } in
+  let lex_a_src = res_a # open_rid { null_rid with
+				       rid_private = Some pid_a;
+				       rid_system_base = Some "http://host/x/y"
+				   } in
+  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
-  let lex_b = res_b # open_rid { null_rid with
-				   rid_private = Some pid_b;
-				   rid_system_base = 
-				     (res_a # active_id).rid_system;
-			       } in
+  let lex_b_src = res_b # open_rid { null_rid with
+				       rid_private = Some pid_b;
+				       rid_system_base = 
+				       (res_a # active_id).rid_system;
+				   } in
+  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
   assert(nextchar lex_b = Some 'b');
   
   let res_c = res_b # clone in
-  let lex_c = res_c # open_rid { null_rid with
-				   rid_private = Some pid_c;
-				   rid_system_base = 
-				     (res_b # active_id).rid_system;
-			       } in
+  let lex_c_src = res_c # open_rid { null_rid with
+				       rid_private = Some pid_c;
+				       rid_system_base = 
+				       (res_b # active_id).rid_system;
+				   } in
+  let lex_c = Lexing.from_function (fun s n -> lex_c_src s 0 n) in
   assert(nextchar lex_c = Some 'c');
 
   true
@@ -352,18 +356,20 @@ let t022 () =
   res_a # init_rep_encoding `Enc_iso88591;
   res_a # init_warner None (new drop_warnings);
 
-  let lex_a = res_a # open_rid { null_rid with
-				   rid_system = Some "t_a.dat";
-				   rid_system_base = None;
-			       } in
+  let lex_a_src = res_a # open_rid { null_rid with
+				       rid_system = Some "t_a.dat";
+				       rid_system_base = None;
+				   } in
+  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
-  let lex_b = res_b # open_rid { null_rid with
-				   rid_system = Some "t_b.dat";
-				   rid_system_base = 
-				     (res_a # active_id).rid_system;
-			       } in
+  let lex_b_src = res_b # open_rid { null_rid with
+				       rid_system = Some "t_b.dat";
+				       rid_system_base = 
+				       (res_a # active_id).rid_system;
+				   } in
+  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
   assert(nextchar lex_b = Some 'b');
 
   true
@@ -380,18 +386,20 @@ let t023 () =
   res_a # init_rep_encoding `Enc_iso88591;
   res_a # init_warner None (new drop_warnings);
 
-  let lex_a = res_a # open_rid { null_rid with
-				   rid_public = Some "A";
-				   rid_system_base = None;
-			       } in
+  let lex_a_src = res_a # open_rid { null_rid with
+				       rid_public = Some "A";
+				       rid_system_base = None;
+				   } in
+  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
-  let lex_b = res_b # open_rid { null_rid with
-				   rid_system = Some "./%74_b.dat";
-				   rid_system_base = 
-				     (res_a # active_id).rid_system;
-			       } in
+  let lex_b_src = res_b # open_rid { null_rid with
+				       rid_system = Some "./%74_b.dat";
+				       rid_system_base = 
+				       (res_a # active_id).rid_system;
+				   } in
+  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
   assert(nextchar lex_b = Some 'b');
 
   true
@@ -409,19 +417,21 @@ let t024 () =
   res_a # init_rep_encoding `Enc_iso88591;
   res_a # init_warner None (new drop_warnings);
 
-  let lex_a = res_a # open_rid { null_rid with
-				   rid_system = 
-				     Some "http://user@foo/x/y/t_a.dat";
-				   rid_system_base = None;
-			       } in
+  let lex_a_src = res_a # open_rid { null_rid with
+				       rid_system = 
+				       Some "http://user@foo/x/y/t_a.dat";
+				       rid_system_base = None;
+				   } in
+  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
-  let lex_b = res_b # open_rid { null_rid with
-				   rid_system = Some "./%74_b.dat";
-				   rid_system_base = 
-				     (res_a # active_id).rid_system;
-			       } in
+  let lex_b_src = res_b # open_rid { null_rid with
+				       rid_system = Some "./%74_b.dat";
+				       rid_system_base = 
+				       (res_a # active_id).rid_system;
+				   } in
+  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
   assert(nextchar lex_b = Some 'b');
 
   true

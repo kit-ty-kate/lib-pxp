@@ -130,7 +130,7 @@ class virtual core_parser
     val mutable dtd = init_dtd
 	(* The DTD being parsed; or the DTD currently assumed *)
 
-    val lexerset = Pxp_lexers.get_lexer_set (init_config.encoding)
+    val lfactory = init_dtd # lexer_factory
 
     val config = init_config
         (* The current configuration *)
@@ -489,7 +489,7 @@ class virtual core_parser
 		f tok pos context.manager
 	in
 
-	let reused_lexbuf = Pxp_lexing.from_string "" in
+	let reused_lexobj = lfactory # open_string "" in
 %%
 
 /* The following grammar looks similar to ocamlyacc grammars, but
@@ -1412,7 +1412,7 @@ defaultdecl():
     {{ D_implied }}
 | Fixed ws:Ignore Ignore* str:Unparsed_string
     {{ D_fixed
-	 (expand_attvalue reused_lexbuf lexerset dtd str false) }}
+	 (expand_attvalue reused_lexobj dtd str false) }}
   ? {{ match !yy_position with
 	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
 	 | "str" -> raise(WF_error("String literal expected"))
@@ -1420,7 +1420,7 @@ defaultdecl():
     }}
 | str:Unparsed_string
     {{ D_default
-	 (expand_attvalue reused_lexbuf lexerset dtd str false) }}
+	 (expand_attvalue reused_lexobj dtd str false) }}
 
 
 /**************************** ENTITY DECLARATION ***********************/
@@ -1852,9 +1852,9 @@ attribute(attlist,attspace):
 
 attval():
   v:Attval
-    {{ expand_attvalue reused_lexbuf lexerset dtd v true }}
+    {{ expand_attvalue reused_lexobj dtd v true }}
 | v:Attval_nl_normalized
-    {{ expand_attvalue reused_lexbuf lexerset dtd v false }}
+    {{ expand_attvalue reused_lexobj dtd v false }}
 
 /* The following rules are only used if event-based attribute parsing
  * is enabled. In this case, neither Attval nor Attval_nl_normalized,
@@ -1876,7 +1876,7 @@ attval_squote_token(attpos):
        let etext = "&" ^ name ^ ";" in
        let s = 
 	 Pxp_aux.expand_attvalue 
-	   reused_lexbuf lexerset dtd etext false in
+	   reused_lexobj dtd etext false in
        attpos := !attpos + String.length s;
        s
      }}
@@ -1925,7 +1925,7 @@ attval_dquote_token(attpos):
     {{ 
        let etext = "&" ^ name ^ ";" in
        let s = Pxp_aux.expand_attvalue 
-		 reused_lexbuf lexerset dtd etext false in
+		 reused_lexobj dtd etext false in
        attpos := !attpos + String.length s;
        s
      }}

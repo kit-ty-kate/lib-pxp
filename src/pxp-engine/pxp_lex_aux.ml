@@ -116,13 +116,13 @@
     find k
 *)
 
-  let scan_pi pi xml_scanner =
+  let scan_pi pi lfactory =
     (* pi: The contents of the processing instruction (inside <?...?>).
-     * xml_scanner: The scanner scan_xml_pi (in lex.src)
+     *
      * This function analyzes the processing instruction and returns
      * either a PI token or a PI_xml token.
      *)
-    let xml_lexbuf = Lexing.from_string (pi ^ " ") in
+    let lexobj = lfactory#open_string (pi ^ " ") in
       (* Add space because the lexer expects whitespace after every
        * clause; by adding a space there is always whitespace at the 
        * end of the string.
@@ -131,9 +131,9 @@
     (* The first word of a PI must be a name: Extract it. *)
 
     let s_name, s_len =
-      match xml_scanner xml_lexbuf with
+      match lexobj#scan_xml_pi() with
 	  Pro_name n -> 
-	    let ltok = String.length (Lexing.lexeme xml_lexbuf) in
+	    let ltok = String.length lexobj#lexeme in
 	    if String.length n = ltok then
               (* No whitespace after the name *)
 	      raise (WF_error ("Bad processing instruction"));
@@ -147,7 +147,7 @@
 	"xml" -> begin
 	  (* It is a <?xml ...?> PI: Get the other tokens *)
 	  let rec collect () =
-	    let t = xml_scanner xml_lexbuf in
+	    let t = lexobj#scan_xml_pi() in
 	    (* prerr_endline (string_of_int (Lexing.lexeme_end xml_lexbuf)); *)
 	    if t = Pro_eof then
 	      []

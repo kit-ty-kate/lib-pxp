@@ -2146,8 +2146,8 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 	position <- new_pos;
 	dtd <- Some new_dtd;
 	pinstr <- StringMap.empty;
-
-	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
+	
+	let lfactory = new_dtd # lexer_factory in
 	let sadecl = new_dtd # standalone_declaration in
 
 	let mk_pool_value av0 =
@@ -2219,7 +2219,7 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 				       new_name ^ "'"));
 		     let att_type, att_fixed = vr.att_info.(k) in
 		     let v0 = value_of_attribute
-				lexerset new_dtd att_name att_type att_val in
+				lfactory new_dtd att_name att_type att_val in
 		     let v = mk_pool_value v0 in
 		     if att_fixed then begin
 		       let v' = cur_att_vals.(k) in
@@ -2270,7 +2270,7 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 				       new_name ^ "'"));
 		     let att_type, att_fixed = vr.att_info.(k) in
 		     check_value_of_attribute
-		       lexerset new_dtd att_name att_type v;
+		       lfactory new_dtd att_name att_type v;
 
 		     (* Check: Only atts flagged as #IMPLIED
 		      * can be set to Implied_value

@@ -91,10 +91,6 @@ let cdata_string =
   open Pxp_lex_aux
     (* Hint: All the tok_* values are declared here *)
 
-  let lexerset = ref (Pxp_lexers.dummy_lexer_set) ;;
-    (* Every lexer module knows its lexerset, so it can call
-     * all other lexer modules by !lexerset.name_of_lexer
-     *)
 
 (* ---------------------------------------------------------------------- *)
 (* [HEADER_OCAMLLEX] *)
@@ -146,7 +142,7 @@ let lexeme_char = Ulexing.lexeme_char
 
 (* This rule detects an XML declaration *)
 
-detect_xml_pi = parse
+detect_xml_pi lexobj = parse
     "<?xml" ws+
       { true }
   | ""
@@ -157,7 +153,7 @@ detect_xml_pi = parse
 
 (* This rule returns the contents of a processing instruction *)
 
-scan_pi_string = parse
+scan_pi_string lexobj = parse
     pi_string "?>"
       { let len =
 	  lexeme_len lexbuf in
@@ -171,7 +167,7 @@ scan_pi_string = parse
 
 (* This rule parses the contents of <?xml ...?> *)
 
-scan_xml_pi = parse
+scan_xml_pi lexobj = parse
     name ws*
       { let s = lexeme lexbuf in
 	let j = get_name_end s 0 in   (* Assumes ASCII-compatbility *)
@@ -202,7 +198,7 @@ scan_xml_pi = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character();
 	raise (WF_error("Illegal token or character"))
       }
 
@@ -211,14 +207,14 @@ scan_xml_pi = parse
 
 (* scan_document: Lexer for the outermost structures *)
 
-scan_document = parse
+scan_document lexobj = parse
     "<?"
       { (* Scan the rest of the processing instruction: *)
-	match !lexerset.scan_pi_string lexbuf with
+	match lexobj # scan_pi_string () with
   	  None ->
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
-	    scan_pi pi !lexerset.scan_xml_pi, Document
+	    scan_pi pi lexobj#factory, Document
             (* scan_pi assumes ASCII-compatbility *)
       }
   | "<!DOCTYPE"
@@ -246,7 +242,7 @@ scan_document = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character ();
  	raise (WF_error ("Content not allowed here"))
       }
 
@@ -255,7 +251,7 @@ scan_document = parse
 
 (* scan_document_type: after "<!DOCTYPE" until matching ">" *)
 
-scan_document_type = parse
+scan_document_type lexobj = parse
     name
       { let s = lexeme lexbuf in
 	Name s, Document_type }
@@ -290,7 +286,7 @@ scan_document_type = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character();
  	raise (WF_error ("Content not allowed here"))
       }
 
@@ -299,7 +295,7 @@ scan_document_type = parse
 
 (* Scans comments *)
 
-scan_comment = parse
+scan_comment lexobj = parse
     "-->"
       { fun lexid ->
           Comment_end dummy_entity, lexid }
@@ -323,7 +319,7 @@ scan_comment = parse
 
 (* scan_declaration: after "[" in DTD until matching "]" *)
 
-scan_declaration = parse
+scan_declaration lexobj = parse
     ws+
       { tok_Ignore__Declaration }
   | '%' name ';'
@@ -384,17 +380,18 @@ scan_declaration = parse
       { tok_Conditional_body__Declaration }
   | "<?"
       { (* Scan the rest of the processing instruction: *)
-	match !lexerset.scan_pi_string lexbuf with
+	match lexobj # scan_pi_string () with
   	  None ->
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
-	    scan_pi pi !lexerset.scan_xml_pi, Declaration
+	    scan_pi pi lexobj#factory, Declaration
 	    (* scan_pi assume ASCII-compatibility *)
       }
   | '"' [^ '"']* '"'
       { let s = lexeme lexbuf in
         (* Check that characters are well-formed: *)
-	ignore(!lexerset.scan_characters (Lexing.from_string s));
+	let lexobj' = lexobj # factory # open_string s in
+	ignore(lexobj' # scan_characters ());
 	let l = lexeme_len lexbuf in
         let u = sub_lexeme lexbuf 1 (l-2) in
 	(Unparsed_string u), Declaration }
@@ -404,7 +401,8 @@ scan_declaration = parse
   | "'" [^ '\'']* "'"
       { let s = lexeme lexbuf in
         (* Check that characters are well-formed: *)
-	ignore(!lexerset.scan_characters (Lexing.from_string s));
+	let lexobj' = lexobj # factory # open_string s in
+	ignore(lexobj' # scan_characters ());
 	let l = lexeme_len lexbuf in
         let u = sub_lexeme lexbuf 1 (l-2) in
 	(Unparsed_string u), Declaration }
@@ -425,7 +423,7 @@ scan_declaration = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character ();
  	raise (WF_error("Illegal token or character"))
       }
 
@@ -436,7 +434,7 @@ scan_declaration = parse
  * Especially for the UTF8 encoding this is a non-trivial rule!
  *)
 
-scan_characters = parse
+scan_characters lexobj = parse
   character*
     { () }
 | eof
@@ -451,7 +449,7 @@ scan_characters = parse
  * Especially for the UTF8 encoding this is a non-trivial rule!
  *)
 
-scan_character = parse
+scan_character lexobj = parse
   character
     { () }
 | eof
@@ -466,7 +464,7 @@ scan_character = parse
  * internal entities:
  *)
 
-scan_dtd_string = parse
+scan_dtd_string lexobj = parse
     '%' name ';'
       { let l = lexeme_len lexbuf in
         let s = sub_lexeme lexbuf 1 (l-2) in
@@ -507,14 +505,14 @@ scan_dtd_string = parse
 
 (* Scan in content context *)
 
-scan_content = parse
+scan_content lexobj = parse
     "<?"
       { (* Scan the rest of the processing instruction: *)
-	match !lexerset.scan_pi_string lexbuf with
+	match lexobj # scan_pi_string () with
   	  None ->
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
-	    scan_pi pi !lexerset.scan_xml_pi, Content
+	    scan_pi pi lexobj#factory, Content
             (* scan_pi assumes ASCII-compatibility *)
       }
   | "<!--"
@@ -593,7 +591,7 @@ scan_content = parse
 
 (* This rule is used inside start tags of elements *)
 
-scan_within_tag = parse
+scan_within_tag lexobj = parse
     '\013' '\010'
       { tok_IgnoreLineEnd__Within_tag }
   | '\013'
@@ -631,7 +629,7 @@ scan_within_tag = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character();
  	raise (WF_error ("Illegal inside tags"))
       }
 
@@ -643,7 +641,7 @@ scan_within_tag = parse
  * generated for attribute values.
  *)
 
-scan_tag_eb = parse
+scan_tag_eb lexobj = parse
     '\013' '\010'
       { tok_IgnoreLineEnd__Tag_eb }
   | '\013'
@@ -671,7 +669,7 @@ scan_tag_eb = parse
          * the exception that this character is not allowed here. Otherwise,
          * raise Malformed_code.
          *)
-        !lexerset.scan_character lexbuf;
+        lexobj # scan_character ();
  	raise (WF_error ("Illegal inside tags"))
       }
 
@@ -682,7 +680,7 @@ scan_tag_eb = parse
 
 (* TODO: Use ERef_att instead of ERef *)
 
-scan_content_string = parse
+scan_content_string lexobj = parse
     '&' name ';'
       { let l = lexeme_len lexbuf in
         let s = sub_lexeme lexbuf 1 (l-2) in
@@ -728,7 +726,7 @@ scan_content_string = parse
  * is delimited by double quotes (true) or single quotes (false).
  *)
 
-scan_tag_eb_att = parse
+scan_tag_eb_att lexobj = parse
     '&' name ';'
       { fun d ->
           let l = lexeme_len lexbuf in
@@ -799,7 +797,7 @@ scan_tag_eb_att = parse
 
 (* Note: This lexer is also used by WDialog. *)
 
-scan_name_string = parse
+scan_name_string lexobj = parse
     name
       { Name (lexeme lexbuf) }
   | ws+
@@ -818,7 +816,7 @@ scan_name_string = parse
 
 (* This rule is used to skip over ignored sections <![IGNORE[ ... ]]> *)
 
-scan_ignored_section = parse
+scan_ignored_section lexobj = parse
   | "<!["
       { tok_Conditional_begin__Ignored }
   | "]]>"
@@ -849,7 +847,7 @@ scan_ignored_section = parse
 
 (* This rule locates CR, CRLF, and LF characters inside strings. *)
 
-scan_for_crlf = parse
+scan_for_crlf lexobj = parse
   | '\013' '\010'
       { tok_CharDataLF }
   | '\013'

@@ -181,26 +181,41 @@ let string_of_tok tok =
   | DQuote -> "DQuote"
   | ERef_att _ -> "ERef_att"
 
+class type lexer_factory =
+object
+  method encoding : Pxp_core_types.rep_encoding
+  method open_source : Pxp_reader.lexer_source -> lexer_obj
+  method open_string : string -> lexer_obj
+  method open_string_inplace : string -> lexer_obj
+end
 
-type lexer_set =
-    { lex_encoding         : Pxp_core_types.rep_encoding;
-      scan_document        : Lexing.lexbuf -> (token * lexers);
-      scan_content         : Lexing.lexbuf -> (token * lexers);
-      scan_within_tag      : Lexing.lexbuf -> (token * lexers);
-      scan_document_type   : Lexing.lexbuf -> (token * lexers);
-      scan_declaration     : Lexing.lexbuf -> (token * lexers);
-      scan_comment         : Lexing.lexbuf -> lexers -> (token * lexers);
-      scan_ignored_section : Lexing.lexbuf -> (token * lexers);
-      detect_xml_pi        : Lexing.lexbuf -> bool;
-      scan_xml_pi          : Lexing.lexbuf -> prolog_token;
-      scan_pi_string       : Lexing.lexbuf -> string option;
-      scan_dtd_string      : Lexing.lexbuf -> token;
-      scan_content_string  : Lexing.lexbuf -> token;
-      scan_name_string     : Lexing.lexbuf -> token;
-      scan_for_crlf        : Lexing.lexbuf -> token;
-      scan_characters      : Lexing.lexbuf -> unit;
-      scan_character       : Lexing.lexbuf -> unit;
-      scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
-      scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
-    }
+and lexer_obj =
+object
+  method factory : lexer_factory
+  method encoding : Pxp_core_types.rep_encoding
+  method open_source : Pxp_reader.lexer_source -> unit
+  method open_string : string -> unit
+  method open_string_inplace : string -> unit
 
+  method scan_document        : unit -> (token * lexers)
+  method scan_content         : unit -> (token * lexers)
+  method scan_within_tag      : unit -> (token * lexers)
+  method scan_document_type   : unit -> (token * lexers)
+  method scan_declaration     : unit -> (token * lexers)
+  method scan_comment         : unit -> lexers -> (token * lexers)
+  method scan_ignored_section : unit -> (token * lexers)
+  method detect_xml_pi        : unit -> bool
+  method scan_xml_pi          : unit -> prolog_token
+  method scan_pi_string       : unit -> string option
+  method scan_dtd_string      : unit -> token
+  method scan_content_string  : unit -> token
+  method scan_name_string     : unit -> token
+  method scan_for_crlf        : unit -> token
+  method scan_characters      : unit -> unit
+  method scan_character       : unit -> unit
+  method scan_tag_eb          : unit -> (token * lexers)
+  method scan_tag_eb_att      : unit -> bool -> (token * lexers)
+
+  method lexeme : string
+  method lexeme_len : int
+end

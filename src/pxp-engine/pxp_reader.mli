@@ -33,6 +33,10 @@ exception Not_resolvable of exn;;
    * Not_resolvable(Not_found) serves as indicator for an unknown reason.
    *)
 
+type lexer_source =
+    string -> int -> int -> int
+  (* Argument type of Lexing.from_function *)
+
 
 (* The class type 'resolver' is the official type of all "resolvers".
  * Resolvers take file names (or better, external identifiers) and
@@ -154,16 +158,20 @@ class type resolver =
 
     method rep_encoding : rep_encoding
 
-    method open_in : ext_id -> Lexing.lexbuf
+    method open_in : ext_id -> lexer_source
       (* This is the old method to open a resolver. It is superseded by
        * open_rid.
        * This method may raise Not_competent if the object does not know
        * how to handle this ext_id.
+       *
+       * PXP 1.2: Returns now a lexer_source, no longer a lexbuf
        *)
 
-    method open_rid : resolver_id -> Lexing.lexbuf
+    method open_rid : resolver_id -> lexer_source
       (* This is the new method to open a resolver. It takes a resolver ID
        * instead of an ext_id but works in the same way.
+       *
+       * PXP 1.2: Returns now a lexer_source, no longer a lexbuf
        *)
 
     method close_in : unit

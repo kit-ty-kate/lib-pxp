@@ -167,6 +167,9 @@ class dtd :
     method encoding : Pxp_core_types.rep_encoding
       (* returns the encoding used for character representation *)
 
+    method lexer_factory : Pxp_lexer_types.lexer_factory
+      (** Returns a lexer factory for the character encoding *)
+
 
     method allow_arbitrary : unit
       (* After this method has been invoked, the object changes its behaviour:

@@ -107,7 +107,7 @@ class dtd  ?swarner the_warner init_encoding =
     val warner       = (the_warner : collect_warnings)
     val swarner      = (swarner : symbolic_warnings option)
     val encoding     = init_encoding
-    val lexerset     = Pxp_lexers.get_lexer_set init_encoding
+    val lfactory     = Pxp_lexers.get_lexer_factory init_encoding
 
     val elements     = (Str_hashtbl.create 100 : dtd_element Str_hashtbl.t)
     val gen_entities = (Str_hashtbl.create 100 : (entity * bool) Str_hashtbl.t)
@@ -145,6 +145,8 @@ class dtd  ?swarner the_warner init_encoding =
 
 
     method encoding = encoding
+
+    method lexer_factory = lfactory
 
     method warner = warner
 
@@ -215,7 +217,7 @@ class dtd  ?swarner the_warner init_encoding =
 	if List.mem name [ "lt"; "gt"; "amp"; "quot"; "apos" ] then begin
 	  (* These are allowed to be declared several times *)
 	  let (rt,_) = en # replacement_text in
-	  let toks = tokens_of_content_string lexerset rt in
+	  let toks = tokens_of_content_string lfactory rt in
 	  try
 	    begin match toks with
 	      [CRef 60]       -> if name <> "lt"   then raise Not_found
@@ -281,13 +283,12 @@ class dtd  ?swarner the_warner init_encoding =
 		  "optional-element-and-notation-declarations" ->
 		    self # allow_arbitrary
 		| "optional-attribute-declarations" ->
-		    let lexers = Pxp_lexers.get_lexer_set encoding in
 		    let el_string = 
 		      try List.assoc "elements" atts
 		      with Not_found ->
 			raise(Error("Missing `elements' attribute for pxp:dtd"))
 		    in
-		    let el = split_attribute_value lexers el_string in
+		    let el = split_attribute_value lfactory el_string in
 		    List.iter
 		      (fun e_name ->
 			 let e =
@@ -598,7 +599,7 @@ and dtd_element the_dtd the_name =
   object (self)
     val dtd = (the_dtd : dtd)
     val name = the_name
-    val lexerset = Pxp_lexers.get_lexer_set (the_dtd # encoding)
+    val lfactory = the_dtd # lexer_factory
     val mutable content_model = Unspecified
     val mutable content_model_validated = false
     val mutable content_dfa = lazy None
@@ -716,7 +717,7 @@ and dtd_element the_dtd the_name =
 		(* i.e. adefault matches D_default or D_fixed *)
 	    | Some s ->
 		atype <> A_cdata &&
-		normalization_changes_value lexerset atype s
+		normalization_changes_value lfactory atype s
 	)
       with
 	  Not_found ->
@@ -766,9 +767,9 @@ and dtd_element the_dtd the_name =
 		     match d with
 			 (D_required | D_implied) -> Implied_value
 		       | D_default v ->
-			   value_of_attribute lexerset dtd n t v
+			   value_of_attribute lfactory dtd n t v
 		       | D_fixed v ->
-			   value_of_attribute lexerset dtd n t v
+			   value_of_attribute lfactory dtd n t v
 		   in
 
 		   init_att_vals.( !k ) <- (n, init_val);
@@ -1001,7 +1002,7 @@ and dtd_element the_dtd the_name =
 	     let check v =
 	       let lexical_error() =
 		 lazy (raise(Validation_error("Default value for attribute `" ^ n ^ "' is lexically malformed"))) in
-	       check_attribute_value_lexically lexerset (lexical_error()) t v;
+	       check_attribute_value_lexically lfactory (lexical_error()) t v;
 	       begin match t with
 		   (A_entity|A_entities) ->
 		     List.iter
@@ -1014,7 +1015,7 @@ and dtd_element the_dtd the_name =
 -- This is checked anyway when the attribute value is normalized
 *)
 		       )
-		       (split_attribute_value lexerset v)
+		       (split_attribute_value lfactory v)
 		 | A_notation nl ->
 		     if not (List.mem v nl) then
 		       raise(Validation_error("Illegal default value for attribute `" ^ n ^ "' in declaration for element `" ^ name ^ "'"));
@@ -1136,9 +1137,9 @@ object (self)
       wms "?>";
 
     method parse_pxp_option =
-      let lexers = get_lexer_set encoding in
+      let lfactory = get_lexer_factory encoding in
       try
-	let toks = tokens_of_xml_pi lexers value in   (* may raise WF_error *)
+	let toks = tokens_of_xml_pi lfactory value in (* may raise WF_error *)
 	begin match toks with
 	    (Pro_name option_name) :: toks' ->
 	      let atts = decode_xml_pi toks' in       (* may raise WF_error *)

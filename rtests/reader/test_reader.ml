@@ -26,7 +26,8 @@ let t001 () =
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -65,7 +66,8 @@ let t002 () =
   let r = new resolve_read_this_channel ch in
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -104,7 +106,8 @@ let t003 () =
   let r = new resolve_read_this_string ~fixenc:`Enc_iso88591 s in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
   assert (lb.Lexing.lex_curr_pos < lb.Lexing.lex_buffer_len);
@@ -130,7 +133,8 @@ let t004 () =
   let r = new resolve_read_this_string ~fixenc:`Enc_utf8 s in
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
   assert (lb.Lexing.lex_curr_pos < lb.Lexing.lex_buffer_len);
@@ -156,7 +160,8 @@ let t005 () =
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -181,7 +186,8 @@ let t006 () =
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -207,7 +213,8 @@ let t007 () =
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in Anonymous in
+  let lsrc = r # open_in Anonymous in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -231,7 +238,8 @@ let t100 () =
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
-  let lb = r # open_in (System ("file://localhost" ^ cwd ^ "/t100.dat")) in
+  let lsrc = r # open_in (System ("file://localhost" ^ cwd ^ "/t100.dat")) in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -254,7 +262,8 @@ let t101 () =
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
-  let lb = r # open_in (System ("//localhost" ^ cwd ^ "/t100.dat")) in
+  let lsrc = r # open_in (System ("//localhost" ^ cwd ^ "/t100.dat")) in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -277,7 +286,8 @@ let t102 () =
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
-  let lb = r # open_in (System (cwd ^ "/t100.dat")) in
+  let lsrc = r # open_in (System (cwd ^ "/t100.dat")) in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -299,7 +309,8 @@ let t103 () =
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in (System "t100.dat") in
+  let lsrc = r # open_in (System "t100.dat") in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -323,7 +334,8 @@ let t110 () =
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
-  let lb = r # open_in (System "t100.dat") in
+  let lsrc = r # open_in (System "t100.dat") in
+  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
   let c = nextchar lb in
   assert (c = Some '0');
   assert (lb.Lexing.lex_curr_pos = lb.Lexing.lex_buffer_len);
@@ -335,7 +347,8 @@ let t110 () =
     ignore(nextchar lb);
   done;
   let r' = r # clone in
-  let lb' = r' # open_in (System "t100.dat") in
+  let lsrc' = r' # open_in (System "t100.dat") in
+  let lb' = Lexing.from_function (fun s n -> lsrc' s 0 n) in
   let c = nextchar lb' in
   assert (c = Some '0');
   for i = 1 to 8 do

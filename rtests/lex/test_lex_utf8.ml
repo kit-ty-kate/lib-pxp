@@ -17,10 +17,11 @@ let mk_utf8_string l =
 ;;
 
 let scan s =
-  let lbuf = Lexing.from_string s in
-  let scanner = (Pxp_lexers.get_lexer_set `Enc_utf8).scan_name_string in
+  let lfactory = Pxp_lexers.get_lexer_factory `Enc_utf8 in
+  let lobj = lfactory # open_string s in
+  let scanner = lobj # scan_name_string in
   let rec scan_rest () =
-    match scanner lbuf with
+    match scanner () with
 	Eof -> []
       | tok -> tok :: scan_rest()
   in

@@ -130,7 +130,7 @@ class entity_manager
 
     (* Methods for out-of-order lexing: *)
 
-    method current_lexbuf = current_entity # lexbuf
+    method current_lexer_obj = current_entity # lexer_obj
 
     method current_line_column = (current_entity # line, 
 				  current_entity # column)

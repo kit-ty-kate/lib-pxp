@@ -8,14 +8,15 @@
 open Pxp_core_types
 open Pxp_lexer_types
 
-val get_lexer_set : rep_encoding -> lexer_set
-  (* Return the set of lexer functions that is able to handle the passed
+val get_lexer_factory : rep_encoding -> lexer_factory
+  (** Return the lexer factory that is able to handle the passed
    * encoding.
    *)
 
-val dummy_lexer_set : lexer_set
-  (* Only internal usage! *)
+val init : lexer_factory -> unit
+  (** Add a new factory to the set of known factories *)
 
-val init : lexer_set -> unit
-  (* Add a new lexerset *)
-
+class false_factory : string -> lexer_factory
+  (** A factory that always fails with the passed string when it is
+   * tried to open a source
+   *)

@@ -59,7 +59,7 @@ val stack_pop : 't array_stack -> 't
 class virtual core_parser : dtd -> config -> int ->
 object 
   val mutable dtd : dtd
-  val lexerset : lexer_set
+  val lfactory : lexer_factory
   val config : config
   val mutable n_tags_open : int
   val mutable n_entities_open : int

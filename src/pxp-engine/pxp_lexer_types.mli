@@ -133,27 +133,71 @@ val string_of_lexers : lexers -> string
 val string_of_tok : token -> string
 
 
-type lexer_set =
-    { lex_encoding         : Pxp_core_types.rep_encoding;
-      scan_document        : Lexing.lexbuf -> (token * lexers);
-      scan_content         : Lexing.lexbuf -> (token * lexers);
-      scan_within_tag      : Lexing.lexbuf -> (token * lexers);
-      scan_document_type   : Lexing.lexbuf -> (token * lexers);
-      scan_declaration     : Lexing.lexbuf -> (token * lexers);
-      scan_comment         : Lexing.lexbuf -> lexers -> (token * lexers);
-      scan_ignored_section : Lexing.lexbuf -> (token * lexers);
-      detect_xml_pi        : Lexing.lexbuf -> bool;
-      scan_xml_pi          : Lexing.lexbuf -> prolog_token;
-      scan_pi_string       : Lexing.lexbuf -> string option;
-      scan_dtd_string      : Lexing.lexbuf -> token;
-      scan_content_string  : Lexing.lexbuf -> token;
-      scan_name_string     : Lexing.lexbuf -> token;
-      scan_for_crlf        : Lexing.lexbuf -> token;
-      scan_characters      : Lexing.lexbuf -> unit;
-      scan_character       : Lexing.lexbuf -> unit;
-      scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
-      scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
-    }
+(** The [lexer_factory] creates lexers for a certain character encoding.
+ *)
+class type lexer_factory =
+object
+  method encoding : Pxp_core_types.rep_encoding
+    (** The (announced) character encoding of the scanned strings *)
 
-(* lexer_set: Every internal encoding has its own set of lexer functions *)
+  method open_source : Pxp_reader.lexer_source -> lexer_obj
+    (** Open a source *)
 
+  method open_string : string -> lexer_obj
+    (** Open a string as source *)
+
+  method open_string_inplace : string -> lexer_obj
+    (** Open a string as source.
+     * The string is physically used as lexical buffer (no copy is made)
+     *)
+end
+
+(** A [lexer_obj] scans from a certain [lexer_source]. The lexbuf is an 
+ * internal value of the [lexer_obj].
+ *)
+and lexer_obj =
+object
+  method factory : lexer_factory
+    (** The [lexer_factory] that created this [lexer_obj] *)
+
+  method encoding : Pxp_core_types.rep_encoding
+    (** The character encoding of the scanned strings *)
+
+  method open_source : Pxp_reader.lexer_source -> unit
+    (** Drop the current source, and open another source *)
+
+  method open_string : string -> unit
+    (** Drop the current source, and open the string as next source *)
+
+  method open_string_inplace : string -> unit
+    (** Drop the current source, and open the string as next source.
+     * The string is physically used as lexical buffer (no copy is made)
+     *)
+
+  method scan_document        : unit -> (token * lexers)
+  method scan_content         : unit -> (token * lexers)
+  method scan_within_tag      : unit -> (token * lexers)
+  method scan_document_type   : unit -> (token * lexers)
+  method scan_declaration     : unit -> (token * lexers)
+  method scan_comment         : unit -> lexers -> (token * lexers)
+  method scan_ignored_section : unit -> (token * lexers)
+  method detect_xml_pi        : unit -> bool
+  method scan_xml_pi          : unit -> prolog_token
+  method scan_pi_string       : unit -> string option
+  method scan_dtd_string      : unit -> token
+  method scan_content_string  : unit -> token
+  method scan_name_string     : unit -> token
+  method scan_for_crlf        : unit -> token
+  method scan_characters      : unit -> unit
+  method scan_character       : unit -> unit
+  method scan_tag_eb          : unit -> (token * lexers)
+  method scan_tag_eb_att      : unit -> bool -> (token * lexers)
+
+  method lexeme : string
+    (** The lexeme scanned last, encoded as [encoding] *)
+
+  method lexeme_len : int
+    (** = String.length lexeme, i.e. number of bytes of the lexeme,
+     * not the number of characters
+     *)
+end
