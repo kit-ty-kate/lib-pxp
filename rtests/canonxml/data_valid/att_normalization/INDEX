@@ -8,3 +8,5 @@
 004.xml		tests whether CRLF normalization happens only once
 005.xml		tests whether spaces, TABs, LFs, CRs, and CRLFs are correctly
 		processed if they are written as character references
+006.xml		tests whether normalization is done before #FIXED comparison
+007.xml		tests whether normalization is done before #FIXED comparison

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE any [
+
+<!ELEMENT el EMPTY>
+<!ATTLIST el        
+          nmtoken   NMTOKEN   #FIXED "a"
+          nmtokens  NMTOKENS  #FIXED "a b c"
+>
+<!ELEMENT any ANY>
+]>
+
+<any>
+  <el nmtoken="
+a
+"/>
+  <el nmtokens="
+a
+b
+c
+"/>
+</any>
