@@ -3,7 +3,7 @@
 exec ocaml "$0" "$@"
 *) directory ".";;
 
-(* $Id: insert_variant,v 1.1 2000/05/20 20:30:15 gerd Exp $
+(* $Id: insert_variant,v 1.2 2000/05/20 21:14:33 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -60,6 +60,7 @@ let edit_file variant name =
 let main() =
   let variant = ref "" in
   let files = ref [] in
+  Arg.current := 0;          (* Because of a OCaml-3.00 bug *)
   Arg.parse
       [ "-variant", Arg.String (fun s -> variant := s),
 	        "<name>  Set the variant (character encoding)";
@@ -91,6 +92,9 @@ main();;
  * History:
  * 
  * $Log: insert_variant,v $
+ * Revision 1.2  2000/05/20 21:14:33  gerd
+ * 	Workaround for an OCaml 3.00 bug.
+ *
  * Revision 1.1  2000/05/20 20:30:15  gerd
  * 	Initial revision.
  *
