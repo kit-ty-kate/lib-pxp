@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.6 2002/03/13 22:45:42 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.7 2002/07/14 23:04:17 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -14,6 +14,7 @@ type lexers =
   | Decl_comment
   | Document_comment
   | Ignored_section
+  | Closed
 
 
 type prolog_token =
@@ -79,6 +80,10 @@ type token =
   | ERef      of string               (* &name; *)
   | PERef     of string               (* %name; *)
   | CharData  of string             (* any characters not otherwise matching *)
+  | Lcurly                            (* { *)
+  | LLcurly                           (* {{ *)
+  | Rcurly                            (* } *)
+  | RRcurly                           (* }} *)
   | LineEnd   of string
   | Name      of string               (* name *)
   | Nametoken of string               (* nmtoken but not name *)
@@ -146,6 +151,11 @@ let string_of_tok tok =
   | Attval_nl_normalized _ -> "Attval_nl_normalized"
   | Unparsed_string _ -> "Unparsed_string" 
   | LineEnd _ -> "LineEnd"
+  | Lcurly -> "Lcurly"
+  | LLcurly -> "LLcurly"
+  | Rcurly -> "Rcurly"
+  | RRcurly -> "RRcurly"
+
 
 
 type lexer_set =
@@ -171,6 +181,10 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.7  2002/07/14 23:04:17  gerd
+ * 	New lexer "Closed", used after an entity is closed.
+ * 	New tokens Lcurly, LLcurly, Rcurly, RRcurly.
+ *
  * Revision 1.6  2002/03/13 22:45:42  gerd
  * 	Improved Pxp_lexing.
  *
