@@ -23,13 +23,11 @@ clean:
 
 .PHONY: CLEAN
 CLEAN: clean
-	$(MAKE) -C styles CLEAN
 
 .PHONY: distclean
 distclean: clean
 	rm -f *~ depend depend.pkg
 	rm -f readme readme.opt
-	$(MAKE) -C styles distclean
 
 .PHONY: install
 install:
