@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types.ml,v 1.2 2003/06/15 18:19:56 gerd Exp $
+(* $Id: pxp_core_types.ml,v 1.3 2003/06/19 22:07:19 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -214,6 +214,7 @@ type output_stream =
   [ `Out_buffer of Buffer.t
   | `Out_channel of out_channel
   | `Out_function of (string -> int -> int -> unit)
+  | `Out_netchannel of Netchannels.out_obj_channel
   ]
 ;;
 
@@ -223,6 +224,7 @@ let write os str pos len =
       `Out_buffer b -> Buffer.add_substring b str pos len
     | `Out_channel ch -> output ch str pos len
     | `Out_function f -> f str pos len
+    | `Out_netchannel ch -> ch # really_output str pos len
 ;;
 
 
@@ -238,6 +240,9 @@ let pool_string = Pxp_type_anchor.pool_string
  * History:
  * 
  * $Log: pxp_core_types.ml,v $
+ * Revision 1.3  2003/06/19 22:07:19  gerd
+ * 	New: `Out_netchannel
+ *
  * Revision 1.2  2003/06/15 18:19:56  gerd
  * 	Pxp_yacc has been split up
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types_type.mli,v 1.2 2003/06/15 18:19:56 gerd Exp $
+(* $Id: pxp_core_types_type.mli,v 1.3 2003/06/19 22:07:19 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -248,6 +248,7 @@ module type CORE_TYPES = sig
       [ `Out_buffer of Buffer.t
       | `Out_channel of out_channel
       | `Out_function of (string -> int -> int -> unit)
+      | `Out_netchannel of Netchannels.out_obj_channel
       ]
 
   val write : output_stream -> string -> int -> int -> unit
@@ -280,6 +281,9 @@ end (* of CORE_TYPES *)
  * History:
  * 
  * $Log: pxp_core_types_type.mli,v $
+ * Revision 1.3  2003/06/19 22:07:19  gerd
+ * 	New: `Out_netchannel
+ *
  * Revision 1.2  2003/06/15 18:19:56  gerd
  * 	Pxp_yacc has been split up
  *
