@@ -11,8 +11,10 @@ opt:
 	$(MAKE) depend
 	$(MAKE) -f Makefile.code opt
 
-generate: 
-	if [ ! -f pxp_wlex.ml -o pxp_wlex.mll -nt pxp_wlex.ml ]; then wlex pxp_wlex.mll; fi
+generate: pxp_wlex.ml
+
+pxp_wlex.mll: pxp_wlex.ml
+	wlex pxp_wlex.mll
 
 depend: *.ml
 	ocamldep *.ml *.mli >depend
