@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_defs_drv_utf8.def,v 1.1 2000/05/20 20:33:25 gerd Exp $
+(* $Id: pxp_lex_defs_drv_utf8.def,v 1.2 2000/08/26 19:58:08 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -84,7 +84,7 @@ let character_except_quot =                             (* '"' = '\034' *)
 
 
 let character_except_apos =                             (* '\'' = '\039' *)
-  [ '\009' '\010' '\013' '\032'-'\048' '\040'-'\255' ]
+  [ '\009' '\010' '\013' '\032'-'\038' '\040'-'\255' ]
 | non_ascii_character
 
 
@@ -146,6 +146,10 @@ let character_except_special =
  * History:
  * 
  * $Log: pxp_lex_defs_drv_utf8.def,v $
+ * Revision 1.2  2000/08/26 19:58:08  gerd
+ * 	Bugfix in character_except_apos. The bug caused that attribute
+ * values delimited by &apos; could not be scanned at all.
+ *
  * Revision 1.1  2000/05/20 20:33:25  gerd
  * 	Initial revision.
  *
