@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.2 2000/07/04 22:13:30 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.3 2000/07/06 21:43:45 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -469,19 +469,22 @@ class resolve_as_file
   in
 
   let file_url_of_id xid =
+    let file_url_of_sysname sysname =
+      (* By convention, we can assume that sysname is a URL conforming
+       * to RFC 1738 with the exception that it may contain non-ASCII
+       * UTF-8 characters. 
+       *)
+      try
+	Neturl.url_of_string url_syntax sysname 
+          (* may raise Malformed_URL *)
+      with
+	  Neturl.Malformed_URL -> raise Not_competent
+    in
     match xid with
-	Anonymous    -> raise Not_competent
-      | Public (_,_) -> raise Not_competent
-      | System sysname ->
-	  (* By convention, we can assume that sysname is a URL conforming
-	   * to RFC 1738 with the exception that it may contain non-ASCII
-	   * UTF-8 characters. 
-	   *)
-	  try
-	    Neturl.url_of_string url_syntax sysname 
-              (* may raise Malformed_URL *)
-	  with
-	      Neturl.Malformed_URL -> raise Not_competent
+	Anonymous          -> raise Not_competent
+      | Public (_,sysname) -> if sysname <> "" then file_url_of_sysname sysname
+                                               else raise Not_competent
+      | System sysname     -> file_url_of_sysname sysname
   in
 
   let channel_of_file_url url =
@@ -615,6 +618,10 @@ class combine rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.3  2000/07/06 21:43:45  gerd
+ * 	Fix: Public(_,name) is now treated as System(name) if
+ * name is non-empty.
+ *
  * Revision 1.2  2000/07/04 22:13:30  gerd
  * 	Implemented the new API rev. 1.2 of pxp_reader.mli.
  *
