@@ -1,6 +1,6 @@
 TOP_DIR = ../..
 ENC = utf8
-INPUT = $(TOP_DIR)/src/pxp-lex-generic-new
+INPUT = $(TOP_DIR)/src/pxp-lex
 MLL = $(shell echo pxp_wlex_$(ENC)_*.mll)
 CMO = $(MLL:.mll=.cmo)
 CMX = $(MLL:.mll=.cmx)
