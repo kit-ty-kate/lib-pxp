@@ -6,10 +6,10 @@
 #----------------------------------------------------------------------
 
 pxpvalidate: validate.ml
-	ocamlfind ocamlc -o pxpvalidate -package "pxp" -linkpkg validate.ml
+	ocamlfind ocamlc -g -o pxpvalidate -package "pxp,unix" -linkpkg validate.ml
 
 pxpvalidate.opt: validate.ml
-	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp" -linkpkg validate.ml
+	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp,unix" -linkpkg validate.ml
 
 #----------------------------------------------------------------------
 .PHONY: all
