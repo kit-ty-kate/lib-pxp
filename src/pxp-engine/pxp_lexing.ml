@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mlp,v 1.4 2002/03/15 16:14:40 gerd Exp $
+(* $Id: pxp_lexing.ml,v 1.1 2002/08/28 23:04:38 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -6,10 +6,6 @@
 
 (* This is a version of lexing.ml (from stdlib) that can cope with large
  * tokens.
- *)
-
-(* In recent CVS versions of O'Caml the record component lex_buffer_len
- * has been renamed to lex_buffer_end. 
  *)
 
 open Lexing
@@ -24,13 +20,13 @@ let lex_refill read_fun aux_buffer lexbuf =
     then read
     else (lexbuf.lex_eof_reached <- true; 0) in
   (* Is there enough space at the end of the buffer? *)
-  let space = String.length lexbuf.lex_buffer - lexbuf.LEX_BUFFER_LEN in
+  let space = String.length lexbuf.lex_buffer - lexbuf.lex_buffer_len in
   if space < n then begin
     (* No *)
     (* First try to remove the first lex_start_pos bytes of the buffer *)
     let s = lexbuf.lex_start_pos in
     let space' = space - s in
-    let efflen = lexbuf.LEX_BUFFER_LEN - s in
+    let efflen = lexbuf.lex_buffer_len - s in
     if space' >= n then begin
       (* There is enough space at the beginning of the buffer *)
       String.(*unsafe_*)blit lexbuf.lex_buffer s lexbuf.lex_buffer 0 efflen;
@@ -52,18 +48,18 @@ let lex_refill read_fun aux_buffer lexbuf =
     lexbuf.lex_curr_pos <- lexbuf.lex_curr_pos - s;
     lexbuf.lex_start_pos <- 0;
     lexbuf.lex_last_pos <- lexbuf.lex_last_pos - s;
-    lexbuf.LEX_BUFFER_LEN <- efflen;
+    lexbuf.lex_buffer_len <- efflen;
   end;
   (* There is now enough space at the end of the buffer *)
   String.unsafe_blit aux_buffer 0
-                     lexbuf.lex_buffer lexbuf.LEX_BUFFER_LEN
+                     lexbuf.lex_buffer lexbuf.lex_buffer_len
                      n;
-  lexbuf.LEX_BUFFER_LEN <- lexbuf.LEX_BUFFER_LEN + n
+  lexbuf.lex_buffer_len <- lexbuf.lex_buffer_len + n
 
 let from_function f =
   { refill_buff = lex_refill f (String.create 512);
     lex_buffer = String.create 1024;
-    LEX_BUFFER_LEN = 0;
+    lex_buffer_len = 0;
     lex_abs_pos = 0;
     lex_start_pos = 0;
     lex_curr_pos = 0;
@@ -77,7 +73,7 @@ let from_channel ic =
 let from_string s =
   { refill_buff = (fun lexbuf -> lexbuf.lex_eof_reached <- true);
     lex_buffer = s ^ "";
-    LEX_BUFFER_LEN = String.length s;
+    lex_buffer_len = String.length s;
     lex_abs_pos = 0;
     lex_start_pos = 0;
     lex_curr_pos = 0;
@@ -94,7 +90,7 @@ let from_string_inplace s =
   (* avoids copying s *)
   { refill_buff = (fun lexbuf -> lexbuf.lex_eof_reached <- true);
     lex_buffer = s;   (* instead of s ^ "" *)
-    LEX_BUFFER_LEN = String.length s;
+    lex_buffer_len = String.length s;
     lex_abs_pos = 0;
     lex_start_pos = 0;
     lex_curr_pos = 0;
@@ -106,7 +102,7 @@ let from_string_inplace s =
 let from_another_string_inplace lexbuf s =
   (* uses lexbuf again for another string (avoids memory allocation) *)
   lexbuf.lex_buffer <- s;
-  lexbuf.LEX_BUFFER_LEN <- String.length s;
+  lexbuf.lex_buffer_len <- String.length s;
   lexbuf.lex_abs_pos <- 0;
   lexbuf.lex_start_pos <- 0;
   lexbuf.lex_curr_pos <- 0;
@@ -130,7 +126,10 @@ let sub_lexeme lexbuf k l =
 (* ======================================================================
  * History:
  * 
- * $Log: pxp_lexing.mlp,v $
+ * $Log: pxp_lexing.ml,v $
+ * Revision 1.1  2002/08/28 23:04:38  gerd
+ * 	Removed the lex_buffer_len stuff
+ *
  * Revision 1.4  2002/03/15 16:14:40  gerd
  * 	Fixed the max_string_length bug.
  *
