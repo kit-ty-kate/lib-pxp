@@ -351,14 +351,88 @@ let t110 () =
 ;;
 
 (**********************************************************************)
+(* Tests whether the encoding handling of System IDs is okay *)
+
+let t200 () =
+  (* Check the technique for the following tests:
+   * [Checks also 'combine' to some extent.)
+   *)
+  let r1 = new resolve_read_this_string
+	     ~id:(System "b.xml")
+	     ~fixenc:`Enc_iso88591
+	     "ae" in
+  let r2 = new resolve_read_this_string
+	     ~id:(System "a.xml")
+	     ~fixenc:`Enc_iso88591
+	     "<!DOCTYPE a [ <!ELEMENT a ANY> <!ENTITY ae SYSTEM 'b.xml'> ]> <a>&ae;</a>" in
+  let r = new combine [ r1; r2 ] in
+  (* It should now be possible to resolve &ae; *)
+  let _ =
+    Pxp_yacc.parse_document_entity 
+      { Pxp_yacc.default_config with Pxp_yacc.encoding = `Enc_iso88591 }
+      (Pxp_yacc.ExtID(System "a.xml", r))
+      Pxp_yacc.default_spec
+  in
+  true
+;;
+
+
+let t201 () =
+  (* Check that System IDs are converted to UTF-8. rep_encoding = ISO-8859-1 *)
+  let r1 = new resolve_read_this_string
+	     ~id:(System "\195\164.xml")      (* This is an UTF-8 "ä"! *)
+	     ~fixenc:`Enc_iso88591
+	     "ae" in
+  let r2 = new resolve_read_this_string
+	     ~id:(System "a.xml")
+	     ~fixenc:`Enc_iso88591
+	     "<!DOCTYPE a [ <!ELEMENT a ANY> <!ENTITY ae SYSTEM 'ä.xml'> ]> <a>&ae;</a>" in
+  let r = new combine [ r1; r2 ] in
+  (* It should now be possible to resolve &ae; *)
+  let _ =
+    Pxp_yacc.parse_document_entity 
+      { Pxp_yacc.default_config with Pxp_yacc.encoding = `Enc_iso88591 }
+      (Pxp_yacc.ExtID(System "a.xml", r))
+      Pxp_yacc.default_spec
+  in
+  true
+;;
+
+
+let t202 () =
+  (* Check that System IDs are converted to UTF-8. rep_encoding = UTF-8 *)
+  let r1 = new resolve_read_this_string
+	     ~id:(System "\195\164.xml")
+	     ~fixenc:`Enc_iso88591
+	     "ae" in
+  let r2 = new resolve_read_this_string
+	     ~id:(System "a.xml")
+	     ~fixenc:`Enc_iso88591
+	     "<!DOCTYPE a [ <!ELEMENT a ANY> <!ENTITY ae SYSTEM 'ä.xml'> ]> <a>&ae;</a>" in
+  let r = new combine [ r1; r2 ] in
+  (* It should now be possible to resolve &ae; *)
+  let _ =
+    Pxp_yacc.parse_document_entity 
+      { Pxp_yacc.default_config with Pxp_yacc.encoding = `Enc_utf8 }
+      (Pxp_yacc.ExtID(System "a.xml", r))
+      Pxp_yacc.default_spec
+  in
+  true
+;;
+
+(**********************************************************************)
 
 let test f n =
-  print_string ("Reader test " ^ n);
-  flush stdout;
-  if f() then
-    print_endline " ok"
-  else
-    print_endline " FAILED!!!!";
+  try
+    print_string ("Reader test " ^ n);
+    flush stdout;
+    if f() then
+      print_endline " ok"
+    else
+      print_endline " FAILED!!!!";
+  with
+      error ->
+	print_endline (" FAILED: " ^ string_of_exn error)
 ;;
 
 test t001 "001";;
@@ -375,3 +449,7 @@ test t102 "102";;
 test t103 "103";;
 
 test t110 "110";;
+
+test t200 "200";;
+test t201 "201";;
+test t202 "202";;

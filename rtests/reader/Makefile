@@ -10,7 +10,7 @@ OCAMLPATH=../..
 test_reader: test_reader.ml
 	ocamllex minilex.mll
 	ocamlfind ocamlc -custom -o test_reader -package .,unix,threads \
-		-linkpkg -thread -predicates pxp_without_utf8 -noautolink \
+		-linkpkg -thread -noautolink \
 		-g minilex.ml test_reader.ml
 
 #----------------------------------------------------------------------
