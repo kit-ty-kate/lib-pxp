@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.17 2001/10/12 21:38:14 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.18 2002/02/18 00:25:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -119,7 +119,7 @@ class virtual resolve_general
       in
       let consume n =
 	let l = !buffer_len - n in
-	String.blit buffer n buffer 0 l;
+	if l > 0 then String.blit buffer n buffer 0 l;
 	buffer_len := l
       in
 
@@ -912,6 +912,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.18  2002/02/18 00:25:40  gerd
+ * 	Minor enhancement: String.blit only called for n>0
+ *
  * Revision 1.17  2001/10/12 21:38:14  gerd
  * 	Changes for O'caml 3.03-alpha.
  *
