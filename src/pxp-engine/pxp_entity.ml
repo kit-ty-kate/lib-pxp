@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.14 2001/06/28 22:42:07 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.15 2002/02/20 00:25:23 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -154,7 +154,7 @@ let make_variables the_dtd the_name the_warner init_encoding =
     lexerset_scan_content_comment  = ls.scan_content_comment;
     lexerset_scan_document_comment = ls.scan_document_comment;
     
-    lexbuf = Lexing.from_string "";
+    lexbuf = Pxp_lexing.from_string "";
     
     prolog = None;
     prolog_pairs = [];
@@ -948,7 +948,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 
 
     initializer
-    let lexbuf = Lexing.from_string the_literal_value in
+    let lexbuf = Pxp_lexing.from_string the_literal_value in
     let rec scan_and_expand () =
       match v.lexerset.scan_dtd_string lexbuf with
 	  ERef n -> "&" ^ n ^ ";" ^ scan_and_expand()
@@ -995,7 +995,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
 
       p_parsed_actually <- force_parsing;
-      v.lexbuf  <- Lexing.from_string 
+      v.lexbuf  <- Pxp_lexing.from_string 
 	             (if is_parameter_entity then
 			(" " ^ replacement_text ^ " ")
 		      else
@@ -1169,6 +1169,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.15  2002/02/20 00:25:23  gerd
+ * 	using Pxp_lexing instead of Lexing.
+ *
  * Revision 1.14  2001/06/28 22:42:07  gerd
  * 	Fixed minor problems:
  * 	- Comments must be contained in one entity

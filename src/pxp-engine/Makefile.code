@@ -3,7 +3,8 @@ include $(TOP_DIR)/Makefile.rules
 
 PACKAGES = netstring
 
-OBJ =   pxp_types.cmo pxp_lexer_types.cmo \
+OBJ =   pxp_lexing.cmo \
+        pxp_types.cmo pxp_lexer_types.cmo \
 	pxp_lexers.cmo \
 	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
 	pxp_dfa.cmo \

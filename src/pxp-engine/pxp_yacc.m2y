@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.34 2002/02/18 00:26:14 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.35 2002/02/20 00:25:23 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -583,7 +583,7 @@ class ['ext] parser_object
 	in
 *)
 
-	let reused_lexbuf = Lexing.from_string "" in
+	let reused_lexbuf = Pxp_lexing.from_string "" in
 %%
 
 /* The following grammar looks similar to ocamlyacc grammars, but
@@ -2617,6 +2617,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.35  2002/02/20 00:25:23  gerd
+ * 	using Pxp_lexing instead of Lexing.
+ *
  * Revision 1.34  2002/02/18 00:26:14  gerd
  * 	Small optimization in method save_data.
  *

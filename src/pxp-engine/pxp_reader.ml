@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.18 2002/02/18 00:25:40 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.19 2002/02/20 00:25:23 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -126,7 +126,7 @@ class virtual resolve_general
       fillup();
       if not encoding_requested then self # autodetect buffer;
 
-      Lexing.from_function
+      Pxp_lexing.from_function
 	(fun s n ->
 	   (* TODO: if encoding = internal_encoding, it is possible to
 	    * avoid copying buffer to s because s can be directly used
@@ -912,6 +912,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.19  2002/02/20 00:25:23  gerd
+ * 	using Pxp_lexing instead of Lexing.
+ *
  * Revision 1.18  2002/02/18 00:25:40  gerd
  * 	Minor enhancement: String.blit only called for n>0
  *
