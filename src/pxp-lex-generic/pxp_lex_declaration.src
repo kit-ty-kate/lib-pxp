@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_declaration.src,v 1.5 2001/06/14 14:25:56 gerd Exp $
+(* $Id: pxp_lex_declaration.src,v 1.6 2001/06/28 22:42:32 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -68,7 +68,7 @@ rule scan_declaration = parse
   | "<!NOTATION"
       { tok_Decl_notation__Declaration }
   | "<!--"
-      { Comment_begin, Decl_comment }
+      { Comment_begin dummy_entity, Decl_comment }
   | "<!["
       { tok_Conditional_begin__Declaration }
   | "]]>"
@@ -117,6 +117,9 @@ rule scan_declaration = parse
  * History:
  * 
  * $Log: pxp_lex_declaration.src,v $
+ * Revision 1.6  2001/06/28 22:42:32  gerd
+ * 	Comment tokens have entity_id
+ *
  * Revision 1.5  2001/06/14 14:25:56  gerd
  * 	Removed insertion of pxp_lex_aux.src
  *

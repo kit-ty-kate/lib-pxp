@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mll,v 1.4 2001/06/14 16:40:14 gerd Exp $
+(* $Id: pxp_wlex.mll,v 1.5 2001/06/28 22:42:41 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -175,7 +175,7 @@ rule scan_content = parse
   | "<?"
       { raise (WF_error ("Illegal processing instruction")) }
   | "<!--"
-      { Comment_begin, Content_comment }
+      { Comment_begin dummy_entity, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
@@ -321,7 +321,7 @@ and scan_document = parse
   | "<!DOCTYPE"
       { tok_Doctype__Document_type }
   | "<!--" 
-      { Comment_begin, Document_comment }
+      { Comment_begin dummy_entity, Document_comment }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -431,7 +431,7 @@ and scan_declaration = parse
   | "<!NOTATION"
       { tok_Decl_notation__Declaration }
   | "<!--"
-      { Comment_begin, Decl_comment }
+      { Comment_begin dummy_entity, Decl_comment }
   | "<!["
       { tok_Conditional_begin__Declaration }
   | "]]>"
@@ -572,7 +572,7 @@ and scan_for_crlf = parse
 
 and scan_content_comment = parse
     "-->"
-      { Comment_end, Content }
+      { Comment_end dummy_entity, Content }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -589,7 +589,7 @@ and scan_content_comment = parse
 
 and scan_decl_comment = parse
     "-->"
-      { Comment_end, Declaration }
+      { Comment_end dummy_entity, Declaration }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -604,7 +604,7 @@ and scan_decl_comment = parse
 
 and scan_document_comment = parse
     "-->"
-      { Comment_end, Document }
+      { Comment_end dummy_entity, Document }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -663,6 +663,9 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mll,v $
+ * Revision 1.5  2001/06/28 22:42:41  gerd
+ * 	Comment tokens have entity_id
+ *
  * Revision 1.4  2001/06/14 16:40:14  gerd
  * 	Updated
  *

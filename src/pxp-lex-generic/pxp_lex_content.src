@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.6 2001/06/14 14:25:56 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.7 2001/06/28 22:42:32 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -21,7 +21,7 @@ rule scan_content = parse
   | "<?"
       { raise (WF_error ("Illegal processing instruction")) }
   | "<!--"
-      { Comment_begin, Content_comment }
+      { Comment_begin dummy_entity, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
@@ -86,6 +86,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.7  2001/06/28 22:42:32  gerd
+ * 	Comment tokens have entity_id
+ *
  * Revision 1.6  2001/06/14 14:25:56  gerd
  * 	Removed insertion of pxp_lex_aux.src
  *

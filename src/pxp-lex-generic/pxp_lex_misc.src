@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_misc.src,v 1.5 2001/06/14 14:25:56 gerd Exp $
+(* $Id: pxp_lex_misc.src,v 1.6 2001/06/28 22:42:32 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -77,7 +77,7 @@ and scan_for_crlf = parse
 
 and scan_content_comment = parse
     "-->"
-      { Comment_end, Content }
+      { Comment_end dummy_entity, Content }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -94,7 +94,7 @@ and scan_content_comment = parse
 
 and scan_decl_comment = parse
     "-->"
-      { Comment_end, Declaration }
+      { Comment_end dummy_entity, Declaration }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -109,7 +109,7 @@ and scan_decl_comment = parse
 
 and scan_document_comment = parse
     "-->"
-      { Comment_end, Document }
+      { Comment_end dummy_entity, Document }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
@@ -125,6 +125,9 @@ and scan_document_comment = parse
  * History:
  * 
  * $Log: pxp_lex_misc.src,v $
+ * Revision 1.6  2001/06/28 22:42:32  gerd
+ * 	Comment tokens have entity_id
+ *
  * Revision 1.5  2001/06/14 14:25:56  gerd
  * 	Removed insertion of pxp_lex_aux.src
  *
