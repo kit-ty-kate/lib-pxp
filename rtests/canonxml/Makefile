@@ -8,7 +8,7 @@
 OCAMLPATH=../..
 
 test_canonxml: test_canonxml.ml
-	ocamlfind ocamlc -custom -o test_canonxml -package .,str -linkpkg test_canonxml.ml
+	ocamlfind ocamlc -g -custom -o test_canonxml -package .,str -linkpkg test_canonxml.ml
 
 #----------------------------------------------------------------------
 .PHONY: all

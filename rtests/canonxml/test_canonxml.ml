@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.3 2000/06/04 20:31:03 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.4 2000/07/09 01:06:20 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -109,14 +109,13 @@ let rec output_xml config n =
 
 
 let parse debug wf iso88591 filename =
-  let dom = 
-    let d = Hashtbl.create 2 in
+  let spec =
     let e = new element_impl default_extension in
     e # keep_always_whitespace_mode;
-    Hashtbl.add d T_data (new data_impl default_extension "");
-    { map = d;
-      default_element = e
-    }
+    make_spec_from_mapping
+      ~data_exemplar:            (new data_impl default_extension)
+      ~default_element_exemplar: e
+      ~element_mapping:          (Hashtbl.create 1)
   in
   let config =
       { default_config with 
@@ -128,10 +127,11 @@ let parse debug wf iso88591 filename =
   in
   try 
     let tree =
-      (if wf then parse_wf_entity else parse_document_entity)
+      (if wf then parse_wfdocument_entity
+             else parse_document_entity ?transform_dtd:None )
         config
-	(File filename)
-	dom 
+	(from_file filename)
+	spec 
     in
     let s = config.warner # print_warnings in
     if s <> "" then prerr_endline s;
@@ -174,6 +174,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.4  2000/07/09 01:06:20  gerd
+ * 	Updated.
+ *
  * Revision 1.3  2000/06/04 20:31:03  gerd
  * 	Updates because of renamed PXP modules.
  *
