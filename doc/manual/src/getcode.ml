@@ -5,8 +5,8 @@ exec ocamlfattop "$0"
 
 open Str;;
 
-let name_re = regexp "(\\*\\$[ \t]*\\([a-zA-Z.-]*\\)[ \t]*\\*)";;
-let subst_re = regexp "[<>&'>]";;
+let name_re = regexp "(\\*\\$[ \t]*\\([a-zA-Z0-9.-]*\\)[ \t]*\\*)";;
+let subst_re = regexp "[<>&'%]";;
 
 let begin_entity name =
   "<!ENTITY " ^  name ^ " '";;
@@ -42,6 +42,7 @@ try
 		 | ">" -> "&gt;"
 		 | "&" -> "&amp;"
 		 | "'" -> "&apos;"
+		 | "%" -> "&percent;"
 		 | _ -> assert false)
 	    line
 	in
