@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.8 2001/04/22 14:16:48 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.9 2001/07/01 08:35:23 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -177,7 +177,7 @@ class type resolver =
 (* The next classes are resolvers for concrete input sources. *)
 
 class resolve_read_this_channel :
-  ?id:ext_id -> ?fixenc:encoding -> ?auto_close:bool ->
+  ?id:ext_id -> ?fixenc:encoding -> ?close:(in_channel -> unit) ->
   in_channel -> resolver;;
 
   (* Reads from the passed channel (it may be even a pipe). If the ~id
@@ -191,13 +191,14 @@ class resolve_read_this_channel :
    * If you pass the ~fixenc argument, the encoding of the channel is
    * set to the passed value, regardless of any auto-recognition or
    * any XML declaration.
-   * If ?auto_close = true (which is the default), the channel is
-   * closed after use. If ?auto_close = false, the channel is left open.
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
    *)
 
 
 class resolve_read_any_channel :
-  ?auto_close:bool ->
+  ?close:(in_channel -> unit) ->
   channel_of_id:(ext_id -> (in_channel * encoding option)) ->
   unit ->
   resolver;;
@@ -209,14 +210,15 @@ class resolve_read_any_channel :
    * The function must return None as encoding if the default mechanism to
    * recognize the encoding should be used. It must return Some e if it is
    * already known that the encoding of the channel is e.
-   * If ?auto_close = true (which is the default), the channel is
-   * closed after use. If ?auto_close = false, the channel is left open.
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
    *)
 
 
 class resolve_read_url_channel :
   ?base_url:Neturl.url ->
-  ?auto_close:bool ->
+  ?close:(in_channel -> unit) ->
   url_of_id:(ext_id -> Neturl.url) ->
   channel_of_url:(ext_id -> Neturl.url -> (in_channel * encoding option)) ->
   unit ->
@@ -243,8 +245,9 @@ class resolve_read_url_channel :
    * mechanism to recognize the encoding should be used. It must return
    * Some e if it is already known that the encoding of the channel is e.
    *
-   * If ?auto_close = true (which is the default), the channel is
-   * closed after use. If ?auto_close = false, the channel is left open.
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
    *
    * Objects of this class contain a base URL relative to which relative
    * URLs are interpreted. When creating a new object, you can specify
@@ -566,6 +569,11 @@ class combine :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.9  2001/07/01 08:35:23  gerd
+ * 	Instead of the ~auto_close argument, there is now a
+ * ~close argument for several functions/classes. This allows some
+ * additional action when the resolver is closed.
+ *
  * Revision 1.8  2001/04/22 14:16:48  gerd
  * 	resolve_as_file: you can map private IDs to arbitrary channels.
  * 	resolve_read_url_channel: changed type of the channel_of_url

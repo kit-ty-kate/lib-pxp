@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.14 2001/06/14 23:28:02 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.15 2001/07/01 08:35:23 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -191,13 +191,13 @@ class virtual resolve_general
 ;;
 
 
-class resolve_read_any_channel ?(auto_close=true) ~channel_of_id () =
+class resolve_read_any_channel ?(close=close_in) ~channel_of_id () =
   object (self)
     inherit resolve_general as super
 
     val f_open = channel_of_id
     val mutable current_channel = None
-    val auto_close = auto_close
+    val close = close
 
     method private init_in (id:ext_id) =
       if current_channel <> None then
@@ -219,12 +219,12 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id () =
       match current_channel with
 	  None -> ()
 	| Some ch ->
-	    if auto_close then close_in ch;
+	    close ch;
 	    current_channel <- None
 
     method clone =
       let c = new resolve_read_any_channel
-		?auto_close:(Some auto_close) f_open () in
+		?close:(Some close) f_open () in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
       clones <- c :: clones;
@@ -234,13 +234,13 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id () =
 ;;
 
 
-class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
+class resolve_read_this_channel1 is_stale ?id ?fixenc ?close ch =
 
   let getchannel = ref (fun xid -> assert false) in
 
   object (self)
     inherit resolve_read_any_channel
-              ?auto_close:auto_close
+              ?close
 	      (fun xid -> !getchannel xid)
 	      ()
 	      as super
@@ -280,7 +280,7 @@ class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
     method clone =
       let c = new resolve_read_this_channel1
 		is_stale
-		?id:fixid ?fixenc:fixenc ?auto_close:(Some auto_close) fixch
+		?id:fixid ?fixenc:fixenc ?close:(Some close) fixch
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
@@ -394,7 +394,7 @@ class resolve_read_this_string =
 
 class resolve_read_url_channel
   ?(base_url = Neturl.null_url)
-  ?auto_close
+  ?close
   ~url_of_id
   ~channel_of_url
   ()
@@ -406,7 +406,7 @@ class resolve_read_url_channel
 
   object (self)
     inherit resolve_read_any_channel
-              ?auto_close:auto_close
+              ?close
 	      (fun xid -> !getchannel xid)
 	      ()
 	      as super
@@ -446,7 +446,7 @@ class resolve_read_url_channel
       let c =
 	new resolve_read_url_channel
 	  ?base_url:(Some own_url)
-	  ?auto_close:(Some auto_close)
+	  ?close:(Some close)
 	  ~url_of_id:url_of_id
 	  ~channel_of_url:channel_of_url
 	  ()
@@ -563,7 +563,6 @@ class resolve_as_file
 
   resolve_read_url_channel
     ~base_url:       default_base_url
-    ~auto_close:     true
     ~url_of_id:      file_url_of_id
     ~channel_of_url: channel_of_file_url
     ()
@@ -909,6 +908,11 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.15  2001/07/01 08:35:23  gerd
+ * 	Instead of the ~auto_close argument, there is now a
+ * ~close argument for several functions/classes. This allows some
+ * additional action when the resolver is closed.
+ *
  * Revision 1.14  2001/06/14 23:28:02  gerd
  * 	Fix: class combine works now with private IDs.
  *
