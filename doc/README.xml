@@ -224,6 +224,22 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>From 0.2.2 to 0.2.3:</p>
+	  <p>A fix for a problem when installing Markup on Solaris. 
+Haruo detected the problem.</p>
+	</li>
+	<li>
+	  <p>From 0.2.1 to 0.2.2:</p>
+	  <p>A single bugfix: The parser did not reject documents where the
+root element was not the element declared as root element. Again thanks
+to Claudio.</p>
+	</li>
+	<li>
+	  <p>From 0.2 to 0.2.1:</p>
+	  <p>A single bugfix which reduces the number of warnings. Thanks
+to Claudio for detecting the bug.</p>
+	</li>
+	<li>
 	  <p> From 0.1 to 0.2:</p>
 	  <p>
 Much more constraints are checked in the 0.2 release than in 0.1. Especially

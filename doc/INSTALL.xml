@@ -12,7 +12,8 @@
   <sect1><title>The "markup" package</title>
     <sect2><title>Prerequisites</title>
       <p>
-&m; does not need any other packages besides the O'Caml core. The installation
+&m; does not need any other packages besides the O'Caml core. &m; is known to
+work with O'Caml 2.02 and 2.04, and does not work with 2.03.  The installation
 procedure defined in the Makefile requires <a
 href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
 package manager, see the file ABOUT-FINDLIB.</footnote>.
@@ -65,5 +66,40 @@ In the "examples" directory you find several applications of &m;. They require
 that &m; has been installed using <em>findlib</em>. See the Makefiles in the
 directories for descriptions of "make" goals.
 </p>
+  </sect1>
+
+  <sect1><title>Trouble shooting</title>
+    <sect2><title>Solaris</title>
+      <p>
+The "make" utility of Solaris does not work properly enough; there is a bug
+in it that prevents the so-called suffix rules from being recognized. There
+are two solutions:</p>
+      <ul>
+	<li><p>Install GNU make and use it instead of Solaris make. This is
+the recommended way to solve the problem, as GNU make can process almost
+every Makefile from open source projects, and you will never have problems
+with building software again.</p></li>
+	<li><p>Add the following lines to Makefile.code:
+	  <code>
+%.cmx: %.ml
+        $(OCAMLOPT) -c $&lt;
+
+%.cmo: %.ml
+        $(OCAMLC) -c $&lt;
+
+%.cmi: %.mli
+        $(OCAMLC) -c $&lt;
+
+%.ml: %.mll
+        ocamllex $&lt;
+</code>
+</p></li>
+      </ul>
+      <p>Note that in earlier versions of Markup than 0.2.3 there was a
+second problem with Solaris (and other System V systems) which does not
+allow ! in scripts executed by /bin/sh. Because of this, the ! command was 
+removed from the scripts.
+</p>
+    </sect2>
   </sect1>
 </readme>
