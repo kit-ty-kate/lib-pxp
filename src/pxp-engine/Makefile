@@ -20,7 +20,7 @@ depend:
 	$(OCAMLDEP) *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_yacc.ml
+	rm -f $(CLEAN_LIST) pxp_yacc.ml pxp_lib.ml
 
 CLEAN: clean
 
