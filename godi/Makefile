@@ -1,4 +1,4 @@
-VERSION=1.1.95test1
+VERSION=1.1.95test2
 
 godi:
 	tar czf godi-pxp-$(VERSION).build.tgz godi-pxp
