@@ -1,4 +1,4 @@
-(* $Id: modify.ml,v 1.1 2001/06/04 18:54:17 gerd Exp $ *)
+(* $Id: modify.ml,v 1.2 2001/06/28 21:24:16 gerd Exp $ *)
 
 (* Tests delete, insert, append *)
 
@@ -75,7 +75,7 @@ let delete1 () =
   let two = make_x "2" [] in
   let tree =
     make_x "a" [ make_x "1" []; two; make_x "3" [] ] in
-  two # delete;
+  two # remove();
   signature tree = "(a (1) (3))"
 ;;
 
@@ -83,7 +83,7 @@ let delete2 () =
   let two = make_x "2" [] in
   let tree =
     make_x "a" [ make_x "1" []; two; make_x "3" [] ] in
-  tree # delete_nodes ~pos:1 ~len:1 ();
+  tree # remove_nodes ~pos:1 ~len:1 ();
   signature tree = "(a (1) (3))"
 ;;
 
@@ -91,7 +91,7 @@ let delete3 () =
   let tree =
     make_x "a" 
       [ make_x "1" []; make_x "2" []; make_x "3" []; make_x "4" [] ] in
-  tree # delete_nodes ~pos:1 ~len:2 ();
+  tree # remove_nodes ~pos:1 ~len:2 ();
   signature tree = "(a (1) (4))"
 ;;
 
@@ -99,7 +99,7 @@ let delete4 () =
   let tree =
     make_x "a" 
       [ make_x "1" []; make_x "2" []; make_x "3" []; make_x "4" [] ] in
-  tree # delete_nodes ~pos:0 ~len:2 ();
+  tree # remove_nodes ~pos:0 ~len:2 ();
   signature tree = "(a (3) (4))"
 ;;
 
@@ -107,7 +107,7 @@ let delete5 () =
   let tree =
     make_x "a" 
       [ make_x "1" []; make_x "2" []; make_x "3" []; make_x "4" [] ] in
-  tree # delete_nodes ~pos:2 ~len:2 ();
+  tree # remove_nodes ~pos:2 ~len:2 ();
   signature tree = "(a (1) (2))"
 ;;
 
@@ -115,7 +115,7 @@ let delete6 () =
   let tree =
     make_x "a" 
       [ make_x "1" []; make_x "2" []; make_x "3" []; make_x "4" [] ] in
-  tree # delete_nodes ~pos:0 ~len:4 ();
+  tree # remove_nodes ~pos:0 ~len:4 ();
   signature tree = "(a)"
 ;;
 
