@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.15 2001/07/01 08:35:23 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.16 2001/07/01 09:46:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -426,8 +426,12 @@ class resolve_read_url_channel
 
       try
 	(* Now compute the absolute URL: *)
-	let abs_url = Neturl.apply_relative_url base_url rel_url in
-                      (* may raise Malformed_URL *)
+	let abs_url = 
+	  if Neturl.url_provides ~scheme:true rel_url then
+	    rel_url
+	  else
+	    Neturl.apply_relative_url base_url rel_url in
+            (* may raise Malformed_URL *)
 
 	(* Simple check whether 'abs_url' is really absolute: *)
 	if not(Neturl.url_provides ~scheme:true abs_url)
@@ -908,6 +912,10 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.16  2001/07/01 09:46:40  gerd
+ * 	Fix: resolve_read_url_channel does not use the base_url if
+ * the current URL is already absolute
+ *
  * Revision 1.15  2001/07/01 08:35:23  gerd
  * 	Instead of the ~auto_close argument, there is now a
  * ~close argument for several functions/classes. This allows some
