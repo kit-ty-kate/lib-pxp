@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.8 2000/09/09 16:38:47 gerd Exp $
+(* $Id: pxp_types.ml,v 1.9 2000/09/17 00:12:19 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -216,6 +216,7 @@ let pool_string p s =
 	  last'.next_pool_node <- No_node;
 	  p.pool_end <- Pool_node last';
 	  p.pool_count <- p.pool_count - 1;
+	  last.pool_string <- None;
 	end;
 	s
 
@@ -266,6 +267,9 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.9  2000/09/17 00:12:19  gerd
+ * 	Bugfix in the pool implementation.
+ *
  * Revision 1.8  2000/09/09 16:38:47  gerd
  * 	New type 'pool'.
  *
