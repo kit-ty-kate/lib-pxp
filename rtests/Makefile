@@ -1,11 +1,15 @@
 .PHONY: all
 all:
-	$(MAKE) -C reader
-	$(MAKE) -C write
-	$(MAKE) -C codewriter
-	$(MAKE) -C canonxml
-	$(MAKE) -C negative
-	$(MAKE) -C dynamic
+	top=`dirname $$PWD` &&                     \
+	OCAMLPATH="$$top/gensrc:$$top/src" &&      \
+	export OCAMLPATH &&                        \
+	$(MAKE) -C reader &&                       \
+	$(MAKE) -C write &&                        \
+	$(MAKE) -C codewriter &&                   \
+	$(MAKE) -C canonxml &&                     \
+	$(MAKE) -C negative &&                     \
+	$(MAKE) -C dynamic                         \
+	$(MAKE) -C lex
 
 .PHONY: clean
 clean:
@@ -19,6 +23,7 @@ CLEAN: clean
 	$(MAKE) -C canonxml clean
 	$(MAKE) -C negative clean
 	$(MAKE) -C dynamic clean
+	$(MAKE) -C lex clean
 
 .PHONY: distclean
 distclean: clean
@@ -30,6 +35,7 @@ distclean: clean
 	$(MAKE) -C canonxml distclean
 	$(MAKE) -C negative distclean
 	$(MAKE) -C dynamic distclean
+	$(MAKE) -C lex distclean
 
 dumpfiles: dumpfiles.ml
 	ocamlc -o dumpfiles dumpfiles.ml

@@ -8,4 +8,4 @@ set -e
 (cd codewriter && ./run_codewriter)
 (cd negative && ./run_negative)
 (cd dynamic && ./run)
-
+(cd lex && ./run)
