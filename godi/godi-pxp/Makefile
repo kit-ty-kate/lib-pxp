@@ -35,7 +35,7 @@ ALL_TARGET+=    opt
 .endif
 
 post-extract:
-	cd ${WRKSRC} && svn co --non-interactive \
+	cd ${WRKDIR} && svn co --non-interactive \
 		https://gps.dynxs.de/svn/lib-pxp/trunk
 
 post-configure:
