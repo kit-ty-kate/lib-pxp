@@ -132,7 +132,7 @@ let lexeme_char lo lb k = Char.code(Lexing.lexeme_char lb k)
 
 (* The specific header for the "ulex" output format *)
 
-module Ulexing = Pxp_reader.Ulexing
+module Ulexing = Netulex.Ulexing
 
 let lexeme_len lo = Ulexing.lexeme_length
 let sub_lexeme lo lb p n = lo # sub_lexeme p n

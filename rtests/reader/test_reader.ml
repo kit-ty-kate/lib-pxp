@@ -1,5 +1,6 @@
 open Pxp_reader;;
 open Pxp_types;;
+open Netulex;;
 open Minilex;;  (* defines [nextchar] *)
 
 let lex_next_iso88591 lsrc =

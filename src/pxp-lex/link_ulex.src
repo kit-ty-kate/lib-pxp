@@ -21,6 +21,7 @@
 open Pxp_types
 open Pxp_lexer_types
 open Pxp_reader
+open Netulex
 
 let _ =
   assert("${encoding}" = "utf8");;

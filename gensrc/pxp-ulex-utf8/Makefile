@@ -35,6 +35,10 @@ gen_done: $(INPUT)/*.def $(INPUT)/*.src
 		-outlinkprefix "pxp_ulex_link_$(ENC)"
 	touch gen_done
 
+.PHONY: expand
+expand:
+	camlp4 -I `ocamlfind query ulex` pa_o.cmo pa_op.cmo pa_ulex.cma pr_o.cmo pxp_ulex_utf8_01.ml
+
 clean:
 	rm -f $(CLEAN_LIST) *.ml *.mll gen_done
 
