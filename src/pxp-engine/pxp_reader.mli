@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.2 2000/07/04 22:06:49 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.3 2000/07/06 23:04:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -292,7 +292,7 @@ class resolve_as_file :
    *)
 
 
-class combine : resolver list -> resolver;;
+class combine : ?prefer:resolver -> resolver list -> resolver;;
   
   (* Combines several resolver objects. If a concrete entity with an
    * ext_id is to be opened, the combined resolver tries the contained
@@ -326,6 +326,10 @@ class combine : resolver list -> resolver;;
  * History:
  * 
  * $Log: pxp_reader.mli,v $
+ * Revision 1.3  2000/07/06 23:04:46  gerd
+ * 	Quick fix for 'combine': The active resolver is "prefered",
+ * but the other resolvers are also used.
+ *
  * Revision 1.2  2000/07/04 22:06:49  gerd
  * 	MAJOR CHANGE: Complete redesign of the reader classes.
  *

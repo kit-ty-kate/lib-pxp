@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.3 2000/07/06 21:43:45 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.4 2000/07/06 23:04:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -249,10 +249,7 @@ class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
       ch, fixenc
 
     method private init_in (id:ext_id) =
-      if is_clone then
-	raise Not_competent
-      else
-	super # init_in id
+      super # init_in id
 
     method close_in =
       current_channel <- None
@@ -343,10 +340,7 @@ class resolve_read_this_string1 is_clone ?id ?fixenc str =
 
 
     method private init_in (id:ext_id) =
-      if is_clone then
-	raise Not_competent
-      else
-	super # init_in id
+      super # init_in id
 
     method clone =
       let c = new resolve_read_this_string1 true ?id:fixid ?fixenc:fixenc fixstr
@@ -550,8 +544,9 @@ class resolve_as_file
 ;;
 
 
-class combine rl =
+class combine ?prefer rl =
   object (self)
+    val prefered_resolver = prefer
     val resolvers = (rl : resolver list)
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
@@ -586,7 +581,11 @@ class combine rl =
       in
 
       if active_resolver <> None then failwith "Pxp_reader.combine # open_in";
-      let r, lb = find_competent_resolver resolvers in
+      let r, lb = 
+	match prefered_resolver with
+	    None ->   find_competent_resolver resolvers 
+	  | Some r -> find_competent_resolver (r :: resolvers)
+      in
       active_resolver <- Some r;
       lb
 
@@ -604,8 +603,15 @@ class combine rl =
     method clone =
       let c =
 	match active_resolver with
-	    None   -> new combine (List.map (fun r -> r # clone) resolvers)
-	  | Some r -> r # clone
+	    None   -> 
+	      new combine ?prefer:None (List.map (fun q -> q # clone) resolvers)
+	  | Some r -> 
+	      let r' = r # clone in
+	      new combine 
+		?prefer:(Some r')
+		(List.map 
+		   (fun q -> if q == r then r' else q # clone) 
+		   resolvers)
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
@@ -618,6 +624,10 @@ class combine rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.4  2000/07/06 23:04:46  gerd
+ * 	Quick fix for 'combine': The active resolver is "prefered",
+ * but the other resolvers are also used.
+ *
  * Revision 1.3  2000/07/06 21:43:45  gerd
  * 	Fix: Public(_,name) is now treated as System(name) if
  * name is non-empty.
