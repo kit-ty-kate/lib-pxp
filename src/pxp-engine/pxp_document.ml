@@ -2852,6 +2852,7 @@ class [ 'ext ] namespace_element_impl an_ext =
     method normprefix = normprefix
     method localname = localname
     method namespace_uri = 
+      (* IDEA: Map Not_found to Namespace_not_declared *)
       self # namespace_manager # get_primary_uri normprefix
 
     method display_prefix =
@@ -2910,6 +2911,10 @@ class [ 'ext ] namespace_element_impl an_ext =
       normprefix <- p;
       localname  <- l;
       (* TODO: Use pools *)
+      (* CHECK: It is possible to create elements with non-existing 
+       * normprefixes. This may cause errors later (namespace URI not
+       * found). Maybe it is better to catch this case here.
+       *)
 
     method private get_nsname name default =
       (* Overrides the definition in element_impl *)
@@ -2961,94 +2966,139 @@ class [ 'ext ] namespace_element_impl an_ext =
 
 	prefixes'
 
-      method private make_attribute_node element_name att_name value dtd =
-	(* This method modifies the behaviour of attributes_as_nodes *)
-	new namespace_attribute_impl 
-	       ~element:element_name
-	       ~name:att_name
-	       value
-	       dtd
+    method private make_attribute_node element_name att_name value dtd =
+      (* This method modifies the behaviour of attributes_as_nodes *)
+      new namespace_attribute_impl 
+	~element:element_name
+	~name:att_name
+	value
+	dtd
 
-      method display ?(prefixes = StringMap.empty) os enc =
-	let encoding = self # encoding in
-	let wms =
-	  write_markup_string ~from_enc:encoding ~to_enc:enc os in
+    method display ?(prefixes = StringMap.empty) os enc =
+      let encoding = self # encoding in
+      let wms =
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+      
+      (* Get the required declarations: *)
+      let mng = self # namespace_manager in
+      let scope = self # namespace_scope in
+      let eff_decl = scope # effective_declaration in
+      let eff_decl_to_add =
+	(* The prefixes in [eff_decl] that are not in [prefixes] *)
+	List.filter
+	  (fun (dp, uri) ->
+	     try
+	       StringMap.find dp prefixes <> uri
+	     with
+		 Not_found -> true
+	  )
+	  eff_decl in
+      let eff_decl_to_add' = ref [] in    (* further prefixes *)
+      
+      let prefixes' =
+	ref (List.fold_left 
+	       (fun acc (dp, uri) ->
+		  StringMap.add dp uri acc)
+	       prefixes
+	       eff_decl_to_add) in
+      
+      let search_prefix uri =
+	(* Slow! *)
+	let p =
+	  StringMap.fold
+	    (fun _p _uri y -> if _uri = uri then _p else y)
+	    !prefixes'
+	    "" in
+	if p = "" then raise Not_found;
+	p
+      in
+
+      let invent_new_prefix uri =
+	let n = ref 0 in
+	while StringMap.mem ("ns" ^ string_of_int !n) !prefixes' do
+	  incr n
+	done;
+	let p = "ns" ^ string_of_int !n in
+	prefixes' := StringMap.add p uri !prefixes';
+	eff_decl_to_add' := (p, uri) :: !eff_decl_to_add';
+	p
+      in
+      
+      let write_att p aname avalue =
+	match avalue with
+	    Implied_value -> ()
+	  | Value v ->
+	      wms ("\n" ^ p ^ aname ^ "=\"");
+	      write_data_string ~from_enc:encoding ~to_enc:enc os v;
+	      wms "\"";
+	  | Valuelist l ->
+	      let v = String.concat " " l in
+	      wms ("\n" ^ p ^ aname ^ "=\"");
+	      write_data_string ~from_enc:encoding ~to_enc:enc os v;
+	      wms "\""
+      in
 	
-	(* Get the required declarations: *)
-	let scope = self # namespace_scope in
-	let eff_decl = scope # effective_declaration in
-	let eff_decl_to_add =
-	  List.filter
-	    (fun (dp, uri) ->
-	       try
-		 StringMap.find dp prefixes <> uri
-	       with
-		   Not_found -> true
-	    )
-	    eff_decl in
-	let prefixes' =
-	  List.fold_left 
-	    (fun acc (dp, uri) ->
-	       StringMap.add dp uri acc)
-	    prefixes
-	    eff_decl_to_add in
+      let write_att_remap aname avalue =
+	let (p,local) = namespace_split aname in
+	if p = "" then
+	  write_att "" aname avalue
+	else
+	  let d = 
+	    try scope # display_prefix_of_normprefix p 
+	    with Not_found -> 
+	      (* Display prefix is missing. This is an error, but we
+	       * can search or invent a new prefix on the fly.
+	       *)
+	      ( let uri = mng # get_primary_uri p in
+		try 
+		  search_prefix uri
+		with
+		    Not_found ->
+		      invent_new_prefix uri )
+	  in
+	  write_att (d ^ ":") local avalue
+      in
 	
-	let write_att p aname avalue =
-	  match avalue with
-	      Implied_value -> ()
-	    | Value v ->
-		wms ("\n" ^ p ^ aname ^ "=\"");
-		write_data_string ~from_enc:encoding ~to_enc:enc os v;
-		wms "\"";
-	    | Valuelist l ->
-		let v = String.concat " " l in
-		wms ("\n" ^ p ^ aname ^ "=\"");
-		write_data_string ~from_enc:encoding ~to_enc:enc os v;
-		wms "\""
-	in
-	
-	let write_att_remap aname avalue =
-	  let (p,local) = namespace_split aname in
-	  if p = "" then
-	    write_att "" aname avalue
-	  else
-	    let d = 
-	      try scope # display_prefix_of_normprefix p 
-	      with Not_found -> failwith "display: no display prefix found"
-	    in
-	    write_att (d ^ ":") local avalue
-	in
-	
-	let this_display_prefix = 
-	  try self # display_prefix
-	  with Not_found -> failwith "display: no display prefix found" in
-	let this_localname = self # localname in
-	
-	let name =
-	  if this_display_prefix = "" then
-	    this_localname  (* within default namespace *)
-	  else
-	    this_display_prefix ^ ":" ^ this_localname in
-	
-	wms ("<" ^ name);
-	attlist_iter vr write_att_remap attributes;
-	List.iter   
-	  (fun (n,v) -> 
-	     if n = "" then
-	       write_att "" "xmlns" (Value v)
-	     else
-	       write_att "xmlns:" n (Value v))
-	  eff_decl_to_add;
-	wms "\n>";
-	
-	super # write_pinstr os enc;
-	
-	List.iter
-	  (fun n -> n # display ?prefixes:(Some prefixes') os enc)
-	  (self # sub_nodes);
-	
-	wms ("</" ^ name ^ "\n>");
-	
+      let this_display_prefix = 
+	try self # display_prefix
+	with Not_found -> 
+	  (* Display prefix is missing. This is an error, but we
+	   * can search or invent a new prefix on the fly.
+	   *)
+	  ( let uri = mng # get_primary_uri self#normprefix in
+	    try 
+	      search_prefix uri
+	    with
+		Not_found ->
+		  invent_new_prefix uri )
+      in
+      let this_localname = self # localname in
+      
+      let name =
+	if this_display_prefix = "" then
+	  this_localname  (* within default namespace *)
+	else
+	  this_display_prefix ^ ":" ^ this_localname in
+      
+      wms ("<" ^ name);
+      attlist_iter vr write_att_remap attributes;
+      List.iter   
+	(fun (n,v) -> 
+	   if n = "" then
+	     write_att "" "xmlns" (Value v)
+	   else
+	     write_att "xmlns:" n (Value v))
+	(eff_decl_to_add @ !eff_decl_to_add');
+      wms "\n>";
+      
+      super # write_pinstr os enc;
+      
+      List.iter
+	(fun n -> n # display ?prefixes:(Some !prefixes') os enc)
+	(self # sub_nodes);
+      
+      wms ("</" ^ name ^ "\n>");
+      
   end
 ;;
 

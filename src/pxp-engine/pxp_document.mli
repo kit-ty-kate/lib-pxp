@@ -1551,8 +1551,8 @@ class type [ 'ext ] node =
        *
        *    The namespace-aware nodes try to follow the namespace scoping
        *    found in the nodes. The generated namespace prefixes are
-       *    display prefixes. Note that this method will fail if an element
-       *    or attribute does not have a display prefix!
+       *    display prefixes. Missing prefixes are complemented, but this
+       *    is slow.
        *
        *   Option [~prefixes]: The class [namespace_element_impl] interprets 
        *   this option and passes it recursively to subordinate invocations of
