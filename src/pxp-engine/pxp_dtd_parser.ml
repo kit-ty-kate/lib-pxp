@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd_parser.ml,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_dtd_parser.ml,v 1.2 2003/06/19 21:09:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -86,6 +86,13 @@ let parse_dtd_entity cfg src =
 exception Return_DTD of dtd
 
 let extract_dtd_from_document_entity cfg src =
+  let rec extract exn =
+    match exn with
+	Return_DTD dtd -> Some dtd
+      | At(_, exn') -> extract exn'
+      | _ -> None
+  in
+
   let mng = create_entity_manager ~is_document:true cfg src in
   let entry = `Entry_document [ `Extend_dtd_fully; `Parse_xml_decl ] in
   let handle ev =
@@ -99,8 +106,11 @@ let extract_dtd_from_document_entity cfg src =
     process_entity cfg entry mng handle;
     assert false
   with
-      Return_DTD dtd ->
-	dtd
+      exn ->
+	( match extract exn with
+	      Some dtd -> dtd
+	    | _ -> raise exn
+	)
 ;;
 
 
@@ -109,6 +119,9 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_dtd_parser.ml,v $
+ * Revision 1.2  2003/06/19 21:09:53  gerd
+ * 	Fix.
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *
