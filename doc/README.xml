@@ -224,6 +224,33 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.2.9:</p>
+	  <p>New: The module Markup_codewriter generates for a given XML
+tree O'Caml code that creates the same XML tree. This is useful for
+applications which use large, constant XML trees.</p>
+	  <p>New: Documents and DTDs have a method write_compact_as_latin1
+that writes an XML tree to a buffer or to a channel. (But it is not a pretty
+printer...)</p>
+	  <p>Enhancement: If a DTD contains the processing instruction
+<code>
+&lt;?xml:allow_undeclared_attributes x?&gt;</code> 
+where "x" is the name of an already declared element it is allowed that
+instances of this element type have attributes that have not been declared.
+</p>
+	  <p>New function Markup_types.string_of_exn that converts an
+exception from Markup into a readable string.</p>
+	  <p>Change: The module Markup_reader contains all resolvers.
+The resolver API is now stable.</p>
+	  <p>New parser modes processing_instructions_inline and
+virtual_root that help locating processing instructions exactly (if needed).
+</p>
+	  <p>Many bugs regarding CRLF handling have been fixed.</p>
+	  <p>The distributed tarball contains now the regression test suite.
+</p>
+	  <p>The manual has been extended (but it is still incomplete and
+still behind the code).</p>
+	</li>
+	<li>
 	  <p>Changed in 0.2.8:</p>
 	  <p>A bit more documentation (Markup_yacc).</p>
 	  <p>Bugfix: In previous versions, the second trial to refer to
