@@ -1,0 +1,29 @@
+The pxpvalidate utility has been updated in PXP 1.1. There are a number
+of new options reflecting the new capabilities of the parser:
+
+-namespaces: turns namespace processing on. For a validator, this especially
+	means that all the xmlns attributes need not to be declared.
+
+-pubid: maps a PUBLIC id to a file. Example:
+	-pubid '-//W3C//DTD XHTML 1.0 Strict//EN=xhtml1-stict.dtd'
+
+-sysid: maps a (single) SYSTEM id to a file. Example:
+	-sysid 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd=xhtml1-strict.dtd'
+
+	This option is absolutely imperfect, because these SYSTEM IDs
+	cannot serve as base URIs for relative URIs. If possible,
+	PUBLIC IDs should be preferred.
+
+-helper: specifies a helper program. URIs beginning with "scheme:" are
+ 	served by the specified program which must output the contents
+	of the URI to stdout. Example:
+
+	-helper 'http=wget -O - -nv'
+
+-helper-mh: another way of specifying a helper. The program must output
+	first a MIME header, then the contents. If the MIME header contains
+	a content-type field, the charset parameter will be evaluated.
+	Example:
+
+	-helper-mh 'http=wget -O - -s -nv'
+
