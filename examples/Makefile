@@ -11,6 +11,8 @@ CLEAN: clean
 	$(MAKE) -C readme CLEAN
 	$(MAKE) -C simple_transformation CLEAN
 	$(MAKE) -C namespaces CLEAN
+	$(MAKE) -C eventparser CLEAN
+	$(MAKE) -C pullparser CLEAN
 
 .PHONY: distclean
 distclean: clean
@@ -20,6 +22,7 @@ distclean: clean
 	$(MAKE) -C readme distclean
 	$(MAKE) -C simple_transformation distclean
 	$(MAKE) -C namespaces distclean
-
+	$(MAKE) -C eventparser distclean
+	$(MAKE) -C pullparser distclean
 
 
