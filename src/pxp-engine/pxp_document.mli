@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.15 2001/05/17 21:40:55 gerd Exp $
+(* $Id: pxp_document.mli,v 1.16 2001/06/08 00:12:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -10,6 +10,11 @@
 (*     Object model of the document/element instances                 *)
 (*                                                                    *)
 (**********************************************************************)
+
+(* QUESTIONS:
+ * - T_attribute of (string * att_value)
+ *   may be better. Attributes do not have attributes (XPATH?)
+ *)
 
 
 (* ======================================================================
@@ -120,6 +125,123 @@
  * SIMPLE USAGE: ...
  *)
 
+(* ======================================================================
+ * THE DYNAMIC MODIFICATION OF NODE TREES AND VALIDATION
+ * ======================================================================
+ *
+ * The parser creates a node tree while parsing the input text, and the
+ * node tree can be modified later by some transformation algorithm. For
+ * both tasks the same interface may be used. However, PXP 1.0 introduced
+ * an interface that did not separate the two aspects "modification of the
+ * tree" and "validation of the tree", i.e. modification methods also
+ * did some validation. The following two sections describe: The PXP 1.0
+ * model, and the PXP 1.1 changes.
+ *
+ * -------
+ * PXP 1.0
+ * -------
+ *
+ * Method add_node: There are two different modes selected by the optional
+ *   argument ~force. ~force:true simply adds the node as last child to the
+ *   current node. However, ~force:false (the default) performs some validation
+ *   checks that may have three results: (1) The node is added, (2) The node
+ *   is silently dropped, (3) An error condition is detected, and an exception
+ *   is raised. The mode ~force:false is used by the parser, and historically,
+ *   add_node was designed as the parser's method of adding new nodes; ~force
+ *   was added later.
+ * 
+ *   The checks are only performed if the added node is a text node (node type
+ *   is T_data), and if the current element node has a type restricting the
+ *   addition of text nodes. In detail, the following is checked:
+ *    - If the element has type EMPTY, the addition of whitespace text is
+ *      not rejected, but the text is dropped (case 2). The addition of
+ *      other text material is an error (case 3).
+ *    - If the element has a regexp type, the addition of whitespace text is
+ *      not rejected, but the text is dropped (case 2); however there is 
+ *      a special mode forcing to add such whitespace text nodes (see below).
+ *      The addition of other text material is an error (case 3).
+ *      Furthermore, it is also an error if whitespace text is added, and the
+ *      document is stand-alone, and the element is declared in an external
+ *      entity.
+ *
+ * Method keep_always_whitespace_mode: turns a special mode on forcing that
+ *   whitespace text nodes inside regexp-type elements are always added.
+ *
+ * Method internal_init (i.e. object creation): When an element node is
+ *   created, the attribute list is passed as (string * string) list. This
+ *   method compares this list with the declared attlist of the DTD, and
+ *    - adds missing attributes if the DTD has a default value
+ *    - rejects nondeclared attributes
+ *    - checks whether required attributes are passed
+ *    - parses and normalizes attribute values
+ *    - checks some conditions for stand-alone documents
+ *
+ * Method local_validate: Checks whether the subnodes of the element match
+ *   the type of the element.
+ *
+ * ---------------------
+ * PROBLEMS WITH PXP 1.0
+ * ---------------------
+ *
+ * - It is not very obvious when validation checks are performed (which
+ *   methods do them and under which conditions)
+ * - It is difficult to transform trees because the transformation algorithm
+ *   might call a modification method that also performs some validation checks,
+ *   but the tree is not yet valid because the algorithm is in the middle of
+ *   the transformation
+ *
+ * -------
+ * PXP 1.1
+ * -------
+ *
+ * New method append_node: always adds the node to the node list (same as
+ *   add_node ~force:true)
+ *
+ * New method classify_data_node: performs the checks of add_node ~force:false,
+ *   and returns the result:
+ *     - CD_other: The node to add is not a text node and cannot be classified
+ *     - CD_normal: The text node can be added
+ *     - CD_empty: The node is ignorable (= empty), and the containing
+ *       element is declared as EMPTY. The parser must not add the node.
+ *     - CD_ignorable: The node contains ignorable whitespace, and the parser
+ *       should not add the node unless a special configuration forces the
+ *       addition
+ *     - CD_error: the rules do not allow to add the text node here
+ *
+ * Method add_node: is now deprecated. For compatibility, the method
+ *   classifies the node to add, and decides whether to add the node, not
+ *   to add the node, or whether to raise an exception.
+ *
+ * Method keep_always_whitespace_mode: is removed. A new parser option 
+ *   modifies the behaviour of the parser such that ignorable whitespace is
+ *   added anyway (option drop_ignorable_whitespace = false).
+ *
+ * Object creation: You can pass attributes as (string * string) list, and
+ *   as (string * att_value) list; internal_init simply processes both lists.
+ *   Attributes passed as att_value are already normalized (and compatible
+ *   with the stand-alone declaration, if any); the method does not normalize
+ *   them again. Two options control validation:
+ *     ~valcheck: (default true) It is checked that there
+ *         is an element type declaration, or that the DTD is in well-formed
+ *         mode. Passing 'false' means that it is not checked whether the
+ *         element type exists, that you can add any attributes.
+ *
+ * New method validate_contents: The new name for local_validate; it is
+ *   checked whether the elements contained in the list of sub nodes match
+ *   the declared content model. 
+ * (The name local_validate is deprecated.)
+ *
+ * New method validate_attlist: Checks whether the attlist matches the
+ *   ATTLIST declaration.
+ *   (Impl.: Call create_element again with valcheck options ON.)
+ *
+ * New method validate: This method can be called after manual modifications
+ *   of the tree to ensure that the changed tree is still valid:
+ *    - All text subnodes must be classified as non-errorneous
+ *    - All element subnodes are validated by validate_subelements
+ *    - The attributes are validated by validate_attlist
+ *   Note that this method is not used by the parser.
+ *)
 
 open Pxp_dtd
 
@@ -159,23 +281,87 @@ type node_type =
 ;;
 
 
+(* The result type of the method classify_data_node: *)
+type data_node_classification =
+    CD_normal
+  | CD_other
+  | CD_empty
+  | CD_ignorable
+  | CD_error of exn
+;;
+
+
 (* Very experimental namespace support: *)
 
 class namespace_manager :
+  (* This class manages mappings from URIs to normalized prefixes. For every
+   * namespace a namespace_manager object contains a set of mappings
+   * uri1 |-> np, uri2 |-> np, ..., uriN |-> np.
+   * The normalized prefix np is characterical of the namespace, and
+   * identifies the namespace uniquely.
+   * The first URI uri1 is the primary URI, the other URIs are aliases.
+   * The following operations are supported:
+   * - add_uri np uri: The passed uri is added to the already existing
+   *   namespace which is identified by the normprefix np. This means
+   *   that the precondition is that there is already some mapping
+   *   uri' |-> np, and that there is no mapping for uri. Postcondition
+   *   is that uri |-> np is a new mapping.
+   *   add_uri thus adds a new alias URI for an existing namespace.
+   * - add_namespace np uri: Precondition is that neither np nor uri
+   *   are used in the namespace_manager object. The effect is that the
+   *   mapping uri |-> np is added.
+   * - lookup_or_add_namespace p uri: If there is already some mapping
+   *   uri |-> np, the normprefix np is simply returned ("lookup"). In this
+   *   case p is ignored. Otherwise uri is not yet mapped, and in this
+   *   case some unique np must be found such that uri |-> np can be
+   *   added ("add_namespace"). First, the passed prefix p is tried.
+   *   If p is free, it can be taken as new normprefix: np = p. Otherwise
+   *   some number n is found such that the concatenation p + n is free:
+   *   np = p + n. The operation returns np.
+   *)
   object
-    method add : string -> string -> string
-      (* let normprefix = mng # add prefix uri
-       * Normalizes prefix and adds the pair (normprefix, uri) to the
-       * managed set of namespaces.
-       * "Normalizing" means that the prefix is changed such that it becomes
-       * unique.
+    method add_uri : string -> string -> unit
+      (* add_uri np uri: adds uri as alias URI to the namespace identified
+       * by the normprefix np (see above for detailed semantics). The method
+       * raises Not_found if the normprefix np is unknown to the object,
+       * and it fails (Namespace_error) if the uri is member of a
+       * different namespace. Nothing happens if the uri is already member
+       * of the namespace np.
        *)
-    method get_uri : string -> string
-      (* Return the URI for a normprefix, or raises Not_found.
+    method add_namespace : string -> string -> unit
+      (* add_namespace np uri: adds a new namespace to the object. The
+       * namespace is identified by the normprefix np and contains initially
+       * the primary URI uri.
+       * The method fails (Namespace_error) if either np already identifies
+       * some namespace or if uri is already member of some namespace.
+       * Nothing happens if uri is the sole member of the namespace np.
+       * It is required that np <> "".
+       *)
+    method lookup_or_add_namespace : string -> string -> string
+      (* lookup_or_add_namespace p uri: first, the method looks up if
+       * the namespace for uri does already exist. If so, p is ignored,
+       * and the method returns the normprefix identifying the namespace.
+       * Otherwise, a new namespace is added for some normprefix np which
+       * initially contains uri. The normprefix np is calculated upon p
+       * serving as suggestion for the normprefix. The method returns
+       * the normprefix.
+       *)
+    method get_primary_uri : string -> string
+      (* Return the primary URI for a normprefix, or raises Not_found.
        * get_uri "" raises always Not_found.
+       *)
+    method get_uri_list : string -> string list
+      (* Return all URIs for a normprefix, or [] if the normprefix is
+       * unused. get_uri_list "" returns always []. The last URI of the
+       * returned list is the primary URI.
        *)
     method get_normprefix : string -> string
       (* Return the normprefix for a URI, or raises Not_found *)
+    method iter_namespaces : (string -> unit) -> unit
+      (* Iterates over all namespaces contained in the object, and
+       * calls the passed function for every namespace. The argument of the
+       * invoked function is the normprefix of the namespace.
+       *)
 
     (* Encodings: prefixes and URIs are always encoded in the default
      * encoding of the document
@@ -216,6 +402,16 @@ class type [ 'ext ] node =
        * 'delete' does nothing if this node does not have a parent.
        *)
 
+    method delete_nodes : ?pos:int -> ?len:int -> unit -> unit
+      (* Delete nodes from the list of subnodes: The nodes at positions
+       * pos to pos+len-1 are deleted, and turned into orphans. 
+       * The defaults are:
+       *   ~pos: 0
+       *   ~len: number of subnodes
+       * i.e.
+       * n # delete_nodes() deletes all subnodes of n
+       *)
+
     method parent : 'ext node
       (* Get the parent, or raise Not_found if this node is an orphan. *)
 
@@ -238,7 +434,20 @@ class type [ 'ext ] node =
        * The clone has no parent.
        *)
 
+    method append_node : 'ext node -> unit
+      (* Appends the passed node to the list of subnodes of this element.
+       * Note: It is not checked whether the node matches the content model
+       * of the element.
+       *)
+
+    method classify_data_node : 'ext node -> data_node_classification
+      (* Classifies the passed data node, and returns whether it is 
+       * reasonable to append the data node to the list of subnodes
+       * (using append_node).
+       *)
+
     method add_node : ?force:bool -> 'ext node -> unit
+      (* add_node is now DEPRECATED; use append_node instead! *)
       (* Append new sub nodes -- mainly used by the parser itself, but
        * of course open for everybody. If an element is added, it must be
        * an orphan (i.e. does not have a parent node); and after addition
@@ -248,13 +457,32 @@ class type [ 'ext ] node =
        * turn these checks off by passing ~force:true to the method.
        *)
 
+    method insert_nodes : ?pos:int -> 'ext node list -> unit
+      (* Inserts the passed list of nodes into the list of subnodes of
+       * this element. The ~pos argument specifies where the insertion
+       * happens: After the nodes have been inserted, the first node
+       * of the inserted list has the index ~pos.
+       * Note: It is not checked whether the inserted nodes match the content
+       * model of the element.
+       *)
+
+    method set_nodes : 'ext node list -> unit
+      (* Set the list of sub nodes. Elements that are no longer sub nodes gets
+       * orphaned, and all new elements that previously were not sub nodes
+       * must be orphans.
+       *)
+
     method add_pinstr : proc_instruction -> unit
       (* Add a processing instruction to the set of processing instructions of
        * this node. Usually only elements contain processing instructions.
+       * Nodes of type T_pinstr may contain one processing instruction.
        *)
 
     method pinstr : string -> proc_instruction list
-      (* Get all processing instructions with the passed name *)
+      (* Get all processing instructions with the passed name. 
+       * If this node has type T_pinstr pi, you can get the contained 
+       * processing instruction by calling node # pinstr pi.
+       *)
 
     method pinstr_names : string list
       (* Get a list of all names of processing instructions *)
@@ -284,12 +512,17 @@ class type [ 'ext ] node =
       (* Get the list of sub nodes *)
 
     method iter_nodes : ('ext node -> unit) -> unit
-      (* iterate over the sub nodes *)
+      (* iterate over the sub nodes.
+       * Note that further iterators are defined below (outside the
+       * class).
+       *)
 
     method iter_nodes_sibl :
       ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
       (* Here every iteration step can also access to the previous and to the
        * following node if present.
+       * Note that further iterators are defined below (outside the
+       * class).
        *)
 
     method nth_node : int -> 'ext node
@@ -305,12 +538,6 @@ class type [ 'ext ] node =
        * equivalent to
        * - parent # nth_node (self # node_position - 1) and
        * - parent # nth_node (self # node_position + 1), respectively.
-       *)
-
-    method set_nodes : 'ext node list -> unit
-      (* Set the list of sub nodes. Elements that are no longer sub nodes gets
-       * orphaned, and all new elements that previously were not sub nodes
-       * must have been orphaned.
        *)
 
     method data : string
@@ -330,6 +557,17 @@ class type [ 'ext ] node =
        * Namespace nodes: Returns the namespace URI
        *)
 
+    method set_data : string -> unit
+      (* Data nodes: This method sets the contents of the node 
+       * Other node types: Method is not available.
+       *
+       * Important node: If this method is called for data nodes, the XML tree
+       * may become invalid. This method does not check whether the new
+       * text is valid or not. To perform the check, you have to call
+       * validate_contents ~check_data_nodes:true for the containing element
+       * node.
+       *)
+
     method node_type : node_type
       (* Get the name of the element type. *)
 
@@ -340,6 +578,7 @@ class type [ 'ext ] node =
        * information.
        * Returns "?",0,0 if not available. (Note: Line number 0 is not
        * possible otherwise.)
+       * The position is usually only available for element nodes.
        *)
 
     method attribute : string -> Pxp_types.att_value
@@ -348,7 +587,7 @@ class type [ 'ext ] node =
     method attributes : (string * Pxp_types.att_value) list
       (* Get a specific attribute; get the names of all attributes; get the
        * type of a specific attribute; get names and values of all attributes.
-       * Only elements have attributes.
+       *
        * Note: If the DTD allows arbitrary for this element, "attribute_type"
        * raises Undeclared.
        *)
@@ -379,7 +618,14 @@ class type [ 'ext ] node =
       (* Returns the list of attribute names of IDREF or IDREFS type. *)
 
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method set_attributes : (string * Pxp_types.att_value) list -> unit
       (* Sets the attributes but does not check whether they match the DTD.
+       * 'quick_set_attributes' is the old name; for new software
+       * 'set_attributes' should be preferred.
+       *
+       * Important note: The new set of attributes is not validated against
+       * the ATTLIST declaration in the DTD. You can call validate_attlist
+       * to perform this check.
        *)
 
     method attributes_as_nodes : 'ext node list
@@ -388,6 +634,15 @@ class type [ 'ext ] node =
        * This node list is computed on demand, so the first invocation of this
        * method will create the list, and following invocations will only
        * return the existing list.
+       *
+       * To get the name of an attribute node n, call
+       *   n # node_type 
+       * which will return: T_attribute name.
+       * To get the value of an attribute node n, call either
+       *   n # data
+       * returning the value as string, or 
+       *   n # attribute name
+       * returning the value as att_value.
        *)
 
     method set_comment : string option -> unit
@@ -414,7 +669,7 @@ class type [ 'ext ] node =
     method localname : string
       (* For namespace-aware implementations of the node class, this method
        * returns the local part of the name of the element or attribute.
-         *
+       *
        * This method is only supported by the implementations
        * namespace_element_impl, namespace_attribute_impl.
        * When invoked for other classes, it will fail.
@@ -488,31 +743,82 @@ class type [ 'ext ] node =
     method create_element :
              ?name_pool_for_attribute_values:Pxp_types.pool ->
              ?position:(string * int * int) ->
+	     ?valcheck:bool ->      (* default: true *)
+	     ?att_values:((string * Pxp_types.att_value) list) ->
              dtd -> node_type -> (string * string) list -> 'ext node
       (* create an "empty copy" of this element:
        * - new DTD
        * - new node type (which must not be T_data)
-       * - new attribute list
+       * - new attribute list: Attributes can either be passed as 
+       *   (string*string) list, or as (string*att_value) list
+       *   (using ~att_values). The method forms the union of both
+       *   arguments, and sets the attribute list from that
        * - empty list of nodes
+       *
+       * ~valcheck (default: true) - If set to false, the validation
+       * of the attribute list is turned off. This means that you can
+       * pass any attributes to the method, and it will never complain
+       * about validation errors. However, the method will also not
+       * complement missing default values, so use this feature with
+       * care. You can later revalidate the element by calling the
+       * complement_attlist and validate_attlist methods.
        *)
 
     method create_data : dtd -> string -> 'ext node
       (* create an "empty copy" of this data node: *)
 
-    method local_validate :
-             ?use_dfa:bool ->
-             unit -> unit
-      (* Check that this element conforms to the DTD.
+    method local_validate : 
+              ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+    method validate_contents : 
+              ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+      (* Check that the subnodes of this element match the declared
+       * content model of this element.
+       *     This check is always performed by the parser, such that
+       * software that only reads parsed XML trees needs not call
+       * this method. However, if software modifies the tree itself,
+       * an invocation of this method ensures that the validation constraints
+       * about content models are fulfilled.
+       *
        * Option ~use_dfa: If true, the deterministic finite automaton of
        *   regexp content models is used for validation, if available.
        *   Defaults to false.
+       * Option ~check_data_nodes: If true, it is checked whether data nodes
+       *   only occur at valid positions. If false, these checks are left out.
+       *   Defaults to true. (Usually, the parser turns this feature off
+       *   because the parser already performs a similar check.)
+       *
+       * 'local_validate' is the old name of the method; in new software
+       * 'validate_contents' should be called.
        *)
 
-    method keep_always_whitespace_mode : unit
-      (* Normally, add_node does not accept data nodes when the DTD does not
-       * allow data nodes or only whitespace ("ignorable whitespace").
-       * Once you have invoked this method, ignorable whitespace is forced
-       * to be included into the document.
+    method complement_attlist : unit -> unit
+      (* Adds attributes that are declared in the DTD but are currently missing.
+       * #IMPLIED attributes are added with Implied_value, and if there is 
+       * a default value for an attribute, this value is added.
+       * #REQUIRED attributes are set to Implied_value, too.
+       * 
+       * It is only necessary to call this method if the element is created
+       * with ~valcheck:false, and the element must be validated.
+       * If the element is created with ~valcheck:true, the attlist
+       * will automatically complemented.
+       *)
+
+    method validate_attlist : unit -> unit
+      (* Check that the attribute list of this element matches the declared
+       * attribute list.
+       *    This check is implicitly performed by create_element unless
+       * the option ~valcheck:false has been passed.
+       * This check is not called by the method 'set_attributes'.
+       *)
+
+    method validate : unit -> unit
+      (* Does validate_contents + validate_attlist and ensures that the
+       * node is locally valid.
+       *)
+
+    (* method keep_always_whitespace_mode : unit *)
+      (* This method has been removed. You can now set the handling of
+       * ignorable whitespace by a new Pxp_yacc.config option.
        *)
 
     method write : 
@@ -528,20 +834,9 @@ class type [ 'ext ] node =
        *   have already been declared by surrounding elements. The option
        *   defaults to [] forcing the method to output all necessary prefix
        *   declarations.
+       *
+       * KNOWN BUG: comment nodes are not printed.
        *)
-
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
-
-    (* ---------------------------------------- *)
-    (* The methods 'find' and 'reset_finder' are no longer supported.
-     * The functionality is provided by the configurable index object
-     * (see Pxp_yacc).
-     *)
-
 
     (* ---------------------------------------- *)
     (* internal methods: *)
@@ -550,12 +845,18 @@ class type [ 'ext ] node =
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
                            Pxp_types.pool option ->
-                           dtd -> string -> (string * string) list -> unit
+			   bool -> 
+                           dtd -> string -> (string * string) list -> 
+			   (string * Pxp_types.att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
   end
 
 and ['ext] namespace_info =
+  (* IMPORTANT: namespace_info is very very very very experimental. It is
+   * very likely that the signature will change in the future, or that
+   * the class will be removed.
+   *)
   object
     method srcprefix : string
       (* Returns the prefix before it is normalized *)
@@ -592,14 +893,32 @@ class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
 
 
 class [ 'ext ] comment_impl : 'ext -> [ 'ext ] node ;;
-
-class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
-
-class [ 'ext ] pinstr_impl : 'ext -> [ 'ext ] node ;;
-    (* These classes work like element_impl, but create new empty nodes
-     * for comments, super roots, and processing instructions, resp.
+    (* Creation:
+     *   new comment_impl an_extension
+     * creates a new empty comment node with the given extension.
+     * To store a comment, use the method set_comment; to get the comment
+     * string, invoke the method comment.
      *)
 
+class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
+    (* Creation:
+     *   new comment_impl an_extension
+     * creates a new empty super root node with the given extension.
+     * A super root node behaves much like an element; however you cannot
+     * add attributes.
+     *)
+
+class [ 'ext ] pinstr_impl : 'ext -> [ 'ext ] node ;;
+    (* Creation:
+     *   new comment_impl an_extension
+     * creates a new empty processing instruction node with the given extension.
+     *)
+
+val pinstr : 'ext node -> proc_instruction
+  (* Returns the processing instruction contained in a pinstr node.
+   * This function raises Invalid_argument if invoked for a different node
+   * type than T_pinstr.
+   *)
 
 (* Attribute nodes are experimental: *)
 
@@ -628,6 +947,14 @@ class [ 'ext ] attribute_impl :
      * Attribute nodes are designed to be members of XPath node sets, and
      * are only useful if you need such sets.
      *)
+
+val attribute_name  : 'ext node -> string
+val attribute_value : 'ext node -> Pxp_types.att_value
+val attribute_string_value : 'ext node -> string
+  (* These three functions are defined for attribute nodes, and return
+   * the name, the att_value, and the string value, respectively.
+   * If called for non-attribute nodes, these functions raise Invalid_argument.
+   *)
 
 (* Very experimental namespace support: *)
 
@@ -672,6 +999,14 @@ class [ 'ext ] namespace_impl :
   (* Namespace objects are only used to represent the namespace declarations
    * occurring in the attribute lists of elements.
    * They are stored in the namespace_info object if that is requested.
+   *)
+
+val namespace_normprefix : 'ext node -> string
+val namespace_srcprefix : 'ext node -> string
+val namespace_uri : 'ext node -> string
+  (* These functions return the normprefix, the srcprefix, and the URI
+   * stored in a namespace object. 
+   * If invoked for a different node type, the functions raise Invalid_argument.
    *)
 
 
@@ -730,7 +1065,15 @@ val create_data_node :
 val create_element_node :
       ?name_pool_for_attribute_values:Pxp_types.pool ->
       ?position:(string * int * int) ->
+      ?valcheck:bool ->
+      ?att_values:((string * Pxp_types.att_value) list) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
+(* TODO *)
+(* NEW: options
+ *  ?parsed_attlist
+ *  ?valcheck_xxx (see above)
+ *)
+
 val create_super_root_node :
       ?position:(string * int * int) ->
       'ext spec -> dtd -> 'ext node
@@ -801,7 +1144,7 @@ val compare : 'ext node -> 'ext node -> int
   (* Returns -1 if the first node is before the second node, or +1 if the
    * first node is after the second node, or 0 if both nodes are identical.
    * If the nodes are unrelated (do not have a common ancestor), the result
-   * is undefined.
+   * is undefined (Note: this case is different from ord_compare).
    * This test is rather slow, but it works even if the XML tree changes
    * dynamically (in contrast to ord_compare below).
    *)
@@ -933,9 +1276,99 @@ val iter_tree_sibl :
            unit
    (* Iterates only instead of mapping the nodes. *)
 
+(************************ Whitespace handling ***************************)
+
+type stripping_mode =
+  [ `Strip_one_lf
+  | `Strip_one
+  | `Strip_seq
+  | `Disabled
+  ]
+
+(* `Strip_one_lf: If there is a linefeed character at the beginning/at the end, 
+ *   it will be removed. If there are more linefeed characters, only the first/
+ *   the last is removed. (This is the SGML rule to strip whitespace.)
+ * `Strip_one: If there is a whitespace character at the beginning/at the end, 
+ *   it will be removed. If there are more whitespace characters, only the 
+ *   first/the last is removed. Whitespace characters are space, newline,
+ *   carriage return, tab.
+ * `Strip_seq: All whitespace characters at the beginning/at the end are
+ *   removed.
+ *)
+
+
+val strip_whitespace : 
+      ?force:bool -> ?left:stripping_mode -> ?right:stripping_mode ->
+      ?delete_empty_nodes:bool ->
+      'ext node ->
+      unit
+  (* Modifies the passed tree in-place by the following rules:
+   * - In general, whitespace stripping is not applied to nodes inside
+   *   an xml:space="preserve" region, unless ~force:true is passed
+   *   to the function (default is ~force:false). Only if whitespace
+   *   stripping is allowed, the following rules are carried out.
+   *   Note that the detection of regions with preserved whitespace takes
+   *   the parent nodes of the passed node into account.
+   * - If applied to a data node, whitespace at the beginning of the node
+   *   is removed according to ~left, and whitespace at the end of the node
+   *   is removed according to ~right.
+   * - If applied to an element, whitespace at the beginning of the first
+   *   data subnode is removed according to ~left, and whitespace at the end
+   *   of the last data subnode is removed according to ~right. Furthermore,
+   *   these rules are recursively applied to all subelements (but not to
+   *   other node types).
+   * - If applied to the super root node, this node is treated as if it
+   *   were an element.
+   * - Whitespace of other node types is left as-is, as whitespace occuring
+   *   in attributes.
+   * - Option ~delete_empty_nodes (default true):
+   *   If text nodes become empty after removal of whitespace, they are
+   *   deleted from the XML tree. 
+   * 
+   * Defaults:
+   *   ~force:false
+   *   ~left:`Disabled
+   *   ~right:`Disabled
+   *
+   * Examples:
+   *
+   * strip_whitespace ~left:`Strip_one_lf ~right:`Strip_one_lf root
+   *   Strips LF characters according to the SGML rules: One LF is stripped
+   *   after the start tag, and one before the end tag. xml:space is respected.
+   *
+   * iter_tree
+   *   ~pre:(fun n -> if n # node_type = T_data then 
+   *                    n # strip_whitespace 
+   *                      ~force:true ~left:`Strip_seq ~right:`Strip_seq
+   *        )
+   *   root
+   *
+   *   Strips any whitespace characters from every data nodes individually.
+   *
+   * Traps:
+   * - In order to work properly, this function expects a normalized XML tree
+   *   (no consecutive text nodes, no empty text nodes). If the tree is not
+   *   normalized, the semantics of strip_whitespace is well-defined, but
+   *   the function may not do what is expected. Especially, whitespace is
+   *   not stripped across text nodes. E.g. if the spaces in <A>  </A>
+   *   are stored in two nodes, and ~left:`Strip_seq is demanded,  the
+   *   function will only remove the first space.
+   *)
+
+(****************************** normalization ****************************)
+
+val normalize : 'ext node -> unit
+  (* Normalizes the whole tree such that neither empty data nodes
+   * nor consecutive data nodes exist. Normalization works in-place
+   * and tries to reuse as many nodes as possible.
+   *)
+
+(******************************** validation *****************************)
+
+val validate : 'ext node -> unit
+  (* Validates the whole subtree *)
 
 (******************************* document ********************************)
-
 
 class [ 'ext ] document :
   Pxp_types.collect_warnings ->
@@ -1005,11 +1438,6 @@ class [ 'ext ] document :
        * If a DTD is present, the DTD is included into the internal subset.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
   end
 ;;
 
@@ -1018,6 +1446,30 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.16  2001/06/08 00:12:40  gerd
+ * 	Numerous changes:
+ * 	- Method add_node has been deprecated in favor of
+ * classify_data_node and append_node
+ * 	- keep_always_whitespace_mode has been dropped in favor
+ * of the new Pxp_yacc.config option drop_ignorable_whitespace
+ * 	- create_element_node: accepts the arguments ~att_values
+ * and ~valcheck. The first of them contains the already preprocessed
+ * and normalized attribute values as att_value (and not as string).
+ * The latter may be used to switch off the validation of attribute
+ * lists.
+ * 	- validate_contents, validate_attlist, validate: these
+ * are now the core validation methods
+ * 	New methods:
+ * 	- complement_attlist
+ * 	- improved namespace_manager
+ * 	- delete_nodes, insert_nodes
+ * 	- set_data
+ * 	- set_attributes now official
+ * 	New functions:
+ * 	- strip_whitespace
+ * 	- normalize
+ * 	- validate
+ *
  * Revision 1.15  2001/05/17 21:40:55  gerd
  * 	Changed comments.
  *
