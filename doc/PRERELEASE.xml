@@ -45,7 +45,10 @@ some validation checks have been left out.</p>
 
 	<p>The current pre-release can read files encoded as UTF-8,
 UTF-16 and ISO-8859-1, and it can represent the document internally
-using UTF-8 or ISO-8859-1 strings.</p>
+using UTF-8 or ISO-8859-1 strings. This was only possible 
+because Claudio Sacerdoti Coen  contributed a special lexer preprocessor
+hiding the details of the UTF-8 encoding.
+</p>
       </li>
 
       <li><p><em>Correctness of validation:</em> The well-formedness
