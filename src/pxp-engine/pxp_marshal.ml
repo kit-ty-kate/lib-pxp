@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.8 2001/10/12 21:38:14 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.9 2002/03/10 23:40:30 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -72,47 +72,118 @@ type reconstruction_cmd =
  * - The root node: Start_xxx_node ... End_node
  *)
 
+let id (s:string) = s;;
 
-let subtree_to_cmd_sequence_nohead ?(omit_positions = false) f0 n = 
+exception Interruption
+
+type 'ext job =
+    Marshal_node of 'ext Pxp_document.node 
+  | Marshal_cmd  of reconstruction_cmd
+ (* A job list is the plan that will marshal the rest of the whole
+  * tree
+  *)
+
+
+type jobber =
+    Done
+  | Task of (unit -> jobber)
+
+
+let recode_string ~in_enc ~out_enc =
+    Netconversion.recode_string 
+      ~in_enc
+      ~out_enc
+      ~subst:(fun k -> 
+		failwith ("Pxp_marshal: Cannot recode code point " ^ 
+			  string_of_int k ^ " from encoding " ^ 
+			  Netconversion.string_of_encoding in_enc ^ 
+			  " to encoding " ^ 
+			  Netconversion.string_of_encoding out_enc))
+;;
+
+
+let subtree_to_cmd_sequence_nohead ~omit_positions ~recode write n : jobber = 
+  (* Calls [write] for every command to write. The function [write] may
+   * raise [Interruption] to indicate that the job should be interrupted.
+   * This exception may be ignored, however, so it is necessary to raise
+   * it several times until it can be honoured.
+   * The result value of this function is either [Done] meaning that 
+   * all work is done, or it is [Task f] meaning that the work is interrupted
+   * and may be restarted by executing f() (resulting again in Done or Task).
+   *)
   let m = 100 in
-  let current_array = Array.create m End_node in
-  let current_pos = ref 0 in
-  let f cmd =
+  let current_array = Array.create m End_node in  (* Collects up to [m] cmds *)
+  let current_pos = ref 0 in                      (* next free index *)
+  let write_nobreak cmd =
+    (* Call [write] but ignore interruptions *)
     if !current_pos < Array.length current_array then begin
       current_array.( !current_pos ) <- cmd;
       incr current_pos
     end
     else begin
-      f0 (Cmd_array(Array.copy current_array));
+      ( try
+	  write (Cmd_array(Array.copy current_array))
+	with
+	    Interruption -> ()        (* Ignore here *)
+      );
       current_array.( 0 ) <- cmd;
       current_pos := 1;
     end
   in
+  let breakpoint()=
+    (* Returns [true] if there was an [Interruption] *)
+    if !current_pos = Array.length current_array then begin
+      begin try 
+	write (Cmd_array(Array.copy current_array));
+        current_pos := 0;
+	false
+      with
+	  Interruption ->
+	    current_pos := 0;
+	    true
+      end;
+    end
+    else false
+  in
   let finish() =
-    f0 (Cmd_array(Array.sub current_array 0 !current_pos))
+    try
+      write (Cmd_array(Array.sub current_array 0 !current_pos))
+    with
+	Interruption -> ()        (* Ignore here *)
   in
   let next_ex_number = ref 0 in
   let ex_hash = Hashtbl.create 100 in
   let next_att_number = ref 0 in
   let att_hash = Hashtbl.create 100 in
-  let rec do_subtree n = (
+  let rec do_subtree n : 'ext job list = (
+    (* Marshals some information, and returns the rest of what is to do
+     * as job list
+     *)
     match n # node_type with
 	T_data ->
-	  f (Start_data_node (n#data));
-	  f End_node;
+	  write_nobreak (Start_data_node (recode(n#data)));
+	  write_nobreak End_node;
+	  []
       | T_element eltype ->
+	  let eltype = recode eltype in
 	  let pos = get_position n in
 	  let atts =
 	    (* remove all Implied_value; use att_hash *)
 	    List.map
 	      (fun (name,a) ->
+		 let name = recode name in
+		 let a = match a with
+		     Implied_value -> a
+		   | Value s -> Value(recode s)
+		   | Valuelist l -> Valuelist(List.map recode l)
+		 in
 		 try (Hashtbl.find att_hash name, a)
 		 with
 		     Not_found ->
 		       let nr = !next_att_number in
 		       incr next_att_number;
 		       Hashtbl.add att_hash name nr;
-		       f (Declare_attribute(nr, name));
+		       write_nobreak (Declare_attribute(nr, name));
 		       (nr, a)
 	      )
 	      (List.filter 
@@ -128,32 +199,37 @@ let subtree_to_cmd_sequence_nohead ?(omit_positions = false) f0 n =
 		  let nr = !next_ex_number in
 		  incr next_ex_number;
 		  Hashtbl.add ex_hash eltype nr;
-		  f (Declare_element_exemplar(nr,eltype));
+		  write_nobreak (Declare_element_exemplar(nr,eltype));
 		  nr
 	  in
-	  f (Start_element_node (pos, ex_nr, atts));
+	  write_nobreak (Start_element_node (pos, ex_nr, atts));
 	  do_pinstr n;
-	  do_subnodes n;
-	  f End_node;
+	  plan_subnodes n @ [ Marshal_cmd End_node ]
       | T_super_root ->
-	  f (Start_super_root_node (get_position n));
+	  write_nobreak (Start_super_root_node (get_position n));
 	  do_pinstr n;
-	  do_subnodes n;
-	  f End_node;
+	  plan_subnodes n @ [ Marshal_cmd End_node ]
       | T_pinstr target ->
 	  let pos = get_position n in
 	  let l = n # pinstr target in
 	  (match l with
 	       [ pi ] ->
-		 f (Start_pinstr_node (pos, target, pi # value));
-		 f End_node;
+		 write_nobreak (Start_pinstr_node (pos, recode target, recode pi#value));
+		 write_nobreak End_node;
+		 []
 	     | _ ->
 		 assert false
 	  )
       | T_comment ->
 	  let pos = get_position n in
-	  f (Start_comment_node (pos, n # comment));
-	  f End_node;
+	  let comment' =
+	    match n#comment with
+		None -> None
+	      | Some c -> Some(recode c)
+	  in
+	  write_nobreak (Start_comment_node (pos, comment'));
+	  write_nobreak End_node;
+	  []
       | _ ->
 	  assert false
   )
@@ -164,19 +240,19 @@ let subtree_to_cmd_sequence_nohead ?(omit_positions = false) f0 n =
 	 let pinstrs = n # pinstr name in
 	 List.iter
 	   (fun pi ->
-	      f (Add_pinstr (pi # target, pi # value));
+	      write_nobreak (Add_pinstr (recode pi#target, recode pi#value));
 	   )
 	   pinstrs
       )
       names
-  and do_subnodes n =
-    n # iter_nodes do_subtree
+  and plan_subnodes n =
+    List.map (fun sn -> Marshal_node sn) n#sub_nodes
   and get_position n =
     if omit_positions then
       None
     else
       let entity, line, column = n # position in
-      if line = 0 then None else Some (entity,line,column)
+      if line = 0 then None else Some (recode entity,line,column)
   in
   let emit_namespace_mappings () =
     (* TODO: In general, too many mappings are emitted, even mappings 
@@ -189,30 +265,54 @@ let subtree_to_cmd_sequence_nohead ?(omit_positions = false) f0 n =
       mng # iter_namespaces
 	(fun normprefix ->
 	   let uris = Array.of_list (mng # get_uri_list normprefix) in
-	   f (Namespace_mapping (normprefix, uris))
+	   let uris' = Array.map recode uris in
+	   write_nobreak (Namespace_mapping (recode normprefix, uris'))
 	);
       ()
     with
 	Namespace_method_not_applicable _ ->
 	  ()
   in
+  let rec exec_job_list jl =
+    match jl with
+	[] ->
+	  finish(); 
+	  Done
+      | Marshal_cmd cmd :: jl' ->
+	  if breakpoint() then
+	    Task(fun () -> exec_job_list jl)
+	  else begin
+	    write_nobreak cmd;
+	    exec_job_list jl'
+	  end
+      | Marshal_node node :: jl' ->
+	  let plan = do_subtree node in
+	  exec_job_list (plan @ jl')
+  in
   emit_namespace_mappings();
-  do_subtree n;
-  finish()
+  exec_job_list [Marshal_node n]
 ;;
 
 
-let subtree_to_cmd_sequence ?omit_positions f n = 
-  let enc = Netconversion.string_of_encoding (n#encoding :> encoding) in
+let subtree_to_cmd_sequence ?(omit_positions=false) ?enc f n =
+  let enc, recode = match enc with
+      None -> (n#encoding :> encoding), id
+    | Some e -> e, (recode_string 
+	              ~in_enc:(n#encoding :> encoding)
+		      ~out_enc:e)
+  in
+  let encname = Netconversion.string_of_encoding enc in
   let sa = n#dtd#standalone_declaration in
-  f(Head(enc,sa));
-  subtree_to_cmd_sequence_nohead ?omit_positions f n
+  f(Head(encname,sa));
+  let r = subtree_to_cmd_sequence_nohead ~omit_positions ~recode f n in
+  assert(r = Done)
 ;;
 
 
-let subtree_to_channel ?(omit_positions = false) ch n =
+let subtree_to_channel ?(omit_positions = false) ?enc ch n =
   subtree_to_cmd_sequence
     ~omit_positions:omit_positions
+    ?enc
     (fun cmd -> 
        Marshal.to_channel ch cmd [ Marshal.No_sharing ]
     )
@@ -220,7 +320,7 @@ let subtree_to_channel ?(omit_positions = false) ch n =
 ;;
 
 
-let subtree_from_cmd_sequence_nohead f0 dtd spec =
+let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
   let current_array = ref( [| |] ) in
   let current_pos = ref 0 in
   let rec f() =
@@ -238,6 +338,11 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 	| _ ->
 	    c
     end
+  in
+  let recode_pos = 
+    function
+	None -> None
+      | Some (pos_e,pos_l,pos_p) -> Some (recode pos_e,pos_l,pos_p)
   in
   let default = get_data_exemplar spec in
   let eltypes = ref (Array.create 100 ("",default)) in
@@ -273,8 +378,9 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
     let n =
       match first_cmd with
 	  Start_data_node data ->
-	    create_data_node spec dtd data
+	    create_data_node spec dtd (recode data)
 	| Declare_element_exemplar (nr, eltype) ->
+	    let eltype = recode eltype in
 	    if nr > Array.length !eltypes then begin
 	      eltypes := 
 	        Array.append !eltypes (Array.create 100 ("",default));
@@ -290,6 +396,7 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 			      get_element_exemplar spec eltype []);
 	    read_node true (f())
 	| Declare_attribute (nr, name) ->
+	    let name = recode name in
 	    if nr > Array.length !atts then begin
 	      atts := 
 	        Array.append !atts (Array.create 100 "");
@@ -303,6 +410,7 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 	    !atts.(nr) <- name';
 	    read_node true (f())
 	| Start_element_node (pos, nr, a) ->
+	    let pos = recode_pos pos in
 	    let eltype, ex = !eltypes.(nr) in
 (* -- saves 4% time, but questionable approach:
 	    ex # create_element 
@@ -312,7 +420,16 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 	      atts
 *)
 	    let a' =
-	      List.map (fun (nr, v) -> !atts.(nr), v) a in
+	      List.map 
+		(fun (nr, v) -> 
+		   let v' = match v with
+		       Implied_value -> Implied_value
+		     | Value s -> Value(recode s)
+		     | Valuelist l -> Valuelist(List.map recode l)
+		   in
+		   !atts.(nr), v'
+		) 
+		a in
 	    let e =
 	      create_element_node
 	        ~att_values: a'
@@ -323,15 +440,17 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 		[] in
 	    e
 	| Start_super_root_node pos ->
+	    let pos = recode_pos pos in
 	    create_super_root_node ?position:pos spec dtd
 	| Start_comment_node (pos, comment) ->
+	    let pos = recode_pos pos in
 	    (match comment with
 		 Some c ->
 		   create_comment_node
 		   ?position:pos
 		     spec
 		     dtd
-		     c
+		     (recode c)
 	       | None ->
 		   let cn = create_comment_node
 			      ?position:pos
@@ -342,18 +461,20 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 		   cn
 	    )
 	| Start_pinstr_node (pos, target, value) ->
+	    let pos = recode_pos pos in
 	    create_pinstr_node
 	      ?position:pos
 	      spec
 	      dtd
-	      (new proc_instruction target value (dtd # encoding))
+	      (new proc_instruction (recode target) (recode value) (dtd # encoding))
 	| Namespace_mapping (normprefix, uris) ->
+	    let normprefix = recode normprefix in
 	    if enable_mng then begin
-	      let primary_uri = uris.( Array.length uris - 1 ) in
+	      let primary_uri = recode uris.( Array.length uris - 1 ) in
 	      if normprefix <> "xml" then
 		mng # add_namespace normprefix primary_uri;
 	      for i=0 to Array.length uris - 2 do
-		mng # add_uri normprefix uris.(i)
+		mng # add_uri normprefix (recode uris.(i))
 	      done;
 	      mng_found := true;
 	    end;
@@ -376,7 +497,8 @@ let subtree_from_cmd_sequence_nohead f0 dtd spec =
 	    n # add_node ~force:true n';
 	    add()
 	| Add_pinstr(target,value) ->
-	    let pi = new proc_instruction target value (dtd # encoding) in
+	    let pi = new proc_instruction 
+		       (recode target) (recode value) (dtd # encoding) in
 	    n # add_pinstr pi;
 	    add()
 	| End_node ->
@@ -396,15 +518,16 @@ let subtree_from_cmd_sequence f dtd spec =
   match f() with
       Head(enc_s,_) ->
 	let enc = Netconversion.encoding_of_string enc_s in
-	let rep_enc = 
-	  match enc with
-	      (#rep_encoding as x) -> x
-	    | _ -> failwith "Pxp_marshal.subtree_from_cmd_sequence"
+	let recode = 
+	  if (dtd # encoding :> encoding) = enc then
+	    id
+	  else
+	    recode_string 
+	      ~in_enc:enc
+	      ~out_enc:(dtd # encoding :> encoding)
 	in
-	if dtd # encoding <> rep_enc then
-	  failwith "Pxp_marshal.subtree_from_cmd_sequence";
 
-	subtree_from_cmd_sequence_nohead f dtd spec
+	subtree_from_cmd_sequence_nohead ~recode f dtd spec
 
     | _ ->
 	failwith "Pxp_marshal.subtree_from_cmd_sequence"
@@ -424,23 +547,32 @@ let subtree_from_channel ch dtd spec =
 ;;
 
 
-let document_to_cmd_sequence ?(omit_positions = false) f 
+let document_to_cmd_sequence ?(omit_positions = false) ?enc f 
        (doc : 'ext Pxp_document.document) =
-  let enc = Netconversion.string_of_encoding (doc # encoding :> encoding) in
+  let enc = 
+    match enc with
+	None -> (doc # encoding :> encoding)
+      | Some e -> e
+  in
+  let encname = Netconversion.string_of_encoding enc in
+  let recode = recode_string
+		 ~in_enc:(doc # encoding :> encoding)
+		 ~out_enc:enc in
   let sa = doc # dtd # standalone_declaration in
-  f (Head (enc, sa));
+  f (Head (encname, sa));
   f (Document (doc # xml_version));
   let dtd_buffer = Buffer.create 1000 in
-  doc # dtd # write (`Out_buffer dtd_buffer) (doc # encoding :> encoding) false; 
+  doc # dtd # write (`Out_buffer dtd_buffer) enc false; 
   let r = 
     match doc # dtd # root with
 	None -> ""
-      | Some x -> x
+      | Some x -> recode x
   in
   let id =
     match doc # dtd # id with
 	None -> Internal
-      | Some x -> x
+      | Some x -> x   
+	  (* Do not need to recode because DTD IDs are always UTF-8 *)
   in
   f (DTD_string (r,
 		 id,
@@ -449,22 +581,25 @@ let document_to_cmd_sequence ?(omit_positions = false) f
     (fun pi_name ->
        List.iter
 	 (fun pi ->
-	    f (Add_pinstr (pi # target, pi # value))
+	    f (Add_pinstr (recode pi#target, recode pi#value))
 	 )
 	 (doc # pinstr pi_name)
     )
     (doc # pinstr_names);
   f Root;
-  subtree_to_cmd_sequence_nohead
-    ~omit_positions:omit_positions
-    f
-    (doc # root)
+  let r = subtree_to_cmd_sequence_nohead
+	    ~omit_positions
+	    ~recode
+	    f
+	    (doc # root) in
+  assert(r=Done)
 ;;
 
 
-let document_to_channel ?(omit_positions = false) ch doc =
+let document_to_channel ?(omit_positions = false) ?enc ch doc =
   document_to_cmd_sequence
     ~omit_positions:omit_positions
+    ?enc
     (fun cmd -> 
        Marshal.to_channel ch cmd [ Marshal.No_sharing ]
     )
@@ -480,13 +615,14 @@ let document_from_cmd_sequence f config spec =
       | _ -> failwith "Pxp_marshal.document_from_cmd_sequence"
   in
   let enc = Netconversion.encoding_of_string enc_s in
-  let rep_enc =
-    match enc with
-        (#rep_encoding as x) -> x
-      | _ -> failwith "Pxp_marshal.document_from_cmd_sequence"
+  let recode =
+    if enc = (config.encoding :> encoding) then
+      id
+    else
+      recode_string 
+        ~in_enc:enc
+        ~out_enc:(config.encoding :> encoding)
   in
-  if rep_enc <> config.encoding then
-    failwith "Pxp_marshal.document_from_cmd_sequence";
   let cmd1 = f() in
   let xml_version =
     match cmd1 with
@@ -505,16 +641,17 @@ let document_from_cmd_sequence f config spec =
       (Pxp_yacc.from_string 
          ~fixenc:enc
 	 dtd_string) in
-  if root_type <> "" then dtd # set_root root_type;
+  if root_type <> "" then dtd # set_root (recode root_type);
   dtd # set_id id;
   dtd # set_standalone_declaration sa;
-  let doc = new Pxp_document.document config.Pxp_yacc.warner rep_enc in
+  let doc = new Pxp_document.document config.Pxp_yacc.warner config.encoding in
   doc # init_xml_version xml_version;
   let cmd = ref (f()) in
   while !cmd <> Root do
     ( match !cmd with
 	  Add_pinstr(target,value) ->
-	    let pi = new proc_instruction target value rep_enc in
+	    let pi = new proc_instruction 
+		       (recode target) (recode value) config.encoding in
 	    doc # add_pinstr pi
 	| _ ->
 	    failwith "Pxp_marshal.document_from_cmd_sequence"
@@ -523,8 +660,9 @@ let document_from_cmd_sequence f config spec =
   done;
   let root = 
     subtree_from_cmd_sequence_nohead
+      ~recode
       f dtd spec in
-  doc # init_root root root_type;
+  doc # init_root root (recode root_type);
   doc
 ;;
 
@@ -539,12 +677,113 @@ let document_from_channel ch config spec =
       End_of_file ->
 	failwith "Pxp_marshal.document_from_channel"
 ;;
+
+
+let relocate_subtree tree new_dtd new_spec =
+  let remaining_job = ref Done in
+  let available_cmds = Queue.create() in
+
+  let continue() =
+    match !remaining_job with
+	Done -> 
+	  assert false
+      | Task f ->
+	  remaining_job := f()
+  in
+  
+  let encname = Netconversion.string_of_encoding(tree#encoding :> encoding) in
+  let sa = tree#dtd#standalone_declaration in
+  Queue.add (Head(encname,sa)) available_cmds;
+
+  remaining_job :=
+    subtree_to_cmd_sequence_nohead 
+      ~omit_positions:false ~recode:id 
+      (fun cmd ->
+	 Queue.add cmd available_cmds;
+	 raise Interruption
+      )
+      tree;
+
+  let rec next_cmd() =
+    let n_cmd = 
+      try Some(Queue.take available_cmds) with Queue.Empty -> None in
+    match n_cmd with
+	None ->
+	  continue();
+	  assert(ignore(Queue.peek available_cmds); true);
+	  next_cmd()
+      | Some cmd ->
+	  cmd
+  in
+
+  let tree' = 
+    subtree_from_cmd_sequence
+      next_cmd
+      new_dtd
+      new_spec in
+  assert(!remaining_job = Done);
+  tree'
+;;
+
+
+let relocate_document (doc : 'ext document) new_conf new_spec =
+  let recode =
+    recode_string 
+    ~in_enc:(doc # encoding :> encoding)
+    ~out_enc:(new_conf.encoding :> encoding)
+  in
+
+  (* Relocate the DTD: *)
+  let dtd = doc # dtd in
+  let buf = Buffer.create 128 in
+  let enc = (new_conf.encoding :> encoding) in
+  dtd # write (`Out_buffer buf) enc false;
+  let new_dtd = parse_dtd_entity 
+		  new_conf (from_string ~fixenc:enc (Buffer.contents buf)) in
+  (* The following properties of the DTD do not survive a write/parse cycle: *)
+  if dtd # arbitrary_allowed then new_dtd # allow_arbitrary;
+  List.iter
+    (fun eltype -> 
+       if (dtd # element eltype) # arbitrary_allowed then
+	 (new_dtd # element eltype) # allow_arbitrary
+    )
+    (dtd # element_names);
+  new_dtd # set_standalone_declaration (dtd # standalone_declaration);
+  ( match dtd # id with
+	None -> ()
+      | Some id -> new_dtd # set_id id;
+  );
+  ( match dtd # root with
+	None -> ()
+      | Some r -> new_dtd # set_root (recode r)
+  );
+  (* Note: namespace_manager is set according to new_conf *)
+
+  (* Relocate the XML tree: *)
+  let new_root = relocate_subtree doc#root new_dtd new_spec in
+
+  (* Create a new document containing the new DTD and the new XML tree: *)
+  let new_doc = new document new_conf.warner new_conf.encoding in
+  new_doc # init_xml_version (doc # xml_version);
+  let root_name = match new_dtd # root with
+      Some rn -> rn 
+    | None    -> failwith "Pxp_marshal.relocate_document"
+  in
+  new_doc # init_root new_root root_name;
+
+  new_doc
+;;
 	  
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.9  2002/03/10 23:40:30  gerd
+ * 	It is now possible to change the character encoding when
+ * marshalling.
+ * 	New: relocate_subtree, relocate_document.
+ *
  * Revision 1.8  2001/10/12 21:38:14  gerd
  * 	Changes for O'caml 3.03-alpha.
  *

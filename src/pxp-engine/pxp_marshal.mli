@@ -1,14 +1,10 @@
-(* $Id: pxp_marshal.mli,v 1.3 2001/06/08 01:15:47 gerd Exp $
+(* $Id: pxp_marshal.mli,v 1.4 2002/03/10 23:40:30 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 (* TODO: 
  * - namespace_info
- * - new function "relocate" that maps a tree on a second tree, but the
- *   second tree can have a different type for extensions, and a different
- *   namespace manager. (I need some better understanding of how to use
- *   continuations in O'Caml.)
  *)
 
 
@@ -19,12 +15,17 @@
  * 
  * The subtree is converted into a sequence of reconstruction_cmd values
  * which can be marshaled using the standard implementation.
+ *
+ * While the tree is written or read it is possible to change the character
+ * encoding. Furthermore, the namespace prefixes can be changed to other
+ * conventions.
  *)
 
 type reconstruction_cmd
 
 val subtree_to_cmd_sequence : 
       ?omit_positions:bool ->
+      ?enc:Netconversion.encoding ->
       (reconstruction_cmd -> unit) ->
       'ext Pxp_document.node ->
           unit
@@ -40,10 +41,15 @@ val subtree_to_cmd_sequence :
    *
    * ~omit_positions: If true, the position strings of the nodes which contain
    *   line numbers are omitted. Default: false
+   *
+   * ~enc: if passed, the character encoding is changed to this type. If 
+   *   omitted, the written sequence is encoded in the same manner as the
+   *   node tree.
    *)
 
 val subtree_to_channel : 
       ?omit_positions:bool ->
+      ?enc:Netconversion.encoding ->
       out_channel -> 
       'ext Pxp_document.node -> 
           unit
@@ -54,15 +60,21 @@ val subtree_to_channel :
    *
    * ~omit_positions: If true, the position strings of the nodes which contain
    *   line numbers are omitted. Default: false
+   *
+   * ~enc: if passed, the character encoding is changed to this type. If 
+   *   omitted, the written sequence is encoded in the same manner as the
+   *   node tree.
    *)
 
 val document_to_cmd_sequence :
       ?omit_positions:bool ->
+      ?enc:Netconversion.encoding ->
       (reconstruction_cmd -> unit) -> 
       'ext Pxp_document.document ->
 	  unit
 val document_to_channel :
       ?omit_positions:bool ->
+      ?enc:Netconversion.encoding ->
       out_channel ->
       'ext Pxp_document.document ->
 	  unit
@@ -85,6 +97,9 @@ val subtree_from_cmd_sequence :
    *     If you pass an empty namespace_manager, it is guaranteed that
    *   such remapping is not necessary, so the normprefixes are the same
    *   as in the original document.
+   *
+   * The character encoding of the node tree is set to the encoding of the
+   * DTD. If necessary, the read strings are recoded.
    *)
 
 val subtree_from_channel : 
@@ -104,12 +119,52 @@ val document_from_channel :
       Pxp_yacc.config ->
       'ext Pxp_document.spec ->
 	  'ext Pxp_document.document
-  (* The same for documents. *)
+  (* The same for documents. 
+   *
+   * The character encoding of the node tree is set to the encoding of the
+   * configuration. If necessary, the read strings are recoded.
+   *)
+
+val relocate_subtree : 
+  'ext_a Pxp_document.node ->
+  Pxp_dtd.dtd ->
+  'ext_b Pxp_document.spec ->
+    'ext_b Pxp_document.node
+  (* Creates a copy of the passed subtree by marshalling the tree, and
+   * restoring the marshaled tree. The new tree will have the passed DTD
+   * and the passed spec, i.e. this function can _change_ the DTD and the
+   * spec of an existing tree. Note that you can also change the type of
+   * the extensions.
+   * This function is optimized, and works block by block in order to avoid
+   * large temporary values.
+   *)
+
+val relocate_document :
+  'ext_a Pxp_document.document ->
+  Pxp_yacc.config ->
+  'ext_b Pxp_document.spec ->
+    'ext_b Pxp_document.document
+  (* Creates a copy of the passed document by marshalling it, and
+   * restoring the document. The new document will have a copy of the
+   * original DTD, and a copy of the XML tree that will have been created
+   * according to the passed spec. The new configuration is used when
+   * building the new document, so it is possible to change the character
+   * encoding and the namespace management.
+   *
+   * KNOWN BUG: The new DTD is not really a copy, because the entities are
+   * missing. This will be solved when it is possible to copy entities.
+   *)
+
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_marshal.mli,v $
+ * Revision 1.4  2002/03/10 23:40:30  gerd
+ * 	It is now possible to change the character encoding when
+ * marshalling.
+ * 	New: relocate_subtree, relocate_document.
+ *
  * Revision 1.3  2001/06/08 01:15:47  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions
