@@ -42,7 +42,7 @@ RELEASE:
 
 .PHONY: dist
 dist: RELEASE
-	cd ..; gtar czf $(NAME)-$(VERSION).tar.gz --exclude='*/CVS*' --exclude="*~" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
+	cd ..; gtar czf $(NAME)-$(VERSION).tar.gz --exclude='*/CVS*' --exclude="*/*~" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
 
 .PHONY: tag-release
 tag-release: RELEASE
