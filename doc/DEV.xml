@@ -48,10 +48,16 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.0.98.4:</em></p>
+	<p>New support for PUBLIC identifiers in Pxp_reader: The functions
+resolve_public_id_as_file and resolve_public_id_as_string lookup PUBLIC
+identifiers in a catalog (implemented as associative list). However, there
+is still no way to load a catalog from a file.</p>
+      </li>
       <li><p><em>1.0.98.3:</em></p>
 	<p>A single fix (again line numbering) that only applies to the
 ocamlopt version. The symptom was an "array-out-of-bounds" runtime error.
-</o>
+</p>
       </li>
 
       <li><p><em>1.0.98.2:</em></p>
