@@ -1,6 +1,7 @@
 .PHONY: all
 all:
 	$(MAKE) -C canonxml
+	$(MAKE) -C negative
 
 .PHONY: clean
 clean:
