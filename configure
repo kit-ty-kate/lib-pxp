@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# $Id: configure,v 1.14 2002/09/01 00:47:43 gerd Exp $
+# $Id: configure,v 1.15 2002/10/04 20:10:55 gerd Exp $
 
 # defaults:
 with_lex=1
@@ -254,6 +254,7 @@ for enc in $lexlist; do
         pkg="pxp-lex-$enc"
 	echo "Writing gensrc/$pkg/META and Makefile"
 	mkdir -p "gensrc/$pkg"
+	touch "gensrc/$pkg/gen_dir"
 	sed -e "s/@VERSION@/$version/g" \
 	    -e "s/@ENCNAME@/$enc/g" \
 	    gensrc/pxp-lex-pattern/META.in >gensrc/$pkg/META

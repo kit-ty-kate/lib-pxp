@@ -37,9 +37,10 @@ uninstall:
 clean:
 	$(MAKE) -C tools CLEAN
 	$(MAKE) -C src CLEAN
-	for dir in gensrc/pxp-*; do $(MAKE) -C $$dir CLEAN || exit; done
+	for dir in gensrc/pxp-*; do $(MAKE) -C $$dir CLEAN || true; done
 	$(MAKE) -C examples CLEAN
 	$(MAKE) -C rtests CLEAN
+	rm -f .testscript .testout
 
 .PHONY: CLEAN
 CLEAN: clean
@@ -51,7 +52,8 @@ distclean:
 	$(MAKE) -C src distclean
 	$(MAKE) -C examples distclean
 	$(MAKE) -C rtests distclean
-	$(MAKE) -C doc distclean
+	test ! -f doc/Makefile || $(MAKE) -C doc distclean
+	for dir in gensrc/pxp-*; do if [ -f $$dir/gen_dir ]; then rm -rf $$dir; else $(MAKE) -C $$dir distclean; done
 
 .PHONY: RELEASE
 RELEASE:
