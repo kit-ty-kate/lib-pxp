@@ -18,26 +18,28 @@ only with O'Caml 3.00 (the support for 2.04 has been dropped).
 The installation
 procedure defined in the Makefile requires <a
 href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
-package manager, see the file ABOUT-FINDLIB.</footnote>.
+package manager, see the file ABOUT-FINDLIB.</footnote>. &m; may
+now be optionally compiled with support for Alain Frischs patch of
+ocamllex called "wlex".
 </p>
     </sect2>
 
     <sect2><title>Configuration</title>
       <p>
-It is not necessary to configure PXP; but you can switch off the UTF-8
-support by setting the variable
-
-<code>
-UTF8_SUPPORT = no
-</code>
-
-in Makefile.conf. In this case, the UTF-8 modules are not even compiled.
-- By default, the UTF-8 support is enabled.
+<em>Beginning with PXP 1.1 it is necessary to configure the parser!</em>
 </p>
 
       <p>
-Note: Compiling the UTF-8 modules lasts 10 minutes on my 400 Mhz Pentium II;
-if this is too long, you can set UTF8_SUPPORT to "no".</p>
+Configuration is very simple, and in almost all cases it is sufficient
+to do
+<code>
+./configure
+</code>
+in the top level directory of the distribution. It is possible to turn
+some options on or off using the -with-xxx and -without-xxx arguments
+(do ./configure -help for a list).
+</p>
+
     </sect2>
 
     <sect2><title>Compilation</title>
@@ -46,18 +48,15 @@ The Makefile defines the following goals:
 </p>
       <ul>
 	<li>
-	  <p>make all</p>
-	  <p>compiles with the bytecode compiler and creates the files
-pxp_types.cma, pxp_lex_iso88591.cma, pxp_lex_utf8.cma (*), pxp_engine.cma,
-and pxp_utf8.cmo (*). The (*) files are not built if the UTF-8 support
-is switched off.</p>
+	  <p>make all</p> <p>compiles with the bytecode compiler and creates
+various bytecode archives (suffix .cma) and some bytecode objects (suffix .cmo)
+in the directories below src.</p>
 	</li>
 	<li>
 	  <p>make opt</p>
-	  <p>compiles with the native compiler and creates  the files
-pxp_types.cmxa, pxp_lex_iso88591.cmxa, pxp_lex_utf8.cmxa (*), pxp_engine.cmxa,
-and pxp_utf8.cmx (*). The (*) files are not built if the UTF-8 support
-is switched off.</p>
+	  <p>compiles with the native compiler and creates various native
+archives (suffixes .cmxa and .a) and some native objects (suffixes .cmx and .o)
+in the directories below src.</p>
 	</li>
       </ul>
     </sect2>
@@ -69,23 +68,20 @@ The Makefile defines the following goals:</p>
 	<li>
 	  <p>make install</p>
 	  <p>installs the bytecode archives, the interface definitions, and if
-present, the native archives in the default location of <em>findlib</em> as
-package "pxp"
+present, the native archives in the default location of <em>findlib</em>.
+Up to five packages may be installed: pxp, pxp-engine, pxp-lex-iso88591,
+pxp-lex-utf8, pxp-wlex.
 </p>
 	</li>
 	<li>
 	  <p>make uninstall</p>
-	  <p>removes the package "pxp"</p>
-	</li>
-	<li>
-	  <p>make markup-install</p>
-	  <p>installs the Markup compatibility API as package "markup"</p>
-	</li>
-	<li>
-	  <p>make markup-uninstall</p>
-	  <p>removes the package "markup"</p>
+	  <p>removes any of the mentioned packages</p>
 	</li>
       </ul>
+
+<p>Note: Previous versions of PXP had a compatibility API for the
+old "markup" distribution. This API is no longer supported. Upgrading
+to the PXP API is not very difficult.</p>
     </sect2>
 
     <sect2>
@@ -96,10 +92,13 @@ package "pxp"
 ocamlfind ocamlc -package pxp ...
 </code>
 
-By default, the UTF-8 support modules will be linked in. If you do not need
-them, you may define the predicate "pxp_without_utf8", which causes that the
-UTF-8 relevant parts are not linked with your program; the difference in size
-is about 1 MB:
+Using "pxp" includes as much features of the parser as available, i.e.
+everything that has been configured.</p>
+
+<p>By default, the UTF-8 support modules will be linked in (if available). If
+you do not need them, you may define the predicate "pxp_without_utf8", which
+causes that the UTF-8 relevant parts are not linked with your program; the
+difference in size is about 1 MB (unless you have the wlex lexer):
 
 <code>
 ocamlfind ocamlc -package pxp -predicates pxp_without_utf8 ...
@@ -109,24 +108,49 @@ Note that you can also reduce the size of the resulting executable by
 specifying Netstring-related predicates (e.g. netstring_only_iso); see the
 documentation of Netstring.
 </p>
+
+      <p>Alternatively, you can select the installed packages individually.
+For example,
+
+<code>
+ocamlfind ocamlc -package pxp-engine,pxp-lex-iso88591 ...
+</code>
+
+will only use "pxp-engine" (the core package) and the lexical analyzer
+"pxp-lex-iso88591", even if you have installed more PXP packages.</p>
     </sect2>
 
     <sect2>
       <title>Linking with the archives directly</title>
-      <p>If you need UTF-8 support, you must link your program as follows:
 
-<code>
-ocamlc ... pxp_types.cma pxp_lex_iso88591.cma pxp_lex_utf8.cma 
-           pxp_engine.cma pxp_utf8.cmo ...
-</code>
+      <p>The following archives and objects may be used:</p>
+      <ul>
+	<li><p><em>pxp_engine.cma:</em> The core of PXP (always
+needed)</p></li>
+	<li><p><em>pxp_lex_iso88591.cma:</em> The ocamllex-based
+lexical analyzer if you want to internally represent texts as
+ISO-8859-1.</p></li>
+	<li><p><em>pxp_lex_link_iso88591.cmo:</em> Registers
+pxp_lex_iso88591 as lexer.</p></li>
+	<li><p><em>pxp_lex_utf8.cma:</em> The ocamllex-based
+lexical analyzer if you want to internally represent texts as
+UTF-8.</p></li>
+	<li><p><em>pxp_lex_link_utf8.cmo:</em> Registers
+pxp_lex_utf8 as lexer.</p></li>
+	<li><p><em>pxp_wlex.cma:</em> The wlex-based
+lexical analyzer that works for both ISO-8859-1 and UTF-8
+and results in smaller executables (but needs wlex).</p></li>
+	<li><p><em>pxp_wlex_link.cmo:</em> Registers
+pxp_wlex as lexer.</p></li>
+	<li><p><em>pxp_top.cmo:</em> Loading this module into
+the toploop installs several printers for PXP types.</p></li>
+      </ul>
 
-If you do not need UTF-8, the following suffices:
-
-<code>
-ocamlc ... pxp_types.cma pxp_lex_iso88591.cma pxp_engine.cma ...
-</code>
-
-</p>
+<p>Note that you need at least one of the lexical analyzers if you want
+to parse XML texts. You do not need them if your program uses other
+features of PXP but not parsing. The archives containing the lexers are
+only linked into your executable if you also link the corresponding
+"register module".</p>
     </sect2>
 
   </sect1>
@@ -150,7 +174,7 @@ are two solutions:</p>
 the recommended way to solve the problem, as GNU make can process almost
 every Makefile from open source projects, and you will never have problems
 with building software again.</p></li>
-	<li><p>Add the following lines to Makefile.code:
+	<li><p>Add the following lines to Makefile.rules:
 	  <code>
 %.cmx: %.ml
         $(OCAMLOPT) -c $&lt;

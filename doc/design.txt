@@ -1,3 +1,5 @@
+NOTE: The following text is partly out of date, but not fully.
+
 ------------------------------------------------ -*- indented-text -*-
 Some Notes About the Design:
 ----------------------------------------------------------------------

@@ -48,6 +48,36 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.0.99:</em></p>
+	<p>Again a big change. First of all, the directory hierarchy has
+been modified. You find now all installed modules in "src", and all 
+tools in "tools", and so on. The new hierarchy makes it simpler to
+add optional modules.</p>
+	<p>For similar reasons, the package structure has changed, too.
+Instead of one package "pxp", there are now up to five packages:
+"pxp-engine", "pxp-lex-iso88591", "pxp-lex-utf8", "pxp-wlex", "pxp".
+Which packages are selected and compiled depends on the result of the
+"configure" run (which is new, too).</p>
+	<p>The namespace support has been completed. The Pxp_marshal and
+Pxp_codewriter modules can encode/decode namespace information. Namespace
+syntax is now fully checked. The namespace_manager class has been moved
+from Pxp_document to Pxp_dtd, and it is now considered as a new property
+of the DTD. There is a new processing instruction: &lt;?pxp:dtd namespace
+...?&gt; (see EXTENSIONS).</p>
+	<p>More important, some design flaws in Pxp_document have been
+fixed. In previous versions of PXP, it was a bit unclear which methods
+of the "node" classes are actually involved in validation and which not.
+Pxp_document.mli contains a discussion of this issue (and the
+changes in detail).</p>
+	<p>The "node" classes have some new methods, allowing simpler
+in-place modification of node trees.</p>
+	<p>There are now functions in Pxp_document stripping whitespace
+and normalizing trees.</p>
+	<p>The version number of PXP is now 1.0.99, as this version is a
+release candidate. The manual still needs updates, and some of the
+regression tests needs to be fixed. The release of PXP 1.1 is expected
+to happen at the end of June.</p>
+      </li>
       <li><p><em>1.0.98.6:</em></p>
 	<p>This is a bigger change, including an initial implementation of
 namespaces and some cleanup in Pxp_document. In particular, the following

@@ -30,7 +30,7 @@
 entirely in Objective Caml.
 </p>
 
-    <p>PXP is the new name of the parser formerly known as "Markup". 
+    <p>
 PXP means "Polymorphic XML parser" and emphasizes its most useful
 property: that the API is polymorphic and can be configured such that
 different objects are used to store different types of elements.</p>
@@ -153,11 +153,26 @@ root" object which is the parent of the root element. The attributes of
 elements are normally not stored as nodes, but it is possible to get them
 wrapped into nodes.</p>
 	</li>
+	<li><p>The powerful type system of O'Caml makes it possible that
+the parser supports polymorphism based on the element types, i.e. it can
+be configured that the parser selects different classes to represent
+different element types. Note that no generator is needed for this feature.
+</p></li>
 	<li><p>There is also an interface for DTDs; you can parse and access
 sequences of declarations. The declarations are fully represented as recursive
 O'Caml values.
 </p>
 	</li>
+	<li><p>Since PXP 1.1, the parser supports namespaces. This has been
+implemented using a technique called "prefix normalization", i.e. while
+parsing the namespace prefixes are changed (in a configurable way) such that
+they become unique in the whole document (or document domain). This is again
+a solution that is different from other parsers, but it allows a very
+convenient style of processing namespaces while sticking strictly to the
+XML standard. Another advantage of this solution is that DTDs can refer
+to namespaces in a transparent way, i.e. it is possible to validate a
+document against a DTD that uses different namespace prefixes for the
+same namespaces.</p></li>
       </ul>
     </sect2>
 
@@ -194,13 +209,8 @@ The following restrictions apply that are not violations of the standard:
 </p>
       <ul>
 	<li><p>
-The attributes "xml:space", and "xml:lang" are not supported specially.
+The attribute "xml:lang" is not supported specially.
   (The application can do this.)</p></li>
-
-	<li><p>
-The built-in support for SYSTEM and PUBLIC identifiers is limited to
-  local file access. There is no support for catalogs. The parser offers
-  a hook to add missing features.</p></li>
 
 	<li><p>
 It is currently not possible to check for interoperatibility with SGML.
@@ -209,8 +219,6 @@ It is currently not possible to check for interoperatibility with SGML.
 
 <p>The following features are also missing:</p>
       <ul>
-	<li><p>There is no special support for namespaces. (Perhaps in the next release?)</p>
-	</li>
 	<li><p>There is no support for XPATH or XSLT.</p>
 	</li>
       </ul>
@@ -221,6 +229,10 @@ myself or by contributors (who are invited to do so).</p>
     <sect2>
       <title>Recent Changes</title>
       <ul>
+	<li>
+	  <p>Changed in 1.1:</p>
+	  <p>(a long list, still to write)</p>
+	</li>
 	<li>
 	  <p>Changed in 1.0:</p>
 	  <p>Support for document order.</p>
