@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.12 2000/08/18 20:16:25 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.13 2000/08/19 21:30:03 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -680,9 +680,13 @@ doctypedecl():
    * of the external DTD (if any) are put into this DTD object.
    */
   doctype_entid:  Doctype 
-                  Ignore Ignore*
+             ws:  Ignore Ignore*
                   doctypedecl_material (doctype_entid)
     {{ () }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after `DOCTYPE'"))
+	 | _    -> raise(WF_error("Bad DOCTYPE declaration"))
+     }}
 
 
 /* TRICK: 
@@ -726,7 +730,7 @@ doctypedecl_material(doctype_entid):
 	  None -> ()
 	| Some id ->
 	    if not ws then
-	      raise(WF_error("Missing whitespace after `<!DOCTYPE " ^ 
+	      raise(WF_error("Whitespace is missing after `DOCTYPE " ^ 
 			     root_name ^ "'"));
 	    let r' = resolver # clone in
 	    let pobj =
@@ -761,6 +765,11 @@ doctypedecl_material(doctype_entid):
       end;
       dtd # validate
     }}
+  ? {{
+       match !yy_position with
+	   "doctype_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                      -> raise(WF_error("Bad DOCTYPE declaration"))
+    }}
 
 /* Note that there are no keywords for SYSTEM or PUBLIC, as these would
  * be difficult to recognize in the lexical contexts. Because of this, 
@@ -784,9 +793,13 @@ external_id():
 	   | _        -> raise(WF_error("SYSTEM or PUBLIC expected"))
        in
      }}
-  Ignore Ignore*
+  ws:Ignore Ignore*
   r:[followup]()
     {{ r }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after " ^ tok))
+	 | _    -> raise(WF_error("Bad SYSTEM or PUBLIC identifier"))
+    }}
 
 
 system_id():
@@ -796,10 +809,14 @@ system_id():
 
 public_id():
   str1: Unparsed_string 
-        Ignore Ignore*
+    ws: Ignore Ignore*
   str2: Unparsed_string
     {{ check_public_id str1;
        Public(recode_utf8 str1, recode_utf8 str2)
+    }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing between the literals of the PUBLIC identifier"))
+	 | _    -> raise(WF_error("Bad PUBLIC identifier"))
     }}
 
 
@@ -816,6 +833,10 @@ internal_dtd():
     {{ 
       if dtd_begin_entid != dtd_end_entid then
 	raise(Validation_error("Entities not properly nested with internal DTD subset"))
+    }}
+  ? {{ match !yy_position with
+	   "dtd_end_entid" -> raise(WF_error("`]' expected"))
+	 | _               -> raise(WF_error("Bad internal DTD subset"))
     }}
 
 
@@ -839,8 +860,13 @@ declaration():
     {{ () }}
 | attlistdecl()
     {{ () }}
-| entid:Decl_entity Ignore Ignore* entitydecl(entid)
+| entid:Decl_entity ws:Ignore Ignore* e:entitydecl(entid)
     {{ () }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after ENTITY")) 
+	 | "e"  -> raise(WF_error("Name or `%' expected"))
+	 | _    -> raise(WF_error("Bad entity declaration"))
+    }}
 | notationdecl()
     {{ () }}
 | pi: PI
@@ -850,8 +876,12 @@ declaration():
     }}
 | Ignore
     {{ () }}
-| Comment_begin Comment_material* Comment_end
+| Comment_begin Comment_material* ce:Comment_end
     {{ () }}
+  ? {{ match !yy_position with
+	   "ce" -> raise(WF_error("`-->' expected"))
+	 | _    -> raise(WF_error("Bad comment"))
+    }}
 | Begin_entity
   $ {{ (* Set 'p_internal_subset' to 'false' until the matching 'end_entity'
 	* rule is parsed. This allows unrestricted usage of parameter entities
@@ -871,14 +901,18 @@ declaration():
 	 raise(WF_error("Restriction of the internal subset: Conditional sections not allowed"));
      }}
   Ignore*
-  conditional_section()  end_entid:Conditional_end
+  cond:conditional_section()  end_entid:Conditional_end
     {{ (* Check whether Conditional_begin and Conditional_end are in the same
 	* entity. (This restriction is explained in the file SPECS.)
 	*)
        if begin_entid != end_entid then
 	 raise(Validation_error("The first and the last token of conditional sections must be in the same entity (additional restriction of this parser)"));
- }}
-
+    }}
+  ? {{ match !yy_position with
+	   "end_entid" -> raise(WF_error("`>]>' expected"))
+	 | "cond"      -> raise(WF_error("INCLUDE or IGNORE expected"))
+	 | _           -> raise(WF_error("Bad conditional section"))
+    }}
 
 /* The tokens INCLUDE/IGNORE are scanned as names, and the selection of the
  * right parsing rule is dynamic.
@@ -899,7 +933,7 @@ conditional_section():
     }}
   [ parsing_function ] ()  
     {{ () }}
-
+  ? {{ raise(WF_error("Bad conditional section")) }}
 
 included_section():
   Conditional_body declaration()*  
@@ -917,9 +951,9 @@ elementdecl():
   decl_element_entid:      Decl_element 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
      }}
-                           Ignore Ignore*
+  ws1:                     Ignore Ignore*
   name:                    Name 
-                           Ignore Ignore*
+  ws2:                     Ignore Ignore*
   content_model:           contentspec() 
                            Ignore*
   decl_rangle_entid:       Decl_rangle
@@ -943,10 +977,13 @@ elementdecl():
               (* raises Validation_error if el' already has a content model *)
       end
     }}
-
-/* M2Y: TODO: */
-| Decl_element Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2")   -> raise(WF_error("Whitespace is missing"))
+	 | "name"          -> raise(WF_error("The name of the element is expected here"))
+	 | "content_model" -> raise(WF_error("Content model expression expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad element type declaration"))
+    }}
 
 contentspec():
   /* parses a content model and returns it (type content_model_type) */
@@ -958,7 +995,7 @@ contentspec():
     }}
 | entid:Lparen  Ignore*  term:mixed_or_regexp(entid)
     {{ term }}
-
+  ? {{ raise(WF_error("Bad content model expression")) }}
 
 
 /* Many of the following rules have an lparen_entid argument. This is the
@@ -982,8 +1019,6 @@ multiplier():
     {{ Star }}
 | Qmark
     {{ Qmark }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
 
 
 mixed (lparen_entid) :
@@ -996,6 +1031,7 @@ mixed (lparen_entid) :
 	raise (Validation_error "Entities not properly nested with parentheses");
       Mixed (MPCDATA :: rest)
     }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 
 
 mixed_alternatives_top():
@@ -1007,11 +1043,21 @@ mixed_alternatives_top():
     {{ 
        (MChild name :: names), entid
     }}
+  ? {{ match !yy_position with
+	   "name"  -> raise(WF_error("Name expected"))
+	 | "entid" -> raise(WF_error("`)*' expected"))
+	 | _       -> raise(WF_error("Bad content model expression"))
+    }}
 
 
 mixed_alternative() :
   Bar Ignore* name:Name Ignore*
     {{ MChild name }}
+  ? {{ match !yy_position with
+	   "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad content model expression"))
+    }}
+
 
 
 choice_or_seq (lparen_entid):
@@ -1046,8 +1092,7 @@ choice_or_seq (lparen_entid):
 	| Qmark  -> Optional re'
 	| _      -> assert false
     }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 
 choice_or_seq_factor():
   /* Parses "|<subexpr>|...)" or ",<subexpr>,...)", both forms optionally
@@ -1076,6 +1121,7 @@ choice_or_seq_factor():
 	| _       -> raise(WF_error("It is not allowed to mix alternatives and sequences"))
       end
     }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 | Comma Ignore* re:cp() Ignore* factor:choice_or_seq_factor()
     {{
       let (finalmark, subexpr), rparen_entid = factor in
@@ -1085,8 +1131,7 @@ choice_or_seq_factor():
 	| _       -> raise(WF_error("It is not allowed to mix alternatives and sequences"))
       end
     }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 
 cp():
   /* parse either a name, or a parenthesized subexpression "(...)"  */
@@ -1098,8 +1143,10 @@ cp():
 	| Some Qmark -> Optional  (Child name)
 	| _          -> assert false
     }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 | entid:Lparen Ignore* m:choice_or_seq(entid)
     {{ m }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
 
 
 /********************* ATTRIBUTE LIST DECLARATION ***********************/
@@ -1111,7 +1158,7 @@ attlistdecl():
   decl_attlist_entid: Decl_attlist 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
-                      Ignore Ignore*
+  ws1:                Ignore Ignore*
   el_name:            Name 
   ws:                 Ignore? Ignore*
   factor:             attdef_factor()
@@ -1127,7 +1174,7 @@ attlistdecl():
 	      (* This is normally impossible, because the lexer demands 
 	       * some other token between two names.
 	       *)
-	      raise(WF_error("Missing whitespace before `" ^ name ^ "'"));
+	      raise(WF_error("Whitespace is missing before `" ^ name ^ "'"));
 	  | _ -> assert false
       end;
 
@@ -1155,10 +1202,13 @@ attlistdecl():
 	  at_list
       end
     }}
+  ? {{ match !yy_position with
+	   "ws1"     -> raise(WF_error("Whitespace is missing after ATTLIST"))
+	 | "el_name" -> raise(WF_error("The name of the element is expected here"))
+	 | "factor"  -> raise(WF_error("Another attribute name or `>' expected"))
+	 | _         -> raise(WF_error("Bad attribute declaration"))
+    }}
 
-/* M2Y: TODO: */
-| Decl_attlist Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
 
 attdef_factor():
   /* parses a list of triples <name> <type> <default value> and returns the
@@ -1174,19 +1224,28 @@ attdef_factor():
 	  | _ -> assert false
       end;
       (attdef :: attdef_rest), decl_rangle_entid }}
+  ? {{ match !yy_position with
+	 | "factor"  -> raise(WF_error("Another attribute name or `>' expected"))
+	 | _         -> raise(WF_error("Bad attribute declaration"))
+    }}
 | entid:Decl_rangle
     {{ [], entid }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+
 
 attdef():
   /* Parses a single triple */
   name:     Name 
-            Ignore Ignore*
+  ws1:      Ignore Ignore*
   tp:       atttype() 
-            Ignore Ignore*
+  ws2:      Ignore Ignore*
   default:  defaultdecl()
     {{ (name,tp,default) }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2") -> raise(WF_error("Whitespace is missing"))
+	 | "tp"          -> raise(WF_error("Type of attribute or `(' expected"))
+	 | "default"     -> raise(WF_error("#REQUIRED, #IMPLIED, #FIXED or a string literal expected"))
+	 | _             -> raise(WF_error("Bad attribute declaration"))
+    }}
 
 atttype():
   /* Parses an attribute type and returns it as att_type. */
@@ -1211,23 +1270,27 @@ atttype():
 	| "NMTOKENS" -> A_nmtokens
 	| "NOTATION" ->
 	    (match nota with
-		 None   -> raise(WF_error("Error in NOTATION type"))
+		 None   -> raise(WF_error("Error in NOTATION type (perhaps missing whitespace after NOTATION?)"))
 	       | Some n -> n
             )
 	| _          -> raise(WF_error("One of CDATA, ID, IDREF, IDREFS, ENTITY, ENTITIES, NMTOKEN, NMTOKENS, NOTATION, or a subexpression expected"))
     }}
+  ? {{ raise(WF_error("Bad attribute declaration (perhaps missing whitespace after NOTATION)")) }}
 
 |         Lparen 
           Ignore* 
   name:   name_or_nametoken() 
           Ignore* 
   names:  nmtoken_factor()* 
-          Rparen
+  rp:     Rparen
     /* Enumeration */
     {{ A_enum(name :: names) }}
-
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+  ? {{ match !yy_position with
+	   "name"  -> raise(WF_error("Name expected"))
+	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | _       -> raise(WF_error("Bad enumeration type"))
+    }}
 
 
 never():
@@ -1240,25 +1303,39 @@ never():
 
 notation():
          Ignore Ignore*
-         Lparen 
+  lp:    Lparen 
          Ignore*
   name:  Name 
          Ignore* 
   names: notation_factor()* 
-         Rparen
+  rp:    Rparen
     {{ A_notation(name :: names) }}
+  ? {{ match !yy_position with
+	   "lp"    -> raise(WF_error("`(' expected"))
+	 | "name"  -> raise(WF_error("Name expected"))
+	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | _       -> raise(WF_error("Bad NOTATION type"))
+    }}
 
 
 notation_factor():
   /* Parse "|<name>" and return the name */
   Bar Ignore* name:Name Ignore*
     {{ name }}
-
+  ? {{ match !yy_position with
+	   "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad NOTATION type"))
+    }}
 
 nmtoken_factor():
   /* Parse "|<nmtoken>" and return the nmtoken */
   Bar Ignore* n:name_or_nametoken() Ignore*
     {{ n }}
+  ? {{ match !yy_position with
+	   "n" -> raise(WF_error("Nametoken expected"))
+	 | _   -> raise(WF_error("Bad enumeration type"))
+    }}
 
 
 name_or_nametoken():
@@ -1277,12 +1354,15 @@ defaultdecl():
     {{ D_required }}
 | Implied
     {{ D_implied }}
-| Fixed Ignore Ignore* str:Unparsed_string
+| Fixed ws:Ignore Ignore* str:Unparsed_string
     {{ D_fixed (expand_attvalue lexerset dtd str config.warner false) }}
+  ? {{ match !yy_position with
+	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
+	 | "str" -> raise(WF_error("String literal expected"))
+	 | _     -> raise(WF_error("Bad #FIXED default value"))
+    }}
 | str:Unparsed_string
     {{ D_default (expand_attvalue lexerset dtd str config.warner false) }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
 
 
 /**************************** ENTITY DECLARATION ***********************/
@@ -1294,7 +1374,7 @@ entitydecl(decl_entity_entid):
   name:               Name 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
-                      Ignore Ignore* 
+  ws:                 Ignore Ignore* 
   material:           entitydef() 
                       Ignore*
   decl_rangle_entid:  Decl_rangle     
@@ -1323,13 +1403,19 @@ entitydecl(decl_entity_entid):
       in
       dtd # add_gen_entity en extdecl
     }}
+  ? {{ match !yy_position with
+	   "ws"                -> raise(WF_error("Whitespace is missing"))
+	 | "material"          -> raise(WF_error("String literal or identifier expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad entity declaration"))
+    }}
 
 |                     Percent 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
-                      Ignore Ignore* 
+  ws1:                Ignore Ignore* 
   name:               Name 
-                      Ignore Ignore* 
+  ws2:                Ignore Ignore* 
   material:           pedef() 
                       Ignore* 
   decl_rangle_entid:  Decl_rangle
@@ -1359,8 +1445,12 @@ entitydecl(decl_entity_entid):
 
       dtd # add_par_entity en;
     }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2")       -> raise(WF_error("Whitespace is missing"))
+	 | "material"          -> raise(WF_error("String literal or identifier expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad entity declaration"))
+    }}
 
 
 entitydef():
@@ -1379,8 +1469,7 @@ entitydef():
 	  raise(WF_error("Whitespace missing before `NDATA'"));
 	None, Some id, decl 
     }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+
 
 pedef():
   /* parses the definition value of a parameter entity. Returns either:
@@ -1392,22 +1481,23 @@ pedef():
     {{ Some str, None }}
 | id:external_id()
     {{ None, Some id }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
+
 
 ndatadecl():
   /* Parses either NDATA "string" or the empty string; returns Some "string"
    * in the former, None in the latter case.
    */
-  ndata:Name Ignore Ignore* name:Name
+  ndata:Name ws:Ignore Ignore* name:Name
     {{ if ndata = "NDATA" then
 	name
       else
 	raise(WF_error("NDATA expected"))
     }}
-| Begin_entity
-    {{ raise (Validation_error("This entity reference is not allowed here")) }}
-
+  ? {{ match !yy_position with
+	   "ws"   -> raise(WF_error("Whitespace is missing after NDATA"))
+	 | "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad NDATA declaration"))
+    }}
 
 /**************************** NOTATION DECLARATION *******************/
 
@@ -1416,11 +1506,11 @@ notationdecl():
    * dtd object as side-effect
    */
   decl_notation_entid: Decl_notation 
-                       Ignore Ignore*
+  ws1:                 Ignore Ignore*
   name:                Name 
-                       Ignore Ignore*
+  ws2:                 Ignore Ignore*
   sys_or_public:       Name /* SYSTEM or PUBLIC */ 
-                       Ignore Ignore*
+  ws3:                 Ignore Ignore*
   str1:                Unparsed_string 
   ws:                  Ignore? Ignore*
   str2:                Unparsed_string? 
@@ -1448,15 +1538,27 @@ notationdecl():
 		    check_public_id str1;
 		    Public(recode_utf8 str1, recode_utf8 p)
 	      end
-	  | _ -> raise(WF_error("One of PUBLIC or SYSTEM expected"))
+	  | _ -> raise(WF_error("PUBLIC or SYSTEM expected"))
       in
       if extend_dtd then begin
 	let no = new dtd_notation name xid config.encoding in
 	dtd # add_notation no
       end
     }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2"|"ws3") -> raise(WF_error("Whitespace is missing"))
+	 | "name"              -> raise(WF_error("Name expected"))
+	 | "sys_or_public"     -> raise(WF_error("SYSTEM or PUBLIC expected"))
+	 | ("str1"|"str2")     -> raise(WF_error("String literal expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad NOTATION declaration"))
+    }}
 
 /****************************** ELEMENTS **************************/
+
+/* In the following rules, the number of error rules is reduced to
+ * improve the performance of the parser.
+ */
 
 
 contents_start():
@@ -1638,17 +1740,16 @@ start_tag():
 	Stack.push (d, tag_beg_entid) elstack;
 	n_tags_open <- n_tags_open + 1;
       end;
-
+    }}
+  ? {{ match !yy_position with
+	   "attlist"   -> raise(WF_error("Bad attribute list"))
+	 | "emptiness" -> raise(WF_error("`>' or `/>' expected"))
+	 | _           -> raise(WF_error("Bad start tag"))
     }}
 
 
 attribute():
-  /* Parses name="value" 
-   * Returns a pair (empty, list):
-   * - empty is a boolean and true iff the list is ended by "/>"
-   * - list is the list of (name,value) pairs (both strings); the values
-   *   are already expanded
-   */
+  /* Parses name="value"  */
   n:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
     {{ (n,v), ws }}
 
@@ -1783,7 +1884,7 @@ comment():
       in
     }}
   mat: Comment_material*
-  Comment_end
+  ce: Comment_end
     {{
       if config.enable_comment_nodes then begin
 	let comment_text = String.concat "" mat in
@@ -1792,6 +1893,10 @@ comment():
 	wrapper # local_validate();                (* succeeds always   *)
 	self # current # add_node wrapper;
       end
+    }}
+  ? {{ match !yy_position with
+	 | "ce"  -> raise(WF_error("`-->' expected"))
+	 | _     -> raise(WF_error("Bad comment"))
     }}
 
 
@@ -2163,6 +2268,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.13  2000/08/19 21:30:03  gerd
+ * 	Improved the error messages of the parser
+ *
  * Revision 1.12  2000/08/18 20:16:25  gerd
  * 	Implemented that Super root nodes, pinstr nodes and comment
  * nodes are included into the document tree.
