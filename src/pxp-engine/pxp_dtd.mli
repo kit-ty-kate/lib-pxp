@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.15 2001/12/03 23:45:55 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.16 2002/03/10 23:39:28 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -282,6 +282,10 @@ class dtd :
        * DTD like <!DOCTYPE root [ ... ]> is written. If 'not doctype',
        * only the declarations are written (the material within the
        * square brackets).
+       * The entity definitions are not written. However, it is ensured that
+       * the generated string does not contain any reference to an entity.
+       * The reason for the omission of the entites is that there is no
+       * generic way of writing references to external entities.
        *)
 
     method write_ref : Pxp_types.output_stream -> Pxp_types.encoding -> unit
@@ -484,21 +488,55 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
 
 (* ---------------------------------------------------------------------- *)
 
-(* Useful properties of entities: *)
+type source =
+    Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
+  | ExtID of (Pxp_types.ext_id * Pxp_reader.resolver)
+  (* Sources are pairs of (1) names of entities to open, and (2) methods
+   * of opening entities. See Pxp_yacc for more documentation.
+   *)
+
+(* ---------------------------------------------------------------------- *)
+
+(* Useful properties of entities: The following submodule exports all 
+ * stable properties of the entity classes. Please use this module, and
+ * not Pxp_entity to access entities.
+ *)
 
 module Entity : sig
   val get_name : Pxp_entity.entity -> string
       (* Return the name of the entity. *)
 
   val get_full_name : Pxp_entity.entity -> string
-      (* The full name includes the ID, too *)
+      (* The full name includes the ID, too (for diagnostics messages) *)
  
   val get_encoding : Pxp_entity.entity -> Pxp_types.rep_encoding
       (* Return the encoding of the internal representation of the entity *)
 
+  val get_type : Pxp_entity.entity -> 
+                   [ `External | `Internal | `NDATA ]
+      (* Returns the type of the entity. *)
+
   val replacement_text : Pxp_entity.entity -> string
       (* Return the replacement text of the entity. Works for both
        * internal and external entities.
+       *)
+
+  val get_xid : Pxp_entity.entity -> Pxp_types.ext_id option
+      (* Returns the external ID for external and NDATA entities, and None
+       * for internal entities
+       * TRAP: The external ID may be a relative SYSTEM ID, and it is not
+       * known to which base ID the relative ID must be resolved. So the
+       * external ID may be meaningless.
+       *)
+
+  (* TODO: get_resolver - only for external entities. The resolver API should
+   * be extended such that it is possible to retrieve the base URI, if
+   * any
+   *)
+
+  val get_notation : Pxp_entity.entity -> string option
+      (* Returns the notation of NDATA entities, and None for the other
+       * entity types
        *)
 
   val create_internal_entity : 
@@ -510,6 +548,34 @@ module Entity : sig
        * spaces.
        *)
 
+  val create_ndata_entity :
+      name:string -> xid:Pxp_types.ext_id -> notation:string -> dtd -> 
+	Pxp_entity.entity
+      (* Creates an NDATA entity. The name and the notation must be encoded
+       * in the same encoding as the DTD. The external ID must be encoded
+       * as UTF-8 string (like all external IDs).
+       *)
+
+  val create_external_entity :
+      ?doc_entity:bool ->
+      name:string -> xid:Pxp_types.ext_id -> resolver:Pxp_reader.resolver ->
+	dtd ->
+	  Pxp_entity.entity
+      (* Creates a reference to an external entity. The name must be encoded
+       * in the same encoding as the DTD. The external ID must be encoded
+       * as UTF-8 string (like all external IDs).
+       *
+       * ~doc_entity: If true, the entity is a document entity. XML requires
+       *   some additional restrictions for document entities. The default for
+       *   the argument is false.
+       *)
+
+  val from_external_source :
+      ?doc_entity:bool ->
+      name:string -> dtd -> source -> 
+	Pxp_entity.entity
+      (* Creates an external entity that reads from the passed source *)
+
 end
 ;;
 
@@ -519,6 +585,9 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.16  2002/03/10 23:39:28  gerd
+ * 	Extended the Entity module
+ *
  * Revision 1.15  2001/12/03 23:45:55  gerd
  * 	new method [write_ref]
  *

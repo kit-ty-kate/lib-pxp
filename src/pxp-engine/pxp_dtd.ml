@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.20 2001/12/03 23:45:55 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.21 2002/03/10 23:39:28 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1148,15 +1148,39 @@ object (self)
   end
 ;;
 
+type source =
+    Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
+  | ExtID of (ext_id * Pxp_reader.resolver)
+;;
 
 module Entity = struct
   let get_name ent = ent # name
   let get_full_name ent = ent # full_name
   let get_encoding ent = ent # encoding
+  let get_type ent =
+    if ent # is_ndata then `NDATA else
+      try ignore(ent # ext_id); `External with Not_found -> `Internal
   let replacement_text ent = fst(ent # replacement_text)
+  let get_xid ent =
+    try Some(ent # ext_id) with Not_found -> None
+  let get_notation ent =
+    if ent # is_ndata then Some (ent # notation) else None
   let create_internal_entity ~name ~value dtd =
     new internal_entity dtd name (dtd # warner) value false false 
         (dtd # encoding)
+  let create_ndata_entity ~name ~xid ~notation dtd =
+    new ndata_entity name xid notation dtd#encoding
+  let create_external_entity ?(doc_entity = false) ~name ~xid ~resolver dtd =
+    if doc_entity then
+      new document_entity resolver dtd name dtd#warner xid dtd#encoding
+    else
+      new external_entity resolver dtd name dtd#warner xid false dtd#encoding
+  let from_external_source ?doc_entity ~name dtd src =
+    match src with
+	ExtID(xid,resolver) -> 
+	  create_external_entity ?doc_entity ~name ~xid ~resolver dtd
+      | Entity(make,resolver) ->
+	  make dtd  (* resolver ignored *)
 end
 
 
@@ -1164,6 +1188,9 @@ end
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.21  2002/03/10 23:39:28  gerd
+ * 	Extended the Entity module
+ *
  * Revision 1.20  2001/12/03 23:45:55  gerd
  * 	new method [write_ref]
  *
