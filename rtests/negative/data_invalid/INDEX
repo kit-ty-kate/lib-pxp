@@ -65,3 +65,11 @@ Standalone declaration
 069.xml		Externally declared NMTOKENS attributes require normal form
 070.xml		Externally declared elements with regexp content model
 		do not like extra white space
+
+----------------------------------------
+Deterministics models
+----------------------------------------
+
+080.xml		One example
+081.xml		Another example
+
