@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.27 2001/06/30 00:05:12 gerd Exp $
+(* $Id: pxp_document.ml,v 1.28 2001/12/03 23:46:29 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -3682,7 +3682,7 @@ class ['ext] document the_warner enc =
 	  None -> failwith "Pxp_document.document#root: Document has no root element"
 	| Some r -> r
 
-    method write ?default os enc =
+    method write ?default ?(prefer_dtd_reference = false) os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -3691,12 +3691,21 @@ class ['ext] document the_warner enc =
       wms ("<?xml version='1.0' encoding='" ^
 	   Netconversion.string_of_encoding enc ^
 	   "'?>\n");
-      ( match self # dtd # root with
-	    None ->
-	      self # dtd # write os enc false
-	  | Some _ ->
-	      self # dtd # write os enc true
-      );
+
+      begin match dtd with
+	  None -> ()
+	| Some d ->
+	    if prefer_dtd_reference &&
+	      ( match d # id with
+		    Some (External _) -> true
+		  | _ -> false
+	      )
+	    then
+	      d # write_ref os enc
+	    else
+	      d # write os enc true;
+      end;
+
       self # write_pinstr os enc;
       r # write ?default os enc;
       wms "\n";
@@ -3733,6 +3742,9 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.28  2001/12/03 23:46:29  gerd
+ * 	New option ~prefer_dtd_reference for [write].
+ *
  * Revision 1.27  2001/06/30 00:05:12  gerd
  * 	Fix: When checking the type of the root element, namespace
  * rewritings are taken into account.

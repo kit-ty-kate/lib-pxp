@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.22 2001/06/30 00:05:12 gerd Exp $
+(* $Id: pxp_document.mli,v 1.23 2001/12/03 23:46:29 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2429,11 +2429,22 @@ class [ 'ext ] document :
       (* Return all target strings of all PIs. *)
 
     method write : ?default : string ->
+                   ?prefer_dtd_reference : bool ->
                    Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (* Write the document to the passed
        * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
        * If a DTD is present, the DTD is included into the internal subset.
+       *
+       * Option [~default]: Specifies the normprefix that becomes the
+       * default namespace in the output.
+       *
+       * Option [~prefer_dtd_reference]: If true, it is tried to print
+       * the DTD as reference, i.e. with SYSTEM or PUBLIC identifier.
+       * This works only if the DTD has an [External] identifier. If
+       * the DTD cannot printed as reference, it is included as text.
+       * The default is not to try DTD references, i.e. to always include
+       * the DTD as text.
        *)
 
     method dump : Format.formatter -> unit
@@ -2455,6 +2466,9 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.23  2001/12/03 23:46:29  gerd
+ * 	New option ~prefer_dtd_reference for [write].
+ *
  * Revision 1.22  2001/06/30 00:05:12  gerd
  * 	Fix: When checking the type of the root element, namespace
  * rewritings are taken into account.
