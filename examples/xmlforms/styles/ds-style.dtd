@@ -1,0 +1,183 @@
+<?xml vencoding="ISO-8859-1"?>
+<!-- $Id: ds-style.dtd,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+
+<!-- entities describing content models -->
+
+<!ENTITY % vertical.only    "vspace">
+<!ENTITY % horizontal.only  "hspace">
+<!ENTITY % mixed            "vbox|hbox|label|entry|textbox|button">
+
+
+<!-- entities describing attribute type -->
+
+<!ENTITY % att.valign       "(top|bottom|center)">
+<!ENTITY % att.halign       "(left|right|center)">
+
+
+<!ENTITY % default.atts     "bgcolor CDATA   #IMPLIED
+                             fgcolor CDATA   #IMPLIED
+                             font    CDATA   #IMPLIED">
+
+<!-- "bgcolor", "fgcolor", and "font" are attribute applicable to every
+     element. They set the background color, foreground color, resp. the
+     font of the element and all sub elements that do not specifiy another
+     value.
+     Colors: all X windows names are allowed, e.g. "black", "white",
+     "lavenderblush", or "#A0B1C2".
+     Font: again X windows font names
+  -->
+
+
+<!ELEMENT application (mask|sequence)+>
+<!ATTLIST application
+          start IDREF #REQUIRED
+          %default.atts;
+>
+
+<!-- An "application" is the top-level element. The "start" attribute must 
+     contain the name of the mask or mask sequence to start with.
+  -->
+
+
+<!ELEMENT sequence (mask)+>
+<!ATTLIST sequence
+          name ID #REQUIRED
+          %default.atts;
+>
+
+<!-- A "sequence" of masks. In a sequence, you can use the special button
+     actions "list-prev" and "list-next" that go to the previous mask resp.
+     the next mask of the sequence.
+  -->
+
+
+<!ELEMENT mask (%vertical.only;|%horizontal.only;|%mixed;)*>
+<!ATTLIST mask
+          name ID #REQUIRED
+          %default.atts;
+>
+
+<!-- A "mask" contains layout and functional elements of a visible page. -->
+
+
+<!ELEMENT vbox (%vertical.only;|%mixed;)*>
+<!ATTLIST vbox
+          halign %att.halign; "left"
+          %default.atts;
+>
+
+<!-- A "vbox" (vertical box) renders the inner material in vertical direction.
+     The "halign" attribute specifies whether the inner material should be
+     left-aligned, right-aligned, or centered.
+  -->
+
+<!ELEMENT hbox (%horizontal.only;|%mixed;)*>
+<!ATTLIST hbox
+          width CDATA         #IMPLIED
+          halign %att.halign; "left"
+          valign %att.valign; "top"
+          %default.atts;
+>
+
+<!-- An "hbox" (horizontal box) renders the inner material in horizontal
+     direction. The "valign" attribute specifies whether the inner material 
+     should be top-aligned, bottom-aligned, or centered.
+     Normally, the width of an hbox is the sum of its members, but you can
+     also widen a box by specifying the "width" attribute. This is a number
+     with a dimension, e.g. "10.5 cm", "105 mm", "4.13 in". Other dimensions
+     are "pt" (points) and "px" (pixels).
+     If "width" is given, you may also set "halign" (see vbox for possible
+     values).
+  -->
+
+<!ELEMENT vspace EMPTY>
+<!ATTLIST vspace
+          height CDATA      #REQUIRED
+          fill  (yes|no)    "no"
+          %default.atts;
+>
+
+<!-- "vspace" is a vertical space of given "height" (again a number with a 
+     dimension, see hbox). 
+     If "fill" is "yes", the space is extended as much as possible.
+  -->
+
+<!ELEMENT hspace EMPTY>
+<!ATTLIST hspace
+          width CDATA       #REQUIRED
+          fill  (yes|no)    "no"
+          %default.atts;
+>
+
+<!-- "hspace" is a horizontal space of given "width" (again a number with a 
+     dimension, see hbox). 
+     If "fill" is "yes", the space is extended as much as possible.
+  -->
+
+<!ELEMENT label (#PCDATA)>
+<!ATTLIST label
+          textwidth CDATA    #IMPLIED
+          halign %att.halign; "left"
+          %default.atts;
+>
+
+<!-- A "label" is a piece of constant text. The text is included as #PCDATA
+     in the element. 
+     You may set "textwidth" to a (dimensionless) number to specify a fixed
+     width. In this case, "halign" determines the horizontal alignment.
+  -->
+
+<!ELEMENT entry (#PCDATA)>
+<!ATTLIST entry
+          textwidth CDATA   #REQUIRED
+          slot      NMTOKEN #REQUIRED
+          %default.atts;
+>
+
+<!-- An "entry" is an editable text line. "textwidth" specifies the width of
+     the visible line (but the contents can be longer). "slot" is the name of
+     a slot that is associated with the element.
+     If the element contains #PCDATA, this is used as default value if 
+     the slot has not yet been filled.
+  -->
+
+<!ELEMENT textbox (#PCDATA)>
+<!ATTLIST textbox
+          textwidth  CDATA   #REQUIRED
+          textheight CDATA   #REQUIRED
+          slot       NMTOKEN #IMPLIED
+          %default.atts;
+>
+
+<!-- A "textbox" is a text box with dimensions "textwidth" and "textheight"
+     (both dimensionless number). 
+     "slot" is the name of a slot that is associated with the element.
+     If the element contains #PCDATA, this is used as default value if 
+     the slot has not yet been filled.
+     If you omit "slot", the #PCDATA is displayed read-only.
+  -->
+
+<!ELEMENT button EMPTY>
+<!ATTLIST button
+          label  CDATA        #REQUIRED
+          action (goto|save|exit|save-exit|list-prev|list-next|
+                  hist-prev|hist-next) "goto"
+          goto   IDREF        #IMPLIED
+          %default.atts;
+>
+
+<!-- A "button" is specified as follows:
+     - "label" is what is written on the button
+     - "action" specifies what to if the button is pressed:
+       - "goto":  jump to another mask or mask sequence whose name is given
+                  in the attribute "goto"
+       - "save":  save the record
+       - "exit":  exit the application
+       - "save-exit": save, then exit
+       - "list-prev": jump to the previous mask in the sequence
+       - "list-next": jump to the next mask in the sequence
+       - "hist-prev": jump to the mask that has actually been the predecessor
+       - "hist-next": jump to the mask that has actually been the successor
+  -->
+
+

@@ -1,0 +1,61 @@
+-----------------------------------------------------------------------------
+xmlforms
+-----------------------------------------------------------------------------
+
+THE IDEA:
+
+This example uses XML for two purposes:
+
+- The "story" and layout of the application is specified in XML
+- The data records are stored in XML
+
+An "application" is a set of "masks" or sequences of masks, and every mask
+is thought as a visible page of the application, containing layout
+elements and functional elements. Layout is specified in TeX-style using
+hboxes, vboxes, hspaces, vspaces. Functional elements are "entries" (input
+box for a string with one line), "textboxes" (input boxes with several
+lines), and buttons.
+
+See styles/ds-style.dtd for the DTD of an application specification, and
+the other xml files in this directory for examples.
+
+The entries and textboxes are bound to "slots", i.e. string variables. If
+the application is started, the slots are read from a file, and if the
+user presses a special "save" button, the slots are stored into this file.
+The format of this data file is again XML; the simplistic DTD can be found
+in styles/ds-object.dtd.
+
+
+THE IMPLEMENTATION:
+
+There is currently a mapping of the specifications to ocamltk, done by a
+program called "xmlforms".
+
+
+HOW TO COMPILE:
+
+It is assumed that "findlib" is present on your system; see ABOUT-FINDLIB
+in the toplevel directory.
+The "markup" module must have been installed.
+
+- "make xmlforms" produces a bytecode executable "xmlforms"
+- "make xmlforms.opt" produces a native executable "xmlforms.opt"
+
+Note that you cannot start the executables directly:
+
+
+HOW TO START AN APPLICATION:
+
+As "xmlforms" is a generic executable, there is a simple mechanism to bind
+it to a specific instance of an application. For example, in the "styles"
+subdirectory there is the application specification "crazy-style.xml". To
+start it, make a symlink called "crazy" referring to the "xmlforms"
+binary, set the environment variable DATASHEETS to the directory where the
+DTDs and XML files can be found, and start "crazy":
+
+	ln -s ../xmlforms crazy
+	DATASHEETS=. crazy my-record.xml
+
+(If you do not set DATASHEETS, a default directory, normally
+"/opt/xmlforms/lib" is used.)
+

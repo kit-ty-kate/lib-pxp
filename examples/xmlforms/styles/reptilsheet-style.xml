@@ -1,0 +1,1011 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!-- $Id: reptilsheet-style.xml,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+
+<!DOCTYPE application SYSTEM "ds-style.dtd" [
+<!ENTITY h1.font  '-*-helvetica-bold-r-*-*-18-*-*-*-*-*-*-*'>
+<!ENTITY h2.font  '-*-helvetica-bold-r-*-*-14-*-*-*-*-*-*-*'>
+<!ENTITY h3.font  '-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY dfl.font '-*-helvetica-medium-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY dfl.bold.font '-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY in.font  '-*-lucidatypewriter-medium-r-*-*-12-*-*-*-*-*-*-*'>
+
+<!ENTITY bg.button 'lightblue'>
+<!ENTITY bg.hilfe  '#E0E0E0'>
+<!ENTITY fg.hilfe  'black'>
+
+<!ENTITY headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">Anwendungskenndaten</label>
+     <vspace width="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace width="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace width="3mm"/>
+   </vbox>'>
+
+<!ENTITY hilfe.headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">Hilfe</label>
+     <vspace width="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace width="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace width="3mm"/>
+   </vbox>'>
+
+<!ENTITY info.headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">Über xmlforms</label>
+     <vspace width="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace width="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace width="3mm"/>
+   </vbox>'>
+
+<!ENTITY footline
+  '<vbox>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace width="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace width="2mm"/>
+     <hbox>
+       <button bgcolor="&bg.button;" label="zurück" action="list-prev"/>
+       <button bgcolor="&bg.button;" label="weiter" action="list-next"/>
+       <hspace width="0pt" fill="yes"/>
+       <button bgcolor="&bg.button;" label="Hauptseite" goto="startseite"/>
+       <hspace width="5mm"/>
+      </hbox>
+   </vbox>'>
+
+<!ENTITY hilfe.footline
+  '<vbox>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace width="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace width="2mm"/>
+     <hbox>
+       <button bgcolor="&bg.button;" label="zurück" action="hist-prev"/>
+       <hspace width="0pt" fill="yes"/>
+      </hbox>
+   </vbox>'>
+
+<!ENTITY info.footline '&hilfe.footline;'>
+
+]>
+
+<!-- ***************************************************************** -->
+<!-- ***************************            ************************** -->
+<!-- *************************** Startseite ************************** -->
+<!-- ***************************            ************************** -->
+<!-- ***************************************************************** -->
+
+<application start="startseite"
+             font="&dfl.font;"
+>
+
+  <mask name="startseite">
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	<vbox font="&h1.font;">
+	  <label>Projekt REPTIL</label>
+	  <label>Anwendungskenndaten</label>
+	</vbox>
+	<vspace width="1cm"/>
+	<vbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Name der Anwendung:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="40" slot="app.name"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Version:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="20" slot="app.version"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Sachgebiet:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="3" slot="app.sachgebiet"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Besitzer:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="40" slot="app.owner"/>
+	  </hbox>
+	</vbox>
+	<vspace width="1cm"/>
+	<hbox>
+	  <hspace width="3cm"/>
+	  <hbox width="8cm">
+	    <vbox>
+	      <button bgcolor="&bg.button;"
+		      label="Kenndaten..."
+		      goto="kenndaten-liste"/>
+	      <button bgcolor="&bg.button;"
+		      label="Speichern"
+		      action="save"/>
+	      <button bgcolor="&bg.button;"
+		      label="Beenden (nicht speichern)"
+		      action="exit"/>
+	    </vbox>
+          </hbox>
+          <hbox>
+            <vbox>
+              <button bgcolor="&bg.button;"
+		      label="Info..."
+		      goto="info"/>
+            </vbox>
+          </hbox>
+	</hbox>
+	<vspace width="0px" fill="yes"/>
+	<hbox>
+	  <hspace width="0px" fill="yes"/>
+	</hbox>
+      </vbox>
+    </hbox>
+  </mask>
+
+  <!-- ***************************************************************** -->
+  <!-- ************************           ****************************** -->
+  <!-- ************************ Kenndaten ****************************** -->
+  <!-- ************************           ****************************** -->
+  <!-- ***************************************************************** -->
+
+  <sequence name="kenndaten-liste">
+    <mask name="verzeichnisse">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Verzeichnisse</label>
+	  <vspace width="3mm"/>
+	  <label>Installations-Verzeichnisse:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="3"
+		     slot="app.dirs.install"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <label>Log-Verzeichnis:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <entry font="&in.font;"
+		   textwidth="70"
+	           slot="app.dirs.log"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <label>Spool-Verzeichnis:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <entry font="&in.font;"
+		   textwidth="70"
+	           slot="app.dirs.spool"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.verzeichnisse"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="datenbereiche">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Datenbereiche</label>
+	  <vspace width="3mm"/>
+	  <label>Verzeichnisse, Speicher- und Archivierungsbedarf:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.dirs.import"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.datenbereiche"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="datenbanken">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Datenbanken</label>
+	  <vspace width="3mm"/>
+	  <label>Namen und Größe der Datenbanken:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.db.specs"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.datenbanken"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="netzverbindungen">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Netzwerk-Verbindungen</label>
+	  <vspace width="3mm"/>
+	  <label>Beschreibung der Verbindungen (zu welchem System, Protokoll) ausser www:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.net.connections"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.netzverbindungen"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="user-ids">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">User-IDs</label>
+	  <vspace width="3mm"/>
+	  <label>Welche User-IDs werden ausser dri, www, informix noch benötigt?</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.sys.users"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.user-ids"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="daemonen">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Daemonen</label>
+	  <vspace width="3mm"/>
+	  <label>Welche zusätzlichen Daemonen müssen gestartet werden?</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="3"
+		     slot="app.sys.daemons.required"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <label>Welche Daemonen werden bereitgestellt; wie heissen die Start/Stopp-Skripte?</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="3"
+		     slot="app.sys.daemons.provided"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.daemonen"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="www-server">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">WWW-Server</label>
+	  <vspace width="3mm"/>
+	  <label>Welche Teile liegen im repsec-Bereich?</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="3"
+		     slot="app.sys.www.repsec"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <label>Weitere besondere Konfigurationen (Plugins etc):</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="3"
+		     slot="app.sys.www.config"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.www-server"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="historie">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Historie</label>
+	  <vspace width="3mm"/>
+	  <hbox>
+	    <label>Beschreibung der </label>
+	    <label font="&dfl.bold.font;">benutzersichtbaren</label>
+	    <label> Änderungen:</label>
+          </hbox>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.historie"/>
+	  </hbox>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <label>(Neue Einträge bitte mit Datum jeweils am Anfang einfügen.)</label>
+          </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.historie"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="doku">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Dokumentation</label>
+	  <vspace width="3mm"/>
+	  <label>URLs oder öffentliche Verzeichnisse mit Dokumentation:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="app.historie"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.doku"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="paketierung">
+      <!-- ************************** HEADER ************************** -->
+      <vspace width="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Paketierung</label>
+	  <vspace width="3mm"/>
+	  <label>Pakete, die zu dieser Anwendung gehören (Langnamen):</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="2"
+		     slot="app.pkg.this"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <label>Pakete, die als installiert vorausgesetzt werden (ausser Basis-Paketen):</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="5"
+		     slot="app.app.required"/>
+	  </hbox>
+	  <vspace width="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Hilfe"
+		  goto="hilfe.paketierung"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace width="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+  </sequence>
+
+  <!-- ***************************************************************** -->
+  <!-- *****************************       ***************************** -->
+  <!-- ***************************** Hilfe ***************************** -->
+  <!-- *****************************       ***************************** -->
+  <!-- ***************************************************************** -->
+
+  <mask name="hilfe.verzeichnisse">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Verzeichnisse</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Installations-Verzeichnisse sind...
+Log-Verzeichnis ist...
+Spool-Verzeichnis ist...
+Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr in eine Zeile passt.
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+  <mask name="hilfe.datenbereiche">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Datenbereiche</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Datenbereiche sind...
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+  <mask name="hilfe.datenbanken">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Datenbanken</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Datenbaken kennt jeder...
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+  <mask name="hilfe.netzverbindungen">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Netzwerk-Verbindungen</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Im netz wird man nicht geboren
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+  <mask name="hilfe.user-ids">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">User-IDs</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+
+  <mask name="hilfe.daemonen">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Daemonen</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+
+  <mask name="hilfe.www-server">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">WWW-Server</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+
+  <mask name="hilfe.historie">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Historie</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+
+  <mask name="hilfe.doku">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Dokumentation</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+
+  <mask name="hilfe.paketierung">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&hilfe.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Paketierung</label>
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>Wollen wir wissen!
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &hilfe.footline;
+    </hbox>
+  </mask>
+
+  <!-- ***************************************************************** -->
+  <!-- ***************************************************************** -->
+  <!-- ****************************** Info ***************************** -->
+  <!-- ***************************************************************** -->
+  <!-- ***************************************************************** -->
+
+  <mask name="info">
+    <!-- ************************** HEADER ************************** -->
+    <vspace width="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&info.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<vspace width="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+><![CDATA["xmlforms" ist ein Programm, dass sich doch sehr von den anderen, hier
+verfügbaren Programmen unterscheidet. Es benutzt XML zur Konfiguration und zur
+Speicherung der Daten. Es ist in einer ungewöhnlichen Programmiersprache
+verfasst. Es zeigt, dass Kommandozeile und GUI nur einen Tastendruck aus
+einander liegen.
+
+Fangen wir mit dem Hype an: XML. Die Daten, die der Benutzer eingibt, werden
+in einem XML-Format gespeichert. Zum Beispiel sieht solch eine Datei so aus:
+
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<record>
+  <string name='app.name'>reptilsheet</string>
+  <string name='app.version'>1.0</string>
+  <string name='app.sachgebiet'>dri</string>
+  <string name='app.owner'>Gerd Stolpmann</string>
+  ... usw. ...
+</record>
+
+Das ist noch leicht verständlich, <record> fungiert als Klammer für die
+enthaltenen Strings, die mit Start- und End-Tag ausgedrückt werden.
+Interessant ist jetzt, daß man das Format dieser Datei in einer sogenannten
+Document Type Declaration (DTD) spezifieren kann. Für die Daten-Dateien sieht
+die DTD so aus:
+
+<?xml encoding="ISO-8859-1"?>
+
+<!ELEMENT record (string)*>
+
+<!ELEMENT string (#PCDATA)>
+<!ATTLIST string
+          name ID #REQUIRED>
+
+Hier wird festgelegt, dass <record> eine beliebige Anzahl von <string>-Elementen
+enthalten darf, und dass <string> wiederum "#PCDATA" (parsed character data)
+enthält, also Zeichenfolgen, die keine Tags sind. Das <string>-Element hat
+ein Attribut "name", dass verpflichtend angegeben werden muss und vom Typ
+her eine ID ist (dies impliziert, dass die Werte für "name" eindeutig sein
+müssen).
+
+Dass eine XML-Datei einer DTD genügen muss, hat den Vorteil, dass man dadurch
+eine (zwar oft nur grobe) Beschreibung des Formats bereitstellt.
+
+Ebenfalls in XML beschrieben ist das Aussehen der einzelnen Masken; dies
+ist zum Teil an HTML, zum Teil an TeX angelehnt. Wer sich dafür interessiert,
+kann den XML-style auf dem ohio in /opt/xmlforms/lib finden. Hier findet
+man auch die zugehörige DTD.
+
+Das Programm "xmlforms" selbst ist in Objective Caml geschrieben. Hierbei
+handelt es sich um eine Variante von ML, einer Sprache, die es aus den
+Universitäten noch nicht rechts heraus geschafft hat. Die Wurzeln liegen
+in der Künstlichen Intelligenz, und hier insbesondere in typentheoretischen
+Beweiseransätzen (die Paradigmen "propositions as types" und "proofs as
+programs" lassen sich hier zuordnen); tatsächlich ist aber eine allgemein
+verwendbare Sprache entstanden, die sich so charakterisieren lässt:
+
+ML ist streng getypt, d.h. bereits zur Übersetzungszeit werden für alle
+Ausdrücke Typzusicherungen gemacht, die konsistent sein müssen. Dies ist
+soweit aus anderen Sprachen geläufig (Pascal, C, Java,...); anders ist
+jedoch, wie die Typüberprüfung stattfindet. Es ist nicht mehr notwendig,
+Variablen zu deklarieren; stattdessen wird der Typ einer Variablen aus
+seiner Benutzung ermittelt. So kann man z.B. schreiben
+
+	let f x = x + 3
+
+und der Übersetzer schließt daraus, dass zu x eine 3 addiert wird, dass
+x eine Integer-Variable sein muss (geschrieben x : int), und dass die
+Funktion f einen Integer auf einen Integer abbildet (geschrieben
+f : int -> int). Dies funktioniert auch noch mit kompliziertesten Ausdrücken.
+
+Funktionen können polymorph sein. Es kann ja sein, dass eine Variable nur
+"durchgeschleift" wird, ohne dass eine Berechnung mit ihr stattfindet. In
+diesem Fall wird der Typ offen gelassen. Die Identitätsfunktion ist das
+einfachste Beispiel hierfür:
+
+	let id x = x
+
+Hier wird id : 't -> 't getypt (dabei ist 't eine Typvariable), und sowohl
+die Verwendung id 42 als auch id "Eine Zeichenkette" sind in Ordnung.
+
+So richtig interessant wird Polymorphismus erst, wenn man polymorphe
+Datenstrukturen erlaubt. So kann man etwa eine "Liste von irgendwas" wie
+folgt vereinbaren:
+
+	type 't list = Empty | Pair of ('t * 't list)
+
+Dies heisst, dass Empty eine Liste ist, dass Pair(x,Empty) als auch
+Pair(x, Pair(y, Empty)), usw. ... Listen sind. Die Typen für die Elemente,
+also x, y, usw., wird wieder offen gelassen; allerdings müssen alle
+Elemente den gleichen Typ haben.
+
+Listen kann man zwar selbst vereinbaren, aber es gibt sie natürlich
+bereits vordefiniert, genau so wie Arrays, Records, Tupel, Hashtabellen,
+Mengen, Stacks, Queues und viele andere.
+
+Zum Schluss noch ein Beispiel: Folgende Funktion ermittelt die Anzahl
+der Elemente einer Liste (beliebigen Typs):
+
+	let rec count_elements =
+	  function
+	    Empty      -> 0
+	  | Pair(x, l) -> 1 + count_elements l
+
+Wie man sieht, sind Rekursionen in ML sehr natürlich.
+
+Mit Objective Caml steht nun eine praxisreife Implementierung zur Verfügung.
+O'Caml wurde im französischen INRIA-Forschungsinstitut von Xavier Leroy
+und Mitarbeitern entwickelt und wird auch dort gepflegt (Xavier Leroy hat,
+so nebenbei, auch die Linux-Threads entwickelt - es ist kein Wunder, dass
+O'Caml multithreadingfähig ist).
+
+In "xmlforms" kommt nun zum ersten Mal mein selbst geschriebener validierender
+XML-Parser zum Einsatz. Diesen habe ich binnen drei Wochen, abends und am
+Wochenende entwickelt, und er steht nun als Freeware allen zur Benutzung
+offen.
+
+Andere, von mir entwickelte O'Caml-Module kann man im WWW abrufen:
+http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml. Es existiert
+ausserdem eine von mir geschriebene Moduldatenbank:
+http://www.npc.de/ocaml/linkdb.
+
+(Gerd)
+]]></textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace width="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &info.footline;
+    </hbox>
+  </mask>
+
+
+</application>

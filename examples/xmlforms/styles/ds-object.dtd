@@ -1,0 +1,8 @@
+<?xml encoding="ISO-8859-1"?>
+<!-- $Id: ds-object.dtd,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+
+<!ELEMENT record (string)*>
+
+<!ELEMENT string (#PCDATA)>
+<!ATTLIST string
+          name ID #REQUIRED>

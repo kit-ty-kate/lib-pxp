@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!-- $Id: address-style.xml,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+
+<!DOCTYPE application SYSTEM "ds-style.dtd" [
+<!ENTITY h1.font  '-*-helvetica-bold-r-*-*-18-*-*-*-*-*-*-*'>
+<!ENTITY h2.font  '-*-helvetica-bold-r-*-*-14-*-*-*-*-*-*-*'>
+<!ENTITY h3.font  '-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY dfl.font '-*-helvetica-medium-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY dfl.bold.font '-*-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*'>
+<!ENTITY in.font  '-*-lucidatypewriter-medium-r-*-*-12-*-*-*-*-*-*-*'>
+
+<!ENTITY bg.button 'lightblue'>
+<!ENTITY bg.hilfe  '#E0E0E0'>
+<!ENTITY fg.hilfe  'black'>
+
+<!ENTITY headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">More about person...</label>
+     <vspace height="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace height="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace height="3mm"/>
+   </vbox>'>
+
+<!ENTITY help.headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">Help</label>
+     <vspace height="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace height="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace height="3mm"/>
+   </vbox>'>
+
+<!ENTITY info.headline
+  '<vbox>
+     <label font="&h2.font;" fgcolor="darkgreen">About xmlforms</label>
+     <vspace height="2mm"/>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace height="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace height="3mm"/>
+   </vbox>'>
+
+<!ENTITY footline
+  '<vbox>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace height="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace height="2mm"/>
+     <hbox>
+       <button bgcolor="&bg.button;" label="Previous" action="list-prev"/>
+       <button bgcolor="&bg.button;" label="Next" action="list-next"/>
+       <hspace width="0pt" fill="yes"/>
+       <button bgcolor="&bg.button;" label="Home" goto="start-page"/>
+       <hspace width="5mm"/>
+      </hbox>
+   </vbox>'>
+
+<!ENTITY help.footline
+  '<vbox>
+     <hbox>
+        <hbox bgcolor="black">
+           <hspace width="18cm"/>
+           <vbox><vspace height="2px"/></vbox>
+        </hbox>
+        <hspace width="5mm"/>
+     </hbox>
+     <vspace height="2mm"/>
+     <hbox>
+       <button bgcolor="&bg.button;" label="Back" action="hist-prev"/>
+       <hspace width="0pt" fill="yes"/>
+      </hbox>
+   </vbox>'>
+
+<!ENTITY info.footline '&help.footline;'>
+
+]>
+
+<!-- ***************************************************************** -->
+<!-- ************************               ************************** -->
+<!-- ************************ Starting page ************************** -->
+<!-- ************************               ************************** -->
+<!-- ***************************************************************** -->
+
+<application start="start-page"
+             font="&dfl.font;"
+>
+
+  <mask name="start-page">
+    <vspace height="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	<vbox font="&h1.font;">
+	  <label>A sample xmlforms application:</label>
+	  <label>Address editor</label>
+	</vbox>
+	<vspace height="1cm"/>
+	<vbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Name:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="40" slot="person.name"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Postal address:</label>
+	    </hbox>
+	    <textbox font="&in.font;" 
+		     textwidth="40" 
+		     textheight="5"
+		     slot="person.address"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Email:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="40" slot="person.email"/>
+	  </hbox>
+	  <hbox>
+	    <hbox width="6cm" halign="right">
+	      <label>Telephone number:</label>
+	    </hbox>
+	    <entry font="&in.font;" textwidth="20" slot="person.phone-number"/>
+	  </hbox>
+	</vbox>
+	<vspace height="1cm"/>
+	<hbox>
+	  <hspace width="3cm"/>
+	  <hbox width="8cm">
+	    <vbox>
+	      <button bgcolor="&bg.button;"
+		      label="More about this person..."
+		      goto="person-list"/>
+	      <button bgcolor="&bg.button;"
+		      label="Save"
+		      action="save"/>
+	    </vbox>
+          </hbox>
+          <hbox>
+            <vbox>
+              <button bgcolor="&bg.button;"
+		      label="Info..."
+		      goto="info"/>
+	      <button bgcolor="&bg.button;"
+		      label="Exit (without saving)"
+		      action="exit"/>
+            </vbox>
+          </hbox>
+	</hbox>
+	<vspace height="0px" fill="yes"/>
+	<hbox>
+	  <hspace width="0px" fill="yes"/>
+	</hbox>
+      </vbox>
+    </hbox>
+  </mask>
+
+  <!-- ***************************************************************** -->
+  <!-- **********************               **************************** -->
+  <!-- ********************** More about... **************************** -->
+  <!-- **********************               **************************** -->
+  <!-- ***************************************************************** -->
+
+  <sequence name="person-list">
+    <mask name="Department">
+      <!-- ************************** HEADER ************************** -->
+      <vspace height="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Department</label>
+	  <vspace height="3mm"/>
+	  <label>The person is working in this department:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <entry font="&in.font;"
+		   textwidth="70"
+		   slot="person.department"/>
+	  </hbox>
+	  <vspace height="3mm"/>
+	  <label>The project he/she is working for:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="5"
+		     slot="person.project"/>
+	  </hbox>
+	  <vspace height="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Help"
+		  goto="help.department"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace height="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+
+    <mask name="business-contacts">
+      <!-- ************************** HEADER ************************** -->
+      <vspace height="5mm"/>
+      <hbox>
+	<hspace width="5mm"/>
+	<vbox>
+	  &headline;
+	  <!-- ************************** CONTENT ************************* -->
+	  <label font="&h1.font;">Business Contacts</label>
+	  <vspace height="3mm"/>
+	  <label>Notes about contacts:</label>
+	  <hbox>
+	    <hspace width="1cm"/>
+	    <textbox font="&in.font;"
+		     textwidth="70"
+		     textheight="10"
+		     slot="person.contacts"/>
+	  </hbox>
+	  <vspace height="3mm"/>
+	  <button bgcolor="&bg.button;"
+		  label="Help"
+		  goto="help.business-contacts"/>
+	  <!-- ************************************************************ -->
+	</vbox>
+      </hbox>
+      <!-- ************************** FOOTER ************************** -->
+      <vspace height="0px" fill="yes"/>
+      <hbox>
+	<hspace width="5mm"/>
+	&footline;
+      </hbox>
+    </mask>
+
+  </sequence>
+
+  <!-- ***************************************************************** -->
+  <!-- *****************************       ***************************** -->
+  <!-- ***************************** Help  ***************************** -->
+  <!-- *****************************       ***************************** -->
+  <!-- ***************************************************************** -->
+
+  <mask name="help.department">
+    <!-- ************************** HEADER ************************** -->
+    <vspace height="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&help.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Department</label>
+	<vspace height="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>The help system should be designed to help you filling out your form, but
+writing help texts is so stupid...
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace height="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &help.footline;
+    </hbox>
+  </mask>
+
+  <mask name="help.business-contacts">
+    <!-- ************************** HEADER ************************** -->
+    <vspace height="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&help.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<label font="&h1.font;">Business Contacts</label>
+	<vspace height="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+>It is often helpful to remember the last telephone and/or email contacts
+quickly.
+</textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace height="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &help.footline;
+    </hbox>
+  </mask>
+
+  <!-- ***************************************************************** -->
+  <!-- ***************************************************************** -->
+  <!-- ****************************** Info ***************************** -->
+  <!-- ***************************************************************** -->
+  <!-- ***************************************************************** -->
+
+  <mask name="info">
+    <!-- ************************** HEADER ************************** -->
+    <vspace height="5mm"/>
+    <hbox>
+      <hspace width="5mm"/>
+      <vbox>
+	&info.headline;
+	<!-- ************************** CONTENT ************************* -->
+	<vspace height="3mm"/>
+        <textbox fgcolor="&fg.hilfe;"
+		 bgcolor="&bg.hilfe;"
+		 textheight="15"
+		 textwidth="70"
+><![CDATA[About "xmlforms":
+Version <unknown>,
+written by Gerd Stolpmann
+
+Contact: Gerd.Stolpmann@darmstadt.netsurf.de
+]]></textbox>
+	<!-- ************************************************************ -->
+      </vbox>
+    </hbox>
+    <!-- ************************** FOOTER ************************** -->
+    <vspace height="0px" fill="yes"/>
+    <hbox>
+      <hspace width="5mm"/>
+      &info.footline;
+    </hbox>
+  </mask>
+
+
+</application>

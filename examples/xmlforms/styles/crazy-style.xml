@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE application SYSTEM "./ds-style.dtd" [
+  <!ENTITY vz '<button label="&lt;" action="list-prev"/>
+               <button label=">" action="list-next"/>
+               <button label="exit" goto="first"/>'>
+]
+>
+
+<application start="first">
+<mask name="first" font="-*-lucidatypewriter-medium-r-*-*-12-*-*-*-*-*-*-*">
+<vbox halign="right">
+<label>one</label>
+<label bgcolor="green">Number two</label>
+<hbox width="4cm" halign="center" valign="bottom" bgcolor="red" fgcolor="blue">
+<vbox>
+<label>a1</label>
+<vspace height="1cm"/>
+<label>a2</label>
+</vbox>
+<label>b
+c</label>
+</hbox>
+</vbox>
+<textbox slot="q" textheight="5" textwidth="60">A Text</textbox>
+<button label="sequence" goto="seq"/>
+<label bgcolor="blue">A very long label, bigger than the box</label>
+<vspace height="2cm" fill="yes"/>
+<hbox><button label="left" bgcolor="yellow" goto="second"/><hspace width="0px" fill="yes"/>
+<entry slot="a" textwidth="10" fgcolor="red">right</entry>
+</hbox>
+</mask>
+
+<mask name="second">
+<button label="main" bgcolor="yellow" goto="first"/>
+<button label="previous" action="hist-prev"/>
+<button label="save" action="save"/>
+</mask>
+
+<sequence name="seq">
+<mask name="n1">
+<label>n1</label>
+&vz;
+</mask>
+<mask name="n2">
+<label>n2</label>
+&vz;
+</mask>
+<mask name="n3">
+<label>n3</label>
+&vz;
+</mask>
+<mask name="n4">
+<label>n4</label>
+&vz;
+</mask>
+<mask name="n5">
+<label>n5</label>
+&vz;
+</mask>
+</sequence>
+
+</application>

@@ -1,0 +1,57 @@
+#----------------------------------------------------------------------
+# specific rules for this package:
+
+OBJECTS  = ds_context.cmo ds_style.cmo
+XOBJECTS = $(OBJECTS:.cmo=.cmx)
+ARCHIVE  = xmlforms.cma
+XARCHIVE = xmlforms.cmxa
+NAME     = xmlforms
+REQUIRES = camltk str markup
+
+xmlforms: $(ARCHIVE) ds_app.cmo
+	ocamlfind ocamlc -o xmlforms -custom -package "$(REQUIRES)" \
+		-linkpkg $(ARCHIVE) ds_app.cmo 
+
+xmlform.opt: $(XARCHIVE) ds_app.cmx
+	ocamlfind ocamlopt -o xmlforms.opt -custom -package "$(REQUIRES)" \
+		-linkpkg $(XARCHIVE) ds_app.cmx
+
+$(ARCHIVE): $(OBJECTS)
+	$(OCAMLC) -a -o $(ARCHIVE) $(OBJECTS)
+
+$(XARCHIVE): $(XOBJECTS)
+	$(OCAMLOPT) -a -o $(XARCHIVE) $(XOBJECTS)
+
+#----------------------------------------------------------------------
+# general rules:
+
+OPTIONS   =
+OCAMLC    = ocamlc -g $(OPTIONS) $(ROPTIONS)
+OCAMLOPT  = ocamlopt -p $(OPTIONS) $(ROPTIONS)
+OCAMLDEP  = ocamldep $(OPTIONS)
+OCAMLFIND = ocamlfind
+
+depend: *.ml *.mli 
+	$(OCAMLDEP) *.ml *.mli >depend
+
+depend.pkg: Makefile
+	$(OCAMLFIND) use -p ROPTIONS= $(REQUIRES) >depend.pkg
+
+.SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+
+.ml.cmx:
+	$(OCAMLOPT) -c $<
+
+.ml.cmo:
+	$(OCAMLC) -c $<
+
+.mli.cmi:
+	$(OCAMLC) -c $<
+
+.mll.ml:
+	ocamllex $<
+
+*.mli:
+
+include depend
+include depend.pkg
