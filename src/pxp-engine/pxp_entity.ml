@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.19 2002/08/05 22:33:33 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.20 2002/08/31 23:23:43 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -82,9 +82,7 @@ type 'entity entity_variables =
       mutable lexerset_scan_content : Lexing.lexbuf -> (token * lexers);
       mutable lexerset_scan_within_tag : Lexing.lexbuf -> (token * lexers);
       mutable lexerset_scan_declaration : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_decl_comment : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_content_comment : Lexing.lexbuf -> (token * lexers);
-      mutable lexerset_scan_document_comment : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_comment : Lexing.lexbuf -> lexers -> (token * lexers);
       mutable lexerset_scan_tag_eb : Lexing.lexbuf -> (token * lexers);
       mutable lexerset_scan_tag_eb_att : Lexing.lexbuf -> bool -> (token * lexers);
       mutable lexbuf : Lexing.lexbuf;
@@ -155,9 +153,7 @@ let make_variables the_dtd the_name the_warner init_encoding =
     lexerset_scan_content          = ls.scan_content;
     lexerset_scan_within_tag       = ls.scan_within_tag;
     lexerset_scan_declaration      = ls.scan_declaration;
-    lexerset_scan_decl_comment     = ls.scan_decl_comment;
-    lexerset_scan_content_comment  = ls.scan_content_comment;
-    lexerset_scan_document_comment = ls.scan_document_comment;
+    lexerset_scan_comment          = ls.scan_comment;
     lexerset_scan_tag_eb           = ls.scan_tag_eb;
     lexerset_scan_tag_eb_att       = ls.scan_tag_eb_att;
     
@@ -407,18 +403,14 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 		                      )
 		| Declaration      -> update_fn := update_other_lines;
                                       v.lexerset_scan_declaration v.lexbuf
-		| Content_comment  -> update_fn := update_other_lines;
-                                      v.lexerset_scan_content_comment v.lexbuf
-		| Decl_comment     -> update_fn := update_other_lines;
-                                      v.lexerset_scan_decl_comment v.lexbuf
-		| Document_comment -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document_comment v.lexbuf
+		| Comment flw_id   -> update_fn := update_other_lines;
+		                      v.lexerset_scan_comment v.lexbuf flw_id
 		| Tag_eb           -> update_fn := update_lines_within_tag;
                                       v.lexerset_scan_tag_eb v.lexbuf
 		| Tag_eb_att b     -> (* keep update_content_lines! *)
                                       v.lexerset_scan_tag_eb_att v.lexbuf b
 		| Ignored_section  -> assert false
-  	          (* Ignored_section: only used by method next_ignored_token *)
+  	                           (* only used by method next_ignored_token *)
 		| Closed           -> (Eof, Closed)
 	    in
 
@@ -939,18 +931,28 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
       v.column <- 0;
       v.at_bof <- true;
       (* First check if the first token of 'lex' is <?xml...?> *)
-      begin match v.lexerset.scan_only_xml_decl lex with
-	  PI_xml pl ->
-	    self # process_xmldecl pl
-	| Eof ->
-	    (* This only means that the first token was not <?xml...?>;
-	     * the "Eof" token represents the empty string.
-	     *)
-	    self # process_missing_xmldecl
-	| _ ->
-	    (* Must not happen. *)
-	    assert false
-      end;
+      if v.lexerset.detect_xml_pi lex then begin
+	(* detect_xml_pi scans "<?xml" ws+. Read the rest of the XML
+	 * declaration.
+	 *)
+	match v.lexerset.scan_pi_string lex with
+	    Some pi ->
+	      begin match
+		Pxp_lex_aux.scan_pi ("xml " ^ pi) v.lexerset.scan_xml_pi
+	      with
+		  PI_xml pl ->
+		    self # process_xmldecl pl
+		| _ ->
+		    assert false   (* cannot happen *)
+	      end
+	  | None ->
+	      raise(WF_error("Bad XML declaration"))
+      end
+      else
+	(* This only means that the first token was not <?xml...?>;
+	 * the "Eof" token represents the empty string.
+	 *)
+	self # process_missing_xmldecl;
       (* Then create the replacement text. *)
       let rec scan_and_expand () =
 	match v.lexerset.scan_dtd_string v.lexbuf with
@@ -1282,6 +1284,12 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.20  2002/08/31 23:23:43  gerd
+ * 	Replaced the three comment lexers by only one unified comment
+ * lexer.
+ * 	Improved way of detecting the XML declaration at the beginning
+ * of external files when computing the replacement text.
+ *
  * Revision 1.19  2002/08/05 22:33:33  gerd
  * 	New token LineEnd_att for newline characters inside
  * attribute values (event-based parser).
