@@ -3,6 +3,7 @@
 set -e
 
 (cd reader && ./test_reader)
+(cd reader && ./test_rewritten_reader)
 (cd canonxml && ./run_canonxml)
 (cd write && ./run_write)
 (cd codewriter && ./run_codewriter)
