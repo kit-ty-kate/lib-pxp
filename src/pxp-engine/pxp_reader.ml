@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.4 2000/07/06 23:04:46 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.5 2000/07/08 16:24:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -10,6 +10,7 @@
 
 open Pxp_types;;
 exception Not_competent;;
+exception Not_resolvable of exn;;
 
 class type resolver =
   object
@@ -34,11 +35,16 @@ class virtual resolve_general
 
     val mutable warner = new drop_warnings
 
+    val mutable enc_initialized = false
+    val mutable wrn_initialized = false
+
     method init_rep_encoding e =
-      internal_encoding <- e
+      internal_encoding <- e;
+      enc_initialized <- true;
 
     method init_warner w =
-      warner <- w
+      warner <- w;
+      wrn_initialized <- true;
 
     method rep_encoding = (internal_encoding :> rep_encoding)
 
@@ -86,6 +92,8 @@ class virtual resolve_general
     method virtual close_in : unit
 
     method open_in xid =
+      assert(enc_initialized && wrn_initialized);
+
       encoding <- `Enc_utf8;
       encoding_requested <- false;
       self # init_in xid;         (* may raise Not_competent *)
@@ -206,7 +214,7 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id =
 
     method close_in =
       match current_channel with
-	  None -> failwith "Pxp_reader.resolve_read_any_channel # close_in"
+	  None -> ()
 	| Some ch ->
 	    if auto_close then close_in ch;
 	    current_channel <- None
@@ -302,7 +310,7 @@ class resolve_read_any_string ~string_of_id =
 
     method close_in =
       match current_string with
-	  None -> failwith "Pxp_reader.resolve_read_any_string # close_in"
+	  None -> ()
 	| Some _ ->
 	    current_string <- None
 
@@ -402,7 +410,8 @@ class resolve_read_url_channel
 	(* Get and return the channel: *)
 	channel_of_url abs_url            (* may raise Not_competent *)
       with
-	  Neturl.Malformed_URL -> raise Not_competent
+	  Neturl.Malformed_URL -> raise (Not_resolvable Neturl.Malformed_URL)
+	| Not_competent        -> raise (Not_resolvable Not_found)
 
     method clone =
       let c = 
@@ -474,23 +483,26 @@ class resolve_as_file
       with
 	  Neturl.Malformed_URL -> raise Not_competent
     in
-    match xid with
-	Anonymous          -> raise Not_competent
-      | Public (_,sysname) -> if sysname <> "" then file_url_of_sysname sysname
-                                               else raise Not_competent
-      | System sysname     -> file_url_of_sysname sysname
+    let url =
+      match xid with
+	  Anonymous          -> raise Not_competent
+	| Public (_,sysname) -> if sysname <> "" then file_url_of_sysname sysname
+                                                 else raise Not_competent
+	| System sysname     -> file_url_of_sysname sysname
+    in
+    let scheme =
+      try Neturl.url_scheme url with Not_found -> "file" in
+    let host =
+      try Neturl.url_host url with Not_found -> "" in
+    
+    if scheme <> "file" then raise Not_competent;
+    if host <> "" && host <> "localhost" then raise Not_competent;
+    
+    url
   in
 
   let channel_of_file_url url =
     try
-      let scheme =
-	try Neturl.url_scheme url with Not_found -> "file" in
-      let host =
-	try Neturl.url_host url with Not_found -> "" in
-      
-      if scheme <> "file" then raise Not_competent;
-      if host <> "" && host <> "localhost" then raise Not_competent;
-      
       let path_utf8 =
 	try Neturl.join_path (Neturl.url_path ~encoded:false url)
 	with Not_found -> raise Not_competent
@@ -591,7 +603,7 @@ class combine ?prefer rl =
 
     method close_in =
       match active_resolver with
-	  None   -> failwith "Pxp_reader.combine # close_in"
+	  None   -> ()
 	| Some r -> r # close_in;
 	            active_resolver <- None
 
@@ -624,6 +636,10 @@ class combine ?prefer rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.5  2000/07/08 16:24:56  gerd
+ * 	Introduced the exception 'Not_resolvable' to indicate that
+ * 'combine' should not try the next resolver of the list.
+ *
  * Revision 1.4  2000/07/06 23:04:46  gerd
  * 	Quick fix for 'combine': The active resolver is "prefered",
  * but the other resolvers are also used.

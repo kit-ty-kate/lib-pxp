@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.3 2000/07/06 23:04:46 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.4 2000/07/08 16:24:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -9,6 +9,13 @@ open Pxp_types;;
 exception Not_competent;;
   (* Raised by the 'open_in' method if the object does not know how to 
    * handle the passed external ID.
+   *)
+
+exception Not_resolvable of exn;;
+  (* Indicates that one resolver was competent, but there was an error
+   * while resolving the external ID. The passed exception explains the
+   * reason.
+   * Not_resolvable(Not_found) serves as indicator for an unknown reason.
    *)
 
 
@@ -82,8 +89,9 @@ class type resolver =
      * The method 'close_in' does not require an argument.
      *
      * It is allowed to re-open a resolver after it has been closed. It is
-     * forbidden to open a resolver again while it is open, or to close
-     * a resolver after it has been closed (or before it is opened).
+     * forbidden to open a resolver again while it is open.
+     * It is allowed to close a resolver several times: If 'close_in' is
+     * invoked while the resolver is already closed, nothing happens.
      *
      * The method 'open_in' may raise Not_competent to indicate that this
      * resolver is not able to open this type of IDs.
@@ -206,7 +214,10 @@ class resolve_read_url_channel :
    *
    * Both functions, ~url_of_id and ~channel_of_url, can raise
    * Not_competent to indicate that the object is not able to read from
-   * the specified resource.
+   * the specified resource. However, there is a difference: A Not_competent
+   * from ~url_of_id is left as it is, but a Not_competent from ~channel_of_url
+   * is converted to Not_resolvable. So only ~url_of_id decides which URLs
+   * are accepted by the resolver and which not.
    *
    * The function ~channel_of_url must return None as encoding if the default 
    * mechanism to recognize the encoding should be used. It must return
@@ -326,6 +337,10 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
  * History:
  * 
  * $Log: pxp_reader.mli,v $
+ * Revision 1.4  2000/07/08 16:24:56  gerd
+ * 	Introduced the exception 'Not_resolvable' to indicate that
+ * 'combine' should not try the next resolver of the list.
+ *
  * Revision 1.3  2000/07/06 23:04:46  gerd
  * 	Quick fix for 'combine': The active resolver is "prefered",
  * but the other resolvers are also used.
