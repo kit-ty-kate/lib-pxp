@@ -123,6 +123,24 @@ These declarations are applicable even if the XML text uses different prefixes,
 because PXP normalizes any prefixes for namespace1 or namespace2 to the
 preferred prefixes "x" and "y".
 </p>
+
+<p>Regarding the "xmlns" attributes, PXP treats them in a very special
+way. It is not only allowed not to declare them in the DTD, such declarations
+would be even not applied to the actual "xmlns" attributes. For example,
+it is not possible to declare a default value for "xmlns:x", as in
+
+<code><![CDATA[
+<ATTLIST ... xmlns:x CDATA "mynamespaceuri">
+]]></code>
+
+The default value would be ignored. Furthermore, it is not possible to
+declare "xmlns" attributes as being required - validation will always
+fail even if the "xmlns" attribute is present.</p>
+
+<p>The model behind this treatment is defined by the "XML information
+set" standard. There are two kinds of attributes: normal attributes,
+and namespace attributes. PXP validates only normal attributes.</p>
+
 </sect1>
 
 </readme>
