@@ -5,18 +5,18 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../..
+OCAMLPATH=../../src
 
 all: compile marshal_simple marshal_namespace
 
 compile: compile.ml
-	ocamlfind ocamlc -g -custom -o compile -package .,str -linkpkg compile.ml
+	ocamlfind ocamlc -g -custom -o compile -package pxp,str -linkpkg compile.ml
 
 marshal_simple: marshal_simple.ml
-	ocamlfind ocamlc -g -custom -o marshal_simple -package .,str -linkpkg marshal_simple.ml
+	ocamlfind ocamlc -g -custom -o marshal_simple -package pxp,str -linkpkg marshal_simple.ml
 
 marshal_namespace: marshal_namespace.ml
-	ocamlfind ocamlc -g -custom -o marshal_namespace -package .,str -linkpkg marshal_namespace.ml
+	ocamlfind ocamlc -g -custom -o marshal_namespace -package pxp,str -linkpkg marshal_namespace.ml
 
 #----------------------------------------------------------------------
 .PHONY: all

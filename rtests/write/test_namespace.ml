@@ -1,4 +1,4 @@
-(* $Id: test_namespace.ml,v 1.1 2001/05/17 22:30:47 gerd Exp $
+(* $Id: test_namespace.ml,v 1.2 2001/06/14 23:34:07 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -38,7 +38,7 @@ let parse_and_write in_filename =
 	  warner = new warner;
 	  enable_pinstr_nodes = true;
 	  enable_super_root_node = true;
-	  enable_namespace_processing = Some(new namespace_manager);
+	  enable_namespace_processing = Some(new Pxp_dtd.namespace_manager);
 	  encoding = `Enc_iso88591;
       }
   in
@@ -86,6 +86,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_namespace.ml,v $
+ * Revision 1.2  2001/06/14 23:34:07  gerd
+ * 	Updated
+ *
  * Revision 1.1  2001/05/17 22:30:47  gerd
  * 	Initial revision.
  *

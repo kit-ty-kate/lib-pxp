@@ -5,11 +5,11 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../..
+OCAMLPATH=../../src
 
 test_reader: test_reader.ml
 	ocamllex minilex.mll
-	ocamlfind ocamlc -custom -o test_reader -package .,unix,threads \
+	ocamlfind ocamlc -custom -o test_reader -package pxp,unix,threads \
 		-linkpkg -thread \
 		-g minilex.ml test_reader.ml
 

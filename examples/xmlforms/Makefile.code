@@ -26,16 +26,13 @@ $(XARCHIVE): $(XOBJECTS)
 # general rules:
 
 OPTIONS   =
-OCAMLC    = ocamlc -g $(OPTIONS) $(ROPTIONS)
-OCAMLOPT  = ocamlopt -p $(OPTIONS) $(ROPTIONS)
+OCAMLC    = ocamlfind ocamlc -g -package "$(REQUIRES)"
+OCAMLOPT  = ocamlfind ocamlopt  -package "$(REQUIRES)"
 OCAMLDEP  = ocamldep $(OPTIONS)
 OCAMLFIND = ocamlfind
 
 depend: *.ml *.mli 
 	$(OCAMLDEP) *.ml *.mli >depend
-
-depend.pkg: Makefile
-	$(OCAMLFIND) use -p ROPTIONS= $(REQUIRES) >depend.pkg
 
 .SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
 
@@ -54,4 +51,3 @@ depend.pkg: Makefile
 *.mli:
 
 include depend
-include depend.pkg

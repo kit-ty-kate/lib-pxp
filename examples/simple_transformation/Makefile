@@ -1,7 +1,7 @@
 all: print sort delcol
 
 print: print.ml
-	ocamlfind ocamlc -o print -package pxp -linkpkg -custom \
+	ocamlfind ocamlc -o print -package pxp -linkpkg -custom -g \
 		-predicates pxp_without_utf8 print.ml
 
 sort: sort.ml

@@ -5,10 +5,10 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../..
+OCAMLPATH=../../src
 
 test_canonxml: test_canonxml.ml
-	ocamlfind ocamlc -g -custom -o test_canonxml -package .,str -linkpkg test_canonxml.ml
+	ocamlfind ocamlc -g -custom -o test_canonxml -package pxp,str -linkpkg test_canonxml.ml
 
 #----------------------------------------------------------------------
 .PHONY: all

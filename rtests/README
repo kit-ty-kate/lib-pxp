@@ -2,8 +2,8 @@
 (Anti) Regression tests
 ----------------------------------------------------------------------
 
-- To build the tests, "markup" must already be compiled in ..
-  Do "make" to start the compilation.
+- To build the tests, PXP must already be compiled.
+  Do "make" to start the compilation of the tests.
 
 - To run the tests:
   ./run

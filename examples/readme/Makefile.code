@@ -3,41 +3,30 @@
 
 OBJECTS  = to_html.cmo to_text.cmo
 XOBJECTS = $(OBJECTS:.cmo=.cmx)
-ARCHIVE  = readme.cma
-XARCHIVE = readme.cmxa
 NAME     = readme
 REQUIRES = str pxp
 
-readme: $(ARCHIVE) main.cmo
+readme: $(OBJECTS) main.cmo
 	ocamlfind ocamlc -o readme -custom -package "$(REQUIRES)" \
-		-linkpkg $(ARCHIVE) main.cmo 
+		-linkpkg $(OBJECTS) main.cmo 
 
 readme.opt: $(XARCHIVE) main.cmx
 	ocamlfind ocamlopt -o readme.opt -custom -package "$(REQUIRES)" \
-		-linkpkg $(XARCHIVE) main.cmx
-
-$(ARCHIVE): $(OBJECTS)
-	$(OCAMLC) -a -o $(ARCHIVE) $(OBJECTS)
-
-$(XARCHIVE): $(XOBJECTS)
-	$(OCAMLOPT) -a -o $(XARCHIVE) $(XOBJECTS)
+		-linkpkg $(XOBJECTS) main.cmx
 
 #----------------------------------------------------------------------
 # general rules:
 
 OPTIONS   =
-OCAMLC    = ocamlc -g $(OPTIONS) $(ROPTIONS)
-OCAMLOPT  = ocamlopt -p $(OPTIONS) $(ROPTIONS)
-OCAMLDEP  = ocamldep $(OPTIONS)
+OCAMLC    = ocamlfind ocamlc -g -package "$(REQUIRES)"
+OCAMLOPT  = ocamlfind ocamlopt  -package "$(REQUIRES)"
+OCAMLDEP  = ocamldep 
 OCAMLFIND = ocamlfind
 
 depend: *.ml *.mli 
 	$(OCAMLDEP) *.ml *.mli >depend
 
-depend.pkg: Makefile
-	$(OCAMLFIND) use -p ROPTIONS= $(REQUIRES) >depend.pkg
-
-.SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+.SUFFIXES: .cmo .cmi .cmx .ml .mli
 
 .ml.cmx:
 	$(OCAMLOPT) -c $<
@@ -48,10 +37,7 @@ depend.pkg: Makefile
 .mli.cmi:
 	$(OCAMLC) -c $<
 
-.mll.ml:
-	ocamllex $<
-
 *.mli:
 
 include depend
-include depend.pkg
+
