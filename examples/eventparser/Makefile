@@ -12,7 +12,7 @@ expr.ml: expr.mly
 
 
 clean:
-	rm -rf *.cmo *.cma exprlex.ml expr.ml
+	rm -rf *.cmi *.cmo *.cma exprlex.ml expr.ml
 
 CLEAN: clean
 
