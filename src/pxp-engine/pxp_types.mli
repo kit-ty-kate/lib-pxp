@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.11 2001/04/22 14:14:41 gerd Exp $
+(* $Id: pxp_types.mli,v 1.12 2001/04/26 23:57:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -146,6 +146,12 @@ exception Undeclared
    * of usage is allowed.
    *)
 
+exception Method_not_applicable of string
+  (* Indicates that a method has been called that is not applicable for
+   * the class.
+   * (New in PXP 1.1)
+   *)
+
 val string_of_exn : exn -> string
   (* Converts a Markup exception into a readable string *)
 
@@ -183,6 +189,13 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.12  2001/04/26 23:57:05  gerd
+ * 	New exception Method_not_applicable. It is raised if there are
+ * classes A and B both conforming to class type C, but A does not implement
+ * a method required by the class type. In this case, invoking the method
+ * in A raises Method_not_applicable.
+ * 	This feature is mainly used in Pxp_document.
+ *
  * Revision 1.11  2001/04/22 14:14:41  gerd
  * 	Updated to support private IDs.
  *

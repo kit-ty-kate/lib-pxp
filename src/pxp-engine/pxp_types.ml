@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.10 2001/04/22 14:14:41 gerd Exp $
+(* $Id: pxp_types.ml,v 1.11 2001/04/26 23:57:04 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -115,6 +115,7 @@ exception At of (string * exn)
 
 exception Undeclared
 
+exception Method_not_applicable of string
 
 let rec string_of_exn x0 =
   match x0 with
@@ -132,6 +133,8 @@ let rec string_of_exn x0 =
         "ERROR: Bad character stream"
     | Undeclared ->
         "INFORMATION: Undeclared"
+    | Method_not_applicable mname ->
+	"INTERNAL ERROR (method `" ^ mname ^ "' not applicable)"
     | Parsing.Parse_error ->
 	"SYNTAX ERROR"
     | _ ->
@@ -278,6 +281,13 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.11  2001/04/26 23:57:04  gerd
+ * 	New exception Method_not_applicable. It is raised if there are
+ * classes A and B both conforming to class type C, but A does not implement
+ * a method required by the class type. In this case, invoking the method
+ * in A raises Method_not_applicable.
+ * 	This feature is mainly used in Pxp_document.
+ *
  * Revision 1.10  2001/04/22 14:14:41  gerd
  * 	Updated to support private IDs.
  *
