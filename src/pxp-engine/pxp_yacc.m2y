@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.16 2000/09/16 22:48:23 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.17 2000/09/21 21:30:46 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -36,6 +36,7 @@ type config =
       idref_pass : bool;
       validate_by_dfa : bool;
       accept_only_deterministic_models : bool;
+      disable_content_validation : bool;
       name_pool : pool;
       enable_name_pool_for_element_types    : bool;
       enable_name_pool_for_attribute_names  : bool;
@@ -1757,9 +1758,11 @@ start_tag():
 	self # current # add_node d
       end;
 
-      if emptiness then
+      if emptiness then begin
 	(* An empty tag like <a/>. *)
-	d # local_validate ~use_dfa:config.validate_by_dfa ()
+	if not config.disable_content_validation then
+	  d # local_validate ~use_dfa:config.validate_by_dfa ()
+      end
       else begin
 	(* A non-empty tag. *)
 	Stack.push (d, tag_beg_entid) elstack;
@@ -1818,7 +1821,8 @@ end_tag():
 	 raise(WF_error("End-tag does not match start-tag"));
        if tag_beg_entid != tag_end_entid then
 	 raise(WF_error("End-tag not in the same entity as the start-tag"));
-       x # local_validate ~use_dfa:config.validate_by_dfa ();
+       if not config.disable_content_validation then 
+	 x # local_validate ~use_dfa:config.validate_by_dfa ();
        
        n_tags_open <- n_tags_open - 1;
        
@@ -1895,7 +1899,6 @@ pi():
 	  let pinstr = new proc_instruction target value config.encoding in
 	  let wrapper = create_pinstr_node 
 			  ?position:position spec dtd pinstr in
-	  wrapper # local_validate();                (* succeeds always   *)
 	  self # current # add_node wrapper;
 	end
 	else
@@ -1926,7 +1929,6 @@ comment():
 	let comment_text = String.concat "" mat in
 	let wrapper = create_comment_node 
 		        ?position:position spec dtd comment_text in
-	wrapper # local_validate();                (* succeeds always   *)
 	self # current # add_node wrapper;
       end
     }}
@@ -2315,6 +2317,7 @@ let default_config =
     idref_pass = false;
     validate_by_dfa = true;
     accept_only_deterministic_models = true;
+    disable_content_validation = false;
     name_pool = make_probabilistic_pool 10;
     enable_name_pool_for_element_types = false;
     enable_name_pool_for_attribute_names = false;
@@ -2345,6 +2348,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.17  2000/09/21 21:30:46  gerd
+ * 	New option: disable_content_validation
+ *
  * Revision 1.16  2000/09/16 22:48:23  gerd
  * 	Failure "Invalid UTF-8 stream" which may raised by wlex-
  * generated code is converted to Malformed_code.

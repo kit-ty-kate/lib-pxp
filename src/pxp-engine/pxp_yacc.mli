@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.8 2000/09/09 16:41:03 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.9 2000/09/21 21:30:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -209,6 +209,17 @@ type config =
       accept_only_deterministic_models : bool;
         (* Whether only deterministic content models are accepted in DTDs. *)
 
+      disable_content_validation : bool;
+        (* When set to 'true', content validation is disabled; however,
+	 * other validation checks remain activated.
+	 * This option is intended to save time when a validated document
+	 * is parsed and it can be assumed that it is valid.
+	 *
+	 * Do not forget to set accept_only_deterministic_models to false
+	 * to save maximum time (or DFAs will be computed which is rather
+	 * expensive).
+	 *)
+
       name_pool : Pxp_types.pool;
       enable_name_pool_for_element_types    : bool;
       enable_name_pool_for_attribute_names  : bool;
@@ -399,6 +410,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.9  2000/09/21 21:30:46  gerd
+ * 	New option: disable_content_validation
+ *
  * Revision 1.8  2000/09/09 16:41:03  gerd
  * 	Effort to reduce the amount of allocated memory: The number of
  * instance variables in document nodes has been miminized; the class
