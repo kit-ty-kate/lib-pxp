@@ -5,7 +5,7 @@ include $(TOP_DIR)/Makefile.rules
 PACKAGES = netstring,ulex,camlp4.quotations,camlp4.macro
 
 OCAMLC_OPTIONS += -syntax camlp4o
-OCAMLC_OPTIONS += -ppopt "$(CAMLP4_LOC)"
+OCAMLC_OPTIONS += $(CAMLP4_LOC)
 
 
 all: pxp_pp.cma

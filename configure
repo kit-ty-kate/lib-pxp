@@ -252,7 +252,7 @@ if ocamlc -c -I +camlp4 tmp.ml >/dev/null 2>/dev/null; then
     camlp4_loc=""
 else
     echo "new style"
-    camlp4_loc="-DOCAML_NEW_LOC"
+    camlp4_loc="-ppopt -DOCAML_NEW_LOC"
 fi
 
 rm -f tmp.*
