@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.3 2000/07/04 22:10:06 gerd Exp $
+(* $Id: pxp_document.ml,v 1.4 2000/07/08 23:04:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -754,6 +754,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	  (* Validity Constraint: Attribute Value Type *)
 	  (* Validity Constraint: Fixed Attribute Default *)
 	  (* Validity Constraint: Standalone Document Declaration (partly) *)
+	  let undeclared_attlist = ref [] in
 	  let new_attlist' =
 	    List.map
 	      (fun (n,v) ->
@@ -791,7 +792,10 @@ class ['ext] element_impl an_ext : ['ext] node =
 		 with
 		     Undeclared ->
 		       (* raised by method "# attribute" *)
-		       n, value_of_attribute lexerset new_dtd n A_cdata v
+                       undeclared_attlist :=
+                         (n, value_of_attribute lexerset new_dtd n A_cdata v) ::
+                         !undeclared_attlist;
+                       n, Implied_value        (* does not matter *)
 	      )
 	      new_attlist in
 	  (* Validity Constraint: Required Attribute *)
@@ -828,7 +832,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      (eltype # attribute_names)
 	  in
 	  dtd <- Some new_dtd;
-	  attributes <- new_attlist'';
+	  attributes <- new_attlist'' @ !undeclared_attlist;
 	with
 	    Undeclared ->
 	      (* The DTD allows arbitrary attributes/contents for this
@@ -1057,6 +1061,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.4  2000/07/08 23:04:06  gerd
+ * 	[Merging 0.2.10:] Bugfix: allow_undeclared_attribute
+ *
  * Revision 1.3  2000/07/04 22:10:06  gerd
  * 	Implemented rev 1.3 of pxp_document.mli in a straight-
  * forward fashion.
