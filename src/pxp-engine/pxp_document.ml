@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.28 2001/12/03 23:46:29 gerd Exp $
+(* $Id: pxp_document.ml,v 1.29 2001/12/15 17:34:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2551,7 +2551,7 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 	if nsdefault <> [] then "" :: prefixes' else prefixes' in
 
       List.iter
-	(fun n -> n # write ~prefixes:prefixes'' ?default os enc)
+	(fun n -> n # write ?prefixes:(Some prefixes'') ?default os enc)
 	(self # sub_nodes);
 
       wms ("</" ^ name' ^ "\n>");
@@ -3742,6 +3742,9 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.29  2001/12/15 17:34:09  gerd
+ * 	Fixes for O'Caml 3.04
+ *
  * Revision 1.28  2001/12/03 23:46:29  gerd
  * 	New option ~prefer_dtd_reference for [write].
  *
