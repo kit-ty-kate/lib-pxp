@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.13 2000/08/19 21:30:03 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.14 2000/08/26 23:23:14 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -195,8 +195,15 @@ let from_file ?system_encoding utf8_filename =
       Sys.getcwd() ^ "/" ^ utf8_filename
   in
 
-  let xid =
-    System ("file://localhost" ^ utf8_abs_filename) in
+  let syntax = { Neturl.ip_url_syntax with Neturl.url_accepts_8bits = true } in
+  let url = Neturl.make_url 
+	      ~scheme:"file" 
+	      ~host:"localhost" 
+	      ~path:(Neturl.split_path utf8_abs_filename) 
+	      syntax
+  in
+
+  let xid = System (Neturl.string_of_url url) in
     
 
   ExtID(xid, r)
@@ -1857,6 +1864,7 @@ pi():
 	 * they are wrapped into T_pinstr nodes.
 	 *)
 	if config.enable_pinstr_nodes then begin
+	  self # save_data;        (* Save outstanding data material first *)
 	  let pinstr = new proc_instruction target value config.encoding in
 	  let wrapper = create_pinstr_node 
 			  ?position:position spec dtd pinstr in
@@ -1887,6 +1895,7 @@ comment():
   ce: Comment_end
     {{
       if config.enable_comment_nodes then begin
+	self # save_data;        (* Save outstanding data material first *)
 	let comment_text = String.concat "" mat in
 	let wrapper = create_comment_node 
 		        ?position:position spec dtd comment_text in
@@ -2268,6 +2277,11 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.14  2000/08/26 23:23:14  gerd
+ * 	Bug: from_file must not interpret the file name as URL path.
+ * 	Bug: When PI and comment nodes are generated, the collected data
+ * material must be saved first.
+ *
  * Revision 1.13  2000/08/19 21:30:03  gerd
  * 	Improved the error messages of the parser
  *
