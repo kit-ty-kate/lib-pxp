@@ -227,6 +227,12 @@ myself or by contributors (who are invited to do so).</p>
     </sect2>
 
     <sect2>
+      <title>Release notes</title>
+      <p>The <a href="&url.pxp-relnotes;">Release Notes</a> describe problems
+and solutions that are detected shortly before or after the release.</p>
+    </sect2>
+
+    <sect2>
       <title>Recent Changes</title>
       <ul>
 	<li>

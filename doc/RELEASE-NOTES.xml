@@ -12,11 +12,9 @@
 
 ]>
 
-<readme title="Release Notes for PXP">
+<readme title="Release Notes for PXP (Last updated:  20-Jul-2001)">
   <sect1>
-    <title>Release Notes for PXP</title>
-    <p>
-<em>Last updated: 20-Jul-2001</em></p>
+    <title>Linker problems</title>
 
     <sect2>
       <title>Assert_failure ("pxp_lexers.ml", 1573, 1585)</title>
@@ -57,7 +55,7 @@ link-time. (.cmx file if ocamlopt is used.)
 	</li>
 	<li><p>Linking with findlib:
 <code>
-ocamlfind -o my_exec ... -package "pxp_engine,pxp_lex_iso88591" -linkpkg
+ocamlfind ocamlc -o my_exec ... -package "pxp_engine,pxp_lex_iso88591" -linkpkg
 </code>
 </p>
 	</li>

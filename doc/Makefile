@@ -15,6 +15,8 @@ readme = readme
 
 installdev = $$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.html
 
+installrel = $$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_rel.html
+
 # ----------------------------------------------------------------------
 # make all
 # make DEV
@@ -41,6 +43,10 @@ EXTENSIONS: EXTENSIONS.xml common.xml config.xml readme.dtd
 DEV: DEV.xml common.xml config.xml readme.dtd
 	$(readme) -text DEV.xml >DEV
 	$(readme) -html DEV.xml >$(installdev)
+
+REL: RELEASE-NOTES.xml common.xml config.xml readme.dtd
+	$(readme) -text RELEASE-NOTES.xml >RELEASE-NOTES
+	$(readme) -html RELEASE-NOTES.xml >$(installrel)
 
 config.xml:
 	touch config.xml
