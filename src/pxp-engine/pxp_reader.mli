@@ -1,8 +1,23 @@
-(* $Id: pxp_reader.mli,v 1.7 2001/04/03 20:22:44 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.8 2001/04/22 14:16:48 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
+
+(* Purpose of this module: The Pxp_reader module allows you to exactly
+ * specify how external identifiers (SYSTEM or PUBLIC) are mapped to
+ * files or channels. This is normally only necessary for advanced
+ * configurations, as the functions from_file, from_channel, and
+ * from_string in Pxp_yacc often suffice.
+ *
+ * There are two ways to use this module. First, you can compose the
+ * desired behaviour by combining several predefined resolver objects
+ * or functions. See the example section at the end of the file.
+ * Second, you can inherit from the classes (or define a resolver class
+ * from scratch). I hope this is seldom necessary as this way is much
+ * more complicated; however it allows you to implement any magic.
+ *)
+
 
 open Pxp_types;;
 
@@ -184,9 +199,10 @@ class resolve_read_this_channel :
 class resolve_read_any_channel :
   ?auto_close:bool ->
   channel_of_id:(ext_id -> (in_channel * encoding option)) ->
+  unit ->
   resolver;;
 
-  (* resolve_read_any_channel f_open:
+  (* resolve_read_any_channel f_open ():
    * This resolver calls the function f_open to open a new channel for
    * the passed ext_id. This function must either return the channel and
    * the encoding, or it must fail with Not_competent.
@@ -202,10 +218,11 @@ class resolve_read_url_channel :
   ?base_url:Neturl.url ->
   ?auto_close:bool ->
   url_of_id:(ext_id -> Neturl.url) ->
-  channel_of_url:(Neturl.url -> (in_channel * encoding option)) ->
+  channel_of_url:(ext_id -> Neturl.url -> (in_channel * encoding option)) ->
+  unit ->
     resolver;;
 
-  (* resolve_read_url_channel url_of_id channel_of_url:
+  (* resolve_read_url_channel url_of_id channel_of_url ():
    *
    * When this resolver gets an ID to read from, it calls the function
    * ~url_of_id to get the corresponding URL. This URL may be a relative
@@ -257,9 +274,9 @@ class resolve_read_this_string :
 
 
 class resolve_read_any_string :
-  string_of_id:(ext_id -> (string * encoding option)) -> resolver;;
+  string_of_id:(ext_id -> (string * encoding option)) -> unit -> resolver;;
 
-  (* resolver_read_any_string f_open:
+  (* resolver_read_any_string f_open ():
    * This resolver calls the function f_open to get the string for
    * the passed ext_id. This function must either return the string and
    * the encoding, or it must fail with Not_competent.
@@ -273,8 +290,8 @@ class resolve_as_file :
   ?file_prefix:[ `Not_recognized | `Allowed | `Required ] ->
   ?host_prefix:[ `Not_recognized | `Allowed | `Required ] ->
   ?system_encoding:encoding ->
-  ?url_of_id:(ext_id -> Neturl.url) ->
-  ?channel_of_url: (Neturl.url -> (in_channel * encoding option)) ->
+  ?map_private_id:  (private_id -> Neturl.url) ->
+  ?open_private_id: (private_id -> in_channel * encoding option) ->
   unit ->
   resolver;;
 
@@ -302,9 +319,14 @@ class resolve_as_file :
    * Option ~system_encoding: Specifies the encoding of file names of
    * the local file system. Default: UTF-8.
    *
-   * Options ~url_of_id, ~channel_of_url: Not for the end user!
+   * Options ~map_private_id and ~open_private_id: These must always be
+   * used together. They specify an exceptional behaviour in case a private
+   * ID is to be opened. map_private_id maps the private ID to an URL
+   * (or raises Not_competent). However, instead of opening the URL 
+   * the function open_private_id is called to get an in_channel to read
+   * from and to get the character encoding. The URL is taken into account
+   * when subsequently relative SYSTEM IDs must be resolved.
    *)
-
 
 val make_file_url :
   ?system_encoding:encoding ->
@@ -333,7 +355,7 @@ val make_file_url :
  *)
 
 class lookup_public_id :
-  catalog:((string * resolver) list) ->
+  (string * resolver) list ->    (* catalog *)
     resolver;;
 
   (* This is the generic builder for PUBLIC id catalog resolvers: The catalog 
@@ -347,7 +369,7 @@ class lookup_public_id :
 
 val lookup_public_id_as_file :
   ?fixenc:encoding ->
-  catalog:((string * string) list) ->
+  (string * string) list ->     (* catalog *)
     resolver;;
 
   (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
@@ -362,7 +384,7 @@ val lookup_public_id_as_file :
 
 val lookup_public_id_as_string :
   ?fixenc:encoding ->
-  catalog:((string * string) list) ->
+  (string * string) list ->    (* catalog *)
     resolver;;
 
   (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
@@ -374,7 +396,7 @@ val lookup_public_id_as_string :
 
 
 class lookup_system_id :
-  catalog:((string * resolver) list) ->
+  (string * resolver) list ->    (* catalog *)
     resolver;;
 
   (* This is the generic builder for SYSTEM id catalog resolvers: The catalog 
@@ -392,7 +414,7 @@ class lookup_system_id :
 
 val lookup_system_id_as_file :
   ?fixenc:encoding ->
-  catalog:((string * string) list) ->
+  (string * string) list ->     (* catalog *)
     resolver;;
 
   (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
@@ -407,7 +429,7 @@ val lookup_system_id_as_file :
 
 val lookup_system_id_as_string :
   ?fixenc:encoding ->
-  catalog:((string * string) list) ->
+  (string * string) list ->     (* catalog *)
     resolver;;
 
   (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
@@ -451,22 +473,92 @@ class combine :
    * ~prefer: This is an internally used option.
    *)
 
+(* ====================================================================== *)
+
 (* EXAMPLES OF RESOLVERS:
  *
- * let r1 = new resolve_as_file
+ * let r1 = new resolve_as_file ()
  *   - r1 can open all local files
  *
  * let r2 = new resolve_read_this_channel
- *            ~id:"file:/dir/f.xml"
+ *            ~id:(System "file:/dir/f.xml")
  *            (open_in "/dir/f.xml")
  *   - r2 can only read /dir/f.xml of the local file system. If this file
- *     contains references to other files, r2 will fail
+ *     contains references to other files, r2 will fail.
+ *     Note that the channel is automatically closed after XML parsing
+ *     is done.
  *
  * let r3 = new combine [ r2; r1 ]
  *   - r3 reads /dir/f.xml of the local file system by calling r2, and all
- *     other files by calling r1
+ *     other files by calling r1. However, inner references within 
+ *     /dir/f.xml still fail.
  *
- * TODO: There could be more examples.
+ * let pid = Pxp_types.allocate_private_id() in
+ * let r4 = new resolve_read_this_channel 
+ *                ~id:(Private pid) 
+ *                (open_in "/dir/f.xml")
+ *   - r4 can only read from a so-called private ID. These are opaque
+ *     identifiers that can be mapped to channels and files as needed.
+ *     They do not have a textual representation, and they cannot be
+ *     referred to from XML text.
+ *
+ * ----------------------------------------------------------------------
+ * 
+ * Now a bigger example. The task is to:
+ *  - resolve the PUBLIC IDs P and Q to some files;
+ *  - resolve the SYSTEM ID "http://r/s.dtd" to another file;
+ *  - resolve all file SYSTEM IDs
+ *  - start parsing with "f.xml" in the current directory
+ *
+ * let r =
+ *   new combine 
+ *     [ lookup_public_id_as_file 
+ *         [ "P", "file_for_p";   "Q", "file_for_q" ];
+ *       lookup_system_id_as_file
+ *         [ "http://r/s.dtd", "file_for_this_dtd" ];
+ *       new resolve_as_file()
+ *     ]
+ * in
+ * (* The recommended way to create the start_id from file names: *)
+ * let start_url =
+ *   make_file_url "f.xml" in
+ * let start_id = 
+ *   System (Neturl.string_of_url url) in
+ * let source = ExtID(start_id, r) in
+ * parse_document_entity ... source ...
+ *
+ * ----------------------------------------------------------------------
+ *
+ * A variation:
+ *
+ *  - resolve the PUBLIC IDs P and Q to some files;
+ *  - resolve the SYSTEM ID "http://r/s.dtd" to another file;
+ *  - do not resolve any file URL
+ *  - start parsing with "f.xml" in the current directory
+ *
+ * let start_id = allocate_private_id() in
+ * let r =
+ *   new combine 
+ *     [ lookup_public_id_as_file 
+ *         [ "P", "file_for_p";   "Q", "file_for_q" ];
+ *       lookup_system_id_as_file
+ *         [ "http://r/s.dtd", "file_for_this_dtd" ];
+ *       resolve_read_any_channel
+ *         ~channel_of_id: (fun xid ->
+ *            if xid = start_id then 
+ *              open_in_bin "f.xml", None  (* you may want to catch Sys_error *)
+ *            else raise Not_competent)
+ *         ();
+ *     ]
+ * in
+ * let source = ExtID(start_id, r) in
+ * parse_document_entity ... source ...
+ *
+ * ----------------------------------------------------------------------
+ *
+ * Three further examples can be found in the source of Pxp_yacc (file
+ * pxp_yacc.m2y): the implementations of from_file, from_channel, and
+ * from_string are also applications of the Pxp_reader objects.
  *)
 
 
@@ -474,6 +566,12 @@ class combine :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.8  2001/04/22 14:16:48  gerd
+ * 	resolve_as_file: you can map private IDs to arbitrary channels.
+ * 	resolve_read_url_channel: changed type of the channel_of_url
+ * argument (ext_id is also passed)
+ * 	More examples and documentation.
+ *
  * Revision 1.7  2001/04/03 20:22:44  gerd
  * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
  * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
