@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.15 2001/04/22 14:14:41 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.16 2001/06/07 22:48:38 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -403,10 +403,6 @@ class dtd  the_warner init_encoding =
 
       if doctype then 
 	wms "]>\n";
-
-    method write_compact_as_latin1 os doctype = 
-      self # write os `Enc_iso88591 doctype
-
 
 
     (************************************************************)
@@ -834,12 +830,9 @@ and dtd_element the_dtd the_name =
 		   wms "\"";
 	   );
 	)
-	attributes;
+	(List.sort (fun (n1,x1) (n2,x2) -> compare n1 n2) attributes);
 
       wms ">\n";
-
-    method write_compact_as_latin1 os = 
-      self # write os `Enc_iso88591
 
     (************************************************************)
     (*                    VALIDATION                            *)
@@ -990,9 +983,6 @@ object (self)
       );
       wms ">\n";
 
-    method write_compact_as_latin1 os = 
-      self # write os `Enc_iso88591 
-
   end
 
 and proc_instruction the_target the_value init_encoding =
@@ -1024,9 +1014,6 @@ object (self)
       wms value;
       wms "?>";
 
-    method write_compact_as_latin1 os = 
-      self # write os `Enc_iso88591
-
     method parse_pxp_option =
       let lexers = get_lexer_set encoding in
       try
@@ -1050,6 +1037,10 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.16  2001/06/07 22:48:38  gerd
+ * 	Improvement: 'write' writes sorted attributes. This makes
+ * many regression tests simpler.
+ *
  * Revision 1.15  2001/04/22 14:14:41  gerd
  * 	Updated to support private IDs.
  *
