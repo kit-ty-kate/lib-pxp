@@ -5,10 +5,10 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-validate:
+validate: validate.ml
 	ocamlfind ocamlc -o validate -package "markup" -linkpkg validate.ml
 
-validate.opt:
+validate.opt: validate.ml
 	ocamlfind ocamlopt -o validate.opt -package "markup" -linkpkg validate.ml
 
 #----------------------------------------------------------------------
