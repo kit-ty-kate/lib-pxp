@@ -124,6 +124,10 @@ d examples/pullparser
 f examples/pullparser/Makefile
 f examples/pullparser/pull.ml
 
+d examples/xhtml2html
+f examples/xhtml2html/Makefile
+f examples/xhtml2html/main.ml
+
 d src
 f src/Makefile
 
@@ -160,7 +164,7 @@ f src/pxp-engine/pxp_lexer_types.ml
 f src/pxp-engine/pxp_lexer_types.mli
 f src/pxp-engine/pxp_lexers.ml
 f src/pxp-engine/pxp_lexers.mli
-f src/pxp-engine/pxp_lexing.ml
+f src/pxp-engine/pxp_lexing.mlp
 f src/pxp-engine/pxp_lexing.mli
 f src/pxp-engine/pxp_lib.mli
 f src/pxp-engine/pxp_lib_ocamlc.ml

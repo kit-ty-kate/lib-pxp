@@ -1,4 +1,4 @@
-(* $Id: marshal_recode.ml,v 1.1 2002/03/10 23:44:40 gerd Exp $
+(* $Id: marshal_recode.ml,v 1.2 2003/06/22 15:10:52 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -39,7 +39,13 @@ let main() =
   ()
 ;;
 
-main();;
+try
+  main()
+with
+    exn ->
+      prerr_endline("ERROR: " ^ string_of_exn exn);
+      exit 1
+;;
 
 
 
@@ -49,6 +55,9 @@ main();;
  * History:
  * 
  * $Log: marshal_recode.ml,v $
+ * Revision 1.2  2003/06/22 15:10:52  gerd
+ * 	Updated
+ *
  * Revision 1.1  2002/03/10 23:44:40  gerd
  * 	Initial revision.
  *

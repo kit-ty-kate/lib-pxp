@@ -17,6 +17,7 @@ TOOLS_DIR = $(TOP_DIR)/tools
 M2PARSERGEN    = $(TOOLS_DIR)/m2parsergen
 LEXPP	       = $(TOOLS_DIR)/lexpp
 COLLECT_FILES  = $(TOOLS_DIR)/collect_files
+IFDEF	       = $(TOOLS_DIR)/ifdef
 
 # Files to remove everywhere by "make clean":
 

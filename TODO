@@ -1,3 +1,48 @@
+alan Schmitt:
+
+Hi,
+
+I unfortunately had to upgrade my OCaml to the latest cvs version, and
+I'm having a hard time getting pxp to compile. The problem occurs both
+with 1.1.5 and 1.1.93, and is the following:
+
+ocamlfind ocamlc -g  -package "netstring" -c pxp_lexing.ml
+File "pxp_lexing.ml", line 60, characters 2-255:
+Some record field labels are undefined: lex_mem lex_start_p lex_curr_p
+
+This is because the lexbuf data structure is now:
+type lexbuf =
+  { refill_buff : lexbuf -> unit;
+    mutable lex_buffer : string;
+    mutable lex_buffer_len : int;
+    mutable lex_abs_pos : int;
+    mutable lex_start_pos : int;
+    mutable lex_curr_pos : int;
+    mutable lex_last_pos : int;
+    mutable lex_last_action : int;
+    mutable lex_eof_reached : bool;
+    mutable lex_mem : int array;
+    mutable lex_start_p : position;
+    mutable lex_curr_p : position;
+  }
+
+Are you aware of this change, and are you planning on releasing another
+development version ?
+
+DONE (UNTESTED)
+
+Another (small, easily solved) bug is that "parser" is a keyword, and
+needs to be changed in lines 2098 and 2104 of pxp-engine/pxp_yacc.m2y
+
+DONE
+
+-------
+
+- examples/xhtml2html:
+  einchecken, in release aufnehmen
+
+  DONE
+
 - Extended names für resolver:
   type extended_ext_id =
     { xid_private: private_id option;
@@ -24,16 +69,26 @@
   combine benutzt keine preferred resolvers mehr, sondern sucht stets
   von vorne.
 
+  DONE
+
   neue Klasse fake_system. Wenn der untergeordnete resolver
   funktioniert, wird xid_system auf eine bestimmte URL gesetzt.
+  ???
 
-  TODO: lookup_id unterstützt noch nicht close_all
+- Warners: Polymorphic variants benutzen.
+  Cannot_represent auch als Fehler!  (A. Frisch)
+  DONE
+
+- Doku: Sektion "Known problems"
+  * Non-representable characters. Kann zu well-formedness errors führen.
 
 - Check:
   Pxp_lexers: Thread-safe? Reentrant?
+  DONE
 
 - Unicode:
   Include Characters > 0xFFFF
+  DONE
 
 - Lexers:
   einchecken,  DONE
@@ -59,25 +114,39 @@
                das deklarierende Entity angezogen wird?
            (2) Kann man extdecl-Flags auf domains reduzieren?
 
+    NICHT IN 1.2. Das ist viel zu schwierig. Eher in die Richtung entwickeln,
+    den internal subset orignalgetreu wiederzugeben (z.B. indem man den
+    Token-Strom aufzeichnet). Das ist allerdings nur für geparste DTDs
+    sinnvoll; was machen wir mit selbsterzeugten DTDs und modifizierten
+    DTDs?
+
   * Optionen: Elemente ausgegeben ja/nein usw.
+  ???
 
   * event-based parser: Entities NICHT auflösen
+  NICHT IN 1.2
 
 - Auch bei parse_wfdocument_entity die DTD transformieren können
+  DONE
  
 - resolver: externe entities nicht parsen (durch "" ersetzen)
+  NICHT NOTWENDIG. Kann durch Pxp_reader auf einfache Weise bereitgestellt
+  werden.
 
 - from_string ~alt
+  DONE
 
 - Wirkung von `Extend_dtd_fully auch bei parse_wfdocument_entity ???
     Geht wohl nicht.
 
 - ocamlnet-channels unterstützen, sowohl bei input-channels als
     auch output
+  DONE
 
 - Doku:
     - Wann ist dtd#root gesetzt?
     - Wann ist dtd#id gesetzt?
+  DONE
 
 - Event-based parsers:
 
@@ -109,9 +178,32 @@
 
   * Review Pullparser + Entry_expr
 
+  * Namespaces
+    TODO: test
+
+  * Pxp_ev_parser: stream parser
+    (In Kommentar erläutert) DONE
+
+  * Pxp_ev_parser: Filter, der ignorable whitespace löscht
+    DONE
+
+  * Filter, der char data normalisiert
+    DONE
+
+  * CHECK: Attributwerte
+
+  * Pxp_document: erzeugen aus event stream; abbilden in event stream
+
+  * Wie bricht man einen stream parser vorzeitig ab? Dateien schließen!
+
+  * Namespaces und DTDs: Eine pxp:dtd processing instruction, um den
+    Default-Namespace für Element-Deklarationen in DTDs zu setzen.
+    <?pxp:dtd xmlns="..."?>
+
 - Follow-Ups:
 
   * Clean-up of lexer definitions
+    ???
 
   * Clean-Up of pxp_yacc.m2y: separate tree_parser and event_parser.
     They have a common superclass where event methods are virtual.
@@ -120,6 +212,8 @@
     Pxp_parse_tree: Only entry points for tree parser
     Pxp_parse_events: Only entry points for event-based parser
     Pxp_yacc: compatibility interface
+
+    DONE
 
   * extend_dtd: export? DONE
 
@@ -131,6 +225,8 @@
     Pxp_light_trans: Light-Darstellung von/nach Heavy-Darstellung konvertieren
     Pxp_light_docemu: Light-Darstellung als Document-kompatible Klasse
 
+    NICHT IN PXP 1.2
+
   * Undo pxp_lexing.mlp DONE
 
 - Improvements:
@@ -140,11 +236,16 @@
   * parse_wfdocument_entity: argument ~share_dtd
 
   * pxp_reader uses netchannels instead of channels
+    DONE
+
+- pxpvalidate braucht hook um Baum teilweise zu löschen.
+
 
 - Packen:
 
   * pxp.files aktualisieren
   * pxp_wlex_utf8_01.ml vorgenerieren
+
 
 ------------------------------
 
@@ -168,6 +269,7 @@
 - Pxp_marshal.relocate_document: copy the entities, too
 
 - Resolvers: get_base_uri
+  NICHT NOTWENDIG, active_id des parent-resolvers tut es.
 
 ------------------------------
 
