@@ -1,0 +1,2 @@
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/018.xml" at line 12, position 2:
+ERROR (Validity constraint): Attribute `idrefs' of element `el' refers to unknown ID `a20'
