@@ -1,0 +1,735 @@
+(* $Id: lex.src,v 1.1 2002/08/28 23:53:10 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+(* This file is divided up into sections, marked by (* [SECTION] *).
+ * Sections are processed by lexpp.
+ *)
+
+(* ---------------------------------------------------------------------- *)
+(* [LET] *)
+
+(* These let-definitions work for all lexers. Note that we assume
+ * that the character encoding is ASCII-compatible; WE DO THAT IN
+ * THE WHOLE LEXER DEFINITION!
+ *)
+
+let ws = [ ' ' '\t' '\r' '\n' ]
+
+let namechar = letter | digit | '.' | ':' | '-' | '_' | combiningChar | extender
+
+let name = ( letter | '_' | ':' ) namechar*
+
+let nmtoken = namechar+
+
+let pi_string = character_except_question_mark* 
+                ( '?' character_except_right_angle_bracket 
+                      character_except_question_mark* )* 
+                '?'?
+
+let comment_string = character_except_minus* 
+                     ('-' character_except_minus+ )*
+
+let cdata_string = 
+  character_except_rbracket*
+  ( "]" character_except_rbracket+ |
+    "]]" ']'* character_except_rbracket_rangle character_except_rbracket*
+  )*
+  ']'*
+
+
+(* ---------------------------------------------------------------------- *)
+(* [HEADER] *)
+
+{
+  open Pxp_types
+  open Pxp_lexer_types
+  open Pxp_lex_aux
+
+  let lexerset = ref (Pxp_lexers.dummy_lexer_set) ;;
+}
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule parses the string <?xml ...?> *)
+
+scan_only_xml_decl = parse
+    "<?xml" ws+ pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi }
+  | ""
+      { Eof }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule parses the contents of <?xml ...?> *)
+
+scan_xml_pi = parse
+    name ws*
+      { let s = Lexing.lexeme lexbuf in
+	let j = get_name_end s 0 in
+	Pro_name (String.sub s 0 j)
+      }
+  | "=" ws*
+      { Pro_eq }
+  | "'" character_except_apos* "'" ws+
+      { let s = Lexing.lexeme lexbuf in
+	let j = String.index_from s 1 '\'' in
+	Pro_string (String.sub s 1 (j-1))
+      }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '"' character_except_quot* '"' ws+
+      { let s = Lexing.lexeme lexbuf in
+	let j = String.index_from s 1 '"' in
+	Pro_string (String.sub s 1 (j-1))
+      }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | eof
+      { Pro_eof }
+  | character
+      { (* prerr_endline (Lexing.lexeme lexbuf); *)
+	raise (WF_error("Illegal token or character")) 
+      }
+  | _ 
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* scan_document: Lexer for the outermost structures *)
+
+scan_document = parse
+    "<?" pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Document }
+  | "<?"
+      { raise (WF_error ("Illegal processing instruction")) }
+  | "<!DOCTYPE"
+      { tok_Doctype__Document_type }
+  | "<!--" 
+      { Comment_begin dummy_entity, Document_comment }
+  | "<!"
+      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      }
+  | "<" name
+      { let s = Lexing.lexeme lexbuf in
+	( Tag_beg (String.sub s 1 (String.length s - 1), dummy_entity), 
+	  Within_tag_entry
+        )
+      }
+  | '<'
+      { raise (WF_error ("Illegal token")) }
+  | ws+
+      { tok_Ignore__Document }
+  | eof
+      { tok_Eof__Document }
+  | character
+      { raise (WF_error ("Content not allowed here")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* scan_document_type: after "<!DOCTYPE" until matching ">" *)
+
+scan_document_type = parse
+    name
+      { let s = Lexing.lexeme lexbuf in
+	Name s, Document_type }
+  | ws+
+      { tok_Ignore__Document_type }
+  | '"' character_except_quot* '"'
+      { let s = Lexing.lexeme lexbuf in
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | "'" character_except_apos* "'"
+      { let s = Lexing.lexeme lexbuf in
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '['
+      { tok_Dtd_begin__Declaration }
+  | '>'
+      { tok_Doctype_rangle__Document }
+  | eof
+      { tok_Eof__Document_type }
+  | '&' 
+      { raise (WF_error("References to general entities not allowed here")) }
+  | '%' 
+      { raise (WF_error("References to parameter entities not allowed here")) }
+  | character
+      { raise (WF_error("Content not allowed here")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* Scans comments in document context *)
+
+scan_document_comment = parse
+    "-->"
+      { Comment_end dummy_entity, Document }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { Comment_material "-", Document_comment }
+  | character_except_minus+
+      { Comment_material(Lexing.lexeme lexbuf), Document_comment }
+  | eof
+      { Eof, Document_comment }
+  | _
+      { raise Netconversion.Malformed_code }
+
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* scan_declaration: after "[" in DTD until matching "]" *)
+
+scan_declaration = parse
+    ws+
+      { tok_Ignore__Declaration }
+  | '%' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	(PERef (String.sub s 1 (String.length s - 2))), Declaration }
+  | '%'
+      { tok_Percent__Declaration }
+  | '&' 
+      { raise(WF_error("References to general entities not allowed in DTDs")) }
+  | name
+      { Name (Lexing.lexeme lexbuf), Declaration }
+  | nmtoken
+      { Nametoken (Lexing.lexeme lexbuf), Declaration }
+  | '+'
+      { tok_Plus__Declaration }
+  | '*'
+      { tok_Star__Declaration }
+  | '|'
+      { tok_Bar__Declaration }
+  | ','
+      { tok_Comma__Declaration }
+  | '?'
+      { tok_Qmark__Declaration }
+  | '('
+      { tok_Lparen__Declaration }
+  | ")+" 
+      { tok_RparenPlus__Declaration }
+  | ")*" 
+      { tok_RparenStar__Declaration }
+  | ")?"
+      { tok_RparenQmark__Declaration }
+  | ')'
+      { tok_Rparen__Declaration }
+  | "#REQUIRED"
+      { tok_Required__Declaration }
+  | "#IMPLIED"
+      { tok_Implied__Declaration }
+  | "#FIXED"
+      { tok_Fixed__Declaration }
+  | "#PCDATA"
+      { tok_Pcdata__Declaration }
+  | "<!ELEMENT"
+      { tok_Decl_element__Declaration }
+  | "<!ATTLIST"
+      { tok_Decl_attlist__Declaration }
+  | "<!ENTITY"
+      { tok_Decl_entity__Declaration }
+  | "<!NOTATION"
+      { tok_Decl_notation__Declaration }
+  | "<!--"
+      { Comment_begin dummy_entity, Decl_comment }
+  | "<!["
+      { tok_Conditional_begin__Declaration }
+  | "]]>"
+      { tok_Conditional_end__Declaration }
+  | "["
+      { tok_Conditional_body__Declaration }
+
+  (* TODO: PIs modified *) 
+
+  | "<?" pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Declaration }
+  | "<?"
+      { raise (WF_error ("Illegal processing instruction")) }
+  | '"' [^ '"']* '"'
+      { let s = Lexing.lexeme lexbuf in
+        (* Check that characters are well-formed: *)
+	ignore(!lexerset.scan_characters (Lexing.from_string s));
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | "'" [^ '\'']* "'"
+      { let s = Lexing.lexeme lexbuf in
+        (* Check that characters are well-formed: *)
+	ignore(!lexerset.scan_characters (Lexing.from_string s));
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '>'
+      { tok_Decl_rangle__Declaration }
+  | ']'
+      { tok_Dtd_end__Document_type }
+  | eof
+      { tok_Eof__Declaration }
+  | "<!"
+      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      }
+  | character
+      { raise (WF_error("Illegal token or character")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule checks whether a string consists only of valid characters.
+ * Especially for the UTF8 encoding this is a non-trivial rule!
+ *)
+
+scan_characters = parse
+  character*
+    { () }
+| eof 
+    { () }
+| _
+    { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* Scans comments in declarations. *)
+
+scan_decl_comment = parse
+    "-->"
+      { Comment_end dummy_entity, Declaration }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { Comment_material "", Decl_comment }
+  | character_except_minus+
+      { Comment_material "", Decl_comment }
+  | eof
+      { Eof, Decl_comment }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* The following scanner is used to determine the replacement text of
+ * internal entities:
+ *)
+
+scan_dtd_string = parse
+    '%' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	PERef (String.sub s 1 (String.length s - 2)) }
+  | '%'
+      { raise(WF_error("The character '%' must be written as '&#37;'")) }
+  | '&' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	ERef (String.sub s 1 (String.length s - 2)) }
+  | "&#" ascii_digit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string (String.sub s 2 (String.length s - 3))) }
+  | "&#x" ascii_hexdigit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
+  | '&'
+      { raise(WF_error("The character '&' must be written as '&amp;'")) }
+  | '\013' '\010'
+      { CRef(-1) }
+  | '\013'
+      { CRef(-2) }
+  | '\010'
+      { CRef(-3) }
+  | '\009'
+      { CharData "\009" }
+  | printable_character_except_amp_percent+
+      { CharData (Lexing.lexeme lexbuf) }
+  | eof
+      { Eof }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* Scan in content context *)
+
+scan_content = parse
+    "<?" pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Content }
+  | "<?"
+      { raise (WF_error ("Illegal processing instruction")) }
+  | "<!--"
+      { Comment_begin dummy_entity, Content_comment }
+  | '<' '/'? name
+      (* One rule for Tag_beg and Tag_end saves transitions. *)
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	if Lexing.lexeme_char lexbuf 1 = '/' then
+	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
+	  Within_tag_entry
+	else
+	  Tag_beg (Pxp_lexing.sub_lexeme lexbuf 1 (l-1), dummy_entity), 
+	  Within_tag_entry
+      }
+  | "<![CDATA[" cdata_string "]]>"
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content }
+  | "<!"
+      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      }
+  | "<"
+      { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
+      }
+  | "&#" ascii_digit+ ";"
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content }
+  | "&#x" ascii_hexdigit+ ";"
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content }
+  | "&" name ";"
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content }
+  | "&" 
+      { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
+      }
+  | "{{"
+      { tok_LLcurly__Content }
+  | "}}"
+      { tok_RRcurly__Content }
+  | "{"
+      { tok_Lcurly__Content }
+  | "}"
+      { tok_Rcurly__Content }
+
+  (* LineEnd: Depending on whether we are reading from a primary source
+   * (file) or from the replacement text of an internal entity, line endings
+   * must be normalized (converted to \n) or not.
+   * The entity classes do that. The yacc parser will never see LineEnd;
+   * this token is always converted to the appropriate CharData token.
+   *)
+
+  | '\013' '\010'
+      { tok_LineEndCRLF__Content }
+  | '\013'
+      { tok_LineEndCR__Content }
+  | '\010'
+      { tok_LineEndLF__Content }
+  | eof
+      { tok_Eof__Content }
+  | "]]>" 
+      { raise (WF_error ("The sequence ']]>' must be written as ']]&gt;'"))
+      }
+  | "]"
+      { tok_CharDataRBRACKET__Content }
+  | normal_character+
+      { let s = Lexing.lexeme lexbuf in
+	CharData s, Content 
+      }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule is used inside start tags of elements *)
+
+scan_within_tag = parse
+    '\013' '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\013'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | [' ' '\t']+
+      { tok_Ignore__Within_tag }
+  | name
+      { Name (Lexing.lexeme lexbuf ), Within_tag }
+  | '='
+      { tok_Eq__Within_tag }
+  | '"' character_except_quot* '"'
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
+	Attval v, Within_tag }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | "'" character_except_apos* "'"
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
+	Attval v, Within_tag }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '>'
+      { tok_Rangle__Content }
+  | "/>"
+      { tok_Rangle_empty__Content }
+  | eof
+      { tok_Eof__Within_tag }
+  | character
+      { raise (WF_error ("Illegal inside tags")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* The following rule is used instead of scan_within_tag if event-based
+ * attribute parsing is enabled. The difference is that more tokens are
+ * generated for attribute values.
+ *)
+
+scan_tag_eb = parse
+    '\013' '\010'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | '\013'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | '\010'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | [' ' '\t']+
+      { tok_Ignore__Tag_eb }
+  | name
+      { Name (Lexing.lexeme lexbuf ), Tag_eb }
+  | '='
+      { tok_Eq__Tag_eb }
+  | '"' 
+      { tok_DQuote__Tag_eb_att_true }
+  | "'"
+      { tok_SQuote__Tag_eb_att_false }
+  | '>'
+      { tok_Rangle__Content }
+  | "/>"
+      { tok_Rangle_empty__Content }
+  | eof
+      { tok_Eof__Tag_eb }
+  | character
+      { raise (WF_error ("Illegal inside tags")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This lexer is used to expand and normalize attribute values: *)
+
+(* TODO: Use ERef_att instead of ERef *)
+
+scan_content_string = parse
+    '&' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	ERef (String.sub s 1 (String.length s - 2)) }
+  | "&#" ascii_digit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string (String.sub s 2 (String.length s - 3))) }
+  | "&#x" ascii_hexdigit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
+  | '&'
+      { raise(WF_error("The character '&' must be written as '&amp;'")) }
+  | printable_character_except_amp_lt+
+      { CharData "" (* (Lexing.lexeme lexbuf) *) } 
+  | '\009'
+      { CRef 32 }
+  | '\013' '\010'
+      { CRef(-1)   (* A special case *)
+      }
+  | '\013'
+      { CRef 32 }
+  | '\010'
+      { CRef 32 }
+  | '<'
+      { 
+	(* Depending on the situation, '<' may be legal or not: *)
+	CharData "<" 
+      }
+  | eof
+      { Eof }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* The following lexer is an alternative. It is used if event-based
+ * attribute parsing is enabled.
+ *
+ * Note: The argument of the functions is whether the attribute value
+ * is delimited by double quotes (true) or single quotes (false).
+ *)
+
+scan_tag_eb_att = parse
+    '&' name ';'
+      { fun d ->
+	  let s = Lexing.lexeme lexbuf in
+	  (ERef_att (String.sub s 1 (String.length s - 2)), Tag_eb_att d) 
+      }
+  | "&#" ascii_digit+ ";"
+      { fun d ->
+	  let s = Lexing.lexeme lexbuf in
+	  (CRef (int_of_string (String.sub s 2 (String.length s - 3))),
+	   Tag_eb_att d)
+      }
+  | "&#x" ascii_hexdigit+ ";"
+      { fun d ->
+	  let s = Lexing.lexeme lexbuf in
+	  (CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))),
+	   Tag_eb_att d)
+      }
+  | '&'
+      { fun _ ->
+          raise(WF_error("The character '&' must be written as '&amp;'")) }
+  | '\009'
+      { fun d ->
+          CharData " ", Tag_eb_att d }
+  | '\013' '\010'
+      { fun d ->
+	  LineEnd_att "  ", Tag_eb_att d }
+  | '\013'
+      { fun d ->
+          LineEnd_att " ", Tag_eb_att d }
+  | '\010'
+      { fun d ->
+          LineEnd_att " ", Tag_eb_att d }
+  | '<'
+      { fun d ->
+	  (* Depending on the situation, '<' may be legal or not: *)
+	  CharData "<", Tag_eb_att d
+      }
+  | '"' 
+      { function
+          true  -> DQuote, Tag_eb
+        | false -> CharData "\"", Tag_eb_att false
+      }
+  | '\'' 
+      { function
+          true  -> CharData "'", Tag_eb_att true
+        | false -> SQuote, Tag_eb
+      }
+  | "{{"
+      { fun d -> LLcurly, Tag_eb_att d }
+  | "{"
+      { fun d -> Lcurly, Tag_eb_att d }
+  | "}}"
+      { fun d -> RRcurly, Tag_eb_att d }
+  | "}"
+      { fun d -> Rcurly, Tag_eb_att d }
+  | printable_character_except_amp_lt        (* TODO !!! *)
+      { fun d -> CharData (Lexing.lexeme lexbuf), Tag_eb_att d } 
+  | eof
+      { fun d -> Eof, Tag_eb_att d }
+  | _
+      { fun _ -> raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule is used to parse NMTOKEN or NMTOKENS attribute values *)
+
+scan_name_string = parse
+    name
+      { Name (Lexing.lexeme lexbuf) }
+  | ws+
+      { Ignore }
+  | nmtoken
+      { Nametoken (Lexing.lexeme lexbuf) }
+  | eof
+      { Eof }
+  | character
+      { CharData (Lexing.lexeme lexbuf) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule is used to skip over ignored sections <![IGNORE[ ... ]]> *)
+
+scan_ignored_section = parse
+  | "<!["
+      { tok_Conditional_begin__Ignored }
+  | "]]>"
+      { tok_Conditional_end__Ignored }
+  | "<!--" comment_string "-->"
+      { tok_Ignore__Ignored }
+  | '"' character_except_quot* '"'
+      { tok_Ignore__Ignored }
+  | "'" character_except_apos* "'"
+      { tok_Ignore__Ignored }
+  | eof
+      { tok_Eof__Ignored }
+  | character_except_special+
+      { tok_Ignore__Ignored }
+  | "<"
+      { tok_Ignore__Ignored }
+  | "]"
+      { tok_Ignore__Ignored }
+  | "'"
+      { tok_Ignore__Ignored }
+  | "\""
+      { tok_Ignore__Ignored }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* Scans comments in contents *)
+
+scan_content_comment = parse
+    "-->"
+      { Comment_end dummy_entity, Content }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { Comment_material "-", Content_comment }
+  | character_except_minus+
+      { Comment_material(Lexing.lexeme lexbuf), Content_comment }
+  | eof
+      { Eof, Content_comment }
+  | _
+      { raise Netconversion.Malformed_code }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule locates CR, CRLF, and LF characters inside strings. *)
+
+scan_for_crlf = parse
+  | '\013' '\010'
+      { CharData "\n" }
+  | '\013'
+      { CharData "\n" }
+  | '\010'
+      { CharData "\n" }
+  | [^ '\010' '\013' ]+
+      { CharData (Lexing.lexeme lexbuf) }
+  | eof 
+      { Eof }
+
+(* [END] *)
+
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: lex.src,v $
+ * Revision 1.1  2002/08/28 23:53:10  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

@@ -1,0 +1,125 @@
+(* $Id: char_classes_wlex.def,v 1.1 2002/08/28 23:53:10 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+(* This file is divided up into sections, marked by (* [SECTION] *).
+ * Sections are processed by lexpp.
+ *)
+
+(* ---------------------------------------------------------------------- *)
+(* [TYPE_WLEX] *)
+
+(* TYPE_WLEX announces that this file consists of two sections,
+ * CLASSES, and LET. The contents of this section are ignored.
+ *)
+
+(* ---------------------------------------------------------------------- *)
+(* [CLASSES] *)
+
+(* Declare the character classes for wlex:
+ * - invalid: all invalid code points, e.g. illegal control characters
+ * - unicode_baseChar: baseChar characters outside the ASCII range.
+ *   baseChar is defined by XML.
+ * - ideographic: defined by XML.
+ * - extender: defined by XML.
+ * - ascii_digit: ASCII 0 to 9
+ * - unicode_digit: the digits outside of the ASCII range
+ * - combiningChar: defined by XML
+ * - otherChar: other legal characters that may occur in XML text.
+ *
+ * Character classes marked as PRIVATE must not be used outside
+ * of this file.
+ *)
+
+
+classes 
+  invalid            (* PRIVATE *)
+  unicode_baseChar   (* PRIVATE *)
+  ideographic 
+  extender
+  ascii_digit
+  unicode_digit      (* PRIVATE *)
+  combiningChar
+  otherChar          (* PRIVATE *)
+  (* Now characters that may be referenced by the lexer definition directly: *)
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  "abcdefghijklmnopqrstuvwxyz"
+  "<>?!-/[]&#;%+*|,()'=.:_{}" '"'
+  '\010'
+  '\013'
+  '\009'
+  '\032'
+
+(* ---------------------------------------------------------------------- *)
+(* [LET] *)
+
+(* The section LET consists of further "let" definitions that are copied
+ * to the output files.
+ *)
+
+(* The following definitions assume that the character encoding is
+ * ASCII-compatible.
+ *)
+
+let ascii_hexdigit = [ "ABCDEFabcdef" ] | ascii_digit
+
+let letter = [ "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	       "abcdefghijklmnopqrstuvwxyz"
+             ] | unicode_baseChar | ideographic
+
+let digit = ascii_digit | unicode_digit
+
+let character = [^ invalid ]
+
+let character_except_question_mark =                    (* '?' = '\063' *)
+  [^ '?' invalid]
+
+
+let character_except_right_angle_bracket =              (* '>' = '\062' *)
+  [^ '>' invalid]
+
+
+let character_except_minus =                            (* '-' = '\045' *)
+  [^ '-' invalid]
+
+let character_except_quot =                             (* '"' = '\034' *)
+  [^ '"' invalid]
+
+let character_except_apos =                             (* '\'' = '\039' *)
+  [^ "'" invalid]
+
+
+let normal_character = 
+  [^ '\010' '\013' '&' '<' ']' '{' '}' invalid]
+
+let character_except_rbracket =                               (* ']' = '\093' *)
+  [^ ']' invalid]
+
+let character_except_rbracket_rangle =          (* ']' = '\093', '>' = '\062' *)
+  [^ ']' '>' invalid]
+
+
+let printable_character_except_amp_lt =
+  (* '&' = '\038', '<' = '\060' *)
+  [^ '&' '<' '\009' '\010' '\013' invalid]
+
+let printable_character_except_amp_percent =
+  (* '%' = '\037', '&' = '\038' *)
+  [^ '&' '%' '\009' '\010' '\013' invalid]
+
+let character_except_special =
+  (* '<'=060, ']'=093, '"'=034, '\''=039 *)
+  [^ '<' ']' '"' "'" invalid]
+  
+(* [END] *)
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: char_classes_wlex.def,v $
+ * Revision 1.1  2002/08/28 23:53:10  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

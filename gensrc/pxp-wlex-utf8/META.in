@@ -1,0 +1,6 @@
+description = "Polymorphic XML parser - Lexical analyzer for UTF-8 based on wlex"
+requires = "pxp-engine"
+version = "@VERSION@"
+
+archive(byte) = "pxp_wlex_utf8.cma pxp_wlex_link_utf8.cmo"
+archive(native) = "pxp_wlex_utf8.cmxa pxp_wlex_link_utf8.cmx"

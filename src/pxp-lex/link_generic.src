@@ -1,0 +1,81 @@
+(* $Id: link_generic.src,v 1.1 2002/08/28 23:53:10 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+(* This file is divided up into sections, marked by (* [SECTION] *).
+ * Sections are processed by lexpp.
+ *)
+
+(* ---------------------------------------------------------------------- *)
+(* [LINK] *)
+
+(* This section contains code going into the link module. The patterns
+ * $ {name} (w/o space) are substituted by generated strings:
+ * - $ {encoding} is replaced by the name of the character encoding
+ * - all other names must be names of lexical rules, and $ {name} is
+ *   replaced by Module.name, i.e. the correct module prefix is prepended
+ *   to the rule name.
+ *)
+
+open Pxp_types
+open Pxp_lexer_types
+
+let lexer_set = 
+  { lex_encoding          = `Enc_${encoding};
+    scan_document         = ${scan_document}.scan_document;
+    scan_content          = ${scan_content}.scan_content;
+    scan_within_tag       = ${scan_within_tag}.scan_within_tag;
+    scan_document_type    = ${scan_document_type}.scan_document_type;
+    scan_declaration      = ${scan_declaration}.scan_declaration;
+    scan_content_comment  = ${scan_content_comment}.scan_content_comment;
+    scan_decl_comment     = ${scan_decl_comment}.scan_decl_comment;
+    scan_document_comment = ${scan_document_comment}.scan_document_comment;
+    scan_ignored_section  = ${scan_ignored_section}.scan_ignored_section;
+    scan_xml_pi           = ${scan_xml_pi}.scan_xml_pi;
+    scan_dtd_string       = ${scan_dtd_string}.scan_dtd_string;
+    scan_content_string   = ${scan_content_string}.scan_content_string;
+    scan_name_string      = ${scan_name_string}.scan_name_string;
+    scan_only_xml_decl    = ${scan_only_xml_decl}.scan_only_xml_decl;
+    scan_for_crlf         = ${scan_for_crlf}.scan_for_crlf;
+    scan_characters       = ${scan_characters}.scan_characters;
+    scan_tag_eb           = ${scan_tag_eb}.scan_tag_eb;
+    scan_tag_eb_att       = ${scan_tag_eb_att}.scan_tag_eb_att;
+  }
+;;
+
+
+Pxp_lexers.init lexer_set
+;;
+
+${scan_document}.lexerset := lexer_set;;
+${scan_content}.lexerset := lexer_set;;
+${scan_within_tag}.lexerset := lexer_set;;
+${scan_document_type}.lexerset := lexer_set;;
+${scan_declaration}.lexerset := lexer_set;;
+${scan_content_comment}.lexerset := lexer_set;;
+${scan_decl_comment}.lexerset := lexer_set;;
+${scan_document_comment}.lexerset := lexer_set;;
+${scan_ignored_section}.lexerset := lexer_set;;
+${scan_xml_pi}.lexerset := lexer_set;;
+${scan_dtd_string}.lexerset := lexer_set;;
+${scan_content_string}.lexerset := lexer_set;;
+${scan_name_string}.lexerset := lexer_set;;
+${scan_only_xml_decl}.lexerset := lexer_set;;
+${scan_for_crlf}.lexerset := lexer_set;;
+${scan_characters}.lexerset := lexer_set;;
+${scan_tag_eb}.lexerset := lexer_set;;
+${scan_tag_eb_att}.lexerset := lexer_set;;
+
+
+(* [END] *)
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: link_generic.src,v $
+ * Revision 1.1  2002/08/28 23:53:10  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)
