@@ -1,0 +1,19 @@
+This example demonstrates namespaces: it's a tiny macro preprocessor.
+You can put <macro:define> statements into your XML code, and later
+expand macros by <macro:use> statements. See macro.dtd for the DTD
+and sample.xml for an example in XHTML.
+
+Note that the preprocessor runs in a mode which is more than
+well-formedness mode and less than validating mode. The DTD 
+contained in the preprocessed XML text is replaced by macro.dtd
+(except the general entities which are copied), and macro.dtd
+specifies that the known parts of the macro language are validated,
+and that all other elements and attributes are not validated.
+For example, the preprocessor does not check whether sample.xml
+is valid XHTML.
+
+Using the preprocessor: Do
+
+	./preprocess sample.xml
+
+which prints the converted text to stdout.

@@ -1,0 +1,22 @@
+<!DOCTYPE html
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+            "xhtml1-strict.dtd">
+
+<html xmlns='http://www.w3.org/1999/xhtml'
+      xmlns:macro='http://www.ocaml-programming.de/macro'
+      xmlns:m='http://www.ocaml-programming.de/macro/use'   >
+  <!-- Macro definitions: -->
+  <macro:define name="keyword"><b>$content</b></macro:define>
+  <!-- HTML: -->
+  <head>
+    <title>Sample page</title>
+  </head>
+
+  <body>
+    <h1>Sample page</h1>
+    A Caml program:<br/><br/>
+    
+    <m:keyword content="let"/> s = "Hello world" <m:keyword content="in"/><br/>
+    print_endline s ;;
+  </body>
+</html>

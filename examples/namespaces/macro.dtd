@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!ELEMENT macro:define ANY>
+<!ATTLIST macro:define name NMTOKEN #REQUIRED>
+
+<!ELEMENT macro:use    EMPTY>
+<!ATTLIST macro:use    name NMTOKEN #REQUIRED>
+
+<!-- How to use macro:define and macro:use:
+
+     <macro:define name="keyword"><xhtml:b>$content</xhtml:b></macro:define>
+ 
+     This macro:define statement defines the macro "keyword" with a
+     parameter $content. The expansion of this macro is the text inside
+     the element where the parameters are replaced by their actual
+     values.
+
+     <macro:use name="keyword" content="function"/>
+
+     This would expand to
+     <xhtml:b>function</xhtml:b>
+
+     As a convenience notation, you may declare a prefix "m" and use
+     the new element m:keyword:
+
+     ...some outer element:
+             xmlns:m="http://www.ocaml-programming.de/macro/use"
+
+     <m:keyword content="function"/>
+
+     Restrictions: To simplify this example, macros must not
+     contain macro references. Macro definitions must contain exactly
+     one subnode.  Furthermore, parameters may only occur
+     in data sections, and not within attributes.
+  -->
+
+
+<!-- The following PI is a PXP extension. Its effect is that
+     macro:use can have any other attributes, and not only "name":
+  -->
+
+<?pxp:dtd optional-attribute-declarations elements="macro:use"?>
+
+<!-- Another PXP extension: Do not complain about undeclared
+     elements and notations
+  -->
+
+<?pxp:dtd optional-element-and-notation-declarations?>
+
+<!-- Bind the prefix "macro" to a namespace URI: -->
+
+<?pxp:dtd namespace prefix="macro" 
+                    uri="http://www.ocaml-programming.de/macro"?>
+
