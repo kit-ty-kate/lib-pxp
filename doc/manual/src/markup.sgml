@@ -2202,11 +2202,18 @@ is used by the parser itself to enter the instructions returned by
 	</itemizedlist>
       </sect1>
 
+<!-- ********************************************************************** -->
+
       <sect1>
 	<title>The class type <literal>node</literal></title>
 	<para>
 
 <programlisting>
+type node_type =
+  T_data
+| T_element of string
+;;
+
 class type [ 'ext ] node =
   object ('self)
     constraint 'ext = 'ext node #extension
@@ -2275,6 +2282,17 @@ class type [ 'ext ] node =
     method internal_delete : 'ext node &fun; unit
     method internal_init : dtd &fun; string &fun; (string * string) list &fun; unit
   end
+;;
+</programlisting>
+
+In the module <literal>Markup_types</literal> you can find another type
+definition that is important in this context:
+
+<programlisting>
+type Markup_types.att_value =
+    Value     of string
+  | Valuelist of string list
+  | Implied_value
 ;;
 </programlisting>
 </para>
@@ -2948,26 +2966,166 @@ Furthermore, the following properties hold:
 for which a certain condition holds:
 
 <programlisting>
-let rec search t p =
+let rec search p t =
   if p t then
-    t :: search_list (t # sub_nodes p)
+    t :: search_list p (t # sub_nodes)
   else
-    search_list (t # sub_nodes p)
+    search_list p (t # sub_nodes)
 
-and search_list l p =
+and search_list p l =
   match l with
     []      -&gt; []
-  | t :: l' -&gt; (search t p) @ (search_list l' p)
+  | t :: l' -&gt; (search p t) @ (search_list p l')
 ;;
 </programlisting>
 </para>
 	  </formalpara>
+
+	  <para>For example, if you want to search all elements of a certain
+type <literal>et</literal>, the function <literal>search</literal> can be
+applied as follows:
+
+<programlisting>
+let search_element_type et t =
+  search (fun x -&gt; x # node_type = T_element et) t
+;;
+</programlisting>
+</para>
+
+	  <formalpara>
+	    <title>Getting attribute values.</title>
+
+	    <para>Suppose we have the declaration:
+
+<programlisting><![CDATA[
+<!ATTLIST e a CDATA #REQUIRED
+            b CDATA #IMPLIED
+            c CDATA "12345">]]>
+</programlisting>
+
+In this case, every element <literal>e</literal> must have an attribute 
+<literal>a</literal>, otherwise the parser would indicate an error. If
+the O'Caml variable <literal>n</literal> holds the node of the tree 
+corresponding to the element, you can get the value of the attribute
+<literal>a</literal> by
+
+<programlisting>
+let value_of_a = n # required_string_attribute "a"
+</programlisting>
+
+which is more or less an abbreviation for 
+
+<programlisting><![CDATA[
+let value_of_a = 
+  match n # attribute "a" with
+    Value s -> s
+  | _       -> assert false]]>
+</programlisting>
+
+- as the attribute is required, the <literal>attribute</literal> method always
+returns a <literal>Value</literal>.
+</para>
+	  </formalpara>
+	  
+	  <para>In contrast to this, the attribute <literal>b</literal> can be
+omitted. In this case, the method <literal>required_string_attribute</literal>
+works only if the attribute is there, and the method will fail if the attribute
+is missing. To get the value, you can apply the method
+<literal>optional_string_attribute</literal>:
+
+<programlisting>
+let value_of_b = n # optional_string_attribute "b"
+</programlisting>
+
+Now, <literal>value_of_b</literal> is of type <literal>string option</literal>,
+and <literal>None</literal> represents the omitted attribute. Alternatively, 
+you could also use <literal>attribute</literal>:
+
+<programlisting><![CDATA[
+let value_of_b = 
+  match n # attribute "b" with
+    Value s       -> Some s
+  | Implied_value -> None
+  | _             -> assert false]]>
+</programlisting>
+</para>
+
+	  <para>The attribute <literal>c</literal> behaves much like
+<literal>a</literal>, because it has always a value. If the attribute is
+omitted, the default, here "12345", will be returned instead. Because of this,
+you can again use <literal>required_string_attribute</literal> to get the
+value.
+</para>
+
+	  <para>The type <literal>CDATA</literal> is the most general string
+type. The types <literal>NMTOKEN</literal>, <literal>ID</literal>,
+<literal>IDREF</literal>, <literal>ENTITY</literal>, and all enumerators and
+notations are special forms of string types that restrict the possible
+values. From O'Caml, they behave like <literal>CDATA</literal>, i.e. you can
+use the methods <literal>required_string_attribute</literal> and
+<literal>optional_string_attribute</literal>, too.
+</para>
+
+	  <para>In contrast to this, the types <literal>NMTOKENS</literal>,
+<literal>IDREFS</literal>, and <literal>ENTITIES</literal> mean lists of
+strings. Suppose we have the declaration:
+
+<programlisting><![CDATA[
+<!ATTLIST f d NMTOKENS #REQUIRED
+            e NMTOKENS #IMPLIED>]]>
+</programlisting>
+
+The type <literal>NMTOKENS</literal> stands for lists of space-separated
+tokens; for example the value <literal>"1 abc 23ef"</literal> means the list
+<literal>["1"; "abc"; "23ef"]</literal>. (Again, <literal>IDREFS</literal>
+and <literal>ENTITIES</literal> have more restricted values.) To get the
+value of attribute <literal>d</literal>, one can use
+
+<programlisting>
+let value_of_d = n # required_list_attribute "d"
+</programlisting>
+
+or
+
+<programlisting><![CDATA[
+let value_of_d = 
+  match n # attribute "d" with
+    Valuelist l -> l
+  | _           -> assert false]]>
+</programlisting>
+ 
+As <literal>d</literal> is required, the attribute cannot be omitted, and 
+the <literal>attribute</literal> method returns always a
+<literal>Valuelist</literal>. 
+</para>
+
+	  <para>For optional attributes like <literal>e</literal>, apply
+
+<programlisting>
+let value_of_e = n # optional_list_attribute "e"
+</programlisting>
+
+or
+
+<programlisting><![CDATA[
+let value_of_e = 
+  match n # attribute "e" with
+    Valuelist l   -> l
+  | Implied_value -> []
+  | _             -> assert false]]>
+</programlisting>
+
+Here, the case that the attribute is missing counts like the empty list.
+</para>
+
 	</sect2>
 
       </sect1>
 
+<!-- ********************************************************************** -->
+
       <sect1>
-	<title>The <literal>extension</literal> class type</title>
+	<title>The class type <literal>extension</literal></title>
 	<para>
 
 <programlisting>
@@ -2988,10 +3146,213 @@ class type [ 'node ] extension =
 ]]>
 </programlisting>
 
+This is the type of classes used for node extensions. For every node of the
+document tree, there is not only the <literal>node</literal> object, but also
+an <literal>extension</literal> object. The latter has only minimum
+functionality; it has only the necessary methods to be attached to the node
+object containing the details of the node instance. The extension object is
+called extension because its purpose is extensibility.</para>
+
+	<para>For some reasons, it is impossible to derive the
+<literal>node</literal> classes (i.e. <literal>element_impl</literal> and
+<literal>data_impl</literal>) such that the subclasses are usable. But
+subclassing nodes is a great feature, because it allows the user to provide
+different classes for different types of nodes. The extension objects are a
+workaround that is as powerful as direct subclassing, the only price is
+some notation overhead.
 </para>
+
+<figure id="extension-general" float="1">
+<title>The structure of nodes and extensions</title>
+<graphic fileref="pic/extension_general" format="GIF">
+</graphic>
+</figure>
+
+	<para>The picture shows how the nodes and extensions are linked
+together. Every node has a reference to its extension, and every extension has
+a reference to its node. The methods <literal>extension</literal> and
+<literal>node</literal> follow these references; a typical phrase is 
+
+<programlisting>
+self # node # attribute "xy"
+</programlisting>
+
+to get the value of an attribute from a method defined in the extension object;
+or 
+
+<programlisting>
+self # node # iter
+  (fun n -&gt; n # extension # my_method ...)
+</programlisting>
+
+to iterate over the subnodes and to call <literal>my_method</literal> of the
+corresponding extension objects.
+</para>
+
+	<para>Note that extension objects do not have references to subnodes
+(or "subextensions") themselves; in order to get one of the children of an
+extension you must first go to the node object, then get the child node, and
+finally reach the extension that is logically the child of the extension you
+started with.</para>
+
+	<sect2>
+	  <title>How to define an extension class</title>
+
+	  <para>At minimum, you must define the methods
+<literal>clone</literal>, <literal>node</literal>, and
+<literal>set_node</literal> such that your class is compatible the the type
+<literal>extension</literal>. The method <literal>set_node</literal> is called
+during the initialization of the node, or after a node has been cloned; the
+node object invokes <literal>set_node</literal> on the extension object to tell
+it that this node is now the object the extension is linked with. The extension
+must return the node object passed as argument of <literal>set_node</literal>
+when the <literal>node</literal> method is called.</para>
+
+	  <para>The <literal>clone</literal> method must return a copy of the
+extension object; at least the object itself must be duplicated, but if
+required, the copy should deeply duplicate all objects and values that are
+referred by the extension, too. Whether this is required, depends on the
+application; <literal>clone</literal> is invoked by the node object when one of
+its cloning methods is called.</para>
+
+	  <para>A good starting point for an extension class:
+
+<programlisting>
+<![CDATA[class custom_extension =
+  object (self)
+
+    val mutable node = (None : custom_extension node option)
+
+    method clone = {< >} 
+
+    method node =
+      match node with
+          None ->
+            assert false
+        | Some n -> n
+
+    method set_node n =
+      node <- Some n
+
+  end
+]]>
+</programlisting>
+
+This class is compatible with <literal>extension</literal>. The purpose of
+defining such a class is, of course, adding further methods; and you can do it
+without restriction. 
+</para>
+
+	  <para>Often, you want not only one extension class. In this case,
+it is the simplest way that all your classes (for one kind of document) have
+the same type (with respect to the interface; i.e. it does not matter if your
+classes differ in the defined private methods and instance variables, but
+public methods count). This approach avoids lots of coercions and problems with
+type incompatibilities. It is simple to implement:
+
+<programlisting>
+<![CDATA[class custom_extension =
+  object (self)
+    val mutable node = (None : custom_extension node option)
+
+    method clone = ...      (* see above *)
+    method node = ...       (* see above *)
+    method set_node n = ... (* see above *)
+
+    method virtual my_method1 : ...
+    method virtual my_method2 : ...
+    ... (* etc. *)
+  end
+
+class custom_extension_kind_A =
+  object (self)
+    inherit custom_extension
+
+    method my_method1 = ...
+    method my_method2 = ...
+  end
+
+class custom_extension_kind_B =
+  object (self)
+    inherit custom_extension
+
+    method my_method1 = ...
+    method my_method2 = ...
+  end
+]]>
+</programlisting>
+
+If a class does not need a method (e.g. because it does not make sense, or it
+would violate some important condition), it is possible to define the method
+and to always raise an exception when the method is invoked.
+</para>
+
+	  <para>The latter is a strong recommendation: do not try to further
+specialize the types of extension objects. It is difficult, sometimes even
+impossible, and almost never worth-while.</para>
+	</sect2>
+
+	<sect2>
+	  <title>How to bind extension classes to element types</title>
+
+	  <para>Once you have defined your extension classes, you can bind them
+to element types. The simplest case is that you have only one class and that
+this class is to be always used. The parsing functions in the module
+<literal>Markup_yacc</literal> take a <literal>domspec</literal> argument which
+must be customized. If your single class has the name <literal>c</literal>,
+this argument should be 
+
+<programlisting>
+let spec =
+  { map =
+      ( let m = Hashtbl.create 1 in
+        Hashtbl.add m T_data (new data_impl c "");
+        m
+      );
+    default_element = new element_impl c;
+  }
+</programlisting>
+
+The component <literal>map</literal> must at least contain the exemplar to use
+for data nodes, and the component <literal>default_element</literal> specifies
+the exemplar to use for the element types that do not occur in
+<literal>map</literal> (here: for all element types). Remember that an exemplar
+is a (node, extension) pair that serves as pattern when new nodes (and the
+corresponding extension objects) are added to the document tree. In this case,
+the exemplar contains <literal>c</literal> as extension, and when nodes are
+created, the exemplar is cloned, and cloning makes also a copy of
+<literal>c</literal> such that all nodes of the document tree will have a copy
+of <literal>c</literal> as extension.
+</para>
+
+	  <para>The <literal>map</literal> component can bind specific element
+types to specific exemplars; as exemplars may be instances of different classes
+it is effectively possible to bind element types to classes. For example, if
+the element type "p" is implemented by class "c_p", and "q" is realized by
+"c_q", you can fill this component like here:
+
+<programlisting>
+let spec =
+  { map =
+      ( let m = Hashtbl.create 1 in
+        Hashtbl.add m (T_element "p") (new element_impl c_p);
+        Hashtbl.add m (T_element "q") (new element_impl c_q);
+        Hashtbl.add m T_data          (new data_impl c "");
+        m
+      );
+    default_element = new element_impl c;
+  }
+</programlisting>
+
+The extension object <literal>c</literal> is still used for all data nodes and
+for all other element types.
+</para>
+
+	</sect2>
+
       </sect1>
 
-
+<!-- ********************************************************************** -->
 
       <sect1>
 	<title>Details of the mapping from XML text to the tree representation
@@ -2999,24 +3360,130 @@ class type [ 'node ] extension =
 
 	<sect2>
 	  <title>The representation of character-free elements</title>
-	  <para>...</para>
+
+	  <para>If an element declaration does not allow the element to 
+contain character data, the following rules apply.</para>
+
+	  <para>If the element must be empty, i.e. it is declared with the
+keyword <literal>EMPTY</literal>, the element instance may still contain
+whitespace characters (spaces, tabs, carriage returns, and newlines). The
+parser ignores these characters; such an element does not have a data subnode
+containing these irrelevant characters.</para>
+
+	  <para>If the element declaration only permits other elements to occur
+within that element but not character data, it is still possible to insert
+whitespace characters between the subelements. The parser ignores these
+characters, too, and does not create data nodes for them.</para>
+
+	  <formalpara>
+	    <title>Example.</title>
+
+	    <para>Consider the following element types:
+
+<programlisting><![CDATA[
+<!ELEMENT x ( #PCDATA | z )* >
+<!ELEMENT y ( z )* >
+<!ELEMENT z EMPTY>
+]]></programlisting>
+
+Only <literal>x</literal> may contain character data, the keyword
+<literal>#PCDATA</literal> indicates this. The other types are character-free. 
+</para>
+	  </formalpara>
+
+	  <para>The XML term
+
+<programlisting><![CDATA[
+<x><z/> <z/></x>
+]]></programlisting>
+
+will be internally represented by an element node for <literal>x</literal> 
+with three subnodes: the first <literal>z</literal> element, a data node
+containing the space character, and the second <literal>z</literal> element. 
+In contrast to this, the term
+
+<programlisting><![CDATA[
+<y><z/> <z/></y>
+]]></programlisting>
+
+is represented by an  element node for <literal>y</literal> with only
+<emphasis>two</emphasis> subnodes, the two <literal>z</literal> elements. There
+is no data node for the space character because spaces are ignored in the
+character-free element <literal>y</literal>.
+</para>
+
 	</sect2>
 
 	<sect2>
 	  <title>The representation of character data</title>
-	  <para>...</para>
+
+	  <para>The XML specification allows all Unicode characters in XML
+texts. This parser cannot deal with characters with code bigger than 255
+because it represents the characters internally in the ISO-8859-1 character
+set (this set is identical to the Unicode characters 0 to 255). When the parser
+finds a character it cannot represent, it ignores the character and prints a
+warning (to the <literal>collect_warning</literal> object that must be passed
+when the parser is called).
+</para>
+
+	  <para>The XML specification allows lines to be separated by single LF
+characters, by CR LF character sequences, or by single CR
+characters. Internally, these separators are always converted to single LF
+characters.</para>
+
+	</sect2>
+
+
+	<sect2>
+	  <title>The representation of entities within documents</title>
+
+	  <para><emphasis>Entities are not represented within
+documents!</emphasis> If the parser finds an entity reference in the document
+content, the reference is immediately expanded, and the parser reads the
+expansion text instead of the reference.
+</para>
 	</sect2>
 
 	<sect2>
 	  <title>The representation of attributes</title>
-	  <para>...</para>
+	  <para>As attribute values are composed of Unicode characters, too,
+the same restriction applies as for character data: Characters that cannot be
+represented are dropped, and a warning is printed.</para>
+
+	  <para>Attribute values are normalized before they are returned by
+methods like <literal>attribute</literal>. First, any remaining entity
+references are expanded; if necessary, expansion is performed recursively. 
+Second, newline characters (any of LF, CR LF, or CR characters) are converted
+to single space characters. Note that especially the latter action conforms to
+the XML standard.
+</para>
 	</sect2>
 
 	<sect2>
 	  <title>The representation of processing instructions</title>
-	  <para>...</para>
+	  <para>Processing instructions are not (yet) well supported. PIs are
+parsed to some extent: The first word of the PI is called the target, and it is
+stored separated from the rest of the PI:
+
+<programlisting><![CDATA[
+<?target rest?>
+]]></programlisting>
+
+The exact location where a PI occurs is not represented. The parser puts the PI
+into the object that represents the embracing construct (an element, a DTD, or
+the whole document); that means you can find out which PIs occur in a certain
+element, in the DTD, or in the whole document, but you cannot lookup the exact
+position within the construct.
+</para>
 	</sect2>
 
+	<sect2>
+	  <title>The attributes <literal>xml:lang</literal> and
+<literal>xml:space</literal></title>
+
+	  <para>These attributes are not supported specially; they are handled
+like any other attribute.</para>
+	</sect2>
       </sect1>
 
     </chapter>
