@@ -1,4 +1,4 @@
-(* $Id: test_write.ml,v 1.1 2000/07/16 17:50:39 gerd Exp $
+(* $Id: test_write.ml,v 1.2 2000/08/16 23:44:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -25,15 +25,18 @@ let parse_and_write in_filename =
   let spec =
     let e = new element_impl default_extension in
     make_spec_from_mapping
+      ~super_root_exemplar:      e
+      ~default_pinstr_exemplar:  e
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
+      ()
   in
   let config =
       { default_config with 
 	  warner = new warner;
-	  processing_instructions_inline = true;
-	  virtual_root = true;
+	  enable_pinstr_nodes = true;
+	  enable_super_root_node = true;
 	  encoding = `Enc_utf8;
       }
   in
@@ -79,6 +82,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_write.ml,v $
+ * Revision 1.2  2000/08/16 23:44:21  gerd
+ * 	Updates because of changes of the PXP API.
+ *
  * Revision 1.1  2000/07/16 17:50:39  gerd
  * 	Initial revision.
  *

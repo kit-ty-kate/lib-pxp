@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.2 2000/07/16 17:54:15 gerd Exp $
+(* $Id: compile.ml,v 1.3 2000/08/16 23:44:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -30,11 +30,10 @@ let compile in_filename out_filename print =
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
+      ()
   in
   let config =
       { default_config with 
-	  processing_instructions_inline = false;
-	  virtual_root = false;
 	  encoding = `Enc_utf8;
 	  warner = new warner;
       }
@@ -97,6 +96,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.3  2000/08/16 23:44:19  gerd
+ * 	Updates because of changes of the PXP API.
+ *
  * Revision 1.2  2000/07/16 17:54:15  gerd
  * 	Updated because of PXP interface changes.
  *

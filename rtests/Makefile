@@ -1,6 +1,5 @@
 .PHONY: all
 all:
-	$(MAKE) -C recode
 	$(MAKE) -C reader
 	$(MAKE) -C write
 	$(MAKE) -C codewriter
@@ -13,7 +12,6 @@ clean:
 
 .PHONY: CLEAN
 CLEAN: clean
-	$(MAKE) -C recode clean
 	$(MAKE) -C reader clean
 	$(MAKE) -C write clean
 	$(MAKE) -C codewriter clean
@@ -24,7 +22,6 @@ CLEAN: clean
 distclean: clean
 	rm -f *~
 	rm -f dumpfiles
-	$(MAKE) -C recode distclean
 	$(MAKE) -C reader distclean
 	$(MAKE) -C write distclean
 	$(MAKE) -C codewriter distclean

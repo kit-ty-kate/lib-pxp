@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.6 2000/07/14 14:56:55 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.7 2000/08/16 23:44:17 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -63,10 +63,9 @@ let escaped s =
 
 let rec output_xml config n =
   match n # node_type with
-      T_element "-vr" ->
+      T_super_root ->
 	n # iter_nodes (output_xml config)
-    | T_element "-pi" ->
-	let [ pi_name ] = n # pinstr_names in
+    | T_pinstr pi_name ->
 	let [ pi ] = n # pinstr pi_name in
 	output_utf8 config "<?";
 	output_utf8 config (pi # target);
@@ -106,6 +105,8 @@ let rec output_xml config n =
     | T_data ->
 	let v = n # data in
 	output_utf8 config (escaped v)
+    | _ -> 
+	assert false
 ;;
 
 
@@ -114,16 +115,19 @@ let parse debug wf iso88591 filename =
     let e = new element_impl default_extension in
     e # keep_always_whitespace_mode;
     make_spec_from_mapping
+      ~super_root_exemplar:      e
+      ~default_pinstr_exemplar:  e
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
+      ()
   in
   let config =
       { default_config with 
 	  warner = new warner;
 	  debugging_mode = debug;
-	  processing_instructions_inline = true;
-	  virtual_root = true;
+	  enable_pinstr_nodes = true;
+	  enable_super_root_node = true;
 	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
 	  idref_pass = true;
       }
@@ -178,6 +182,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.7  2000/08/16 23:44:17  gerd
+ * 	Updates because of changes of the PXP API.
+ *
  * Revision 1.6  2000/07/14 14:56:55  gerd
  * 	Updated: warner.
  *

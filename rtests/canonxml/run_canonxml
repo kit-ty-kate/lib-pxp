@@ -17,10 +17,12 @@ check_dir () {
 
 check_dir "data_valid/conditional"
 check_dir "data_valid/att_normalization"
+check_dir "data_valid/optional_decls"
 
 #check_dir "data_jclark_valid/sa-problems"
 #check_dir "data_jclark_valid/ext-sa-problems"
 check_dir "data_jclark_valid/sa"
 check_dir "data_jclark_valid/not-sa"
 check_dir "data_jclark_valid/ext-sa"
+
 
