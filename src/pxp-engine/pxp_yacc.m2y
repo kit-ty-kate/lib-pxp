@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.23 2001/04/27 00:00:14 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.24 2001/05/17 21:39:31 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -43,6 +43,8 @@ type config =
       enable_name_pool_for_attribute_values : bool;
       (* enable_name_pool_for_notation_names   : bool; *)
       enable_name_pool_for_pinstr_targets   : bool;
+      enable_namespace_processing : namespace_manager option;
+      enable_namespace_info : bool;
       debugging_mode : bool;
     }
 
@@ -266,8 +268,8 @@ class ['ext] parser_object
     val elstack = 
       let null_node = get_data_exemplar init_spec in
       let null_id = (null_node :> entity_id) in
-      let null = (null_node, null_id) in
-      (stack_create null : ('ext node * entity_id) array_stack)
+      let null = (null_node, "", null_id) in
+      (stack_create null : ('ext node * string * entity_id) array_stack)
        (* The element stack containing all open elements, i.e. elements that
 	* have begun by a start tag but that have not been finished (end tag).
 	* If the parser sees a start tag, it creates the element and pushes it
@@ -284,7 +286,7 @@ class ['ext] parser_object
     method current =
         (* Get the top element of the element stack *)
         try
-          fst(stack_top elstack)
+	  let (x,_,_) = stack_top elstack in x
 	with
 	    Stack.Empty -> assert false
 		(* Not possible, because the super root is always the element 
@@ -379,6 +381,49 @@ class ['ext] parser_object
 	raise(WF_error("Data not allowed here"));
       ()
 
+    val mutable src_norm_mapping = [ "xml", "xml" ]
+      (* Namespace processing: Contains pairs (srcprefix, normprefix).
+       * srcprefix = "!" is used as guard.
+       *)
+
+    val mutable default_normprefix = ""
+      (* Namespace_processing: The default normprefix, or "" if none *)
+
+
+    method pop_src_norm_mapping () =
+      let rec pop m =
+	match m with
+	    [] -> 
+	      assert false
+	  | ("!",d)::m' -> 
+	      default_normprefix <- d;
+	      src_norm_mapping <- m'
+	  | (_,_)::m' -> 
+	      pop m'
+      in
+      pop src_norm_mapping
+
+
+    method normalize_namespace_prefix ?(apply_default = false) prefix localname =
+      if prefix = "" then begin
+	(* No prefix *)
+	if apply_default && default_normprefix <> "" then
+	  default_normprefix ^ ":" ^ localname
+	else
+	  localname
+      end
+      else begin
+	(* Prefix exists *)
+	let normprefix =
+	  try List.assoc prefix src_norm_mapping
+	  with
+	      Not_found ->
+		raise(WF_error ("Namespace prefix not declared: " ^ prefix))
+	in
+	normprefix ^ ":" ^ localname
+      end
+
+
     initializer
       (* CHECKS: *)
       if config.encoding <> dtd # encoding then
@@ -393,7 +438,7 @@ class ['ext] parser_object
 	  create_no_node spec dtd
       in
       (* Move the super root or the emulation to the stack: *)
-      stack_push (super_root, (self :> entity_id)) elstack;
+      stack_push (super_root, "", (self :> entity_id)) elstack;
 
 
 
@@ -1721,18 +1766,114 @@ start_tag():
    */
     {{ 
       let name0, tag_beg_entid = tag in
-      let name =
-	if config.enable_name_pool_for_element_types 
-	then make_pool_string name0 
-	else name0 in
-      let d =
-	create_element_node 
-          ?name_pool_for_attribute_values:
-             (if config.enable_name_pool_for_attribute_values 
-	      then Some config.name_pool
-	      else None)
-          ?position:position 
-          spec dtd name !attlist in
+
+      let d = 
+	(* The following "match" returns the new element node: *)
+	match config.enable_namespace_processing with
+	    None ->
+	      (* Simple case: no namespaces *)
+	      let name =
+		if config.enable_name_pool_for_element_types 
+		then make_pool_string name0 
+		else name0 in
+	      
+	      create_element_node 
+                ?name_pool_for_attribute_values:
+		  (if config.enable_name_pool_for_attribute_values 
+		   then Some config.name_pool
+		   else None)
+                ?position:position 
+		spec dtd name !attlist 
+	  | Some mng ->
+	      (* If namespace processing is enabled, preprocess the attribute
+	       * list:
+	       *)
+	      let splitted_attlist = 
+		List.map 
+		  (fun (name, value) -> namespace_split name, value)
+		  !attlist
+		  (* TODO: Check that localname matches NCName *)
+	      in
+	      let xmlns_attlist = ref [] in
+	      let xmlns_default = ref None in
+	      let regular_attlist = ref [] in
+	      List.iter
+		(fun ((prefix, localname), value) ->
+		   if prefix = "" && localname = "xmlns" then
+		     xmlns_default := Some value
+		   else
+		     if prefix = "xmlns" then
+		       xmlns_attlist := (localname, value) :: !xmlns_attlist
+		     else
+		       regular_attlist := (prefix, localname, value) :: 
+			 !regular_attlist
+		)
+		splitted_attlist;
+	      (* Apply xmlns_attlist: *)
+	      src_norm_mapping <- ( "!", default_normprefix ) :: 
+                                  src_norm_mapping;               (* guard *)
+	      List.iter
+		(fun (srcprefix, uri) ->
+		   let normprefix = mng # add srcprefix uri in
+		   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
+		)
+		!xmlns_attlist;
+	      (* Apply xmlns_default: *)
+	      ( match !xmlns_default with
+		    None -> ()
+		  | Some "" ->
+		      (* Delete default namespace: *)
+		      default_normprefix <- "";
+		  | Some uri ->
+		      let normprefix = 
+			try mng # get_normprefix uri
+			with Not_found -> 
+			  mng # add "default" uri
+		      in
+		      default_normprefix <- normprefix
+	      );
+	      (* Normalize the regular_attlist: *)
+	      let norm_attlist = 
+		List.map 
+		  (fun (prefix, localname, value) ->
+		     (self # normalize_namespace_prefix prefix localname, 
+		      value
+		     )
+		  )
+		  !regular_attlist
+	      in
+	      (* Normalize the element name: *)
+	      let prefix, localname = namespace_split name0 in
+	          (* TODO: Check that localname matches NCName *)
+	      let norm_name0 = 
+		self # normalize_namespace_prefix 
+		         ~apply_default:true prefix localname in
+	      let norm_name =
+		if config.enable_name_pool_for_element_types 
+		then make_pool_string norm_name0 
+		else norm_name0 in
+	      
+	      let element =
+		create_element_node 
+                  ?name_pool_for_attribute_values:
+		    (if config.enable_name_pool_for_attribute_values 
+		     then Some config.name_pool
+		     else None)
+                  ?position:position 
+		  spec dtd norm_name norm_attlist 
+	      in
+	      element # set_namespace_manager mng;
+
+	      if config.enable_namespace_info then begin
+		let info = 
+		  new namespace_info_impl prefix element src_norm_mapping in
+		element # set_namespace_info (Some info);
+	      end;
+
+	      element
+
+      (* end of match *)
+      in
 
       begin match id_index with
 	  None -> ()
@@ -1783,11 +1924,13 @@ start_tag():
       if emptiness then begin
 	(* An empty tag like <a/>. *)
 	if not config.disable_content_validation then
-	  d # local_validate ~use_dfa:config.validate_by_dfa ()
+	  d # local_validate ~use_dfa:config.validate_by_dfa ();
+	if config.enable_namespace_processing <> None then
+	  self # pop_src_norm_mapping()
       end
       else begin
 	(* A non-empty tag. *)
-	stack_push (d, tag_beg_entid) elstack;
+	stack_push (d, name0, tag_beg_entid) elstack;
 	n_tags_open <- n_tags_open + 1;
       end;
     }}
@@ -1837,12 +1980,9 @@ end_tag():
 
        self # save_data;        (* Save outstanding data material first *)
 
-       let x, tag_beg_entid = stack_pop elstack in
-       let x_name =
-	 match x # node_type with
-	   | T_element n -> n
-	   | _ -> assert false
-       in
+       let x, x_name, tag_beg_entid = stack_pop elstack in
+       if config.enable_namespace_processing <> None then
+	 self # pop_src_norm_mapping();
        if name <> x_name then begin
 	 let x_entname, x_line, x_col = x # position in
 	 raise(WF_error("End tag `" ^ name ^ 
@@ -2352,6 +2492,8 @@ let default_config =
     enable_name_pool_for_attribute_names = false;
     enable_name_pool_for_pinstr_targets = false;
     enable_name_pool_for_attribute_values = false;
+    enable_namespace_processing = None;
+    enable_namespace_info = false;
     debugging_mode = false;
   }
 
@@ -2377,6 +2519,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.24  2001/05/17 21:39:31  gerd
+ * 	Initial implementation of namespace parsing.
+ *
  * Revision 1.23  2001/04/27 00:00:14  gerd
  * 	Added a comment what to do to implement namespaces. See
  * the rule start_tag.
