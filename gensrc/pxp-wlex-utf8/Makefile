@@ -45,7 +45,7 @@ distclean:
 	rm -f $(CLEAN_LIST) META
 
 install:
-	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_wlex_link_*.cmo pxp_wlex_link_*.cmx META` && \
+	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_wlex_link_*.cmo pxp_wlex_link_*.cmx pxp_wlex_link_*.o META` && \
         $(OCAMLFIND) install pxp-wlex-$(ENC) $$files
 
 uninstall:
