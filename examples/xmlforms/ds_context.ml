@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.6 2000/07/23 20:25:05 gerd Exp $
+(* $Id: ds_context.ml,v 1.7 2000/08/30 15:58:49 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -101,6 +101,8 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
 	      search_list (n # sub_nodes)
 	  | T_data ->
 	      raise Not_found
+	  | _ ->
+	      assert false
 	      
        and search_list l =
          match l with
@@ -188,6 +190,8 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
 		output_string fd ">";
 		List.iter iterate (n # sub_nodes);
 		output_string fd ("</" ^ name ^ "\n>");
+	    | _ ->
+		assert false
 	in
 
 	output_string fd "<?xml version='1.0' encoding='ISO-8859-1'?>\n";
@@ -206,6 +210,9 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.7  2000/08/30 15:58:49  gerd
+ * 	Updated.
+ *
  * Revision 1.6  2000/07/23 20:25:05  gerd
  * 	Update because of API change: local_validate.
  *

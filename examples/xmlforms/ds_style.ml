@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.4 2000/07/16 19:36:03 gerd Exp $
+(* $Id: ds_style.ml,v 1.5 2000/08/30 15:58:49 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -140,6 +140,7 @@ class virtual shared =
       match nt with
 	  T_element n -> n
 	| T_data      -> "#PCDATA"
+	| _           -> assert false
 
   end
 ;;
@@ -748,12 +749,16 @@ let tag_map =
 	Hashtbl.add m "button"
 		      (new element_impl (new button));
 	m)
+    ()
 ;;
 
 (* ======================================================================
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.5  2000/08/30 15:58:49  gerd
+ * 	Updated.
+ *
  * Revision 1.4  2000/07/16 19:36:03  gerd
  * 	Updated.
  *

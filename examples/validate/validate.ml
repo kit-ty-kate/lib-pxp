@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.9 2000/07/14 14:57:30 gerd Exp $
+(* $Id: validate.ml,v 1.10 2000/08/30 15:58:41 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -58,13 +58,16 @@ let main() =
   let iso88591 = ref false in
   let files = ref [] in
   Arg.parse
-      [ "-d",   Arg.Set debug, "turn debugging mode on";
-	"-wf",  Arg.Set wf,    "check only on well-formedness";
-        "-iso-8859-1", Arg.Set iso88591, "use ISO-8859-1 as internal encoding instead of UTF-8";
+      [ "-d",   Arg.Set debug, 
+           "             turn debugging mode on";
+	"-wf",  Arg.Set wf,    
+            "            check only on well-formedness";
+        "-iso-8859-1", Arg.Set iso88591, 
+                    "    use ISO-8859-1 as internal encoding instead of UTF-8";
       ]
       (fun x -> files := x :: !files)
       "
-usage: validate [options] file ...
+usage: pxpvalidate [options] file ...
 
 - checks the validity of XML documents. See below for list of options.
 
@@ -83,6 +86,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.10  2000/08/30 15:58:41  gerd
+ * 	Updated.
+ *
  * Revision 1.9  2000/07/14 14:57:30  gerd
  * 	Updated: warner
  *

@@ -5,11 +5,11 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-validate: validate.ml
-	ocamlfind ocamlc -o validate -package "pxp" -linkpkg validate.ml
+pxpvalidate: validate.ml
+	ocamlfind ocamlc -o pxpvalidate -package "pxp" -linkpkg validate.ml
 
-validate.opt: validate.ml
-	ocamlfind ocamlopt -o validate.opt -package "pxp" -linkpkg validate.ml
+pxpvalidate.opt: validate.ml
+	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp" -linkpkg validate.ml
 
 #----------------------------------------------------------------------
 .PHONY: all
@@ -25,4 +25,4 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f validate validate.opt
+	rm -f pxpvalidate pxpvalidate.opt
