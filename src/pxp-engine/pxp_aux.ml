@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.6 2000/08/14 22:24:55 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.7 2000/09/17 00:10:59 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -61,11 +61,11 @@ let rec expand_attvalue_with_rec_check lexerset dtd s warner entities norm_crlf 
    * checks "standalone" document declaration;
    * normalizes whitespace
    *)
-  let toklist = tokens_of_content_string lexerset s in
-  let rec expand tl =
-    match tl with
-	[] -> ""
-      | ERef n :: tl' ->
+  let lexbuf = Lexing.from_string s in
+  let rec expand () = (
+    match lexerset.scan_content_string lexbuf with
+	Eof -> []
+      | ERef n ->
 	  if List.mem n entities then
 	    raise(WF_error("Recursive reference to general entity `" ^ n ^ "'"));
 	  let en, extdecl = dtd # gen_entity n in
@@ -75,24 +75,30 @@ let rec expand_attvalue_with_rec_check lexerset dtd s warner entities norm_crlf 
 	  let rtext, rtext_contains_ext_refs = en # replacement_text in
 	  if rtext_contains_ext_refs then
 	    raise(Validation_error("Found reference to external entity in attribute value"));
-	  expand_attvalue_with_rec_check 
-	    lexerset dtd rtext warner (n :: entities) false    ^    expand tl'
-      | CRef(-1) :: tl' ->
-	  if norm_crlf then
-	    " " ^ expand tl'
-	  else
-	    "  " ^ expand tl'
-      | CRef n :: tl' ->
-	  character lexerset.lex_encoding warner n ^ expand tl'
-      | CharData "<" :: tl' ->
+	  let l' = 
+	    expand_attvalue_with_rec_check 
+	      lexerset dtd rtext warner (n :: entities) false
+	  in
+	  l' @ expand()
+      | CRef(-1) ->
+	  if norm_crlf then begin
+	    " " :: expand()
+	  end
+	  else begin
+	    "  " :: expand()
+	  end
+      | CRef n ->
+	  (character lexerset.lex_encoding warner n) :: expand()
+      | CharData "<" ->
 	  raise 
 	    (WF_error
 	       ("Attribute value contains character '<' literally"))
-      | CharData x :: tl' ->
-	  x ^ expand tl'
+      | CharData x  ->
+	  x :: expand()
       | _ -> assert false
+  )
   in
-  expand toklist
+  expand()
 ;;
 
 
@@ -100,7 +106,9 @@ let expand_attvalue lexerset dtd s warner norm_crlf =
   (* norm_crlf: whether the sequence CRLF is recognized as one character or
    * not (i.e. two characters)
    *)
-  expand_attvalue_with_rec_check lexerset dtd s warner [] norm_crlf
+  let l =
+    expand_attvalue_with_rec_check lexerset dtd s warner [] norm_crlf in
+  String.concat "" l
 ;;
 
 
@@ -532,6 +540,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.7  2000/09/17 00:10:59  gerd
+ * 	Optimizations in expand_attvalue
+ *
  * Revision 1.6  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.
