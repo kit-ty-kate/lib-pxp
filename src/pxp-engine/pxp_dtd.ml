@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.11 2000/09/09 16:41:32 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.12 2000/09/16 22:40:50 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -251,7 +251,8 @@ class dtd  the_warner init_encoding =
 	()
       end;
       Hashtbl.add pinstr name pi;
-      pinstr_names <- name :: pinstr_names;
+      if not (List.mem name pinstr_names) then
+	pinstr_names <- name :: pinstr_names;
 
 
     method element name =
@@ -386,9 +387,11 @@ class dtd  the_warner init_encoding =
       (* Processing instructions: *)
       List.iter
 	(fun name ->
-	   let pi = 
-	     try Hashtbl.find pinstr name with Not_found -> assert false in
-	   pi # write os enc)
+	   List.iter
+	     (fun pi ->
+		pi # write os enc)
+	     (Hashtbl.find_all pinstr name)
+	)
 	(List.sort compare pinstr_names);
 
       if doctype then 
@@ -1003,6 +1006,11 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.12  2000/09/16 22:40:50  gerd
+ * 	Bug processing processing instructions: Method
+ * pinstr_names returned wrong results; method write wrote
+ * the wrong instructions.
+ *
  * Revision 1.11  2000/09/09 16:41:32  gerd
  * 	New type validation_record.
  *
