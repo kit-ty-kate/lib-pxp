@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE any [
+
+<!ENTITY x PUBLIC "x" "" NDATA x>
+<!ENTITY y PUBLIC "x" "" NDATA x>
+<!ENTITY z PUBLIC "x" "" NDATA x>
+
+<!NOTATION p PUBLIC "image/gif">
+<!NOTATION q PUBLIC "image/jpeg">
+<!NOTATION r PUBLIC "image/png">
+
+<!ELEMENT el EMPTY>
+<!ATTLIST el        
+          cdata     CDATA     #IMPLIED
+          id        ID        #IMPLIED
+          idref     IDREF     #IMPLIED
+          idrefs    IDREFS    #IMPLIED
+          entity    ENTITY    #IMPLIED
+          entities  ENTITIES  #IMPLIED
+          nmtoken   NMTOKEN   #IMPLIED
+          nmtokens  NMTOKENS  #IMPLIED
+          enum      (a|b|c)   #IMPLIED
+          notation  NOTATION (p|q|r)  #IMPLIED
+>
+
+<!ELEMENT any ANY>
+]>
+
+<any>
+  <el cdata="a b c"/>
+  <el cdata=" a b c "/>
+  <el cdata="  a  b  c  "/>
+  <el id="A"/>
+  <el id=" B "/>
+  <el id="  C  "/>
+  <el idref="C"/>
+  <el idref=" A "/>
+  <el idref="  B  "/>
+  <el idrefs="A B C"/>
+  <el idrefs=" A B C "/>
+  <el idrefs="  A  B  C  "/>
+  <el entity="x"/>
+  <el entity=" x "/>
+  <el entity="  x  "/>
+  <el entities="x y z"/>
+  <el entities=" x y z "/>
+  <el entities="  x  y  z  "/>
+  <el nmtoken="a"/>
+  <el nmtoken=" a "/>
+  <el nmtoken="  a  "/>
+  <el nmtokens="a b c"/>
+  <el nmtokens=" a b c "/>
+  <el nmtokens="  a  b  c  "/>
+  <el enum="a"/>
+  <el enum=" a "/>
+  <el enum="  a  "/>
+  <el notation="p"/>
+  <el notation=" p "/>
+  <el notation="  p  "/>
+</any>

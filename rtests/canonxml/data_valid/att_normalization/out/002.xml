@@ -1,0 +1,1 @@
+<any>&#10;  <el cdata="a b c d e "></el>&#10;  <el nmtoken="a"></el>&#10;  <el nmtoken="a"></el>&#10;  <el nmtoken="a"></el>&#10;  <el nmtoken="a"></el>&#10;  <el nmtokens="a b c"></el>&#10;  <el nmtokens="a b c"></el>&#10;  <el nmtokens="a b c"></el>&#10;  <el nmtokens="a b c"></el>&#10;</any>

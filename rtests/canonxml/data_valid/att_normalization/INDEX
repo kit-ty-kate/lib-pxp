@@ -1,0 +1,10 @@
+001.xml		tests whether additional white space in attribute value
+		is removed during normalization for every att type but
+		not for CDATA
+002.xml		tests whether TABs, CRs, LFs, and CRLFs are converted
+		to spaces (only for CDATA, NMTOKEN, NMTOKENS)
+003.xml		similar to 002.xml, but the attribute values occur
+		in internal entities
+004.xml		tests whether CRLF normalization happens only once
+005.xml		tests whether spaces, TABs, LFs, CRs, and CRLFs are correctly
+		processed if they are written as character references

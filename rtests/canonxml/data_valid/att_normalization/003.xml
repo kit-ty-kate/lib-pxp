@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE any [
+
+<!ELEMENT el EMPTY>
+<!ATTLIST el        
+          cdata     CDATA     #IMPLIED
+          nmtoken   NMTOKEN   #IMPLIED
+          nmtokens  NMTOKENS  #IMPLIED
+>
+<!ELEMENT any ANY>
+
+<!ENTITY elinstance
+  '<el cdata="a
+bc	d
+e "/>
+  <el nmtoken=" a  "/>
+  <el nmtoken="
+a
+"/>
+  <el nmtoken="a"/>
+  <el nmtoken="	a	"/>
+  <el nmtokens=" a b c "/>
+  <el nmtokens="
+a
+b
+c
+"/>
+  <el nmtokens="abc"/>
+  <el nmtokens="	a	b	c	"/>'>
+]>
+
+<any>&elinstance;</any>

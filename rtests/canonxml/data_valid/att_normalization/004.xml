@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE any [
+
+<!ELEMENT el EMPTY>
+<!ATTLIST el        
+          cdata     CDATA     #IMPLIED
+>
+<!ELEMENT any ANY>
+
+<!ENTITY elinstance
+  '<el cdata="a&#13;
+b"/>'>
+]>
+
+<any>&elinstance;</any>
+
