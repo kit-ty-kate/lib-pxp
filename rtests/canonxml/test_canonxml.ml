@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.5 2000/07/14 14:17:58 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.6 2000/07/14 14:56:55 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -18,10 +18,6 @@ class warner =
   object 
     method warn w =
       prerr_endline ("WARNING: " ^ w)
-    method print_warnings =
-      ""
-    method reset =
-      ()
   end
 ;;
 
@@ -182,6 +178,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.6  2000/07/14 14:56:55  gerd
+ * 	Updated: warner.
+ *
  * Revision 1.5  2000/07/14 14:17:58  gerd
  * 	Updated because of iterface changes.
  *
