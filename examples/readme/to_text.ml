@@ -1,4 +1,4 @@
-(* $Id: to_text.ml,v 1.3 2000/07/08 17:58:17 gerd Exp $
+(* $Id: to_text.ml,v 1.4 2000/08/18 21:15:25 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -580,7 +580,8 @@ let tag_map =
 	              (new element_impl (new footnote : #shared :> shared));
 	Hashtbl.add m "a"
 	              (new element_impl (new a : #shared :> shared));
-	m);
+	m)
+    ()
 ;;
 
 
@@ -590,6 +591,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_text.ml,v $
+ * Revision 1.4  2000/08/18 21:15:25  gerd
+ * 	Minor updates because of PXP API changes.
+ *
  * Revision 1.3  2000/07/08 17:58:17  gerd
  * 	Updated because of PXP API changes.
  *
