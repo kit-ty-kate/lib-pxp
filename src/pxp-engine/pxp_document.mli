@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.9 2000/08/26 23:27:53 gerd Exp $
+(* $Id: pxp_document.mli,v 1.10 2000/08/30 15:47:37 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -234,7 +234,15 @@ class type [ 'ext ] node =
     method node_position : int
       (* Returns the position of this node among all children of the parent
        * node. Positions are counted from 0.
-       * Raises Not_found if the node does not have a parent. 
+       * Raises Not_found if the node is the root node.
+       *)
+
+    method node_path : int list
+      (* Returns the list of node positions of the ancestors of this node,
+       * including this node. The first list element is the node position
+       * of this child of the root, and the last list element is the 
+       * node position of this node.
+       * Returns [] if the node is the root node.
        *)
 
     method sub_nodes : 'ext node list
@@ -396,6 +404,7 @@ class type [ 'ext ] node =
        * older versions of the parser
        *)
 
+
     (* ---------------------------------------- *)
     (* The methods 'find' and 'reset_finder' are no longer supported.
      * The functionality is provided by the configurable index object
@@ -511,6 +520,42 @@ val create_pinstr_node :
 val create_no_node : 
        ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
   (* Creates a T_none node with limited functionality *)
+
+(*********************** Ordering of nodes ******************************)
+
+val compare : 'ext node -> 'ext node -> int
+  (* Returns -1 if the first node is before the second node, or +1 if the
+   * first node is after the second node, or 0 if both nodes are identical.
+   * If the nodes are unrelated (do not have a common ancestor), the result
+   * is undefined.
+   * This test is rather slow.
+   *)
+
+type 'ext ord_index
+constraint 'ext = 'ext node #extension
+  (* The type of ordinal indexes *)
+
+val create_ord_index : 'ext node -> 'ext ord_index
+  (* Creates an ordinal index for the subtree starting at the passed node.
+   * This index assigns to every node an ordinal number (beginning with 0) such
+   * that nodes are numbered upon the order of the first character in the XML
+   * representation (document order).
+   * Note that the index is not automatically updated when the tree is
+   * modified.
+   *)
+
+val ord_number : 'ext ord_index -> 'ext node -> int
+  (* Returns the ordinal number of the node, or raises Not_found *)
+
+val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
+  (* Compares two nodes like 'compare':
+   * Returns -1 if the first node is before the second node, or +1 if the
+   * first node is after the second node, or 0 if both nodes are identical.
+   * If one of the nodes does not occur in the ordinal index, Not_found
+   * is raised.
+   * This test is much faster than 'compare'.
+   *)
+
 
 (***************************** Iterators ********************************)
 
@@ -686,6 +731,11 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.10  2000/08/30 15:47:37  gerd
+ * 	New method node_path.
+ * 	New function compare.
+ * 	New type ord_index with functions.
+ *
  * Revision 1.9  2000/08/26 23:27:53  gerd
  * 	New function: make_spec_from_alist.
  * 	New iterators: find, find_all, find_element, find_all_elements,
