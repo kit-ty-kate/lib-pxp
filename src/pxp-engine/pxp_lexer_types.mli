@@ -221,3 +221,8 @@ object
      * For some implementations, this function is very ineffecient.
      *)
 end
+
+
+type lexer_set =
+    { scan_name_string : Lexing.lexbuf -> token }
+  (* DEPRECATED. Only exists because WDialog needs it. *)

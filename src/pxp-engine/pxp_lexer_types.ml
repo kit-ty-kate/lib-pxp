@@ -222,3 +222,8 @@ object
   method lexeme_strlen : int
   method sub_lexeme : int -> int -> string
 end
+
+
+type lexer_set =
+    { scan_name_string : Lexing.lexbuf -> token }
+  (* DEPRECATED. Only exists because WDialog needs it. *)
