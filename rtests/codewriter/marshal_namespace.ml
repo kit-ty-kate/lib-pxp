@@ -1,4 +1,4 @@
-(* $Id: marshal_namespace.ml,v 1.1 2001/06/07 20:14:47 gerd Exp $
+(* $Id: marshal_namespace.ml,v 1.2 2001/06/08 01:16:55 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -18,6 +18,7 @@
 open Pxp_yacc
 open Pxp_document
 open Pxp_types
+open Pxp_dtd
 
 let conf =
   { default_config with
@@ -78,6 +79,9 @@ with
  * History:
  * 
  * $Log: marshal_namespace.ml,v $
+ * Revision 1.2  2001/06/08 01:16:55  gerd
+ * 	Updated.
+ *
  * Revision 1.1  2001/06/07 20:14:47  gerd
  * 	Added tests for marshalling and namespaces.
  *
