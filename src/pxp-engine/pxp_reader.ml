@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.10 2001/02/01 20:38:49 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.11 2001/04/03 20:22:44 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -583,57 +583,238 @@ class resolve_as_file
 ;;
 
 
-let resolve_public_id_as_file ?(fixenc:encoding option) ~catalog () =
-  let norm_catalog =
-    List.map (fun (id,s) -> Pxp_aux.normalize_public_id id, s) catalog in
-  let ch_of_id id =
-    match id with
-	Public(pubid,_) ->
-	  begin
-	    (* Search pubid in catalog: *)
-	    try
-	      let norm_pubid = Pxp_aux.normalize_public_id pubid in
-	      let filename = List.assoc norm_pubid norm_catalog in
-	                     (* or Not_found *)
-	      let ch = open_in_bin filename in  (* may raise Sys_error *)
-	      ch, fixenc
-	    with
-		Not_found ->
-		  raise Not_competent
-	  end
-      | _ ->
-	  raise Not_competent
+let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
+  let utf8_filename =
+    Netconversion.recode_string
+    ~in_enc: enc
+    ~out_enc: `Enc_utf8 
+      filename
   in
-  new resolve_read_any_channel ch_of_id
+
+  let utf8_abs_filename =
+    if utf8_filename <> "" && utf8_filename.[0] = '/' then
+      utf8_filename
+    else
+      let cwd = Sys.getcwd() in
+      let cwd_utf8 =
+	Netconversion.recode_string
+	~in_enc: system_encoding
+	~out_enc: `Enc_utf8 in
+      cwd ^ "/" ^ utf8_filename
+  in
+  
+  let syntax = { Neturl.ip_url_syntax with Neturl.url_accepts_8bits = true } in
+  let url = Neturl.make_url
+	    ~scheme:"file"
+	    ~host:"localhost"
+	    ~path:(Neturl.split_path utf8_abs_filename)
+	      syntax
+  in
+  url
 ;;
 
 
-let resolve_public_id_as_string ?(fixenc:encoding option) ~catalog () =
+class lookup_public_id ~(catalog : (string * resolver) list) =
   let norm_catalog =
     List.map (fun (id,s) -> Pxp_aux.normalize_public_id id, s) catalog in
-  let str_of_id id =
-    match id with
-	Public(pubid,_) ->
-	  begin
-	    (* Search pubid in catalog: *)
-	    try
-	      let norm_pubid = Pxp_aux.normalize_public_id pubid in
-	      let str = List.assoc norm_pubid norm_catalog in (* or Not_found *)
-	      str, fixenc
-	    with
-		Not_found ->
-		  raise Not_competent
-	  end
-      | _ ->
-	  raise Not_competent
-  in
-  new resolve_read_any_string str_of_id
+( object (self)
+    val cat = norm_catalog
+    val mutable internal_encoding = `Enc_utf8
+    val mutable warner = new drop_warnings
+    val mutable active_resolver = None
+
+    method init_rep_encoding enc =
+      internal_encoding <- enc
+
+    method init_warner w =
+      warner <- w;
+
+    method rep_encoding = internal_encoding
+      (* CAUTION: This may not be the truth! *)
+
+    method open_in xid =
+
+      if active_resolver <> None then failwith "Pxp_reader.lookup_* # open_in";
+
+      let r =
+	match xid with
+	    Public(pubid,_) ->
+	      begin
+		(* Search pubid in catalog: *)
+		try
+		  let norm_pubid = Pxp_aux.normalize_public_id pubid in
+		  List.assoc norm_pubid cat
+		with
+		    Not_found ->
+		      raise Not_competent
+	      end
+	  | _ ->
+	      raise Not_competent
+      in
+
+      let r' = r # clone in
+      r' # init_rep_encoding internal_encoding;
+      r' # init_warner warner;
+      let lb = r' # open_in xid in   (* may raise Not_competent *)
+      active_resolver <- Some r';
+      lb
+
+    method close_in =
+      match active_resolver with
+	  None   -> ()
+	| Some r -> r # close_in;
+	            active_resolver <- None
+
+    method close_all =
+      self # close_in
+
+    method change_encoding (enc:string) =
+      match active_resolver with
+	  None   -> failwith "Pxp_reader.lookup_* # change_encoding"
+	| Some r -> r # change_encoding enc
+
+    method clone =
+      let c = new lookup_public_id ~catalog:cat in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      c
+  end : resolver )
 ;;
 
 
-class combine ?prefer rl =
+let lookup_public_id_as_file ?(fixenc:encoding option) ~catalog =
+  let ch_of_id filename id =
+    let ch = open_in_bin filename in  (* may raise Sys_error *)
+    ch, fixenc
+  in
+  let catalog' =
+    List.map
+      (fun (id,s) ->
+	 (id, new resolve_read_any_channel (ch_of_id s))
+      )
+      catalog
+  in
+  new lookup_public_id ~catalog:catalog'
+;;
+
+
+let lookup_public_id_as_string ?(fixenc:encoding option) ~catalog =
+   let catalog' =
+    List.map
+      (fun (id,s) ->
+	 (id, new resolve_read_any_string (fun _ -> s, fixenc))
+      )
+      catalog
+  in
+  new lookup_public_id ~catalog:catalog'
+;;
+   
+
+class lookup_system_id ~(catalog : (string * resolver) list) =
+( object (self)
+    val cat = catalog
+    val mutable internal_encoding = `Enc_utf8
+    val mutable warner = new drop_warnings
+    val mutable active_resolver = None
+
+    method init_rep_encoding enc =
+      internal_encoding <- enc
+
+    method init_warner w =
+      warner <- w;
+
+    method rep_encoding = internal_encoding
+      (* CAUTION: This may not be the truth! *)
+
+
+    method open_in xid =
+
+      if active_resolver <> None then failwith "Pxp_reader.lookup_system_id # open_in";
+
+      let lookup sysid =
+	try
+	  List.assoc sysid cat
+	with
+	    Not_found ->
+	      raise Not_competent
+      in
+
+      let r =
+	match xid with
+	    System sysid    -> lookup sysid
+	  | Public(_,sysid) -> lookup sysid
+	  | _               -> raise Not_competent
+      in
+
+      let r' = r # clone in
+      r' # init_rep_encoding internal_encoding;
+      r' # init_warner warner;
+      let lb = r' # open_in xid in   (* may raise Not_competent *)
+      active_resolver <- Some r';
+      lb
+
+
+    method close_in =
+      match active_resolver with
+	  None   -> ()
+	| Some r -> r # close_in;
+	            active_resolver <- None
+
+    method close_all =
+      self # close_in
+
+    method change_encoding (enc:string) =
+      match active_resolver with
+	  None   -> failwith "Pxp_reader.lookup_system # change_encoding"
+	| Some r -> r # change_encoding enc
+
+    method clone =
+      let c = new lookup_system_id ~catalog:cat in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      c
+  end : resolver)
+;;
+
+
+let lookup_system_id_as_file ?(fixenc:encoding option) ~catalog =
+  let ch_of_id filename id =
+    let ch = open_in_bin filename in  (* may raise Sys_error *)
+    ch, fixenc
+  in
+  let catalog' =
+    List.map
+      (fun (id,s) ->
+	 (id, new resolve_read_any_channel (ch_of_id s))
+      )
+      catalog
+  in
+  new lookup_system_id ~catalog:catalog'
+;;
+
+
+let lookup_system_id_as_string ?(fixenc:encoding option) ~catalog =
+   let catalog' =
+    List.map
+      (fun (id,s) ->
+	 (id, new resolve_read_any_string (fun _ -> s, fixenc))
+      )
+      catalog
+  in
+  new lookup_system_id ~catalog:catalog'
+;;
+   
+
+type combination_mode =
+    Public_before_system
+  | System_before_public
+;;
+
+
+class combine ?prefer ?(mode = Public_before_system) rl =
   object (self)
     val prefered_resolver = prefer
+    val mode = mode
     val resolvers = (rl : resolver list)
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
@@ -656,15 +837,40 @@ class combine ?prefer rl =
       (* CAUTION: This may not be the truth! *)
 
     method open_in xid =
-      let rec find_competent_resolver rl =
+      let rec find_competent_resolver_for xid' rl =
 	match rl with
 	    r :: rl' ->
 	      begin try
-		r, (r # open_in xid)
+		r, (r # open_in xid')
 	      with
-		  Not_competent -> find_competent_resolver rl'
+		  Not_competent -> find_competent_resolver_for xid' rl'
 	      end;
 	  | [] ->
+	      raise Not_competent
+      in
+
+      let find_competent_resolver rl =
+	match xid with
+	    Public(pubid,sysid) ->
+	      ( match mode with
+		    Public_before_system ->
+		      ( try
+			  find_competent_resolver_for(Public(pubid,"")) rl
+			with
+			    Not_competent ->
+			      find_competent_resolver_for(System sysid) rl
+		      )
+		  | System_before_public ->
+		      ( try
+			  find_competent_resolver_for(System sysid) rl
+			with
+			    Not_competent ->
+			      find_competent_resolver_for(Public(pubid,"")) rl
+		      )
+	      )
+	  | System(sysid) ->
+	      find_competent_resolver_for(System sysid) rl
+	  | _ ->
 	      raise Not_competent
       in
 
@@ -716,6 +922,14 @@ class combine ?prefer rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.11  2001/04/03 20:22:44  gerd
+ * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
+ * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
+ * separately.
+ * 	Rewritten from_file: Is now a simple application of the
+ * Pxp_reader classes and functions. (The same has still to be done
+ * for from_channel!)
+ *
  * Revision 1.10  2001/02/01 20:38:49  gerd
  * 	New support for PUBLIC identifiers.
  *

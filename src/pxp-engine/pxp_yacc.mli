@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.10 2000/10/01 19:48:25 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.11 2001/04/03 20:22:44 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -249,7 +249,7 @@ val from_string :
       ?fixenc:encoding -> string -> source
 
 val from_file :
-      ?system_encoding:encoding -> string -> source
+       ?system_encoding:encoding -> ?enc:encoding -> string -> source
 
 (* Notes on sources (version 2):
  *
@@ -279,10 +279,13 @@ val from_file :
  *   set a fixed encoding by passing the ?fixenc argument.
  *
  * from_file: The XML text is read from the file whose file name is
- *   passed to the function (as UTF-8 string).
+ *   passed to the function.
  *   Relative system IDs can be interpreted by this function.
  *   The ?system_encoding argument specifies the character encoding used
- *   for file names (sic!). By default, UTF-8 is assumed.
+ *   for file names by the system (i.e. which encoding is used for
+ *   the names stored on the disks). By default, UTF-8 is assumed.
+ *   The ?enc argument specifies the character encoding of the filename
+ *   argument (default: UTF-8).
  *
  * Examples:
  *
@@ -407,6 +410,14 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.11  2001/04/03 20:22:44  gerd
+ * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
+ * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
+ * separately.
+ * 	Rewritten from_file: Is now a simple application of the
+ * Pxp_reader classes and functions. (The same has still to be done
+ * for from_channel!)
+ *
  * Revision 1.10  2000/10/01 19:48:25  gerd
  * 	Option errors_with_line_numbers has been removed.
  *

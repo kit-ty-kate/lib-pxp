@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.6 2001/02/01 20:38:49 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.7 2001/04/03 20:22:44 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -306,11 +306,48 @@ class resolve_as_file :
    *)
 
 
+val make_file_url :
+  ?system_encoding:encoding ->
+  ?enc:encoding ->
+  string ->
+    Neturl.url;;
 
-val resolve_public_id_as_file :
+(* This is a convenience function to create a file URL (for localhost).
+ * The argument is the file name encoded in the character set enc.
+ * Relative file names are automatically converted to absolute names
+ * by prepending Sys.getcwd() to the passed file name.
+ *
+ * ~system_encoding: Specifies the encoding of file names of
+ *     the local file system. Default: UTF-8. (This argument is
+ *     necessary to interpret Sys.getcwd() correctly.)
+ * ~enc: The encoding of the passed string. Defaults to `Enc_utf8
+ *
+ * Note: To get a string representation of the URL, apply
+ * Neturl.string_of_url to the result.
+ *)
+
+
+
+(* The following classes and functions create resolvers for catalogs
+ * of PUBLIC or SYSTEM identifiers.
+ *)
+
+class lookup_public_id :
+  catalog:((string * resolver) list) ->
+    resolver;;
+
+  (* This is the generic builder for PUBLIC id catalog resolvers: The catalog 
+   * argument specifies pairs (pubid, r) mapping PUBLIC identifiers to
+   * subresolvers.
+   * The subresolver is invoked if an entity with the corresponding PUBLIC
+   * id is to be opened.
+   *)
+
+
+
+val lookup_public_id_as_file :
   ?fixenc:encoding ->
   catalog:((string * string) list) ->
-  unit ->
     resolver;;
 
   (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
@@ -323,10 +360,9 @@ val resolve_public_id_as_file :
    *)
 
 
-val resolve_public_id_as_string :
+val lookup_public_id_as_string :
   ?fixenc:encoding ->
   catalog:((string * string) list) ->
-  unit ->
     resolver;;
 
   (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
@@ -337,12 +373,75 @@ val resolve_public_id_as_string :
    *)
 
 
-class combine : ?prefer:resolver -> resolver list -> resolver;;
+class lookup_system_id :
+  catalog:((string * resolver) list) ->
+    resolver;;
+
+  (* This is the generic builder for SYSTEM id catalog resolvers: The catalog 
+   * argument specifies pairs (pubid, r) mapping PUBLIC identifiers to 
+   * subresolvers.
+   * The subresolver is invoked if an entity with the corresponding SYSTEM
+   * id is to be opened.
+   *
+   * Important note: Two SYSTEM IDs are considered as equal if they are
+   * equal in their string representation. (This may not what you want
+   * and may cause trouble... However, I currently do not know how to
+   * implement a "sematical" comparison logic.)
+   *)
+
+
+val lookup_system_id_as_file :
+  ?fixenc:encoding ->
+  catalog:((string * string) list) ->
+    resolver;;
+
+  (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
+   * pairs (sysid, filename) mapping SYSTEM identifiers to filenames. The
+   * filenames must already be encoded in the character set the system uses
+   * for filenames.
+   *
+   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   *     standard rule is applied to find out the encoding of the file.
+   *)
+
+
+val lookup_system_id_as_string :
+  ?fixenc:encoding ->
+  catalog:((string * string) list) ->
+    resolver;;
+
+  (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
+   * pairs (sysid, text) mapping SYSTEM identifiers to XML text (which must
+   * begin with <?xml ...?>).
+   *
+   * ~fixenc: Overrides the encoding of the strings.
+   *)
+
+
+type combination_mode =
+    Public_before_system    (* Try public identifiers first *)
+  | System_before_public    (* Try system identifiers first *)
+;;
+
+class combine : 
+        ?prefer:resolver -> 
+	?mode:combination_mode ->
+	resolver list -> 
+	  resolver;;
 
   (* Combines several resolver objects. If a concrete entity with an
    * ext_id is to be opened, the combined resolver tries the contained
    * resolvers in turn until a resolver accepts opening the entity
    * (i.e. it does not raise Not_competent on open_in).
+   *
+   * If the ext_id is a public identifier Public(pubid,sysid), there are 
+   * two possibilities:
+   * (1) Try first to open as public identifier, and if that fails,
+   *     fall back to the system identifier
+   * (2) Try first to open as system identifier, and if that fails,
+   *     fall back to the public identifier
+   * You can select this by the ~mode argument. The default is to
+   * try public identifiers first.
    *
    * Clones: If the 'clone' method is invoked before 'open_in', all contained
    * resolvers are cloned and again combined. If the 'clone' method is
@@ -366,6 +465,8 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
  * let r3 = new combine [ r2; r1 ]
  *   - r3 reads /dir/f.xml of the local file system by calling r2, and all
  *     other files by calling r1
+ *
+ * TODO: There could be more examples.
  *)
 
 
@@ -373,6 +474,14 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.7  2001/04/03 20:22:44  gerd
+ * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
+ * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
+ * separately.
+ * 	Rewritten from_file: Is now a simple application of the
+ * Pxp_reader classes and functions. (The same has still to be done
+ * for from_channel!)
+ *
  * Revision 1.6  2001/02/01 20:38:49  gerd
  * 	New support for PUBLIC identifiers.
  *

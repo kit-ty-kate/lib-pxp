@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.18 2000/10/01 19:49:04 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.19 2001/04/03 20:22:44 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -186,32 +186,20 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
 ;;
 
 
-let from_file ?system_encoding utf8_filename =
-  
+let from_file ?system_encoding ?enc utf8_filename =
   let r =
-    new Pxp_reader.resolve_as_file 
-      ?system_encoding:system_encoding
+    new Pxp_reader.resolve_as_file
+    ?system_encoding:system_encoding
       ()
   in
-
-  let utf8_abs_filename =
-    if utf8_filename <> "" && utf8_filename.[0] = '/' then
-      utf8_filename
-    else
-      Sys.getcwd() ^ "/" ^ utf8_filename
-  in
-
-  let syntax = { Neturl.ip_url_syntax with Neturl.url_accepts_8bits = true } in
-  let url = Neturl.make_url 
-	      ~scheme:"file" 
-	      ~host:"localhost" 
-	      ~path:(Neturl.split_path utf8_abs_filename) 
-	      syntax
-  in
-
+  
+  let url = Pxp_reader.make_file_url
+	    ?system_encoding
+	    ?enc
+	    utf8_filename in
+  
   let xid = System (Neturl.string_of_url url) in
-    
-
+  
   ExtID(xid, r)
 ;;
 
@@ -2415,6 +2403,14 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.19  2001/04/03 20:22:44  gerd
+ * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
+ * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
+ * separately.
+ * 	Rewritten from_file: Is now a simple application of the
+ * Pxp_reader classes and functions. (The same has still to be done
+ * for from_channel!)
+ *
  * Revision 1.18  2000/10/01 19:49:04  gerd
  * 	Many small optimizations, espcially in attribute parsing.
  * 	New type array_stack.
