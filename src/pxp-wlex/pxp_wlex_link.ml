@@ -1,27 +1,27 @@
-(* $Id: pxp_wlex_link.ml,v 1.2 2000/09/17 00:15:41 gerd Exp $
+(* $Id: pxp_wlex_link.ml,v 1.3 2001/06/14 16:40:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-module L = Lex_engines_ml;;
+module L = Lex_engines;;
 
 let table_iso88591 =
-  let a = String.make 256 (Char.chr Pxp_lex.otherChar) in
+  let a = String.make 256 (Char.chr Pxp_wlex.otherChar) in
   for code = 0 to 31 do
-    a.[code] <- Char.chr Pxp_lex.invalid
+    a.[code] <- Char.chr Pxp_wlex.invalid
   done;
   List.iter
     (fun (code, classnr) ->
        a.[code] <- Char.chr classnr;
     )
-    Pxp_lex.one_char_classes;
+    Pxp_wlex.one_char_classes;
   for code = 192 to 255 do
     if code <> 215 && code <> 247 then
-      a.[code] <- Char.chr Pxp_lex.unicode_baseChar;
+      a.[code] <- Char.chr Pxp_wlex.unicode_baseChar;
   done;
-  a.[183] <- Char.chr Pxp_lex.extender;
+  a.[183] <- Char.chr Pxp_wlex.extender;
   for code = 48 to 57 do
-    a.[code] <- Char.chr Pxp_lex.ascii_digit
+    a.[code] <- Char.chr Pxp_wlex.ascii_digit
   done;
   a
 ;;
@@ -33,20 +33,20 @@ let engine_iso88591 =
 
 
 let table_utf8 =
-  let a = String.make 0x312D (Char.chr Pxp_lex.otherChar) in
+  let a = String.make 0x312D (Char.chr Pxp_wlex.otherChar) in
   for code = 0 to 31 do
-    a.[code] <- Char.chr Pxp_lex.invalid
+    a.[code] <- Char.chr Pxp_wlex.invalid
   done;
   List.iter
     (fun (code, classnr) ->
        a.[code] <- Char.chr classnr;
     )
-    Pxp_lex.one_char_classes;
+    Pxp_wlex.one_char_classes;
   (* baseChar: *)
   List.iter
     (fun (fromcode, tocode) ->
        for code = fromcode to tocode do
-	 a.[code] <- Char.chr Pxp_lex.unicode_baseChar
+	 a.[code] <- Char.chr Pxp_wlex.unicode_baseChar
        done
     )
     [ 0x00C0,0x00D6; 0x00D8,0x00F6; 
@@ -104,7 +104,7 @@ let table_utf8 =
   List.iter
     (fun (fromcode, tocode) ->
        for code = fromcode to tocode do
-	 a.[code] <- Char.chr Pxp_lex.ideographic
+	 a.[code] <- Char.chr Pxp_wlex.ideographic
        done
     )
     [ 0x3007,0x3007; 0x3021,0x3029 (* 0x4E00-0x9FA5 *) ];
@@ -112,7 +112,7 @@ let table_utf8 =
   List.iter
     (fun (fromcode, tocode) ->
        for code = fromcode to tocode do
-	 a.[code] <- Char.chr Pxp_lex.combiningChar
+	 a.[code] <- Char.chr Pxp_wlex.combiningChar
        done
     )
     [ 0x0300,0x0345; 0x0360,0x0361; 0x0483,0x0486; 0x0591,0x05A1;
@@ -143,7 +143,7 @@ let table_utf8 =
   List.iter
     (fun (fromcode, tocode) ->
        for code = fromcode to tocode do
-	 a.[code] <- Char.chr Pxp_lex.unicode_digit
+	 a.[code] <- Char.chr Pxp_wlex.unicode_digit
        done
     )
     [ 0x0660,0x0669; 0x06F0,0x06F9; 0x0966,0x096F; 0x09E6,0x09EF;
@@ -152,13 +152,13 @@ let table_utf8 =
       0x0ED0,0x0ED9; 0x0F20,0x0F29 ];
   (* ascii_digit: *)
   for code = 48 to 57 do
-    a.[code] <- Char.chr Pxp_lex.ascii_digit
+    a.[code] <- Char.chr Pxp_wlex.ascii_digit
   done;
   (* extender: *)
   List.iter
     (fun (fromcode, tocode) ->
        for code = fromcode to tocode do
-	 a.[code] <- Char.chr Pxp_lex.extender
+	 a.[code] <- Char.chr Pxp_wlex.extender
        done
     )
     [ 0x00B7,0x00B7; 0x02D0,0x02D1; 0x0387,0x0387; 0x0640,0x0640;
@@ -174,14 +174,14 @@ let engine_utf8 =
     table_utf8
     (fun code ->
        if code >= 0x4E00 && code <= 0x9FA5 then
-	 Pxp_lex.combiningChar
+	 Pxp_wlex.combiningChar
        else if code >= 0xAC00 && code <= 0xD7A3 then
-	 Pxp_lex.unicode_baseChar
+	 Pxp_wlex.unicode_baseChar
        else if code <= 0xD7FF || (code >= 0xE000 && code <= 0xFFFD) ||
 	       (code >= 0x10000 && code <= 0x10FFFF) then
-         Pxp_lex.otherChar
+         Pxp_wlex.otherChar
        else
-	 Pxp_lex.invalid
+	 Pxp_wlex.invalid
     )
 ;;
 
@@ -189,149 +189,75 @@ let engine_utf8 =
 
 (* ----------- ISO-8859-1 ----------- *)
 
-module Pxp_lex_document_iso88591 =
-struct
-  let scan_document = Pxp_lex.scan_document engine_iso88591
-end
+open Pxp_types
+open Pxp_lexer_types
+
+let lexer_set_iso88591 = 
+  { lex_encoding         = `Enc_iso88591;
+    scan_document        = Pxp_wlex.scan_document engine_iso88591;
+    scan_content         = Pxp_wlex.scan_content engine_iso88591;
+    scan_within_tag      = Pxp_wlex.scan_within_tag engine_iso88591;
+    scan_document_type   = Pxp_wlex.
+                             scan_document_type engine_iso88591;
+    scan_declaration     = Pxp_wlex.scan_declaration engine_iso88591;
+    scan_content_comment  = Pxp_wlex.scan_content_comment engine_iso88591;
+    scan_decl_comment     = Pxp_wlex.scan_decl_comment engine_iso88591;
+    scan_document_comment = Pxp_wlex.scan_document_comment engine_iso88591;
+    scan_ignored_section = Pxp_wlex.
+                             scan_ignored_section engine_iso88591;
+    scan_xml_pi          = Pxp_wlex.scan_xml_pi engine_iso88591;
+    scan_dtd_string      = Pxp_wlex.scan_dtd_string engine_iso88591;
+    scan_content_string  = Pxp_wlex.
+                             scan_content_string engine_iso88591;
+    scan_name_string     = Pxp_wlex.scan_name_string engine_iso88591;
+    scan_only_xml_decl   = Pxp_wlex.scan_only_xml_decl engine_iso88591;
+    scan_for_crlf        = Pxp_wlex.scan_for_crlf engine_iso88591;
+  }
 ;;
 
 
-module Pxp_lex_content_iso88591 =
-struct
-  let scan_content = Pxp_lex.scan_content engine_iso88591
-end
+Pxp_lexers.init lexer_set_iso88591
 ;;
 
-
-module Pxp_lex_within_tag_iso88591 =
-struct
-  let scan_within_tag = Pxp_lex.scan_within_tag engine_iso88591
-end
-;;
-
-
-module Pxp_lex_document_type_iso88591 =
-struct
-  let scan_document_type = Pxp_lex.scan_document_type engine_iso88591
-end
-;;
-
-
-module Pxp_lex_declaration_iso88591 =
-struct
-  let scan_declaration = Pxp_lex.scan_declaration engine_iso88591
-end
-;;
-
-
-module Pxp_lex_name_string_iso88591 =
-struct
-  let scan_ignored_section = Pxp_lex.scan_ignored_section engine_iso88591
-  let scan_name_string = Pxp_lex.scan_name_string engine_iso88591
-end
-;;
-
-
-module Pxp_lex_dtd_string_iso88591 =
-struct
-  let scan_dtd_string = Pxp_lex.scan_dtd_string engine_iso88591
-end
-;;
-
-
-module Pxp_lex_content_string_iso88591 =
-struct
-  let scan_content_string = Pxp_lex.scan_content_string engine_iso88591
-end
-;;
-
-
-module Pxp_lex_misc_iso88591 =
-struct
-  let scan_content_comment = Pxp_lex.scan_content_comment engine_iso88591
-  let scan_decl_comment = Pxp_lex.scan_decl_comment engine_iso88591
-  let scan_document_comment = Pxp_lex.scan_document_comment engine_iso88591
-  let scan_xml_pi = Pxp_lex.scan_xml_pi engine_iso88591
-  let scan_only_xml_decl = Pxp_lex.scan_only_xml_decl engine_iso88591
-  let scan_for_crlf = Pxp_lex.scan_for_crlf engine_iso88591
-end
-;;
 
 
 (* ---------- UTF8 --------- *)
 
-module Pxp_lex_document_utf8 =
-struct
-  let scan_document = Pxp_lex.scan_document engine_utf8
-end
+let lexer_set_utf8 = 
+  { lex_encoding         = `Enc_utf8;
+    scan_document        = Pxp_wlex.scan_document engine_utf8;
+    scan_content         = Pxp_wlex.scan_content engine_utf8;
+    scan_within_tag      = Pxp_wlex.scan_within_tag engine_utf8;
+    scan_document_type   = Pxp_wlex.
+                             scan_document_type engine_utf8;
+    scan_declaration     = Pxp_wlex.scan_declaration engine_utf8;
+    scan_content_comment  = Pxp_wlex.scan_content_comment engine_utf8;
+    scan_decl_comment     = Pxp_wlex.scan_decl_comment engine_utf8;
+    scan_document_comment = Pxp_wlex.scan_document_comment engine_utf8;
+    scan_ignored_section = Pxp_wlex.
+                             scan_ignored_section engine_utf8;
+    scan_xml_pi          = Pxp_wlex.scan_xml_pi engine_utf8;
+    scan_dtd_string      = Pxp_wlex.scan_dtd_string engine_utf8;
+    scan_content_string  = Pxp_wlex.
+                             scan_content_string engine_utf8;
+    scan_name_string     = Pxp_wlex.scan_name_string engine_utf8;
+    scan_only_xml_decl   = Pxp_wlex.scan_only_xml_decl engine_utf8;
+    scan_for_crlf        = Pxp_wlex.scan_for_crlf engine_utf8;
+  }
 ;;
 
 
-module Pxp_lex_content_utf8 =
-struct
-  let scan_content = Pxp_lex.scan_content engine_utf8
-end
+Pxp_lexers.init lexer_set_utf8
 ;;
 
-
-module Pxp_lex_within_tag_utf8 =
-struct
-  let scan_within_tag = Pxp_lex.scan_within_tag engine_utf8
-end
-;;
-
-
-module Pxp_lex_document_type_utf8 =
-struct
-  let scan_document_type = Pxp_lex.scan_document_type engine_utf8
-end
-;;
-
-
-module Pxp_lex_declaration_utf8 =
-struct
-  let scan_declaration = Pxp_lex.scan_declaration engine_utf8
-end
-;;
-
-
-module Pxp_lex_name_string_utf8 =
-struct
-  let scan_ignored_section = Pxp_lex.scan_ignored_section engine_utf8
-  let scan_name_string = Pxp_lex.scan_name_string engine_utf8
-end
-;;
-
-
-module Pxp_lex_dtd_string_utf8 =
-struct
-  let scan_dtd_string = Pxp_lex.scan_dtd_string engine_utf8
-end
-;;
-
-
-module Pxp_lex_content_string_utf8 =
-struct
-  let scan_content_string = Pxp_lex.scan_content_string engine_utf8
-end
-;;
-
-
-module Pxp_lex_misc_utf8 =
-struct
-  let scan_content_comment = Pxp_lex.scan_content_comment engine_utf8
-  let scan_decl_comment = Pxp_lex.scan_decl_comment engine_utf8
-  let scan_document_comment = Pxp_lex.scan_document_comment engine_utf8
-  let scan_xml_pi = Pxp_lex.scan_xml_pi engine_utf8
-  let scan_only_xml_decl = Pxp_lex.scan_only_xml_decl engine_utf8
-  let scan_for_crlf = Pxp_lex.scan_for_crlf engine_utf8
-end
-;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_wlex_link.ml,v $
+ * Revision 1.3  2001/06/14 16:40:14  gerd
+ * 	Updated
+ *
  * Revision 1.2  2000/09/17 00:15:41  gerd
  * 	Updated.
  *

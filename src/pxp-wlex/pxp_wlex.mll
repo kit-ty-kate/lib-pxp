@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mll,v 1.3 2000/10/01 19:51:50 gerd Exp $
+(* $Id: pxp_wlex.mll,v 1.4 2001/06/14 16:40:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -86,7 +86,7 @@ classes
   let tok_Decl_rangle__Declaration   = Decl_rangle dummy_entity, Declaration
   let tok_Dtd_end__Document_type     = Dtd_end dummy_entity, Document_type
 
-  open Pxp_lex_aux
+  open Pxp_wlex_aux
 
 }
 
@@ -663,6 +663,9 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mll,v $
+ * Revision 1.4  2001/06/14 16:40:14  gerd
+ * 	Updated
+ *
  * Revision 1.3  2000/10/01 19:51:50  gerd
  * 	Optimizations.
  *
