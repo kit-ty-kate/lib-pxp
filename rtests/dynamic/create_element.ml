@@ -1,4 +1,4 @@
-(* $Id: create_element.ml,v 1.1 2001/06/03 14:25:49 gerd Exp $ *)
+(* $Id: create_element.ml,v 1.2 2001/06/04 18:54:36 gerd Exp $ *)
 
 (* This test checks whether create_element processes the attribute list
  * correctly. The attributes are passed using the ~att_values argument, and
@@ -45,14 +45,14 @@ let spec = default_spec;;
 
 let sorted_atts e =
   let atts = e # attributes in
-  List.sort (fun (a,_) (b,_) -> Pervasives.compare a b) atts
+  List.sort ~cmp:(fun (a,_) (b,_) -> Pervasives.compare a b) atts
 ;;
 
-let dotest name f =
+let dotest name f creator =
   print_string ("Test " ^ name ^ ": ");
   flush stdout;
   try
-    if f() then
+    if f creator then
       print_endline "OK"
     else
       print_endline "FAILED (returns false)"
@@ -66,8 +66,8 @@ let dotest name f =
 (* 00x: several possibilities to create x *)
 
 
-let test001 () =
-  let e = create_element_node 
+let test001 create =
+  let e = create
 	    ~att_values:["c_req", Value "rv"]
 	    spec dtd "x" []
   in
@@ -79,8 +79,8 @@ let test001 () =
 ;;
 
 
-let test002 () =
-  let e = create_element_node 
+let test002 create =
+  let e = create
 	    ~att_values:["c_req", Value "rv"; "c_fix", Value "Q"]
 	    spec dtd "x" []
   in
@@ -92,8 +92,8 @@ let test002 () =
 ;;
 
 
-let test003 () =
-  let e = create_element_node 
+let test003 create =
+  let e = create
 	    ~att_values:["c_req", Value "rv"; "c_imp", Implied_value]
 	    spec dtd "x" []
   in
@@ -105,8 +105,8 @@ let test003 () =
 ;;
 
 
-let test004 () =
-  let e = create_element_node 
+let test004 create =
+  let e = create
 	    ~att_values:["c_req", Value "rv"; "c_def", Value "43"]
 	    spec dtd "x" []
   in
@@ -120,24 +120,25 @@ let test004 () =
 (**********************************************************************)
 (* 01x: several error conditions when creating x *)
 
-let test010 () =
+let test010 create =
   (* Missing required att *)
   try
-    let e = create_element_node 
+    let e = create
 	      ~att_values:[]
 	      spec dtd "x" []
     in
     false
   with
-      Validation_error("Required attribute `c_req' is missing") ->
+      Validation_error("Required attribute `c_req' is missing") 
+    | Validation_error("Attribute `c_req' has Implied_value, but is declared as #REQUIRED") ->
 	true
 ;;
 
 
-let test011 () =
+let test011 create =
   (* Bad fixed att *)
   try
-    let e = create_element_node 
+    let e = create
 	      ~att_values:["c_req", Value "rv"; "c_fix", Value "bad" ]
 	      spec dtd "x" []
     in
@@ -148,10 +149,10 @@ let test011 () =
 ;;
 
 
-let test012 () =
+let test012 create =
   (* Implied_value does not count as required value *)
   try
-    let e = create_element_node 
+    let e = create
 	      ~att_values:["c_req", Implied_value]
 	      spec dtd "x" []
     in
@@ -161,10 +162,10 @@ let test012 () =
 	true
 ;;
 
-let test013 () =
+let test013 create =
   (* Bad fixed att (Implied_value) *)
   try
-    let e = create_element_node 
+    let e = create
 	      ~att_values:["c_req", Value "rv"; "c_fix", Implied_value ]
 	      spec dtd "x" []
     in
@@ -175,10 +176,10 @@ let test013 () =
 ;;
 
 
-let test014 () =
+let test014 create =
   (* Implied_value not possible when default specified *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; "c_def", Implied_value ]
 	      spec dtd "x" []
     in
@@ -189,69 +190,73 @@ let test014 () =
 ;;
 
 
-let test015 () =
+let test015 create =
   (* Attributes must only occur once *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; "c_req", Value "rv" ]
 	      spec dtd "x" []
     in
     false
   with
-      WF_error("Attribute `c_req' occurs twice in element `x'") ->
+      WF_error("Attribute `c_req' occurs twice in element `x'")
+    | WF_error("Attribute `c_req' occurs twice") ->
 	true
 ;;
 
 
-let test016 () =
+let test016 create =
   (* Attributes must only occur once *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; 
 			   "c_imp", Implied_value; "c_imp", Value "imp" ]
 	      spec dtd "x" []
     in
     false
   with
-      WF_error("Attribute `c_imp' occurs twice in element `x'") ->
+      WF_error("Attribute `c_imp' occurs twice in element `x'")
+    | WF_error("Attribute `c_imp' occurs twice") ->
 	true
 ;;
 
 
-let test017 () =
+let test017 create =
   (* Attributes must only occur once *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; 
 			   "c_imp", Implied_value; "c_imp", Implied_value ]
 	      spec dtd "x" []
     in
     false
   with
-      WF_error("Attribute `c_imp' occurs twice in element `x'") ->
+      WF_error("Attribute `c_imp' occurs twice in element `x'")
+    | WF_error("Attribute `c_imp' occurs twice") ->
 	true
 ;;
 
 
-let test018 () =
+let test018 create =
   (* Attributes must only occur once *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; 
 			   "c_imp", Implied_value ]
 	      spec dtd "x" [ "c_imp", "X" ]
     in
     false
   with
-      WF_error("Attribute `c_imp' occurs twice in element `x'") ->
+      WF_error("Attribute `c_imp' occurs twice in element `x'")
+    | WF_error("Attribute `c_imp' occurs twice") ->
 	true
 ;;
 
 
-let test019 () =
+let test019 create =
   (* Attributes must be declared *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:["c_req", Value "rv"; "foo", Value "y" ]
 	      spec dtd "x" [ "c_imp", "X" ]
     in
@@ -264,8 +269,8 @@ let test019 () =
 (**********************************************************************)
 (* 1xx: several possibilities to create y, and several error conditions *)
 
-let test100 () =
-  let e = create_element_node 
+let test100 create =
+  let e = create 
 	    ~att_values:[]
 	    spec dtd "y" []
   in
@@ -282,9 +287,9 @@ let test100 () =
 ;;
 
 
-let test101 () =
+let test101 create =
   (* CDATA pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "c", Value "X" ]
 	    spec dtd "y" []
   in
@@ -301,10 +306,10 @@ let test101 () =
 ;;
 
 
-let test102 () =
+let test102 create =
   (* CDATA neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "c", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -315,9 +320,9 @@ let test102 () =
 ;;
 
 
-let test103 () =
+let test103 create =
   (* ENTITY pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "ent", Value "e" ]
 	    spec dtd "y" []
   in
@@ -334,10 +339,10 @@ let test103 () =
 ;;
 
 
-let test104 () =
+let test104 create =
   (* ENTITY neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ent", Value "g" ]
 	      spec dtd "y" []
     in
@@ -348,10 +353,10 @@ let test104 () =
 ;;
 
 
-let test105 () =
+let test105 create =
   (* ENTITY neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ent", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -362,10 +367,10 @@ let test105 () =
 ;;
 
 
-let test106 () =
+let test106 create =
   (* ENTITY neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ent", Value " e" ]
 	      spec dtd "y" []
     in
@@ -376,9 +381,9 @@ let test106 () =
 ;;
 
 
-let test107 () =
+let test107 create =
   (* ENTITIES pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "ents", Valuelist [ "e"; "f" ] ]
 	    spec dtd "y" []
   in
@@ -395,10 +400,10 @@ let test107 () =
 ;;
 
 
-let test108 () =
+let test108 create =
   (* ENTITIES neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ents", Valuelist [ "e"; "g" ] ]
 	      spec dtd "y" []
     in
@@ -409,10 +414,10 @@ let test108 () =
 ;;
 
 
-let test109 () =
+let test109 create =
   (* ENTITIES neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ents", Value "X" ]
 	      spec dtd "y" []
     in
@@ -423,10 +428,10 @@ let test109 () =
 ;;
 
 
-let test110 () =
+let test110 create =
   (* ENTITIES neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "ents", Valuelist [ "e"; "f " ] ]
 	      spec dtd "y" []
     in
@@ -437,9 +442,9 @@ let test110 () =
 ;;
 
 
-let test111 () =
+let test111 create =
   (* enum pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "enum", Value "s" ]
 	    spec dtd "y" []
   in
@@ -456,10 +461,10 @@ let test111 () =
 ;;
 
 
-let test112 () =
+let test112 create =
   (* enum neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "enum", Value "q" ]
 	      spec dtd "y" []
     in
@@ -470,10 +475,10 @@ let test112 () =
 ;;
 
 
-let test113 () =
+let test113 create =
   (* enum neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "enum", Value " t" ]
 	      spec dtd "y" []
     in
@@ -484,10 +489,10 @@ let test113 () =
 ;;
 
 
-let test114 () =
+let test114 create =
   (* enum neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "enum", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -498,9 +503,9 @@ let test114 () =
 ;;
 
 
-let test115 () =
+let test115 create =
   (* ID pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "id", Value "five" ]
 	    spec dtd "y" []
   in
@@ -517,10 +522,10 @@ let test115 () =
 ;;
 
 
-let test116 () =
+let test116 create =
   (* ID neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "id", Value " t" ]
 	      spec dtd "y" []
     in
@@ -531,10 +536,10 @@ let test116 () =
 ;;
 
 
-let test117 () =
+let test117 create =
   (* ID neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "id", Value "5" ]
 	      spec dtd "y" []
     in
@@ -545,10 +550,10 @@ let test117 () =
 ;;
 
 
-let test118 () =
+let test118 create =
   (* ID neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "id", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -559,9 +564,9 @@ let test118 () =
 ;;
 
 
-let test119 () =
+let test119 create =
   (* NMTOKEN pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "nm", Value "5" ]
 	    spec dtd "y" []
   in
@@ -578,10 +583,10 @@ let test119 () =
 ;;
 
 
-let test120 () =
+let test120 create =
   (* NMTOKEN neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nm", Value " t" ]
 	      spec dtd "y" []
     in
@@ -592,10 +597,10 @@ let test120 () =
 ;;
 
 
-let test121 () =
+let test121 create =
   (* NMTOKEN neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nm", Value "+5" ]
 	      spec dtd "y" []
     in
@@ -606,10 +611,10 @@ let test121 () =
 ;;
 
 
-let test122 () =
+let test122 create =
   (* NMTOKEN neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nm", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -620,9 +625,9 @@ let test122 () =
 ;;
 
 
-let test123 () =
+let test123 create =
   (* NMTOKENS pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "nms", Valuelist [ "_six"; "5" ] ]
 	    spec dtd "y" []
   in
@@ -639,10 +644,10 @@ let test123 () =
 ;;
 
 
-let test124 () =
+let test124 create =
   (* NMTOKENS neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nms", Valuelist [ "x"; "t "] ]
 	      spec dtd "y" []
     in
@@ -653,10 +658,10 @@ let test124 () =
 ;;
 
 
-let test125 () =
+let test125 create =
   (* NMTOKENS neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nms", Valuelist [ "5 6" ] ]
 	      spec dtd "y" []
     in
@@ -667,10 +672,10 @@ let test125 () =
 ;;
 
 
-let test126 () =
+let test126 create =
   (* NMTOKENS neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nms", Value "X" ]
 	      spec dtd "y" []
     in
@@ -681,9 +686,9 @@ let test126 () =
 ;;
 
 
-let test127 () =
+let test127 create =
   (* NOTATION pos *)
-  let e = create_element_node 
+  let e = create 
 	    ~att_values:[ "nots", Value "m" ]
 	    spec dtd "y" []
   in
@@ -700,10 +705,10 @@ let test127 () =
 ;;
 
 
-let test128 () =
+let test128 create =
   (* NOTATION neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nots", Value "q" ]
 	      spec dtd "y" []
     in
@@ -714,10 +719,10 @@ let test128 () =
 ;;
 
 
-let test129 () =
+let test129 create =
   (* NOTATION neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nots", Value " t" ]
 	      spec dtd "y" []
     in
@@ -728,10 +733,10 @@ let test129 () =
 ;;
 
 
-let test130 () =
+let test130 create =
   (* NOTATION neg *)
   try
-    let e = create_element_node 
+    let e = create 
 	      ~att_values:[ "nots", Valuelist [ "X"; "Y" ] ]
 	      spec dtd "y" []
     in
@@ -743,50 +748,84 @@ let test130 () =
 
 (**********************************************************************)
 
-dotest "001" test001;;
-dotest "002" test002;;
-dotest "003" test003;;
-dotest "004" test004;;
+let test_series create =
+  dotest "001" test001 create;
+  dotest "002" test002 create;
+  dotest "003" test003 create;
+  dotest "004" test004 create;
 
-dotest "010" test010;;
-dotest "011" test011;;
-dotest "012" test012;;
-dotest "013" test013;;
-dotest "014" test014;;
-dotest "015" test015;;
-dotest "016" test016;;
-dotest "017" test017;;
-dotest "018" test018;;
-dotest "019" test019;;
+  dotest "010" test010 create;
+  dotest "011" test011 create;
+  dotest "012" test012 create;
+  dotest "013" test013 create;
+  dotest "014" test014 create;
+  dotest "015" test015 create;
+  dotest "016" test016 create;
+  dotest "017" test017 create;
+  dotest "018" test018 create;
+  dotest "019" test019 create;
+  
+  dotest "100" test100 create;
+  dotest "101" test101 create;
+  dotest "102" test102 create;
+  dotest "103" test103 create;
+  dotest "104" test104 create;
+  dotest "105" test105 create;
+  dotest "106" test106 create;
+  dotest "107" test107 create;
+  dotest "108" test108 create;
+  dotest "109" test109 create;
+  dotest "110" test110 create;
+  dotest "111" test111 create;
+  dotest "112" test112 create;
+  dotest "113" test113 create;
+  dotest "114" test114 create;
+  dotest "115" test115 create;
+  dotest "116" test116 create;
+  dotest "117" test117 create;
+  dotest "118" test118 create;
+  dotest "119" test119 create;
+  dotest "120" test120 create;
+  dotest "121" test121 create;
+  dotest "122" test122 create;
+  dotest "123" test123 create;
+  dotest "124" test124 create;
+  dotest "125" test125 create;
+  dotest "126" test126 create;
+  dotest "127" test127 create;
+  dotest "128" test128 create;
+  dotest "129" test129 create;
+  dotest "130" test130 create;
+  ()
+;;
 
-dotest "100" test100;;
-dotest "101" test101;;
-dotest "102" test102;;
-dotest "103" test103;;
-dotest "104" test104;;
-dotest "105" test105;;
-dotest "106" test106;;
-dotest "107" test107;;
-dotest "108" test108;;
-dotest "109" test109;;
-dotest "110" test110;;
-dotest "111" test111;;
-dotest "112" test112;;
-dotest "113" test113;;
-dotest "114" test114;;
-dotest "115" test115;;
-dotest "116" test116;;
-dotest "117" test117;;
-dotest "118" test118;;
-dotest "119" test119;;
-dotest "120" test120;;
-dotest "121" test121;;
-dotest "122" test122;;
-dotest "123" test123;;
-dotest "124" test124;;
-dotest "125" test125;;
-dotest "126" test126;;
-dotest "127" test127;;
-dotest "128" test128;;
-dotest "129" test129;;
-dotest "130" test130;;
+print_endline "Series: create_element, early validation";
+test_series 
+  (fun ~att_values spec dtd name atts ->
+     create_element_node ~att_values spec dtd name atts);
+
+print_endline "Series: create_element, deferred validation";
+test_series
+  (fun ~att_values spec dtd name atts ->
+     let e =
+       try
+	 create_element_node 
+	   ~att_values
+	   ~valcheck:false
+	   spec dtd name atts
+       with
+	 | WF_error _ as e ->
+	     (* Well-formedness errors will be raised here *)
+	     raise e
+	 | e ->
+	     (* Validation errors must not happen here. So catch them
+	      * and report them.
+	      *)
+	     failwith ("Early exception: " ^ Printexc.to_string e)
+     in
+     e # complement_attlist();
+     e # validate_attlist();
+     e
+  );
+()
+;;
