@@ -1,0 +1,24 @@
+<!DOCTYPE x:a [
+
+<!ELEMENT x:a ANY>
+<!ELEMENT x:b ANY>
+<!ELEMENT y:a ANY>
+<!ELEMENT y:b ANY>
+<!ELEMENT z:a ANY>
+<!ELEMENT z:b ANY>
+
+<!ATTLIST x:a x:r CDATA #IMPLIED
+              y:r CDATA #IMPLIED
+              z:r CDATA #IMPLIED>
+]>
+
+<x:a xmlns:x="space-x" xmlns:y="space-y" xmlns:z="space-z">
+  <b xmlns="space-y" xmlns:z="space-x">
+    <z:a x:r="a" y:r="b"/>  <!-- x:r would cause an error! -->
+  </b>
+  <b xmlns="space-z">
+    <z:a/>
+  </b>
+</x:a>
+
+    
