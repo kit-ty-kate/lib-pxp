@@ -303,6 +303,7 @@ f rtests/codewriter/Makefile
 f rtests/codewriter/compile.ml
 f rtests/codewriter/marshal_namespace.ml
 f rtests/codewriter/marshal_simple.ml
+f rtests/codewriter/marshal_recode.ml
 f rtests/codewriter/run_codewriter
 f rtests/codewriter/test_codewriter
 p rtests/codewriter/sample.*\.xml
