@@ -85,8 +85,8 @@ The following text is valid XML:
 
 The first element has the expanded name (namespace1,a) while the second element
 has the expanded name (namespace2,a); so the elements have different types. As
-already pointed out, PXP does not support the expanded names directly (there is
-some support for them in elements, but not in attributes). Alternatively, the
+already pointed out, PXP does not support the expanded names directly.
+Alternatively, the
 XML text is transformed while it is being parsed such that the prefixes become
 unique. In this example, the transformed text would read:
 
@@ -123,6 +123,52 @@ These declarations are applicable even if the XML text uses different prefixes,
 because PXP normalizes any prefixes for namespace1 or namespace2 to the
 preferred prefixes "x" and "y".
 </p>
+
+<p>Since PXP-1.1.95, the namespace support has been extended. In
+addition to prefix normalization, the parser now also stores the
+scoping structure of the namespaces (in the namespace_scope
+objects). More or less, this means that the parser remembers
+which elements have which "xmlns" attributes. There are two
+important applications of this feature:</p>
+
+<p>First, it is now possible to look up the namespace URI when
+only the original, non-normalized namespace prefix is known.
+A number of XML standards, e.g. XSchema, use namespace prefixes
+within data nodes. Of course, these prefixes are not normalized
+by PXP, but simply remain as they are when the XML text is
+parsed. To get the URI of such a prefix p in the context of node
+n, just call
+
+<code>
+n # namespace_scope # uri_of_display_prefix p
+</code>
+
+In PXP terminology, the non-normalized prefixes are now called
+"display prefixes".</p>
+
+<p>The other application is that it is now even possible to
+retrieve the original "display" prefix of node names, e.g.
+
+<code>
+n # display_prefix
+</code>
+
+returns it. However, the display prefix is only guessed in the
+sense that when there are several prefixes bound to the same
+URI, one of the prefixes may be taken. For instance, in
+
+<code><![CDATA[
+<x:a xmlns:x="sample" xmlns:y="sample"/>
+]]></code>
+
+both "x" and "y" are bound to the same URI "sample", and
+the display_prefix method selects now one of the prefixes
+at random.</p>
+
+<p>It is now even possible to output the parsed XML text
+with original namespace structure: The "display" method
+outputs XML text where the namespaces are declared as in the
+original XML text.</p>
 
 <p>Regarding the "xmlns" attributes, PXP treats them in a very special
 way. It is not only allowed not to declare them in the DTD, such declarations

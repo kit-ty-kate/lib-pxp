@@ -20,7 +20,7 @@ depend:
 	$(OCAMLDEP) *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_core_parser.ml pxp_lib.ml
+	rm -f $(CLEAN_LIST) pxp_core_parser.ml pxp_lib.ml pxp_lexing.ml
 
 CLEAN: clean
 

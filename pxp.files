@@ -37,6 +37,7 @@ f doc/INSTALL
 f doc/README
 f doc/DEV
 f doc/EXTENSIONS
+f doc/PREPROCESSOR
 f doc/RELEASE-NOTES
 f doc/SPEC
 f doc/design.txt
@@ -255,6 +256,12 @@ f gensrc-pre/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
 f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
 f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.306
 f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.307
+
+d src/pxp-pp
+f src/pxp-pp/Makefile
+f src/pxp-pp/META.in
+f src/pxp-pp/PPSPEC
+f src/pxp-pp/pxp_pp.ml
 
 d rtests
 f rtests/Makefile

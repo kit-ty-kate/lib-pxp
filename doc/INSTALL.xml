@@ -60,6 +60,17 @@ the runtime part of wlex, and not the "wlex" command itself.</p>
 for UTF8 and ISO-8859-1 (may be required to build old software)</p>
 	</li>
 	<li>
+	  <p>-with-ulex</p>
+	  <p>Enables the lexical analyzer that works for UTF-8 as internal encoding, and that is based on Alain Frisch's ulex tool. It
+is relatively small, but a bit slower than the ocamllex-based lexers.
+ulex will supersede wlex soon.</p>
+	</li>
+	<li>
+	  <p>-with-pp</p>
+	  <p>Enables the PXP preprocessor (installed as package pxp-pp).
+See the file PREPROCESSOR for details. The preprocessor also requires ulex.</p>
+	</li>
+	<li>
 	  <p>-lexlist &lt;list-of-encodings&gt;</p>
 	  <p>Specifies the character encodings to support by the ocamllex-
 based lexers. You need only the encodings you are going to use for the internal

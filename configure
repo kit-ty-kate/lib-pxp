@@ -7,16 +7,18 @@ with_lex=1
 with_wlex=1
 with_wlex_compat=1
 with_ulex=1
+with_pp=1
 lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915,iso885916"
-version="1.1.95test1"
+version="1.1.95test2"
 exec_suffix=""
 
 help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
 help_wlex="Enable/disable wlex-based lexical analyzer for UTF-8"
 help_wlex_compat="Enable/disable wlex-style compatibility package for UTF-8 and ISO-8859-1"
 help_ulex="Enable/disable ulex-based lexical analyzer for UTF-8"
+help_pp="Enable/disable the build of the preprocessor (pxp-pp)"
 
-options="lex wlex wlex_compat ulex"
+options="lex wlex wlex_compat ulex pp"
 lexlist_options="utf8 usascii iso88591 iso88592 iso88593 iso88594 iso88595 iso88596 iso88597 iso88598 iso88599 iso885910 iso885913 iso885914 iso885915 iso885916 koi8r windows1250 windows1251 windows1252 windows1253 windows1254 windows1255 windows1256 windows1257 windows1258 cp437 cp737 cp775 cp850 cp852 cp855 cp856 cp857 cp860 cp861 cp862 cp863 cp864 cp865 cp866 cp869 cp874 cp1006 macroman"
 
 print_options () {
@@ -189,6 +191,7 @@ if [ $with_wlex -gt 0 ]; then
 		echo "not found"
 		echo "wlex support is disabled"
 		with_wlex=0
+		with_wlex_compat=0
 	fi
 fi
 
@@ -204,6 +207,12 @@ if [ $with_ulex -gt 0 ]; then
 	echo "ulex support is disabled"
 	with_ulex=0
     fi
+fi
+
+# If ulex not found/disabled, also disable pxp-pp:
+
+if [ $with_ulex -eq 0 ]; then
+    with_pp=0
 fi
 
 
@@ -225,6 +234,25 @@ if ocamlc -c tmp.ml >/dev/null 2>/dev/null; then
     lexbuf_307="-D LEXBUF_307"
 else
     echo "old style"
+fi
+
+rm -f tmp.*
+
+######################################################################
+# Check type of camlp4 locations
+
+printf "%s" "Checking type of camlp4 location... "
+cat <<EOF >tmp.ml
+open Stdpp;;
+raise_with_loc (0,0) Not_found;;
+EOF
+
+if ocamlc -c -I +camlp4 tmp.ml >/dev/null 2>/dev/null; then
+    echo "old style"
+    camlp4_loc=""
+else
+    echo "new style"
+    camlp4_loc="-DOCAML_NEW_LOC"
 fi
 
 rm -f tmp.*
@@ -286,7 +314,10 @@ print_options
 echo
 
 pkglist="pxp pxp-engine"
-# Currently pkglist is constant
+
+if [ $with_pp -gt 0 ]; then
+    pkglist="$pkglist pxp-pp"
+fi
 
 genpkglist=""
 # Generated packages
@@ -405,6 +436,7 @@ ALLGENPKGLIST = $allgenpkglist
 EXEC_SUFFIX = $exec_suffix
 LEXBUF_307 = $lexbuf_307
 LEX_OPT = $lex_opt
+CAMLP4_LOC = $camlp4_loc
 _EOF_
 
 ######################################################################

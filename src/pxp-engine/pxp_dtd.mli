@@ -751,6 +751,14 @@ module Entity : sig
 	Pxp_entity.entity
       (* Creates an external entity that reads from the passed source *)
 
+  val entity_id : Pxp_entity.entity -> Pxp_lexer_types.entity_id
+    (* Returns the abstract entity ID *)
+
+  val create_entity_id : unit -> Pxp_lexer_types.entity_id
+    (* Create a new abstract entity ID. This ID can be used whereever
+     * an entity_id is expected but no entity is available.
+     *)
+
 end
 ;;
 

@@ -1,0 +1,4 @@
+Available options for godi.conf:
+
+- GODI_PXP_WITH_WLEX: Whether to build the pxp-wlex
+  lexer (yes/no)

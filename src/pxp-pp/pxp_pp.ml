@@ -642,7 +642,7 @@ let mkloc ((p1_line,p1_line_start,p1_pos) as p1)
 ;;
 
 
-let raise_at p1 p2 exn =
+let raise_at (p1:pos) (p2:pos) exn =
 (*
   let (p1_l,p1_s,p1_p) = p1 in 
   Printf.eprintf "Raise_at %d %d %d\n" p1_l p1_s p1_p;
@@ -869,6 +869,286 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
 ;;
 
 
+(**********************************************************************)
+(* Code generator for event streams *)
+
+
+type ann = [`Single|`Tree|`Forest];;
+
+let generate_event_generator
+      (generate_tree : (ann * MLast.expr) list -> MLast.expr)
+      (generate_forest : (ann * MLast.expr) list -> MLast.expr)
+      (s:string) 
+      : MLast.expr =
+  (* Generates code to generate events. The input arguments
+   * [generate_tree] and [generate_forest] process an intermediate
+   * representation, the so-called annotated expression lists
+   * (type (ann * MLast.expr) list), and return the final code.
+   *
+   * Kinds of annotations:
+   * - `Single: The expression is a single event, i.e. an O'Caml value
+   *   of type [event].
+   * - `Tree: The expression represents a list of events corresponding
+   *   to a node tree. It is left
+   *   open how such lists are represented. The expression is either
+   *   an O'Caml identifier or a subexpression from an antiquotation.
+   * - `Forest: The expression represents a list of events corresponding
+   *   to a list of node trees.
+   *
+   * The argument [generate_tree] is a function that generates the
+   * final code for an annotated list of expressions. It can be expected
+   * that the input list for [generate_tree] represents a node tree.
+   *
+   * The argument [generate_forest] does the same for an annotated
+   * list of expressions that represents a list of node trees.
+   *)
+
+  let to_rep s =
+    Netconversion.convert 
+      ~in_enc:`Enc_utf8 ~out_enc:(!current_decl.rep_enc) s in
+
+  let to_src s =
+    Netconversion.convert 
+      ~in_enc:`Enc_utf8 ~out_enc:(!current_decl.source_enc) s in
+
+  let rec generate_for_any_expr loc : ast_any_node -> MLast.expr =
+    function
+	`Node n -> 
+	  let e = generate_tree (generate_for_node_expr false n) in
+	  <:expr< let _eid = Pxp_dtd.Entity.create_entity_id() in $e$ >>
+      | `Nodelist nl -> 
+	  let e = generate_forest (generate_for_nodelist_expr false nl) in
+	  <:expr< let _eid = Pxp_dtd.Entity.create_entity_id() in $e$ >>
+
+  and generate_for_node_expr nsmode : ast_node -> (ann * MLast.expr) list = (
+    (* nsmode: Whether there is a variable [scope] in the environment *)
+    function
+	(`Element(name,attrs,subnodes),p1,p2) ->
+	  let loc = mkloc p1 p2 in
+	  let name_expr = generate_for_string_expr name in
+	  let attrs_expr_l = List.map generate_for_attr_expr attrs in
+	  let attrs_expr = generate_ann_list loc attrs_expr_l in
+	  let subnodes_expr = generate_for_nodelist_expr nsmode subnodes in
+	  let scope_opt_expr =
+	    if nsmode then <:expr< Some scope >> else <:expr< None >> in
+
+	  let start_tag =
+	    <:expr< Pxp_types.E_start_tag($name_expr$,
+					  $attrs_expr$,
+					  $scope_opt_expr$,
+					  _eid) >> in
+	  let end_tag =
+	    <:expr< Pxp_types.E_end_tag($name_expr$,_eid) >> in
+
+	  [`Single, start_tag] @ subnodes_expr @ [`Single, end_tag]
+      | (`Data text,p1,p2) ->
+	  let text_expr = generate_for_string_expr text in
+	  let loc = mkloc p1 p2 in
+	  [ `Single, <:expr< Pxp_types.E_char_data($text_expr$) >> ]
+      | (`Comment text,p1,p2) ->
+	  let text_expr = generate_for_string_expr text in
+	  let loc = mkloc p1 p2 in
+	  [ `Single, <:expr< Pxp_types.E_comment($text_expr$) >> ]
+      | (`PI(target,value),p1,p2) ->
+	  let target_expr = generate_for_string_expr target in
+	  let value_expr = generate_for_string_expr value in
+	  let loc = mkloc p1 p2 in
+	  [ `Single, <:expr< Pxp_types.E_pinstr($target_expr$,$value_expr$) >> ]
+      | (`Super subnodes,p1,p2) ->
+	  let subnodes_expr = generate_for_nodelist_expr nsmode subnodes in
+	  let loc = mkloc p1 p2 in
+	  ( [ `Single, <:expr< Pxp_types.E_start_super >> ] @
+	    subnodes_expr @
+	    [ `Single, <:expr< Pxp_types.E_end_super >> ] )
+      | (`Meta(name,attrs,subnode),p1,p2) ->
+	  let loc = mkloc p1 p2 in
+	  ( match name with
+		"scope"      -> generate_scope loc attrs subnode
+	      | "autoscope"  -> generate_autoscope loc subnode
+	      | "emptyscope" -> generate_emptyscope loc subnode
+	      | _            -> assert false (* already caught above *)
+	  )
+      | (`Ident name,p1,p2) ->
+	  let loc = mkloc p1 p2 in
+	  [ `Tree, (generate_ident loc (to_src name)) ]
+      | (`Anti text,p1,p2) ->
+	  let expr = 
+	    Grammar.Entry.parse Pcaml.expr_eoi (Stream.of_string (to_src text))
+	  in
+	  [ `Tree, expr ]
+      | _ ->
+	  (* `Literal and `Concat are impossible after type check *)
+	  assert false )
+
+  and generate_for_nodelist_expr nsmode : 
+                                 ast_node_list -> (ann * MLast.expr) list = (
+    function
+	(`Nodes l, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  let l' = List.map (generate_for_node_expr nsmode) l in
+	  List.flatten l'
+      | (`Concat l, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  let l' = List.map (generate_for_nodelist_expr nsmode) l in
+	  List.flatten l'
+      | (`Ident name, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  [ `Forest, (generate_ident loc (to_src name)) ]
+      | (`Anti text, p1, p2) ->
+	  let expr = 
+	    Grammar.Entry.parse Pcaml.expr_eoi (Stream.of_string (to_src text))
+	  in
+	  [ `Forest, expr ]
+  )
+
+  and generate_for_attr_expr : ast_attr -> [`Single|`List] * MLast.expr = (
+    function
+	(`Attr(n,v), p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  let n_expr = generate_for_string_expr n in
+	  let v_expr = generate_for_string_expr v in
+	  `Single, <:expr< ($n_expr$, $v_expr$) >>
+      | (`Anti text, p1, p2) ->
+	  `List, 
+	  Grammar.Entry.parse Pcaml.expr_eoi (Stream.of_string (to_src text))
+  )
+
+  and generate_scope loc attrs subnode : (ann * MLast.expr) list = (
+    let subexpr = generate_for_node_expr true subnode in
+    if attrs = [] then
+      subexpr
+    else
+      let decl_expr_l = List.map generate_for_attr_expr attrs in
+      let decl_expr = generate_ann_list loc decl_expr_l in
+      let old_scope_expr = <:expr< Some scope >> in
+      let scope_expr =
+	<:expr< new Pxp_dtd.namespace_scope_impl 
+		  (dtd # namespace_manager)
+		  $old_scope_expr$
+		  $decl_expr$>> in
+      let compiled_subexpr = generate_tree subexpr in
+      [ `Tree, ( <:expr< let scope = $scope_expr$ in $compiled_subexpr$ >> ) ]
+  )
+
+  and generate_autoscope loc subnode : (ann * MLast.expr) list = (
+    let subexpr = generate_for_node_expr true subnode in
+    let compiled_subexpr = generate_tree subexpr in
+    let scope_expr = 
+      <:expr< ( let mng = dtd # namespace_manager in
+		new Pxp_dtd.namespace_scope_impl 
+		  mng None mng#as_declaration ) >> in
+    [ `Tree, ( <:expr< let scope = $scope_expr$ in $compiled_subexpr$ >> ) ]
+  )
+
+  and generate_emptyscope loc subnode : (ann * MLast.expr) list = (
+    let subexpr = generate_for_node_expr true subnode in
+    let compiled_subexpr = generate_tree subexpr in
+    let scope_expr = 
+      <:expr< ( let mng = dtd # namespace_manager in
+		new Pxp_dtd.namespace_scope_impl 
+		  mng None [] ) >> in
+    [ `Tree, ( <:expr< let scope = $scope_expr$ in $compiled_subexpr$ >> ) ]
+  )
+
+  and generate_for_string_expr : ast_string -> MLast.expr = (
+    function
+	(`Literal s, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  let s' = to_rep s in
+	  <:expr< $str:s'$ >>
+      | (`Concat l, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  let l' = List.map generate_for_string_expr l in
+	  let l'' = generate_list loc l' in
+	  <:expr< String.concat "" $l''$ >>
+      | (`Ident name, p1, p2) ->
+	  let loc = mkloc p1 p2 in
+	  generate_ident loc (to_src name)
+      | (`Anti text, p1, p2) ->
+	  Grammar.Entry.parse Pcaml.expr_eoi (Stream.of_string (to_src text))
+  )
+
+  in
+
+  catch_errors
+    (fun () ->
+       let stream = scan_string s in
+       let ast = call_parser parse_any_expr stream in
+       let ast' = check_any_expr ast in
+       let loc = mkloc (1,0,0) (last_pos stream) in
+       let expr = generate_for_any_expr loc ast' in
+       <:expr< $anti:expr$ >>
+    )
+;;
+
+
+let expand_evlist_expr s =
+  let loc = mkloc (0,0,0) (0,0,0) in  (* ??? *)
+  let rec generate_tree annlist =
+    match annlist with
+	(`Single, e) :: annlist' ->
+	  let rest = generate_tree annlist' in
+	  <:expr< [$e$ :: $rest$] >>
+      | ((`Tree | `Forest), e) :: annlist' ->
+	  let rest = generate_tree annlist' in
+	  <:expr< $e$ @ $rest$ >>
+      | [] ->
+	  <:expr< [] >>
+  in
+  let generate_forest annlist = generate_tree annlist in
+  check_file();
+  generate_event_generator generate_tree generate_forest s
+;;
+
+
+let expand_evpull_expr s =
+  let loc = mkloc (0,0,0) (0,0,0) in  (* ??? *)
+  let generate_tree annlist =
+    let rec generate_match k annlist =
+      match annlist with
+	(`Single, e) :: annlist' ->
+	  ( <:patt< $int:string_of_int k$ >>, 
+	    None, 
+	    <:expr< let ev = $e$ in
+	            do { _state.val := $int:string_of_int(k+1)$;
+	                  Some ev } 
+            >> ) :: generate_match (k+1) annlist'
+      | ((`Tree | `Forest), e) :: annlist' ->
+	  ( <:patt< $int:string_of_int k$ >>, 
+	    None, 
+	    <:expr< match $e$ _arg with
+		    [ None -> do { _state.val := $int:string_of_int(k+1)$;
+				   _generator _arg }
+	            | Some Pxp_types.E_end_of_stream -> _generator _arg
+                    | Some ev -> Some ev ]
+            >> ) :: generate_match (k+1) annlist'
+      | [] ->
+	  [ <:patt< $int:string_of_int k$ >>,
+	    None,
+	    <:expr< None >>;
+
+	    <:patt< _ >>,
+	    None,
+	    <:expr< assert False >>
+	  ]
+    in
+    <:expr< let rec _generator =
+	       let _state = ref 0 in
+	       fun _arg ->
+	         match _state.val with
+	         [$list:generate_match 0 annlist$]
+            in _generator >>
+  in
+  let generate_forest annlist = generate_tree annlist in
+  check_file();
+  generate_event_generator generate_tree generate_forest s
+;;
+  
+
+
+(**********************************************************************)
+(* Other expanders *)
+
 let expand_charset_expr s =
   check_file();
   catch_errors
@@ -899,5 +1179,9 @@ Quotation.add
   "pxp_tree" (Quotation.ExAst(expand_tree_expr false, na_pat)) ;;
 Quotation.add 
   "pxp_vtree" (Quotation.ExAst(expand_tree_expr true, na_pat)) ;;
+Quotation.add
+  "pxp_evlist" (Quotation.ExAst(expand_evlist_expr, na_pat)) ;;
+Quotation.add
+  "pxp_evpull" (Quotation.ExAst(expand_evpull_expr, na_pat)) ;;
 Quotation.add
   "pxp_text" (Quotation.ExAst(expand_text_expr, na_pat)) ;;

@@ -1,4 +1,4 @@
-include ../Makefile.conf
+-include ../Makefile.conf
 
 .PHONY: all
 all: toploops

@@ -1313,6 +1313,13 @@ module Entity = struct
                                  ~name ~xid ~resolver dtd
       | Entity(make,resolver) ->
 	  make dtd  (* resolver ignored *)
+
+  let entity_id ent = (ent :> < >)
+
+  class fake = object end
+
+  let create_entity_id () = new fake
+
 end
 
 

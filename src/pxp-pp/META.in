@@ -1,0 +1,17 @@
+description = "Preprocessor for PXP"
+version = "@VERSION@"
+
+# At runtime, we need at least pxp-engine.
+requires = "camlp4,pxp-engine"
+
+# At preprocess time, we need netstring and ulex:
+requires(syntax) = "camlp4,netstring,ulex"
+
+# The toploop is the combination of both:
+requires(syntax,toploop) = "camlp4,netstring,ulex,pxp-engine"
+
+# Specification of stand-alone preprocessor call:
+archive(syntax,preprocessor) = "pxp_pp.cma"
+
+# Specification for the toploop:
+archive(syntax,toploop) = "pxp_pp.cma"
