@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_declaration.src,v 1.2 2000/05/29 23:53:12 gerd Exp $
+(* $Id: pxp_lex_declaration.src,v 1.3 2000/08/14 22:18:34 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -112,13 +112,16 @@ rule scan_declaration = parse
   | character
       { raise (WF_error("Illegal token or character")) }
   | _
-      { raise Bad_character_stream }
+      { raise Netconversion.Malformed_code }
 
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lex_declaration.src,v $
+ * Revision 1.3  2000/08/14 22:18:34  gerd
+ * 	Bad_character_stream -> Netconversion.Malformed_code
+ *
  * Revision 1.2  2000/05/29 23:53:12  gerd
  * 	Updated because Markup_* modules have been renamed to Pxp_*.
  *
