@@ -51,6 +51,13 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>1.1.93:</em> This is a bugfix release. Sometimes
+files were not closed in previous versions, but now they are.
+There were debug statements in the pull parser code, I have
+removed them. Finally, some errors in the Makefiles have been
+corrected.</p>
+      </li>
+
       <li><p><em>1.1.92:</em> The whole lexing stuff has been
 restructured. There is a new tool, lexpp, that generates the lexers
 from only five files. Furthermore, much more 8 bit character sets
