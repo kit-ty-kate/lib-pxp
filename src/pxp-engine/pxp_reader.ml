@@ -1,13 +1,21 @@
-(* $Id: pxp_reader.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.2 2000/07/04 22:13:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
+(* TODO: need a strategy when to close channels if I/O errors or parser
+ * errors happen
+ *)
+
 open Pxp_types;;
+exception Not_competent;;
 
 class type resolver =
   object
+    method init_rep_encoding : rep_encoding -> unit
+    method init_warner : collect_warnings -> unit
+    method rep_encoding : rep_encoding
     method open_in : ext_id -> Lexing.lexbuf
     method close_in : unit
     method change_encoding : string -> unit
@@ -16,24 +24,31 @@ class type resolver =
 ;;
 
 
-class virtual resolve_general (the_warner : collect_warnings) 
-                              (init_internal_encoding : rep_encoding)
+class virtual resolve_general 
  =
   object (self)
-    val internal_encoding = init_internal_encoding
+    val mutable internal_encoding = `Enc_utf8
 
     val mutable encoding = `Enc_utf8
     val mutable encoding_requested = false
 
-    val warner = the_warner
+    val mutable warner = new drop_warnings
 
+    method init_rep_encoding e =
+      internal_encoding <- e
 
+    method init_warner w =
+      warner <- w
+
+    method rep_encoding = (internal_encoding :> rep_encoding)
+
+(*
     method clone =
       ( {< encoding = `Enc_utf8;
 	   encoding_requested = false;
 	>}
 	: # resolver :> resolver )
-
+*)
 
     method private warn (k:int) =
       (* Called if a character not representable has been found.
@@ -71,6 +86,11 @@ class virtual resolve_general (the_warner : collect_warnings)
     method virtual close_in : unit
 
     method open_in xid =
+      encoding <- `Enc_utf8;
+      encoding_requested <- false;
+      self # init_in xid;         (* may raise Not_competent *)
+      (* init_in: may already set 'encoding' *)
+
       let buffer_max = 512 in
       let buffer = String.make buffer_max ' ' in
       let buffer_len = ref 0 in
@@ -92,11 +112,8 @@ class virtual resolve_general (the_warner : collect_warnings)
 	buffer_len := l
       in
 
-      encoding <- `Enc_utf8;
-      encoding_requested <- false;
-      self # init_in xid;
       fillup();
-      self # autodetect buffer;
+      if not encoding_requested then self # autodetect buffer;
 
       Lexing.from_function
 	(fun s n ->
@@ -110,24 +127,27 @@ class virtual resolve_general (the_warner : collect_warnings)
 	     0
 	   else begin
 	     let m_in  = !buffer_len in
-	     let m_out = if encoding_requested then n else 1 in
+	     let m_max = if encoding_requested then n else 1 in
 	     let n_in, n_out, encoding' =
-	       if encoding = (internal_encoding : rep_encoding :> encoding) 
+	       if encoding = (internal_encoding : rep_encoding :> encoding) &&
+	          encoding_requested
 	       then begin
 		 (* Special case encoding = internal_encoding *)
-		 let n = min m_in m_out in
-		 String.blit buffer 0 s 0 n;
-		 n, n, encoding
+		 String.blit buffer 0 s 0 m_in;
+		 m_in, m_in, encoding
 	       end
 	       else
 		 Pxp_encoding.recode
-		   encoding
-		   buffer
-		   m_in
-		   (internal_encoding : rep_encoding :> encoding)
-		   s
-		   m_out
-		   (fun k -> self # warn k; "")
+		   ~in_enc:encoding
+		   ~in_buf:buffer
+		   ~in_pos:0
+		   ~in_len:m_in
+		   ~out_enc:(internal_encoding : rep_encoding :> encoding)
+		   ~out_buf:s
+		   ~out_pos:0
+		   ~out_len:n
+		   ~max_chars:m_max
+		   ~subst:(fun k -> self # warn k; "")
 	     in
 	     if n_in = 0 then
 	       (* An incomplete character at the end of the stream: *)
@@ -135,136 +155,469 @@ class virtual resolve_general (the_warner : collect_warnings)
 	       (* failwith "Badly encoded character"; *)
 	     encoding <- encoding';
 	     consume n_in;
+	     assert(n_out <> 0);
 	     n_out
 	   end)
 
     method change_encoding enc =
-      begin match String.uppercase enc with
-	  ("UTF-16"|"UTF16"|"ISO-10646-UCS-2") ->
-	    (match encoding with
-		 (`Enc_utf16_le | `Enc_utf16_be) -> ()
-	       | `Enc_utf16 -> assert false
-	       | _ ->
-		   raise(WF_error "Encoding of data stream and encoding declaration mismatch")
-	    )
-	| "UTF-16-BE" ->
-	    (match encoding with
-		 `Enc_utf16_be -> ()
-	       | `Enc_utf16 -> assert false
-	       | _ ->
-		   raise(WF_error "Encoding of data stream and encoding declaration mismatch")
-	    )
-	| "UTF-16-LE" ->
-	    (match encoding with
-		 `Enc_utf16_le -> ()
-	       | `Enc_utf16 -> assert false
-	       | _ ->
-		   raise(WF_error "Encoding of data stream and encoding declaration mismatch")
-	    )
-	| ("UTF-8"|"UTF8") ->
-	    encoding <- `Enc_utf8
-	| ("ISO-8859-1"|"ISO88591"|"ISO8859-1"|"ISO-88591") ->
-	    encoding <- `Enc_iso88591
-	| "" ->
-	    ()
-	| _ ->
-	    raise (WF_error "Unsupported character encoding")
+      if not encoding_requested then begin
+	if enc <> "" then begin
+	  match encoding_of_string enc with
+	      `Enc_utf16 ->
+		(match encoding with
+		     (`Enc_utf16_le | `Enc_utf16_be) -> ()
+		   | `Enc_utf16 -> assert false
+		   | _ ->
+		       raise(WF_error "Encoding of data stream and encoding declaration mismatch")
+		)
+	    | e ->
+		encoding <- e
+	end;
+	(* else: the autodetected encoding counts *)
+	encoding_requested <- true;
       end;
-      encoding_requested <- true;
   end
 ;;
 
 
-class resolve_read_channel ch the_warner init_internal_encoding =
+class resolve_read_any_channel ?(auto_close=true) ~channel_of_id =
   object (self)
-    inherit resolve_general the_warner init_internal_encoding
+    inherit resolve_general as super
 
-    (* This resolver takes the in_channel ch as character source. *)
-    val ch = (ch : in_channel)
-    method private init_in (_:ext_id) = ()
-    method private next_string s ofs len =
-      input ch s ofs len
-    method close_in = ()
-    method clone =
-      failwith "This resolver for external references cannot open this entity"
+    val f_open = channel_of_id
+    val mutable current_channel = None
+    val auto_close = auto_close
 
-  end
-;;
-
-
-class resolve_read_string str init_internal_encoding =
-  object (self)
-    inherit resolve_general (new collect_warnings) init_internal_encoding
-
-    (* This resolver takes the string str as character source. *)
-    val str = (str : string)
-    val mutable pos = 0
-    method private init_in (_:ext_id) = ()
-    method private next_string s ofs len =
-      let l = min len (String.length str - pos) in
-      String.blit str pos s ofs l;
-      pos <- pos + l;
-      l
-    method close_in = ()
-    method clone =
-      failwith "This resolver for external references cannot open this entity"
-  end
-;;
-
-
-class resolve_as_file the_warner init_internal_encoding =
-  object (self)
-    inherit resolve_general the_warner init_internal_encoding as super
-
-    (* This resolver interprets file names given as system identifiers. *)
-    (* TODO:
-     * - The file: prefix should be recognized
-     * - How are relative paths interpreted?
-     *)
-    val mutable ch = stdin
-    val mutable directory = "."
-
-    method clone =
-      ( {< encoding = `Enc_utf8;
-	   encoding_requested = false;
-	   ch = stdin;
-	>}
-	: #resolver :> resolver
-      )
-
-    method private init_in xid =
-      let open_file fname =
-	let fname' =
-	  if Filename.is_relative fname then
-	    Filename.concat directory fname
-	  else
-	    fname
-	in
-	open_in fname', Filename.dirname fname'
-      in
-
-      let the_ch, the_directory =
-	match xid with
-	    System fname     -> open_file fname
-	  | Public (_,fname) -> open_file fname
-      in
-      ch <- the_ch;
-      directory <- the_directory
+    method private init_in (id:ext_id) =
+      if current_channel <> None then
+	failwith "Pxp_reader.resolve_read_any_channel # init_in";
+      let ch, enc_opt = f_open id in       (* may raise Not_competent *)
+      begin match enc_opt with
+	  None     -> ()
+	| Some enc -> encoding <- enc; encoding_requested <- true
+      end;
+      current_channel <- Some ch;
 
     method private next_string s ofs len =
-      input ch s ofs len
+      match current_channel with
+	  None -> failwith "Pxp_reader.resolve_read_any_channel # next_string"
+	| Some ch ->
+	    input ch s ofs len
 
     method close_in =
-      close_in ch
+      match current_channel with
+	  None -> failwith "Pxp_reader.resolve_read_any_channel # close_in"
+	| Some ch ->
+	    if auto_close then close_in ch;
+	    current_channel <- None
+
+    method clone =
+      let c = new resolve_read_any_channel 
+		?auto_close:(Some auto_close) f_open in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      (c :> resolver)
 
   end
 ;;
+
+
+class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
+
+  let getchannel = ref (fun xid -> assert false) in
+
+  object (self)
+    inherit resolve_read_any_channel 
+              ?auto_close:auto_close 
+	      (fun xid -> !getchannel xid)
+	      as super
+
+    val is_clone = is_clone
+    val fixid = id
+    val fixenc = fixenc
+    val fixch = ch
+
+    initializer
+      getchannel := self # getchannel
+
+    method private getchannel xid =
+      begin match fixid with
+	  None -> ()
+	| Some bound_xid -> 
+	    if xid <> bound_xid then raise Not_competent
+      end;
+      ch, fixenc
+
+    method private init_in (id:ext_id) =
+      if is_clone then
+	raise Not_competent
+      else
+	super # init_in id
+
+    method close_in =
+      current_channel <- None
+
+    method clone =
+      let c = new resolve_read_this_channel1 
+		true 
+		?id:fixid ?fixenc:fixenc ?auto_close:(Some auto_close) fixch
+      in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      (c :> resolver)
+
+  end
+;;
+
+
+class resolve_read_this_channel =
+  resolve_read_this_channel1 false
+;;
+
+
+class resolve_read_any_string ~string_of_id =
+  object (self)
+    inherit resolve_general as super
+
+    val f_open = string_of_id
+    val mutable current_string = None
+    val mutable current_pos    = 0
+
+    method private init_in (id:ext_id) =
+      if current_string <> None then
+	failwith "Pxp_reader.resolve_read_any_string # init_in";
+      let s, enc_opt = f_open id in       (* may raise Not_competent *)
+      begin match enc_opt with
+	  None     -> ()
+	| Some enc -> encoding <- enc; encoding_requested <- true
+      end;
+      current_string <- Some s;
+      current_pos    <- 0;
+
+    method private next_string s ofs len =
+      match current_string with
+	  None -> failwith "Pxp_reader.resolve_read_any_string # next_string"
+	| Some str ->
+	    let l = min len (String.length str - current_pos) in
+	    String.blit str current_pos s ofs l;
+	    current_pos <- current_pos + l;
+	    l
+
+    method close_in =
+      match current_string with
+	  None -> failwith "Pxp_reader.resolve_read_any_string # close_in"
+	| Some _ ->
+	    current_string <- None
+
+    method clone =
+      let c = new resolve_read_any_string f_open in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      (c :> resolver)
+  end
+;;
+
+
+class resolve_read_this_string1 is_clone ?id ?fixenc str =
+
+  let getstring = ref (fun xid -> assert false) in
+
+  object (self)
+    inherit resolve_read_any_string (fun xid -> !getstring xid) as super
+
+    val is_clone = is_clone
+    val fixid = id
+    val fixenc = fixenc
+    val fixstr = str
+
+    initializer
+      getstring := self # getstring
+
+    method private getstring xid =
+      begin match fixid with
+	  None -> ()
+	| Some bound_xid -> 
+	    if xid <> bound_xid then raise Not_competent
+      end;
+      fixstr, fixenc
+
+
+    method private init_in (id:ext_id) =
+      if is_clone then
+	raise Not_competent
+      else
+	super # init_in id
+
+    method clone =
+      let c = new resolve_read_this_string1 true ?id:fixid ?fixenc:fixenc fixstr
+      in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      (c :> resolver)
+  end
+;;
+
+
+class resolve_read_this_string =
+  resolve_read_this_string1 false
+;;
+
+
+class resolve_read_url_channel 
+  ?(base_url = Neturl.null_url)
+  ?auto_close
+  ~url_of_id
+  ~channel_of_url 
+
+  : resolver
+  =
+
+  let getchannel = ref (fun xid -> assert false) in
+
+  object (self)
+    inherit resolve_read_any_channel 
+              ?auto_close:auto_close 
+	      (fun xid -> !getchannel xid) 
+	      as super
+
+    val base_url = base_url
+    val mutable own_url = Neturl.null_url
+
+    val url_of_id = url_of_id
+    val channel_of_url = channel_of_url
+
+
+    initializer
+      getchannel := self # getchannel
+
+    method private getchannel xid =
+      let rel_url = url_of_id xid in    (* may raise Not_competent *)
+
+      try
+	(* Now compute the absolute URL: *)
+	let abs_url = Neturl.apply_relative_url base_url rel_url in
+                      (* may raise Malformed_URL *)
+
+	(* Simple check whether 'abs_url' is really absolute: *)
+	if not(Neturl.url_provides ~scheme:true abs_url) 
+	then raise Not_competent;
+
+	own_url <- abs_url;
+        (* FIXME: Copy 'abs_url' ? *)
+
+	(* Get and return the channel: *)
+	channel_of_url abs_url            (* may raise Not_competent *)
+      with
+	  Neturl.Malformed_URL -> raise Not_competent
+
+    method clone =
+      let c = 
+	new resolve_read_url_channel 
+	  ?base_url:(Some own_url) 
+	  ?auto_close:(Some auto_close)
+	  ~url_of_id:url_of_id 
+	  ~channel_of_url:channel_of_url
+      in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      (c :> resolve_read_url_channel)
+  end
+;;
+
+
+type spec = [ `Not_recognized | `Allowed | `Required ]
+
+class resolve_as_file
+  ?(file_prefix = (`Allowed :> spec))
+  ?(host_prefix = (`Allowed :> spec))
+  ?(system_encoding = `Enc_utf8) 
+  ?url_of_id:passed_url_of_id
+  ?channel_of_url:passed_channel_of_url
+  ()
+  =
+
+  let url_syntax =
+    let enable_if =
+      function
+	  `Not_recognized  -> Neturl.Url_part_not_recognized
+	| `Allowed         -> Neturl.Url_part_allowed
+	| `Required        -> Neturl.Url_part_required
+    in
+    { Neturl.null_url_syntax with
+	Neturl.url_enable_scheme = enable_if file_prefix;
+	Neturl.url_enable_host   = enable_if host_prefix;
+	Neturl.url_enable_path   = Neturl.Url_part_required;
+	Neturl.url_accepts_8bits = true;
+    } 
+  in
+
+  let base_url_syntax = 
+    { Neturl.null_url_syntax with
+	Neturl.url_enable_scheme = Neturl.Url_part_required;
+	Neturl.url_enable_host   = Neturl.Url_part_allowed;
+	Neturl.url_enable_path   = Neturl.Url_part_required;
+	Neturl.url_accepts_8bits = true;
+    } 
+  in
+
+  let default_base_url =
+    Neturl.make_url
+      ~scheme: "file"
+      ~host:   ""
+      ~path:   (Neturl.split_path (Sys.getcwd() ^ "/"))
+      base_url_syntax
+  in
+
+  let file_url_of_id xid =
+    match xid with
+	Anonymous    -> raise Not_competent
+      | Public (_,_) -> raise Not_competent
+      | System sysname ->
+	  (* By convention, we can assume that sysname is a URL conforming
+	   * to RFC 1738 with the exception that it may contain non-ASCII
+	   * UTF-8 characters. 
+	   *)
+	  try
+	    Neturl.url_of_string url_syntax sysname 
+              (* may raise Malformed_URL *)
+	  with
+	      Neturl.Malformed_URL -> raise Not_competent
+  in
+
+  let channel_of_file_url url =
+    try
+      let scheme =
+	try Neturl.url_scheme url with Not_found -> "file" in
+      let host =
+	try Neturl.url_host url with Not_found -> "" in
+      
+      if scheme <> "file" then raise Not_competent;
+      if host <> "" && host <> "localhost" then raise Not_competent;
+      
+      let path_utf8 =
+	try Neturl.join_path (Neturl.url_path ~encoded:false url)
+	with Not_found -> raise Not_competent
+      in
+      
+      let path = 
+	Pxp_encoding.recode_string
+	  ~in_enc:  `Enc_utf8
+	  ~out_enc: system_encoding
+	  path_utf8 in
+        (* May raise Bad_character_stream *)
+      
+      open_in_bin path, None
+	(* May raise Sys_error *)
+
+    with
+      | Bad_character_stream -> assert false
+	    (* should not happen *)
+
+  in
+
+  let url_of_id id =
+    match passed_url_of_id with
+	None -> 
+	  file_url_of_id id
+      | Some f -> 
+	  begin 
+	    try f id
+	    with 
+		Not_competent -> file_url_of_id id
+	  end
+  in
+
+  let channel_of_url url =
+    match passed_channel_of_url with
+	None -> 
+	  channel_of_file_url url
+      | Some f -> 
+	  begin 
+	    try f url
+	    with 
+		Not_competent -> channel_of_file_url url
+	  end
+  in
+  
+  resolve_read_url_channel 
+    ~base_url:       default_base_url
+    ~auto_close:     true
+    ~url_of_id:      url_of_id
+    ~channel_of_url: channel_of_url
+;;
+
+
+class combine rl =
+  object (self)
+    val resolvers = (rl : resolver list)
+    val mutable internal_encoding = `Enc_utf8
+    val mutable warner = new drop_warnings
+    val mutable active_resolver = None
+
+    method init_rep_encoding enc =
+      List.iter
+	(fun r -> r # init_rep_encoding enc)
+	rl;
+      internal_encoding <- enc
+
+    method init_warner w =
+      List.iter
+	(fun r -> r # init_warner w)
+	rl;
+      warner <- w;
+
+    method rep_encoding = internal_encoding
+      (* CAUTION: This may not be the truth! *)
+
+    method open_in xid =
+      let rec find_competent_resolver rl =
+	match rl with
+	    r :: rl' ->
+	      begin try 
+		r, (r # open_in xid)
+	      with
+		  Not_competent -> find_competent_resolver rl'
+	      end;
+	  | [] ->
+	      raise Not_competent
+      in
+
+      if active_resolver <> None then failwith "Pxp_reader.combine # open_in";
+      let r, lb = find_competent_resolver resolvers in
+      active_resolver <- Some r;
+      lb
+
+    method close_in =
+      match active_resolver with
+	  None   -> failwith "Pxp_reader.combine # close_in"
+	| Some r -> r # close_in;
+	            active_resolver <- None
+
+    method change_encoding (enc:string) =
+      match active_resolver with
+	  None   -> failwith "Pxp_reader.combine # change_encoding"
+	| Some r -> r # change_encoding enc
+
+    method clone =
+      let c =
+	match active_resolver with
+	    None   -> new combine (List.map (fun r -> r # clone) resolvers)
+	  | Some r -> r # clone
+      in
+      c # init_rep_encoding internal_encoding;
+      c # init_warner warner;
+      c
+  end
+
 
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.2  2000/07/04 22:13:30  gerd
+ * 	Implemented the new API rev. 1.2 of pxp_reader.mli.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
