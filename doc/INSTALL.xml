@@ -105,6 +105,9 @@ is about 1 MB:
 ocamlfind ocamlc -package pxp -predicates pxp_without_utf8 ...
 </code>
 
+Note that you can also reduce the size of the resulting executable by
+specifying Netstring-related predicates (e.g. netstring_only_iso); see the
+documentation of Netstring.
 </p>
     </sect2>
 

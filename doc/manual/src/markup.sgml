@@ -5092,6 +5092,14 @@ alternatives do not nest, the backtracking algorithm may be better.</para>
 	<para><emphasis>Some (often later added) features that are otherwise
 not explained in the manual but worth to be mentioned.</emphasis></para>
 
+	<itemizedlist mark="bullet" spacing="compact">
+	  <listitem><para>Methods node_position, node_path, nth_node,
+previous_node, next_node for nodes: See pxp_document.mli</para>
+	  </listitem>
+	  <listitem><para>Functions to determine the document order of nodes:
+compare, create_ord_index, ord_number, ord_compare: See pxp_document.mli</para>
+	  </listitem>
+	</itemizedlist>
       </sect1>
 
     </chapter>

@@ -27,7 +27,7 @@
     <title>Abstract</title>
     <p>
 <em>PXP</em> is a validating parser for XML-1.0 which has been written
-entirely and from scratch in Objective Caml.
+entirely in Objective Caml.
 </p>
 
     <p>PXP is the new name of the parser formerly known as "Markup". 
@@ -36,12 +36,13 @@ property: that the API is polymorphic and can be configured such that
 different objects are used to store different types of elements.</p>
   </sect1>
 
-<!--
   <sect1>
     <title>Download</title>
     <p>
-You can download <em>Markup</em> as gzip'ed <a
-					       href="&url.markup-download;">tarball</a>.
+You can download <em>PXP</em> as gzip'ed <a
+href="&url.pxp-download;">tarball</a>. The parser needs the <a
+href="&url.netstring-project;">Netstring</a> package (0.9.3). Note that PXP
+requires O'Caml 3.00.
 </p>
   </sect1>
 
@@ -50,10 +51,9 @@ You can download <em>Markup</em> as gzip'ed <a
     <p>
 The manual is included in the distribution both as Postscript document and
 bunch of HTML files. An online version can be found <a
-						       href="&url.markup-manual;">here</a>.
+						       href="&url.pxp-manual;">here</a>.
 </p>
   </sect1>
--->
 
   <sect1>
     <title>Author, Credits, Copying</title>
@@ -64,6 +64,9 @@ you may use it even for commercial purposes as long as the license conditions
 are respected, see the file LICENSE coming with the distribution. It allows
 almost everything. 
 </p>
+
+    <p>Thanks also to Alain Frisch and Haruo Hosoya for discussions and bug
+reports.</p>
   </sect1>
 
   <sect1>
@@ -80,7 +83,6 @@ tree.</p>
 
     <p>
 Once the document is parsed, it can be accessed using a class interface.
-This interface is still under development and subject to future changes.
 The interface allows arbitrary access including transformations. One of
 the features of the document representation is its polymorphic nature;
 it is simple to add custom methods to the document classes. Furthermore,
@@ -93,8 +95,67 @@ because it simplifies the structure of programs processing XML documents.
 Note that the class interface does not comply to the DOM standard. It was not a
 development goal to realize a standard API (industrial developers can this much
 better than I); however, the API is powerful enough to be considered as
-equivalent with DOM.
+equivalent with DOM. More important, the interface is compatible with the
+XML information model required by many XML-related standards.
 </p>
+
+    <sect2>
+      <title>Detailed feature list</title>
+
+      <ul>
+	<li><p>The XML instance is validated against the DTD; any violation of
+a validation constraint leads to the rejection of the instance. The validator
+has been carefully implemented, and conforms strictly to the standard. If
+needed, it is also possible to run the parser in a well-formedness mode.</p>
+	</li>
+	<li><p>If possible, the validator applies a deterministic finite
+automaton to validate the content models. This ensures that validation can
+always be performed in linear time. However, in the case that the content
+models are not deterministic, the parser uses a backtracking algorithm which
+can be much slower. - It is also possible to reject non-deterministic content
+models.</p>
+	</li>
+	<li><p>In particular, the validator also checks the complicated rules
+whether parentheses are properly nested with respect to entities, and whether
+the standalone declaration is satisfied. On demand, it is checked whether the
+IDREF attributes only refer to existing nodes.</p>
+	</li>
+	<li><p>Entity references are automatically resolved while the XML text
+is being scanned. It is not possible to recognize in the object tree where a
+referenced entity begins or ends; the object tree only represents the logical structure.</p>
+	</li>
+	<li><p>External entities are loaded using a configurable resolver
+infrastructure. It is possible to connect the parser with an arbitrary XML source.</p>
+	</li>
+	<li><p>The parser can read XML text encoded in a variety of character
+sets. Independent of this, it is possible to choose the encoding of the
+internal representation of the tree nodes; the parser automatically converts
+the input text to this encoding. Currently, the parser supports UTF-8 and
+ISO-8859-1 as internal encodings.</p>
+	</li>
+	<li><p>The interface of the parser has been designed such that it is
+best integrated into the language O'Caml. The first goal was simplicity of
+usage which is achieved by many convenience methods and functions, and by
+allowing the user to select which parts of the XML text are actually
+represented in the tree. For example, it is possible to store processing
+instructions as tree nodes, but the parser can also be configured such that
+these instructions are put into hashtables. The information model is compatible
+with the requirements of XML-related standards such as XPath.</p>
+	</li>
+	<li><p>In particular, the node tree can optionally contain or leave out
+processing instructions and comments. It is also possible to generate a "super
+root" object which is the parent of the root element. The attributes of
+elements are normally not stored as nodes, but it is possible to get them
+wrapped into nodes.</p>
+	</li>
+	<li><p>There is also an interface for DTDs; you can parse and access
+sequences of declarations. The declarations are fully represented as recursive
+O'Caml values.
+</p>
+	</li>
+      </ul>
+    </sect2>
+
 
     <sect2>
       <title>Code examples</title>
@@ -143,7 +204,7 @@ It is currently not possible to check for interoperatibility with SGML.
 
 <p>The following features are also missing:</p>
       <ul>
-	<li><p>There is no special support for namespaces.</p>
+	<li><p>There is no special support for namespaces. (Perhaps in the next release?)</p>
 	</li>
 	<li><p>There is no support for XPATH or XSLT.</p>
 	</li>
@@ -155,6 +216,10 @@ myself or by contributors (who are invited to do so).</p>
     <sect2>
       <title>Recent Changes</title>
       <ul>
+	<li>
+	  <p>Changed in 1.0:</p>
+	  <p>XXX</p>
+	</li>
 	<li>
 	  <p>Changed in 0.99.8:</p>
 	  <p>Several fixes of bugs reported by Haruo Hosoya and Alain
@@ -233,6 +298,7 @@ encoded files.</p>
 	  <p>Numerous other changes.</p>
 	</li>
 
+<!--
 	<li>
 	  <p>Changed in 0.2.10:</p>
 	  <p>Bugfix: in the "allow_undeclared_attributes" feature.</p>
@@ -349,6 +415,7 @@ declaration are ordered in the right way.
 The error messages have been improved. 
 </p>
 	</li>
+-->
       </ul>
     </sect2>
   </sect1>
