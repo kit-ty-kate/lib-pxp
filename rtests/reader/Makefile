@@ -5,15 +5,23 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-test_reader: test_reader.ml
-	ocamllex minilex.mll
-	ocamlfind ocamlc -custom -o test_reader -package pxp,unix,threads \
+.PHONY: all
+all: test_reader test_rewritten_reader
+
+test_reader: test_reader.ml minilex.ml
+	ocamlfind ocamlc -o test_reader -package pxp,unix,threads \
 		-linkpkg -thread \
 		-g minilex.ml test_reader.ml
 
+test_rewritten_reader: test_rewritten_reader.ml minilex.ml
+	ocamlfind ocamlc -o test_rewritten_reader -package pxp,unix \
+		-linkpkg \
+		-g minilex.ml test_rewritten_reader.ml
+
+minilex.ml: minilex.mll
+	ocamllex minilex.mll
+
 #----------------------------------------------------------------------
-.PHONY: all
-all:
 
 .PHONY: clean
 clean:
@@ -25,5 +33,5 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f test_reader
+	rm -f test_reader test_rewritten_reader
 
