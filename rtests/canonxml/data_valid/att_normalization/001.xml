@@ -2,9 +2,9 @@
 
 <!DOCTYPE any [
 
-<!ENTITY x PUBLIC "x" "" NDATA x>
-<!ENTITY y PUBLIC "x" "" NDATA x>
-<!ENTITY z PUBLIC "x" "" NDATA x>
+<!ENTITY x PUBLIC "x" "" NDATA p>
+<!ENTITY y PUBLIC "x" "" NDATA p>
+<!ENTITY z PUBLIC "x" "" NDATA p>
 
 <!NOTATION p PUBLIC "image/gif">
 <!NOTATION q PUBLIC "image/jpeg">
