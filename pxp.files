@@ -151,7 +151,7 @@ f src/pxp-engine/pxp_lexer_types.ml
 f src/pxp-engine/pxp_lexer_types.mli
 f src/pxp-engine/pxp_lexers.ml
 f src/pxp-engine/pxp_lexers.mli
-f src/pxp-engine/pxp_lexing.mlp
+f src/pxp-engine/pxp_lexing.ml
 f src/pxp-engine/pxp_lexing.mli
 f src/pxp-engine/pxp_lib.mli
 f src/pxp-engine/pxp_lib_ocamlc.ml
@@ -353,12 +353,12 @@ p rtests/write/sample.*\.xml
 d rtests/lex
 f rtests/lex/Makefile
 f rtests/lex/run
-f rtests/lex/text_lex_utf8.ml
+f rtests/lex/test_lex_utf8.ml
 
 d tools
 f tools/Makefile
 f tools/collect_files
-f tools/insert_variant
+#f tools/insert_variant
 #f tools/m2parsergen
 #f tools/ucs2_to_utf8
 

@@ -10,7 +10,7 @@ destdir="pxp-$version"
 #    exit 1
 #}
 
-test make -q -C gensrc/pxp-wlex-utf8 || {
+make -q -C gensrc/pxp-wlex-utf8 || {
     echo  gensrc/pxp-wlex-utf8 is not up-to-date
     exit 1
 }
