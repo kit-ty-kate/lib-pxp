@@ -13,7 +13,7 @@ opt:
 	$(MAKE) depend
 	$(MAKE) -f Makefile.code opt
 
-generate: pxp_core_parser.ml 
+generate: pxp_core_parser.ml pxp_lexing.ml
 
 .PHONY: depend
 depend: 
@@ -33,3 +33,6 @@ install:
 
 uninstall:
 	$(OCAMLFIND) remove pxp-engine
+
+pxp_lexing.ml: pxp_lexing.mlp
+	$(IFDEF) $(LEXBUF_307) pxp_lexing.mlp
