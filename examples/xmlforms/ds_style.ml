@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.6 2001/07/02 22:50:43 gerd Exp $
+(* $Id: ds_style.ml,v 1.7 2001/12/15 18:27:40 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -244,7 +244,9 @@ class vbox =
       List.iter
 	(fun n ->
 	   let wdg = n # extension # create_widget f c in
-	   n # extension # pack ~anchor [Widget.forget_type wdg]
+	   (n # extension : shared) # pack 
+	     ~anchor
+	     [Widget.forget_type wdg]
 	)
 	nodes;
       Widget.forget_type f
@@ -343,8 +345,9 @@ class hbox =
       List.iter
 	(fun n ->
 	   let wdg = n # extension # create_widget f2 c in
-	   n # extension # pack ~anchor:inner_pack_anchor ~side:`Left 
-	                        [Widget.forget_type wdg];
+	   (n # extension : shared) # pack 
+	     ~anchor:inner_pack_anchor ~side:`Left 
+	     [Widget.forget_type wdg];
 	)
 	nodes;
       ( match f_extra with
@@ -612,11 +615,11 @@ class textbox =
 		f in
       last_widget <- Some e;
       Scrollbar.configure 
-        ~command:(fun s -> Text.yview e s)
+        ~command:(fun ~scroll:s -> Text.yview e s)
 	~width:9
 	vscrbar;
       Text.configure 
-	~yscrollcommand:(fun a b -> Scrollbar.set vscrbar a b)
+	~yscrollcommand:(fun ~first:a ~last:b -> Scrollbar.set vscrbar a b)
 	e;
       let s =
 	if att_slot <> "" then
@@ -791,6 +794,9 @@ let tag_map =
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.7  2001/12/15 18:27:40  gerd
+ * 	Changes for O'Caml 3.04
+ *
  * Revision 1.6  2001/07/02 22:50:43  gerd
  * 	Ported from camltk to labltk.
  *
