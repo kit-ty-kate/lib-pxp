@@ -9,11 +9,11 @@ NAME     = xmlforms
 REQUIRES = labltk str pxp
 
 xmlforms: $(ARCHIVE) ds_app.cmo
-	ocamlfind ocamlc -g -o xmlforms -custom -package "$(REQUIRES)" \
+	ocamlfind ocamlc -g -o xmlforms -package "$(REQUIRES)" \
 		-linkpkg $(ARCHIVE) ds_app.cmo 
 
 xmlform.opt: $(XARCHIVE) ds_app.cmx
-	ocamlfind ocamlopt -o xmlforms.opt -custom -package "$(REQUIRES)" \
+	ocamlfind ocamlopt -o xmlforms.opt -package "$(REQUIRES)" \
 		-linkpkg $(XARCHIVE) ds_app.cmx
 
 $(ARCHIVE): $(OBJECTS)
