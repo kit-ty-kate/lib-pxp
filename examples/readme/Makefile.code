@@ -11,7 +11,7 @@ readme: $(OBJECTS) main.cmo
 		-linkpkg $(OBJECTS) main.cmo 
 
 readme.opt: $(XARCHIVE) main.cmx
-	ocamlfind ocamlopt -o readme.opt -custom -package "$(REQUIRES)" \
+	ocamlfind ocamlopt -o readme.opt -package "$(REQUIRES)" \
 		-linkpkg $(XOBJECTS) main.cmx
 
 #----------------------------------------------------------------------
