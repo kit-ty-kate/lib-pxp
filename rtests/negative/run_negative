@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# $Id: run_negative,v 1.1 2000/05/01 15:58:50 gerd Exp $
+# $Id: run_negative,v 1.2 2000/05/01 16:23:39 gerd Exp $
 
 
 t=./test_negative
@@ -101,11 +101,14 @@ else
 	data_jclark_notwf/ext-sa data_jclark_notwf/not-sa data_jclark_notwf/sa \
 	data_notwf/sa
     for_directory $action "" \
-	data_jclark_invalid
+	data_jclark_invalid data_invalid
 fi
 
 # ======================================================================
 # $Log: run_negative,v $
+# Revision 1.2  2000/05/01 16:23:39  gerd
+# 	Added data_invalid.
+#
 # Revision 1.1  2000/05/01 15:58:50  gerd
 # 	Initial revision.
 #
