@@ -1,0 +1,95 @@
+(* $Id: pxp_lexing.mlp,v 1.6 2003/06/18 14:43:12 gerd Exp $
+ * ----------------------------------------------------------------------
+ * PXP: The polymorphic XML parser for Objective Caml.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
+ *)
+
+open Lexing
+
+type lexbuf = Lexing.lexbuf
+
+(* We are now again using the functions from Lexing. They are ok since
+ * O'Caml 3.05. In O'Caml 3.04 and earlier versions, the Lexing module
+ * had serious performance problems for very large tokens.
+ *
+ * Note that the type of lexbuf has changed between O'Caml 3.06 and 3.07.
+ * (New components lex_mem, lex_start_p, lex_curr_p.)
+ *)
+
+let from_function = Lexing.from_function
+
+let from_channel = Lexing.from_channel
+
+let from_string = Lexing.from_string
+
+let lexeme = Lexing.lexeme
+let lexeme_char = Lexing.lexeme_char
+let lexeme_start = Lexing.lexeme_start
+let lexeme_end = Lexing.lexeme_end
+
+let from_string_inplace s =
+  (* avoids copying s *)
+  let lb = from_string "" in
+  { lb with
+      lex_buffer = s;
+      lex_buffer_len = String.length s
+  }
+;;
+
+let from_another_string_inplace lexbuf s =
+  (* uses lexbuf again for another string (avoids memory allocation) *)
+  lexbuf.lex_buffer <- s;
+  lexbuf.lex_buffer_len <- String.length s;
+  lexbuf.lex_abs_pos <- 0;
+  lexbuf.lex_start_pos <- 0;
+  lexbuf.lex_curr_pos <- 0;
+  lexbuf.lex_last_pos <- 0;
+  lexbuf.lex_last_action <- 0;
+  lexbuf.lex_eof_reached <- true;
+IFDEF LEXBUF_307
+  lexbuf.lex_mem = [| |];
+  lexbuf.lex_start_p = zero_pos;
+  lexbuf.lex_curr_p = zero_pos
+ENDIF
+;;
+
+
+let sub_lexeme lexbuf k l =
+  (* = String.sub (Lexing.lexeme lexbuf) k l *)
+  (* In recent versions of O'Caml (3.06+X), there are already definitions 
+   * of sub_lexeme. These have the same effect, but don't protect against
+   * improper usage.
+   *)
+  let lexeme_len = lexbuf.lex_curr_pos - lexbuf.lex_start_pos in
+  if (k < 0 || k > lexeme_len || l < 0 || k+l > lexeme_len) then
+    invalid_arg "sub_lexeme";
+  let s = String.create l in
+  String.unsafe_blit 
+    lexbuf.lex_buffer (lexbuf.lex_start_pos + k) s 0 l;
+  s
+;;
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lexing.mlp,v $
+ * Revision 1.6  2003/06/18 14:43:12  gerd
+ * 	Lexbuf type changes in 3.07
+ *
+ * Revision 1.1  2002/08/28 23:04:38  gerd
+ * 	Removed the lex_buffer_len stuff
+ *
+ * Revision 1.4  2002/03/15 16:14:40  gerd
+ * 	Fixed the max_string_length bug.
+ *
+ * Revision 1.3  2002/03/13 22:45:42  gerd
+ * 	Improved Pxp_lexing.
+ *
+ * Revision 1.2  2002/03/13 22:26:08  gerd
+ * 	Added some functions from Pxp_lexer_types.
+ *
+ * Revision 1.1  2002/02/20 00:24:54  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)
