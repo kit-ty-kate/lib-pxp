@@ -18,6 +18,6 @@
 @findlib pxp-lex-utf8
 @optional @findlib pxp-wlex
 @optional @findlib pxp-wlex-utf8
-@findlib pxp-ulex
+@findlib pxp-ulex-utf8
 @findlib pxp-pp
 @deepdir doc/godi-pxp
