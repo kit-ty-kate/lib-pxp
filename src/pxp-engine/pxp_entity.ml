@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.3 2000/07/08 16:28:05 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.4 2000/07/09 01:05:04 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -494,6 +494,11 @@ class virtual entity the_dtd the_name the_warner
       if debug then
 	prerr_endline ("- Entity " ^ name ^ " # process_missing_xmldecl");
       self # set_encoding ""
+
+
+    (* Methods for NDATA entities only: *)
+    method ext_id = (assert false : ext_id)
+    method notation = (assert false : string)
 
   end
 ;;
@@ -1050,6 +1055,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.4  2000/07/09 01:05:04  gerd
+ * 	Exported methods 'ext_id' and 'notation' anyway.
+ *
  * Revision 1.3  2000/07/08 16:28:05  gerd
  * 	Updated: Exception 'Not_resolvable' is taken into account.
  *
