@@ -1,2 +1,4 @@
-In entity [toplevel document] = SYSTEM "data_invalid/061.xml", at line 18, column 17: 
-Markup_types.Validation_error("Attribute `v3' of element type `el' violates standalone declaration")
+WARNING: More than one ATTLIST declaration for element type `el'
+WARNING: More than one ATTLIST declaration for element type `el'
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/061.xml", at line 18, position 12:
+ERROR (Validity constraint): Attribute `v3' of element type `el' violates standalone declaration

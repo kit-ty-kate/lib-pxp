@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/032.xml", at line 6, column 2: 
-Markup_types.Validation_error("Illegal default value for attribute `n' in declaration for element `el'")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/032.xml", at line 6, position 1:
+ERROR (Validity constraint): Illegal default value for attribute `n' in declaration for element `el'

@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/036.xml", at line 8, column 0: 
-Markup_types.Validation_error("Attribute `enum' does not match one of the declared enumerator tokens")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/036.xml", at line 7, position 14:
+ERROR (Validity constraint): Attribute `enum' does not match one of the declared enumerator tokens

@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/024.xml", at line 7, column 0: 
-Markup_types.Validation_error("Attribute `nms' is lexically malformed")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/024.xml", at line 6, position 17:
+ERROR (Validity constraint): Attribute `nms' is lexically malformed

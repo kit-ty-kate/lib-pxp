@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/016.xml", at line 8, column 0: 
-Markup_types.Validation_error("Attribute `idrefs' is lexically malformed")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/016.xml", at line 7, position 22:
+ERROR (Validity constraint): Attribute `idrefs' is lexically malformed

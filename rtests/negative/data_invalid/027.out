@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/027.xml", at line 6, column 2: 
-Markup_types.Validation_error("Default value for attribute `ent' is lexically malformed")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/027.xml", at line 6, position 1:
+ERROR (Validity constraint): Reference to undeclared notation `x'

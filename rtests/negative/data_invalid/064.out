@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_invalid/064.xml", at line 17, column 16: 
-Markup_types.Validation_error("Reference to entity `e3' violates standalone declaration")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/064.xml", at line 17, position 10:
+ERROR (Validity constraint): Reference to entity `e3' violates standalone declaration

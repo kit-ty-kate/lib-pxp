@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_notwf/sa/001.xml", at line 4, column 13: 
-Markup_types.Validation_error("Found reference to external entity in attribute value")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_notwf/sa/001.xml", at line 4, position 7:
+ERROR (Validity constraint): Found reference to external entity in attribute value
