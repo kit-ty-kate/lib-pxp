@@ -1,0 +1,18 @@
+<?xml encoding="ISO-8859-1"?>
+<record-list>
+  <record>
+    <last-name>Stolpmann</last-name>
+    <first-name>Gerd</first-name>
+    <phone>997705</phone>
+  </record>
+  <record>
+    <last-name>Smith</last-name>
+    <first-name>Jack</first-name>
+    <phone>12345</phone>
+  </record>
+  <record>
+    <last-name>Ützgür</last-name>
+    <first-name>xxx</first-name>
+    <phone>7654</phone>
+  </record>
+</record-list>
