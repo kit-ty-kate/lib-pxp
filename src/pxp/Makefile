@@ -9,7 +9,7 @@ clean:
 
 CLEAN: clean
 
-distclean:
+distclean: clean
 	rm -f META
 
 install:
