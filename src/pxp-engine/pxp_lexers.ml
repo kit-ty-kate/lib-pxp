@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.11 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.12 2003/06/18 15:30:52 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -39,23 +39,20 @@ let dummy_lexer_set =
 let current_lexer_set = ref dummy_lexer_set
 
 
-let current_lexer_set_encoding = ref `Enc_iso88591;;
-
-
 let init ls =
   Hashtbl.add lexer_sets ls.lex_encoding ls;
-  current_lexer_set_encoding := ls.lex_encoding;
   current_lexer_set := ls
 ;;
 
 
 let get_lexer_set enc =
-  if enc = !current_lexer_set_encoding then
-    !current_lexer_set
+  (* This function must be safe against concurrent calls in mt environments *)
+  let cls = !current_lexer_set in
+  if enc = cls.lex_encoding then
+    cls
   else
     try
       let ls = Hashtbl.find lexer_sets enc in
-      current_lexer_set_encoding := ls.lex_encoding;
       current_lexer_set := ls;
       ls
     with
@@ -67,6 +64,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.12  2003/06/18 15:30:52  gerd
+ * 	Thread safety
+ *
  * Revision 1.11  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *
