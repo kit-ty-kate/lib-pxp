@@ -5,5 +5,6 @@ set -e
 (cd recode && ./test_recode)
 (cd reader && ./test_reader)
 (cd canonxml && ./run_canonxml)
+(cd write && ./run_write)
 (cd codewriter && ./run_codewriter)
 (cd negative && ./run_negative)
