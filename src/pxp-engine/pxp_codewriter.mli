@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.mli,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_codewriter.mli,v 1.2 2000/07/09 00:30:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,13 +12,18 @@ val write_document : out_channel -> 'ext document -> unit
     (* Writes O'Caml code to the out_channel that is a top-level function
      * creating a fresh document which is equal to the passed document:
      *
-     * "let create_document warner map = ...;;"
+     * "let create_document warner spec = ...;;"
      *
      * If you compile the code and call "create_document warner map"  the 
-     * function creates a document tree which is equal to the passed document.
+     * function creates a document tree which is (almost) equal to the 
+     * passed document.
+     * 
+     * The following properties may not be equal:
+     * - Parsed entities
+     * - Whether a declaration occurs in an external entity or not
      * 
      * 'warner': a collect_warnings object
-     * 'map': a domspec
+     * 'spec': a Pxp_document.spec
      *)
 
   
@@ -29,7 +34,12 @@ val write_dtd : out_channel -> dtd -> unit
      * "let create_dtd warner = ...;;"
      *
      * If you compile the code and call "create_dtd warner"  the 
-     * function creates a DTD object which is equal to the passed object.
+     * function creates a DTD object which is (almost) equal to the 
+     * passed object.
+     * 
+     * The following properties may not be equal:
+     * - Parsed entities
+     * - Whether a declaration occurs in an external entity or not
      * 
      * 'warner': a collect_warnings object
      *)
@@ -54,6 +64,9 @@ val write_subtree : out_channel -> 'ext node -> unit
  * History:
  * 
  * $Log: pxp_codewriter.mli,v $
+ * Revision 1.2  2000/07/09 00:30:14  gerd
+ * 	Updated.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

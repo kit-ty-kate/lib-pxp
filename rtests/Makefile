@@ -2,6 +2,7 @@
 all:
 	$(MAKE) -C recode
 	$(MAKE) -C reader
+	$(MAKE) -C codewriter
 	$(MAKE) -C canonxml
 	$(MAKE) -C negative
 
@@ -13,6 +14,7 @@ clean:
 CLEAN: clean
 	$(MAKE) -C recode clean
 	$(MAKE) -C reader clean
+	$(MAKE) -C codewriter clean
 	$(MAKE) -C canonxml clean
 	$(MAKE) -C negative clean
 
@@ -22,6 +24,7 @@ distclean: clean
 	rm -f dumpfiles
 	$(MAKE) -C recode distclean
 	$(MAKE) -C reader distclean
+	$(MAKE) -C codewriter distclean
 	$(MAKE) -C canonxml distclean
 	$(MAKE) -C negative distclean
 
