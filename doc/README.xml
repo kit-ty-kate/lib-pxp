@@ -224,6 +224,13 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.2.8:</p>
+	  <p>A bit more documentation (Markup_yacc).</p>
+	  <p>Bugfix: In previous versions, the second trial to refer to
+an entity caused a Bad_character_stream exception. The reason was improper
+re-initialization of the resolver object.</p>
+	</li>
+	<li>
 	  <p>Changed in 0.2.7:</p>
 	  <p>Added some methods in Markup_document.</p>
 	  <p>Bugfix: in method orphaned_clone</p>
