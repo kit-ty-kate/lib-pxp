@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.2 2000/07/08 22:59:14 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.3 2000/07/09 00:30:00 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -144,7 +144,7 @@ let ocaml_encoding enc =
 let write_expr_new_pi out pi =
   output_string out ("(new Pxp_dtd.proc_instruction \"" ^
 		     String.escaped(pi # target) ^ "\" \"" ^
-		     String.escaped(pi # value) ^ "\"" ^ 
+		     String.escaped(pi # value) ^ "\" " ^ 
 		     ocaml_encoding(pi # encoding) ^ ")")
 ;;
 
@@ -184,6 +184,37 @@ let write_local_dtd out (dtd : dtd) =
   output_string out ("dtdobj # set_standalone_declaration " ^
                      string_of_bool (dtd # standalone_declaration) ^ ";\n");
 
+  (* Add notations: *)
+  List.iter
+    (fun noname ->
+       let no = dtd # notation noname in
+       output_string out ("let no = new Pxp_dtd.dtd_notation \"" ^
+			  String.escaped noname ^ "\" ");
+       write_expr_ext_id out (no # ext_id);
+       output_string out " encoding in\n";
+       output_string out "dtdobj # add_notation no;\n";
+    )
+    (List.sort compare (dtd # notation_names));
+
+  (* Add unparsed entities: *)
+  List.iter
+    (fun enname ->
+       let en, _ = dtd # gen_entity enname in
+       if en # is_ndata then begin
+	 let ext_id = en # ext_id in
+	 let notation = en # notation in
+	 let encoding = en # encoding in
+	 output_string out ("let ndata = new Pxp_entity.ndata_entity \"" ^
+			    String.escaped enname ^ "\" ");
+	 write_expr_ext_id out ext_id;
+	 output_string out ("\"" ^ String.escaped notation ^ "\" " ^ 
+			    ocaml_encoding encoding ^ " in \n");
+	 output_string out "dtdobj # add_gen_entity (ndata :> Pxp_entity.entity) false;\n";
+       end;
+    )
+    (List.sort compare (dtd # gen_entity_names));
+
+
   (* Add elements: *)
   List.iter
     (fun elname ->
@@ -194,9 +225,7 @@ let write_local_dtd out (dtd : dtd) =
        output_string out "let cm = ";
        write_expr_content_model out (el # content_model);
        output_string out " in\n";
-       output_string out ("let extdecl = " ^ 
-                          string_of_bool (el # externally_declared) ^ " in\n");
-       output_string out "el # set_cm_and_extdecl cm extdecl;\n";
+       output_string out "el # set_cm_and_extdecl cm false;\n";
        (* Add attributes: *)
        List.iter
 	 (fun attname ->
@@ -206,9 +235,9 @@ let write_local_dtd out (dtd : dtd) =
 	    write_expr_att_type out atttype;
 	    output_string out " ";
 	    write_expr_att_default out attdefault;
-	    output_string out ";\n";
+	    output_string out " false;\n";
 	 )
-	 (el # attribute_names);
+	 (List.sort compare (el # attribute_names));
 
        (* Allow arbitrary? *)
        if el # arbitrary_allowed then
@@ -222,19 +251,7 @@ let write_local_dtd out (dtd : dtd) =
        (* Add the element 'el' to 'dtdobj': *)
        output_string out "dtdobj # add_element el;\n";
     )
-    (dtd # element_names);
-
-  (* Add notations: *)
-  List.iter
-    (fun noname ->
-       let no = dtd # notation noname in
-       output_string out ("let no = new Pxp_dtd.dtd_notation \"" ^
-			  String.escaped noname ^ "\" ");
-       write_expr_ext_id out (no # ext_id);
-       output_string out " encoding in\n";
-       output_string out "dtdobj # add_notation no;\n";
-    )
-    (dtd # notation_names);
+    (List.sort compare (dtd # element_names));
 
   (* Add processing instructions: *)
   List.iter
@@ -249,7 +266,7 @@ let write_local_dtd out (dtd : dtd) =
 	 )
 	 pilist;
     )
-    (dtd # pinstr_names);
+    (List.sort compare (dtd # pinstr_names));
 
   (* Set the name of the root element: *)
   begin match dtd # root with
@@ -317,7 +334,7 @@ let rec write_local_subtree out n =
 	 )
 	 pilist;
     )
-    (n # pinstr_names);
+    (List.sort compare (n # pinstr_names));
        
   (* Add the sub nodes: *)
   n # iter_nodes
@@ -362,7 +379,7 @@ let write_local_document out (d : 'ext document) =
 	 )
 	 pilist;
     )
-    (d # pinstr_names);
+    (List.sort compare (d # pinstr_names));
   
   (* Return the result: *)
   output_string out "doc in\n"
@@ -402,6 +419,11 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.3  2000/07/09 00:30:00  gerd
+ * 	Notations are written before they are used.
+ * 	Unparsed entities are included.
+ * 	Further changes.
+ *
  * Revision 1.2  2000/07/08 22:59:14  gerd
  * 	[Merging 0.2.10:] Improved: The resulting code can be compiled
  * faster, and the compiler is less hungry on memory.
