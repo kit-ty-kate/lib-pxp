@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.1 1999/08/21 19:11:05 gerd Exp $
+(* $Id: ds_app.ml,v 1.2 1999/12/17 21:34:29 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -16,6 +16,7 @@ let installdir       =
       Not_found -> "/opt/xmlforms/lib"
 let style_sysid      = ref ""
 let object_dtd_sysid = Filename.concat installdir "ds-object.dtd"
+let object_dtd_root  = "record" 
 
 
 let rec print_error e =
@@ -50,6 +51,7 @@ let edit filename cmd =
       default_config
       (File object_dtd_sysid)
   in
+  obj_dtd # set_root object_dtd_root;
 
   let topframe = openTk() in
   let context = new context filename obj_dtd root topframe in
@@ -81,6 +83,11 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.2  1999/12/17 21:34:29  gerd
+ * 	The name of the root element is set to "record" in the
+ * object_dtd; otherwise the parser would not check that the root
+ * element is the right element.
+ *
  * Revision 1.1  1999/08/21 19:11:05  gerd
  * 	Initial revision.
  *
