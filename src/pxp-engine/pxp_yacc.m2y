@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.39 2002/08/03 17:55:59 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.40 2002/08/05 22:34:29 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -50,7 +50,8 @@ type config =
       escape_contents : 
 	             (Pxp_lexer_types.token -> entity_manager -> string) option;
       escape_attributes : 
-	             (Pxp_lexer_types.token -> entity_manager -> string) option;
+	             (Pxp_lexer_types.token -> int -> entity_manager -> string)
+	             option;
       debugging_mode : bool;
     }
 
@@ -874,11 +875,11 @@ let make_pool_string = pool_string init_config.name_pool in
 	  end
 	in
 
-        let process_attribute_event tok =
+        let process_attribute_event tok pos =
           match config.escape_attributes with
               None -> assert false
             | Some f ->
-		f tok context.manager
+		f tok pos context.manager
 	in
 
 	let reused_lexbuf = Pxp_lexing.from_string "" in
@@ -2177,68 +2178,111 @@ attval():
  * is enabled. In this case, neither Attval nor Attval_nl_normalized,
  * but SQuote, DQuote and attribute tokens are scanned.
  */
-| SQuote sl:attval_squote_token()* SQuote
+| SQuote 
+  $ {{ let attpos = ref 0 in }} 
+  sl:attval_squote_token(attpos)* SQuote
     {{ String.concat "" sl }}
-| DQuote sl:attval_dquote_token()* DQuote
-    {{ String.concat "" sl }}
-
-
-attval_squote_token():
-  name:ERef_att
-    {{ 
-       let etext = "&" ^ name ^ ";" in
-       Pxp_aux.expand_attvalue 
-	 reused_lexbuf lexerset dtd etext config.warner false
-     }}
-| code:CRef
-    {{ Pxp_aux.character config.encoding config.warner code }}
-| data:CharData
-    {{ 
-       if String.contains data '<' then
-	 raise
-           (WF_error ("Attribute value contains character '<' literally"))
-       else
-	 data
-     }}
-| LLcurly
-    {{ process_attribute_event LLcurly }}
-| Lcurly
-    {{ process_attribute_event Lcurly }}
-| RRcurly
-    {{ process_attribute_event RRcurly }}
-| Rcurly
-    {{ process_attribute_event Rcurly }}
 | DQuote
-    {{ "\"" }}
+  $ {{ let attpos = ref 0 in }} 
+  sl:attval_dquote_token(attpos)* DQuote
+    {{ String.concat "" sl }}
 
 
-attval_dquote_token():
+attval_squote_token(attpos):
   name:ERef_att
     {{ 
        let etext = "&" ^ name ^ ";" in
-       Pxp_aux.expand_attvalue 
-	 reused_lexbuf lexerset dtd etext config.warner false
+       let s = 
+	 Pxp_aux.expand_attvalue 
+	   reused_lexbuf lexerset dtd etext config.warner false in
+       attpos := !attpos + String.length s;
+       s
      }}
 | code:CRef
-    {{ Pxp_aux.character config.encoding config.warner code }}
+    {{ let s = Pxp_aux.character config.encoding config.warner code in
+       attpos := !attpos + String.length s;
+       s
+    }}
 | data:CharData
     {{ 
-       if String.contains data '<' then
+       if data.[0] = '<' then  (* '<' is always a separate token *)
 	 raise
            (WF_error ("Attribute value contains character '<' literally"))
-       else
+       else (
+	 attpos := !attpos + String.length data;
 	 data
+       )
      }}
 | LLcurly
-    {{ process_attribute_event LLcurly }}
+    {{ let s = process_attribute_event LLcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
 | Lcurly
-    {{ process_attribute_event Lcurly }}
+    {{ let s = process_attribute_event Lcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
 | RRcurly
-    {{ process_attribute_event RRcurly }}
+    {{ let s = process_attribute_event RRcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
 | Rcurly
-    {{ process_attribute_event Rcurly }}
+    {{ let s = process_attribute_event Rcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| DQuote
+    {{ incr attpos; "\"" }}
+
+
+attval_dquote_token(attpos):
+  name:ERef_att
+    {{ 
+       let etext = "&" ^ name ^ ";" in
+       let s = Pxp_aux.expand_attvalue 
+		 reused_lexbuf lexerset dtd etext config.warner false in
+       attpos := !attpos + String.length s;
+       s
+     }}
+| code:CRef
+    {{ let s = Pxp_aux.character config.encoding config.warner code in
+       attpos := !attpos + String.length s;
+       s
+     }}
+| data:CharData
+    {{ 
+       if data.[0] = '<' then  (* '<' is always a separate token *)
+	 raise
+           (WF_error ("Attribute value contains character '<' literally"))
+       else (
+	 attpos := !attpos + String.length data;
+	 data
+       )
+     }}
+| LLcurly
+    {{ let s = process_attribute_event LLcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Lcurly
+    {{ let s = process_attribute_event Lcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| RRcurly
+    {{ let s = process_attribute_event RRcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Rcurly
+    {{ let s = process_attribute_event Rcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
 | SQuote
-    {{ "'" }}
+    {{ incr attpos; "'" }}
 
 
 start_tag_rangle():
@@ -3003,6 +3047,10 @@ let process_entity
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.40  2002/08/05 22:34:29  gerd
+ * 	escape_attributes: this config option has an additional
+ * argument "position".
+ *
  * Revision 1.39  2002/08/03 17:55:59  gerd
  * 	Support for event-based parsing of attribute values: New config
  * option escape_attributes.

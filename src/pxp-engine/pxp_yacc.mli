@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.18 2002/08/03 17:55:59 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.19 2002/08/05 22:34:29 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -323,13 +323,25 @@ type config =
 	 *)
 
       escape_attributes : 
-	             (Pxp_lexer_types.token -> Pxp_entity_manager.entity_manager -> 
+	             (Pxp_lexer_types.token -> int -> Pxp_entity_manager.entity_manager -> 
 			string) option;
         (* If defined, the [escape_attributes] function is called whenever 
 	 * the tokens "{", "{{", "}", or "}}" are found inside attribute
-	 * values. 
+	 * values. The function takes three arguments: The token (Lcurly,
+	 * LLcurly, Rcurly or RRcurly), the position in the attribute value,
+	 * and the entity manager. 
 	 * The result of the function is the string substituted for the
 	 * token.
+	 * Example:
+	 * The attribute is "a{b{{c", and the function is called as
+	 * follows:
+	 * - escape_attributes Lcurly 1 mng 
+	 *   Result is "42" (or an arbitrary string, but in this example it
+	 *   is "42")
+	 * - escape_attributes LLcurly 4 mng
+	 *   Result is "foo"
+	 * The resulting attribute value is "a42bfooc".
+	 * 
 	 * See also [escape_contents].
 	 *
 	 * Default: None
@@ -646,6 +658,10 @@ val process_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.19  2002/08/05 22:34:29  gerd
+ * 	escape_attributes: this config option has an additional
+ * argument "position".
+ *
  * Revision 1.18  2002/08/03 17:55:59  gerd
  * 	Support for event-based parsing of attribute values: New config
  * option escape_attributes.
