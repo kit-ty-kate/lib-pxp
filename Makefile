@@ -47,11 +47,12 @@ distclean:
 	$(MAKE) -C rtests distclean
 
 RELEASE:
-	echo "$(VERSION)" >RELEASE
+	./configure -version >RELEASE
+	v=`cat RELEASE` && test "x$$v" = "$(VERSION)"
 
 .PHONY: dist
 dist: RELEASE
-	cd ..; gtar czf $(NAME)-$(VERSION).tar.gz --exclude='*/CVS*' --exclude="*/*~" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*/doc/readme.dtd" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
+	cd ..; gtar czf $(NAME)-$(VERSION).tar.gz --exclude='*/CVS*' --exclude="*/*~" --exclude="*/Makefile.conf" --exclude="*/META" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*/doc/readme.dtd" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
 
 .PHONY: tag-release
 tag-release: RELEASE
