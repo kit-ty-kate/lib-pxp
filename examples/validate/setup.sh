@@ -1,5 +1,7 @@
 #! /bin/sh
 
+# This version of setup.sh assumes O'Caml 3.03.
+
 #set -x
 
 # --- defaults ---
@@ -10,7 +12,7 @@ mandir=man
 manext=1
 batch=0
 
-ocamlrename=ocamlre-3.01
+ocamlrename=ocamlrun
 
 # --- messages ---
 
@@ -206,11 +208,30 @@ fi
 # CHECKS:
 if in_path $ocamlrename; then
     ocamlre=`get_path $ocamlrename`
-    echo "ocamlre found: $ocamlre"
+    echo "ocamlrun found: $ocamlre"
 else
-    echo "Sorry, you need the O'Caml Runtime Environment $ocamlrename to execute"
-    echo "this application. Get it at:"
-    echo "http://www.ocaml-programming.de/packages/ocamlre/"
+    echo "Sorry, you need an O'Caml installation to execute this application."
+    echo "(Or the command 'ocamlrun' is not in your PATH.)"
+    echo "Get version 3.03-alpha at:"
+    echo "http://caml.inria.fr"
+    exit
+fi
+
+# CHECK THE VERSION OF OCAMLRE:
+if $ocamlre -p | grep -s dynlink_open_lib >/dev/null; then
+    echo "Your version of ocamlrun supports dynamic loading"
+else
+    echo "Sorry, you need an O'Caml version that supports dynamic loading of"
+    echo "libraries."
+    exit
+fi
+
+# CHECK WHETHER PXPVALIDATE CAN BE STARTED:
+if $ocamlre ./pxpvalidate.byte >/dev/null 2>/dev/null; then
+    echo "Your version of ocamlrun can execute pxpvalidate"
+else
+    echo "Sorry, your version of O'Caml is incompatible with the bytecode"
+    echo "format used here."
     exit
 fi
 
