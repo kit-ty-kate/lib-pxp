@@ -1,4 +1,4 @@
-(* $Id: test_write.ml,v 1.3 2001/05/17 22:35:46 gerd Exp $
+(* $Id: test_write.ml,v 1.4 2001/06/28 21:24:38 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -48,7 +48,7 @@ let parse_and_write in_filename =
 	spec 
     in
     
-    tree # write (Out_channel stdout) `Enc_utf8;
+    tree # write (`Out_channel stdout) `Enc_utf8;
   with
       e ->
 	error_happened := true;
@@ -82,6 +82,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_write.ml,v $
+ * Revision 1.4  2001/06/28 21:24:38  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.3  2001/05/17 22:35:46  gerd
  * 	Updated.
  *

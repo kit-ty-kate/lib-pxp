@@ -1,4 +1,4 @@
-(* $Id: test_namespace.ml,v 1.2 2001/06/14 23:34:07 gerd Exp $
+(* $Id: test_namespace.ml,v 1.3 2001/06/28 21:24:38 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -50,7 +50,7 @@ let parse_and_write in_filename =
 	spec 
     in
     
-    tree # write (Out_channel stdout) `Enc_iso88591;
+    tree # write (`Out_channel stdout) `Enc_iso88591;
   with
       Not_found as e ->
 	raise e
@@ -86,6 +86,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_namespace.ml,v $
+ * Revision 1.3  2001/06/28 21:24:38  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.2  2001/06/14 23:34:07  gerd
  * 	Updated
  *

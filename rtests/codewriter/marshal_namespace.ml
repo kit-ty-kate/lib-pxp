@@ -1,4 +1,4 @@
-(* $Id: marshal_namespace.ml,v 1.2 2001/06/08 01:16:55 gerd Exp $
+(* $Id: marshal_namespace.ml,v 1.3 2001/06/28 21:24:36 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -46,7 +46,7 @@ let main() =
   close_in inc;
 
   let xmlout = open_out "sample002.xml.out" in
-  doc' # write (Out_channel xmlout) `Enc_utf8;
+  doc' # write (`Out_channel xmlout) `Enc_utf8;
   close_out xmlout;
   
   let out' = open_out_bin "sample002.d2" in
@@ -79,6 +79,9 @@ with
  * History:
  * 
  * $Log: marshal_namespace.ml,v $
+ * Revision 1.3  2001/06/28 21:24:36  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.2  2001/06/08 01:16:55  gerd
  * 	Updated.
  *

@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.6 2001/06/08 00:02:59 gerd Exp $
+(* $Id: compile.ml,v 1.7 2001/06/28 21:24:36 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -58,7 +58,7 @@ let compile in_filename out_filename print super_root pis comments =
     close_out ch;
 
     if print then
-      tree # write (Out_channel stdout) `Enc_utf8;
+      tree # write (`Out_channel stdout) `Enc_utf8;
   with
       e ->
 	error_happened := true;
@@ -111,6 +111,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.7  2001/06/28 21:24:36  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.6  2001/06/08 00:02:59  gerd
  * 	Updated
  *
