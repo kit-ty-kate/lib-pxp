@@ -1,0 +1,33 @@
+Hello everybody,
+
+in the case you are interested in XML parsers: I  have written a new one,
+called PXP, the Polymorphic XML Parser. It is programmed in Objective Caml, a
+free functional programming language (caml.inria.fr).
+
+PXP is a validating XML parser which strictly complies to the XML-1.0 standard.
+The document is represented as object tree; the type of the node class can be 
+customized. The polymorphism even allows it to select the class of the nodes
+depending on the element types.
+
+PXP is fast and reliable. It has been designed for CGI applications but is not
+restricted to this domain. 
+
+The parser has been written in the programming language Objective Caml, as this
+is a stable, fast and expressive programming environment. It is addressed at
+researchers who are already working with Objective Caml as well as at
+interested industrial developers who want to leave the beaten paths of
+industrial standards.
+
+The software can be freely downloaded at the following homepage; it is covered
+by a BSD-like open source license:
+
+http://www.ocaml-programming.de/programming/pxp.html
+
+Have fun with it,
+
+Gerd Stolpmann
+-- 
+----------------------------------------------------------------------------
+info@gerd-stolpmann.de
+Homapage: www.gerd-stolpmann.de, www.ocaml-programming.de
+

@@ -1,0 +1,193 @@
+diff --context -r tmp/pxp/Makefile.conf pxp/Makefile.conf
+*** tmp/pxp/Makefile.conf	Sun Aug 20 04:52:10 2000
+--- pxp/Makefile.conf	Sun Apr  8 20:26:25 2001
+***************
+*** 35,37 ****
+--- 35,45 ----
+  MLI = pxp_document.mli pxp_dtd.mli \
+        pxp_types.mli pxp_yacc.mli \
+        pxp_codewriter.mli pxp_dfa.mli
++ 
++ # executable suffix (for Cygwin)
++ 
++ ifeq ($(OSTYPE),cygwin)
++   EXEC_SUFFIX = .exe
++ else
++   EXEC_SUFFIX = 
++ endif
+Only in pxp: Makefile.conf~
+Only in pxp/compatibility: depend
+Only in pxp: depend
+Only in pxp/lexers: Makefile.generate~
+Only in pxp/lexers: pxp_lex_defs_utf8.def~
+diff --context -r tmp/pxp/m2parsergen/Makefile pxp/m2parsergen/Makefile
+*** tmp/pxp/m2parsergen/Makefile	Sun May  7 02:34:39 2000
+--- pxp/m2parsergen/Makefile	Sun Apr  8 20:12:54 2001
+***************
+*** 11,17 ****
+  
+  
+  .PHONY: all
+! all: m2parsergen
+  
+  .PHONY: clean
+  clean:
+--- 11,17 ----
+  
+  
+  .PHONY: all
+! all: m2parsergen$(EXEC_SUFFIX)
+  
+  .PHONY: clean
+  clean:
+***************
+*** 23,29 ****
+  
+  .PHONY: distclean
+  distclean: clean
+! 	rm -f *~ depend depend.pkg m2parsergen a.out x.ml
+  
+  #----------------------------------------------------------------------
+  # general rules:
+--- 23,29 ----
+  
+  .PHONY: distclean
+  distclean: clean
+! 	rm -f *~ depend depend.pkg m2parsergen$(EXEC_SUFFIX) a.out x.ml
+  
+  #----------------------------------------------------------------------
+  # general rules:
+***************
+*** 39,46 ****
+  depend: $(SRC) 
+  	$(OCAMLDEP) $(SRC) >depend
+  
+! m2parsergen: $(OBJ)
+! 	$(OCAMLC) -o m2parsergen $(OBJ)
+  
+  .SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+  
+--- 39,46 ----
+  depend: $(SRC) 
+  	$(OCAMLDEP) $(SRC) >depend
+  
+! m2parsergen$(EXEC_SUFFIX): $(OBJ)
+! 	$(OCAMLC) -o m2parsergen$(EXEC_SUFFIX) $(OBJ)
+  
+  .SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+  
+Only in pxp/m2parsergen: Makefile~
+Only in pxp/m2parsergen: ast.cmi
+Only in pxp/m2parsergen: ast.cmo
+Only in pxp/m2parsergen: depend
+Only in pxp/m2parsergen: generator.cmi
+Only in pxp/m2parsergen: generator.cmo
+Only in pxp/m2parsergen: lexer.cmi
+Only in pxp/m2parsergen: lexer.cmo
+Only in pxp/m2parsergen: lexer.ml
+Only in pxp/m2parsergen: m2parsergen.exe
+Only in pxp/m2parsergen: parser.cmi
+Only in pxp/m2parsergen: parser.cmo
+Only in pxp/m2parsergen: parser.ml
+Only in pxp/m2parsergen: parser.mli
+Only in pxp/tmp: pxp_entity.cmi
+Only in pxp/tmp: pxp_entity.cmo
+Only in pxp/tmp: pxp_entity.ml
+Only in pxp/tmp: pxp_entity.mli
+diff --context -r tmp/pxp/tools/insert_variant pxp/tools/insert_variant
+*** tmp/pxp/tools/insert_variant	Sun May 21 06:14:33 2000
+--- pxp/tools/insert_variant	Sun Apr  8 20:17:02 2001
+***************
+*** 37,43 ****
+        if String.length line >= 8 & String.sub line 0 8 = "#insert " then begin
+  	let insname = get_arg variant line in
+  	(* Copy the file 'insname' to chout *)
+! 	let chcopy = open_in insname in
+  	let n = in_channel_length chcopy in
+  	let s = String.create n in
+  	really_input chcopy s 0 n;
+--- 37,43 ----
+        if String.length line >= 8 & String.sub line 0 8 = "#insert " then begin
+  	let insname = get_arg variant line in
+  	(* Copy the file 'insname' to chout *)
+! 	let chcopy = open_in_bin insname in
+  	let n = in_channel_length chcopy in
+  	let s = String.create n in
+  	really_input chcopy s 0 n;
+Only in pxp/tools: insert_variant~
+diff --context -r tmp/pxp/tools/ucs2_to_utf8/Makefile pxp/tools/ucs2_to_utf8/Makefile
+*** tmp/pxp/tools/ucs2_to_utf8/Makefile	Sun May 21 05:30:03 2000
+--- pxp/tools/ucs2_to_utf8/Makefile	Sun Apr  8 20:13:27 2001
+***************
+*** 9,16 ****
+  OCAMLLEX = ocamllex
+  OCAMLYACC = ocamlyacc
+  
+! all: ucs2_to_utf8
+! opt: ucs2_to_utf8.opt
+  
+  DEPOBJS = ucs2_to_utf8.ml lexer.ml parser.ml parser.mli types.ml
+  
+--- 9,16 ----
+  OCAMLLEX = ocamllex
+  OCAMLYACC = ocamlyacc
+  
+! all: ucs2_to_utf8$(EXEC_SUFFIX)
+! opt: ucs2_to_utf8.opt$(EXEC_SUFFIX)
+  
+  DEPOBJS = ucs2_to_utf8.ml lexer.ml parser.ml parser.mli types.ml
+  
+***************
+*** 29,39 ****
+  depend: lexer.ml parser.ml parser.mli
+  	$(OCAMLDEP) $(DEPOBJS) > depend
+   
+! ucs2_to_utf8: $(UCS2_TO_UTF8OBJS)
+! 	$(OCAMLC) -o ucs2_to_utf8 $(UCS2_TO_UTF8OBJS)
+  
+! ucs2_to_utf8.opt: $(UCS2_TO_UTF8OPTOBJS)
+! 	$(OCAMLOPT) -o ucs2_to_utf8.opt $(UCS2_TO_UTF8OPTOBJS)
+  
+  .SUFFIXES: .ml .mli .cmo .cmi .cmx
+  .ml.cmo:
+--- 29,39 ----
+  depend: lexer.ml parser.ml parser.mli
+  	$(OCAMLDEP) $(DEPOBJS) > depend
+   
+! ucs2_to_utf8$(EXEC_SUFFIX): $(UCS2_TO_UTF8OBJS)
+! 	$(OCAMLC) -o ucs2_to_utf8$(EXEC_SUFFIX) $(UCS2_TO_UTF8OBJS)
+  
+! ucs2_to_utf8.opt$(EXEC_SUFFIX): $(UCS2_TO_UTF8OPTOBJS)
+! 	$(OCAMLOPT) -o ucs2_to_utf8.opt$(EXEC_SUFFIX) $(UCS2_TO_UTF8OPTOBJS)
+  
+  .SUFFIXES: .ml .mli .cmo .cmi .cmx
+  .ml.cmo:
+***************
+*** 45,50 ****
+  
+  clean:
+  	rm -f *.cm[iox] *.o lexer.ml parser.ml parser.mli \
+! 	ucs2_to_utf8 ucs2_to_utf8.opt
+  
+  include depend
+--- 45,50 ----
+  
+  clean:
+  	rm -f *.cm[iox] *.o lexer.ml parser.ml parser.mli \
+! 	ucs2_to_utf8$(EXEC_SUFFIX) ucs2_to_utf8.opt$(EXEC_SUFFIX)
+  
+  include depend
+Only in pxp/tools/ucs2_to_utf8: Makefile~
+Only in pxp/tools/ucs2_to_utf8: depend
+Only in pxp/tools/ucs2_to_utf8: lexer.cmi
+Only in pxp/tools/ucs2_to_utf8: lexer.cmo
+Only in pxp/tools/ucs2_to_utf8: lexer.ml
+Only in pxp/tools/ucs2_to_utf8: parser.cmi
+Only in pxp/tools/ucs2_to_utf8: parser.cmo
+Only in pxp/tools/ucs2_to_utf8: parser.ml
+Only in pxp/tools/ucs2_to_utf8: parser.mli
+Only in pxp/tools/ucs2_to_utf8: types.cmi
+Only in pxp/tools/ucs2_to_utf8: types.cmo
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.cmi
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.cmo
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.exe

@@ -1,0 +1,15 @@
+991025-ClaudioSCoen		Bug in markup
+991108-ClaudioSCoen		Bug in markup; Statistik mehrerer Parser
+000221-AlainFrisch		Verwirrung mit dem source-Parameter
+000312-AlainFrisch		Verwirrung mit resolvers
+000505-ClaudioSCoen 		Diskussion UTF-8-Konverter
+000515-ClaudioSCoen		Allg. XML-Probleme
+000526-VladimirTamara		Problem mit falscher DTD vom W3C
+000705-VolkerRenneberg		Problem mit Fragmentierung von Datenblöcken
+000726-HaruoHosoya		Makefile-Probleme
+000727-AlainFrisch		Datenmodell von PXP
+000729-PrenticeHallBooks	Markup wird in Buchveröffentlichung aufgenommen
+000826-AlainFrisch: 		Anforderungen für Alains XPath-Implementation;
+		    		Alains wlex; Memory footprint von PXP
+010330-HaruoHosoya 		Cygwin-Port
+

@@ -1,0 +1,1146 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Sat, 26 Aug 2000 17:09:00 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Sat, 26 Aug 2000 20:01:31 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx03.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13ShZ6-0005aj-00
+	for gerd@gerd-stolpmann.de; Sat, 26 Aug 2000 17:08:12 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7QF8CT27118
+          for <gerd@gerd-stolpmann.de>; Sat, 26 Aug 2000 17:08:12 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id RAA25987 for <gerd@gerd-stolpmann.de>; Sat, 26 Aug 2000 17:08:10 +0200 (MET DST)
+Date: Sat, 26 Aug 2000 17:08:10 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: XPath
+In-Reply-To: <00073123560802.06276@ice>
+Message-ID: <Pine.GSO.4.04.10008261643180.24063-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+Hello,
+
+I started to implement an XPath library on top of PXP; actually,
+the library is to a large extent independant of PXP since it uses its own
+data model. I rebuild the whole tree, excepted attribute and namespace
+nodes which are generated when needed.
+
+If you want to have a look at the current working sources:
+http://www.eleves.ens.fr:8080/home/frisch/info/xpath_20000826.tar.gz
+(this is a very early pre-release; comments are welcome).
+
+Writing this library inspired me a few remarks about PXP:
+
+- it may be worth to "externalize" the lexer architecture of PXP.
+  For the moment, my library handle only ASCII encodings. I'm not
+  sure how to cleanly support UTF-8.
+
+- a problem with your recent modification (new T_* node): the data nodes
+  around a PI or comment node shouldn't be merged.
+
+- the namespace support may be integrated to the XML parser (with a new
+  config flag to activate the namespace constraints); it is not
+  difficult, and I think that it is the right place to
+  implement this.
+
+- the pxp tree could facilitate navigation in the tree with
+  preceding-sibling, following-sibling methods  (with namespace support
+  and these two methods, I would need to use another document model, apart
+  maybe for efficiency).
+
+On Mon, 31 Jul 2000, you wrote:
+> The really difficult aspect is the representation of node sets. Sometimes a
+> list is fine, sometimes a balanced tree. The sets can be explicit at any point
+> of computation, or only implicit (i.e. it is iterated over a subtree).
+
+For the moment, I didn't try to optimize anything. Node sets are
+implemented as node list sorted by increasing document order. Externally,
+they are explicit but during axis computation, they are actually
+iterators.
+
+
+Bests,
+
+Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: XPath
+Date: Sun, 27 Aug 2000 03:03:01 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10008261643180.24063-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10008261643180.24063-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00082703522403.25537@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Sat, 26 Aug 2000, you wrote:
+>Hello,
+>
+>I started to implement an XPath library on top of PXP; actually,
+>the library is to a large extent independant of PXP since it uses its own
+>data model. I rebuild the whole tree, excepted attribute and namespace
+>nodes which are generated when needed.
+>
+>If you want to have a look at the current working sources:
+>http://www.eleves.ens.fr:8080/home/frisch/info/xpath_20000826.tar.gz
+>(this is a very early pre-release; comments are welcome).
+>
+>Writing this library inspired me a few remarks about PXP:
+>
+>- it may be worth to "externalize" the lexer architecture of PXP.
+>  For the moment, my library handle only ASCII encodings. I'm not
+>  sure how to cleanly support UTF-8.
+
+There is not very much "architecture"; what PXP does is to generalize the
+encoding-dependent definitions like "nametoken". These are different for the
+various encodings, and they are simply prepended to every mll file. For 
+example:
+
+pxp_lex_content.src:		Contains the encoding-independent part of the lexer for
+				content tokens
+pxp_lex_defs_generic.def:	Contains the generic definition for the 
+				encoding-dependent parts
+pxp_lex_defs_utf8.def:		[Created from pxp_lex_defs_generic.def]: The
+				UTF-8 specialization
+pxp_lex_defs_iso88591.def:	[Manually written]: The ISO-8859-1
+				specialization
+pxp_lex_aux.src:		Contains material for every lexer
+
+The main file is pxp_lex_content.src. It contains several #insert preprocessor
+statements which simply insert files. If the name of the file contains "*",
+the asterisk is replaced by the name of the encoding; e.g
+
+#insert pxp_lex_defs_*.def
+
+selects the UTF-8 or ISO-8859-1 variant of the encoding-dependent parts. The
+preprocessor is the small "insert_variant" script in the tools directory.
+
+The result of the preprocessor stage is then pxp_lex_content.mll.
+
+A big problem was to generate pxp_lex_defs_utf8.def because human beings are
+simply unable to correctly write such UTF8 definitions. Fortunately, Claudio
+Sacerdoti Coen has contributed a tool that transforms the more readable 
+pxp_lex_defs_generic.def to the UTF-8 form.
+
+I can imagine, both tools can help you. If so, it is no problem to install them
+at a standard place.
+
+The rest of the "architecture" is simply to have a record value containing all
+encoding-specific functions (such as lexer invocations); this is the lexer_set
+record. Every encoding-dependent computation must be accessed using this
+record. However, I have simplified this a bit. The whole program assumes that
+internal encodings are ASCII-compatible; this is true for UTF-8. You can safely
+treat every UTF-8 string as ASCII string if you ignore the codes >= 128.
+Because of this, for many functions it is not necessary to have multiple
+versions for the various encodings.
+
+The type rep_encoding contains all encodings that are supported as internal
+encodings; I use it where the precondition must hold that the encoding is
+ASCII-compatible.
+
+>- a problem with your recent modification (new T_* node): the data nodes
+>  around a PI or comment node shouldn't be merged.
+
+Fixed.
+
+>- the namespace support may be integrated to the XML parser (with a new
+>  config flag to activate the namespace constraints); it is not
+>  difficult, and I think that it is the right place to
+>  implement this.
+
+Agreed, but I will not integrate namespace support immediately. Currently, it
+is more important to release PXP-1.0 soon (perhaps next week).
+
+>- the pxp tree could facilitate navigation in the tree with
+>  preceding-sibling, following-sibling methods  (with namespace support
+>  and these two methods, I would need to use another document model, apart
+>  maybe for efficiency).
+
+I have implemented this, and the costs are that "delete" is slightly slower.
+
+Furthermore, there is now a new class attribute_impl whose purpose is to
+represent attributes additionally as nodes, if wished. You can get the
+attribute nodes by calling attributes_as_nodes on the element. Once I have
+namespace support, I can do the same for namespace nodes.
+
+With the exception of namespaces, Pxp_document.node has now everything
+you need for Xpath_tree.node.
+
+The new version, pxp-pre-0.99.8, is at the usual place. I hope this is the last
+pre-release version.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Mon, 28 Aug 2000 00:15:45 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 28 Aug 2000 14:58:01 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx03.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13TAhE-000771-00
+	for gerd@gerd-stolpmann.de; Mon, 28 Aug 2000 00:14:32 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7RMEWT90209
+          for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 00:14:32 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id AAA15447 for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 00:14:31 +0200 (MET DST)
+Date: Mon, 28 Aug 2000 00:14:31 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: XPath
+In-Reply-To: <00082703522403.25537@ice>
+Message-ID: <Pine.GSO.4.04.10008272325030.11503-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+On Sun, 27 Aug 2000, you wrote:
+[ lexing UTF-8 with ocamllex ]
+
+The size of the tables generated by ocamllex explodes when using UTF-8.
+When using the XML parser with, say, CGI scripts, the size of executables
+linked with PXP matters, and with the current version of PXP, it is > 2
+Mb. 
+
+I wonder if there is an opportunity to optimize the lexing.
+One solution would be to modify ocamllex to work on code point _classes_
+instead of chars (working on code point directly is not possible, the
+table would be even larger). That is, we first define
+non-intersecting classes (for XML: Base, Ideographic, Combining, Digit,
+Extender, Space, and one class for each ASCII markup character). Then the
+basic blocks for building ocaml regexp are these classes, not characters.
+
+So the lexer will see a reduced "character set" (probably with less than
+256 elements), thus allowing very compact table. Only the application will
+see the actual code points. The application has to provide a "sub-lexer"
+that will provide a class reference stream (annotated with actual code
+point for each class reference).
+
+The modifications to the ocamllex compiler and runtime engine are easy.
+All the encoding-dependant part of lexing is managed by the sub-lexer.
+
+Does it make sense ?  Do you think it is worth working on it ?
+
+
+(illustration of the problems with large tables:
+on Solaris, I can't compile Netmappings, I get:
+
+OCAMLRUNPARAM='l=2M,o=10,O=0' ocamlopt -inline 0 -compact  -I
+/usr/local/util/packages/ocaml-3.00/lib/ocaml/ -c netmappings.ml
+>> Fatal error: Interf.build_graph: too many pseudo-registers in function
+Netmappings_entry
+Uncaught exception: Misc.Fatal_error
+
+I didn't try to compile PXP on this system).
+
+> >- the pxp tree could facilitate navigation in the tree with
+> >  preceding-sibling, following-sibling methods  (with namespace support
+> >  and these two methods, I would need to use another document model, apart
+> >  maybe for efficiency).
+> 
+> I have implemented this, and the costs are that "delete" is slightly slower.
+
+I don't understand your design here: why don't you simply represent the
+list of children as a doubly linked list (each node knows his
+preceding and following sibling) ?   Of course, this will put some
+redundancy in the information stored by nodes, so maybe you consider that
+this can break robustness of the tree structure ?
+
+> With the exception of namespaces, Pxp_document.node has now everything
+> you need for Xpath_tree.node.
+
+I forgot to mention that it is also useful to have a quick test to compare
+the position in the (logical) document of two node.
+
+
+-- 
+Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: XPath
+Date: Mon, 28 Aug 2000 15:06:32 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10008272325030.11503-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10008272325030.11503-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00082816175904.25537@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 28 Aug 2000, you wrote:
+>The size of the tables generated by ocamllex explodes when using UTF-8.
+>When using the XML parser with, say, CGI scripts, the size of executables
+>linked with PXP matters, and with the current version of PXP, it is > 2
+>Mb. 
+
+This is not so bad as it might look at the first glance, as most operating
+systems optimize this case if you use the native code compiler. When several
+(identical) CGI programs are running at the same time, the executable is only
+loaded once. Even when there are sequential CGI invocations, the OS tries to
+reuse the pages of the old, already unloaded executable. - Furthermore, many OS
+load the pages of the executable only on demand. - This does not apply to
+bytecode executables because the memory pages storing the bytecode are flagged
+as read-write.
+
+However, I also would like to see smaller executables.
+
+There are two reasons causing the size explosion: The lexer tables, and the
+encoding conversion tables. I am already working on the latter.
+
+>I wonder if there is an opportunity to optimize the lexing.
+>One solution would be to modify ocamllex to work on code point _classes_
+>instead of chars (working on code point directly is not possible, the
+>table would be even larger). That is, we first define
+>non-intersecting classes (for XML: Base, Ideographic, Combining, Digit,
+>Extender, Space, and one class for each ASCII markup character). Then the
+>basic blocks for building ocaml regexp are these classes, not characters.
+>
+>So the lexer will see a reduced "character set" (probably with less than
+>256 elements), thus allowing very compact table. Only the application will
+>see the actual code points. The application has to provide a "sub-lexer"
+>that will provide a class reference stream (annotated with actual code
+>point for each class reference).
+
+In general: a good idea. But for efficiency reasons, I would like to see
+ocamllex already doing the handling of code point classes. There could be an
+additional declaration
+
+class name_of_class = regexp
+
+i.e. ocamllex actually generates two automatons, one recognizing classes, and
+one recognizing tokens. The second automaton determines what are lexemes,
+and it must still be possible to access the input stream using
+Lexing.lexeme. Example:
+
+class letter = [ 'a'-'z' ]
+class digit =  [ '0'-'9' ]
+
+parse name = rule
+  letter (letter|digit)* 
+    { Name (Lexing.lexeme lexbuf) }
+
+>The modifications to the ocamllex compiler and runtime engine are easy.
+
+I think so. However, there is a license problem: We can distribute the changes
+to ocamllex only as patch to the original sources (ocamllex is under QPL). This
+may prevent potential users from installing PXP.
+
+There is only one chance: that the modifications are good enough to be
+incorporated into the Ocaml distribution. It may be worth to ask Xavier Leroy
+whether he would appreciate such an extension of ocamllex.
+
+>(illustration of the problems with large tables:
+>on Solaris, I can't compile Netmappings, I get:
+>
+>OCAMLRUNPARAM='l=2M,o=10,O=0' ocamlopt -inline 0 -compact  -I
+>/usr/local/util/packages/ocaml-3.00/lib/ocaml/ -c netmappings.ml
+>>> Fatal error: Interf.build_graph: too many pseudo-registers in function
+>Netmappings_entry
+>Uncaught exception: Misc.Fatal_error
+>
+>I didn't try to compile PXP on this system).
+
+This problem was already reported; I am working on it. There is no
+corresponding problem with the lexer tables because they are represented as
+strings. 
+
+>> >- the pxp tree could facilitate navigation in the tree with
+>> >  preceding-sibling, following-sibling methods  (with namespace support
+>> >  and these two methods, I would need to use another document model, apart
+>> >  maybe for efficiency).
+>> 
+>> I have implemented this, and the costs are that "delete" is slightly slower.
+>
+>I don't understand your design here: why don't you simply represent the
+>list of children as a doubly linked list (each node knows his
+>preceding and following sibling) ?   Of course, this will put some
+>redundancy in the information stored by nodes, so maybe you consider that
+>this can break robustness of the tree structure ?
+
+There is a principle in the current implementation: the children must not know
+that they are members of a list (with the exception that the children know their
+parent, and indirectly also the list structure). I try to keep the list
+information only in the parent node to minimize the protocol overhead, and to
+simplify many operations (not only add_node, set_nodes but also orphaned_clone).
+
+I did not want to change the whole class design at this moment of development;
+so I chose the current compromise.
+
+Of course, this could be done differently, and I can also imagine to have two
+implementations of nodes, of which one is better for read-only access and one
+better for transformations.
+
+>> With the exception of namespaces, Pxp_document.node has now everything
+>> you need for Xpath_tree.node.
+>
+>I forgot to mention that it is also useful to have a quick test to compare
+>the position in the (logical) document of two node.
+
+There is already a method node_position. Does it suffice? Or do you need a test
+which works for arbitrary nodes?
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Mon, 28 Aug 2000 17:18:51 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 28 Aug 2000 22:52:30 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx02.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13TQgI-0005cv-00
+	for gerd@gerd-stolpmann.de; Mon, 28 Aug 2000 17:18:38 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7SFIbT40913
+          for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 17:18:37 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id RAA28761 for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 17:18:36 +0200 (MET DST)
+Date: Mon, 28 Aug 2000 17:18:36 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: XPath
+In-Reply-To: <00082816175904.25537@ice>
+Message-ID: <Pine.GSO.4.04.10008281654190.16918-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+On Mon, 28 Aug 2000, Gerd Stolpmann wrote:
+
+> ocamllex already doing the handling of code point classes. There could be an
+> additional declaration
+> 
+> class name_of_class = regexp
+> 
+> i.e. ocamllex actually generates two automatons, one recognizing classes, and
+> one recognizing tokens. The second automaton determines what are lexemes,
+> and it must still be possible to access the input stream using
+> Lexing.lexeme. 
+
+Yes, this is what I was thinking about. The implementation of the first
+lexer as an automaton may not be optimal in term of space; the design
+should be such that the two lexers are largely independant.
+
+> I think so. However, there is a license problem: We can distribute the changes
+> to ocamllex only as patch to the original sources (ocamllex is under QPL). This
+> may prevent potential users from installing PXP.
+> 
+> There is only one chance: that the modifications are good enough to be
+> incorporated into the Ocaml distribution. It may be worth to ask Xavier Leroy
+> whether he would appreciate such an extension of ocamllex.
+
+My impression about the choice of the licence for OCaml was that the INRIA
+wanted to keep control over the development of OCaml; I think that it
+wouldn't be a big problem to obtain permission to include a few lines 
+of the system in another tools. If I find time to transform my
+handwaving into code, I'll ask Xavier Leroy about these issues.
+
+> >I forgot to mention that it is also useful to have a quick test to compare
+> >the position in the (logical) document of two node.
+> 
+> There is already a method node_position. Does it suffice? Or do you need a test
+> which works for arbitrary nodes?
+
+XPath need to compare the document position of arbitrary node.
+In my current implementation, I index the tree with an incrementally
+incremented integer. In PXP, a method could allow the document to be
+indexed the same way after its creation (or after modification).
+
+
+-- 
+ Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: XPath
+Date: Mon, 28 Aug 2000 23:30:25 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10008281654190.16918-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10008281654190.16918-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00082823373705.25537@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 28 Aug 2000, you wrote:
+>> >I forgot to mention that it is also useful to have a quick test to compare
+>> >the position in the (logical) document of two node.
+>> 
+>> There is already a method node_position. Does it suffice? Or do you need a test
+>> which works for arbitrary nodes?
+>
+>XPath need to compare the document position of arbitrary node.
+>In my current implementation, I index the tree with an incrementally
+>incremented integer. In PXP, a method could allow the document to be
+>indexed the same way after its creation (or after modification).
+
+I suppose you need the document position only to form node sets. As nodes are
+objects, the system already defines a total ordering on all objects (using
+OIDs), and you can compare two objects by < and =:
+
+let rec fusion l1 l2 =
+  match (l1,l2) with
+    | [],_ -> l2
+    | _,[] -> l1
+    | t1::q1, t2::q2 -> 
+        if t1 = t2 then t1 :: (fusion q1 q2)
+        else if t1 < t2 then t1 :: (fusion q1 l2)
+        else t2 :: (fusion l1 q2)
+
+
+See http://caml.inria.fr/archives/199803/msg00019.html. I have checked that in
+the source code; there is really a OID field for objects, and it is evaluated
+for comparison operations.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Mon, 28 Aug 2000 23:45:32 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Tue, 29 Aug 2000 03:14:00 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx01.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13TWhh-0004Hi-00
+	for gerd@gerd-stolpmann.de; Mon, 28 Aug 2000 23:44:29 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7SLiTT62339
+          for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 23:44:29 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id XAA10393 for <gerd@gerd-stolpmann.de>; Mon, 28 Aug 2000 23:44:28 +0200 (MET DST)
+Date: Mon, 28 Aug 2000 23:44:28 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: XPath
+In-Reply-To: <00082823373705.25537@ice>
+Message-ID: <Pine.GSO.4.04.10008282339480.9756-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+On Mon, 28 Aug 2000, Gerd Stolpmann wrote:
+
+> On Mon, 28 Aug 2000, you wrote:
+> I suppose you need the document position only to form node sets. As nodes are
+> objects, the system already defines a total ordering on all objects (using
+> OIDs), and you can compare two objects by < and =:
+
+No. I really need to compute the document order to implement the function
+"position()" from XPath (for instance, in the expression
+   (...)[2]   short for: (...)[position()=2]
+where ... evaluates to a nodeset).
+
+-- 
+  Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: XPath
+Date: Wed, 30 Aug 2000 18:49:18 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10008282339480.9756-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10008282339480.9756-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00083019155507.25537@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 28 Aug 2000, you wrote:
+>> I suppose you need the document position only to form node sets. As nodes are
+>> objects, the system already defines a total ordering on all objects (using
+>> OIDs), and you can compare two objects by < and =:
+>
+>No. I really need to compute the document order to implement the function
+>"position()" from XPath (for instance, in the expression
+>   (...)[2]   short for: (...)[position()=2]
+>where ... evaluates to a nodeset).
+
+There is now a slow check that can be used "out of the box"
+(Pxp_document.compare), and a fast check that works on a hashtable (in
+Pxp_document, too). I hope that the hashtable is fast enough; it is a better
+design than storing the position in the nodes themselves because it is clear
+that the hashtable may get out of sync with the node tree.
+
+As far as I understand the problem, you can enumerate the members of node sets
+in most cases yourself, because you know the axis. But this does not work with
+the operators "|", and "id" which may unite arbitrary sets (you call "fusion"
+also for "/", but this call can be eliminated). This means that "fusion" is
+relatively seldom called, and it is not the most critical operation. (You can
+again speed it up by changing the representation of node sets from lists to
+balanced trees.)
+
+BTW: I have just released PXP-1.0.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Wed, 30 Aug 2000 12:54:12 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Wed, 30 Aug 2000 16:04:17 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx06.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13U5VK-0003Wq-00
+	for gerd@gerd-stolpmann.de; Wed, 30 Aug 2000 12:54:02 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7UAs1T81923
+          for <gerd@gerd-stolpmann.de>; Wed, 30 Aug 2000 12:54:01 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id MAA07266 for <gerd@gerd-stolpmann.de>; Wed, 30 Aug 2000 12:54:01 +0200 (MET DST)
+Date: Wed, 30 Aug 2000 12:54:01 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Lexer
+Message-ID: <Pine.GSO.4.04.10008301242230.5630-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+Hello again,
+
+I made a first attempt to code the lexer model discussed;
+if you want to have a look:
+http://www.eleves.ens.fr:8080/home/frisch/info/wlex-20000830.tar.gz
+
+(this is a non-release; still waiting for an answer from the caml
+team about licence issues)
+
+Basically, the lexer definition starts with the declaration of
+possible classes; then the application has to provide to each token-type
+lexer an "engine", which is responsible of classifying the bytes from the
+lexbuf and running the automaton. It is possible to change the engine when
+one token call another (for instance, to parse a comment in XML, the
+classification may be simpler). A few generic engines are
+provided (for single byte encodings and UTF-8).
+
+I didn't do any benchmarks, but I think the runtime overhead of this
+approach is minimal, maybe even negative; the tables are much smaller
+than with ocamllex; and the core lexer is independant of the encoding.
+
+
+--
+  Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Thu, 31 Aug 2000 14:37:52 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Thu, 31 Aug 2000 15:47:34 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx05.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13UTbE-0007eu-00
+	for gerd@gerd-stolpmann.de; Thu, 31 Aug 2000 14:37:44 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e7VCbhT68049
+          for <gerd@gerd-stolpmann.de>; Thu, 31 Aug 2000 14:37:43 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id OAA20663 for <gerd@gerd-stolpmann.de>; Thu, 31 Aug 2000 14:37:43 +0200 (MET DST)
+Date: Thu, 31 Aug 2000 14:37:43 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: Lexer
+In-Reply-To: <Pine.GSO.4.04.10008301242230.5630-100000@clipper.ens.fr>
+Message-ID: <Pine.GSO.4.04.10008311413090.17097-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+
+In
+http://www.eleves.ens.fr:8080/home/frisch/info/wlex-20000831.tar.gz
+
+I included a directory with the translation of an pxp lexer (content).
+This gives:
+
+wlex lex_content.mll xml_classes.ml
+-> 44 states, 133 transitions, table size 796 bytes
+
+To be compared with:
+
+ocamllex pxp_lex_content_iso88591.mll
+-> 45 states, 1957 transitions, table size 8098 bytes
+
+ocamllex pxp_lex_content_utf8.mll
+-> 609 states, 31208 transitions, table size 128486 bytes
+
+A few choices are to be made about what goes into classes and what is
+tested by lexer actions. For this test, I created classes for
+hexa digit, but this could be checked inside actions, as for CDATA, or
+the x in &#x.
+
+For the classification process, I use for the moment a 64kb string (each
+char correspond to a code point 0x0000-0xFFFF), but a much more compact
+representation could be used (for code point > 255, there are only 4
+large classes -> 2 bits by code point).
+
+-- 
+  Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Tue, 5 Sep 2000 00:41:35 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Tue, 05 Sep 2000 14:27:57 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx05.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13W4vj-00035Q-00
+	for gerd@gerd-stolpmann.de; Tue, 5 Sep 2000 00:41:31 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e84MfUT81172
+          for <gerd@gerd-stolpmann.de>; Tue, 5 Sep 2000 00:41:30 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id AAA02112 for <gerd@gerd-stolpmann.de>; Tue, 5 Sep 2000 00:41:29 +0200 (MET DST)
+Date: Tue, 5 Sep 2000 00:41:29 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: PXP memory footprint
+Message-ID: <Pine.GSO.4.04.10009050005400.29230-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+Hello,
+
+I ran pxpvalidate on a reasonnably large xml document
+(http://commonsense.media.mit.edu/omcs.xml.gz : 3.3 Mb), and it turned
+out that the program took more than 30 Mb of RAM (both the bytecode and
+the native version). Are you aware of this 10x ratio ?
+
+There are some ways to cut down the memory footprint, even when
+keeping the whole document into memory. For instance, as the same element
+and attribute names appear many times, it could be a good idea to store
+each one only once, using a table to find previously allocated strings.
+(compression of the data, but also optimization of equality test : 
+== instead of =). 
+
+
+
+Also, about my modification to ocamllex: Xavier Leroy reply was that I
+really had to distribute it as a patch. This may make it difficult to some
+user to build it, but as there is no restriction on the runtime
+support package (LGPL), there is always the possibility to distribute the
+result of wlex in addition to the .mll source. Well, anyway, I used it to
+support UTF-8 in Xpath (44 states, 176 transitions, table size 968 bytes:
+I don't want to know how large it would have been with ocamllex).
+
+http://www.eleves.ens.fr:8080/home/frisch/info/wlex-20000904.tar.gz
+http://www.eleves.ens.fr:8080/home/frisch/info/xpath-20000904.tar.gz
+
+
+-- 
+  Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: PXP memory footprint
+Date: Tue, 5 Sep 2000 16:44:36 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10009050005400.29230-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10009050005400.29230-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00090518050001.09664@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Tue, 05 Sep 2000, you wrote:
+>I ran pxpvalidate on a reasonnably large xml document
+>(http://commonsense.media.mit.edu/omcs.xml.gz : 3.3 Mb), and it turned
+>out that the program took more than 30 Mb of RAM (both the bytecode and
+>the native version). Are you aware of this 10x ratio ?
+
+No, this is a suprisingly big footprint, even for omcs.xml which is an extreme
+example dominated by markup.
+
+One reason is that every node object has 20 instance variables = 80 bytes
+minimum. For example, the node <parsed>...</parsed> has 22 bytes in the
+XML source (including spaces), but more than 100 bytes in the internal
+representation (estimated). This fact can explain a factor up to 5, but not
+more.
+
+The representation of attributes is already _relatively_ compact (only 8 words
+= 32 bytes overhead per attribute compared to 4 bytes in the XML text
+representation); this would explain a factor of 3 for typical attribute
+lengths. 
+
+>There are some ways to cut down the memory footprint, even when
+>keeping the whole document into memory. For instance, as the same element
+>and attribute names appear many times, it could be a good idea to store
+>each one only once, using a table to find previously allocated strings.
+>(compression of the data, but also optimization of equality test : 
+>== instead of =). 
+
+This should be simple to implement: An additional ?string_pool argument of the
+parsing functions turns this mode on. A string pool is a
+(string, string) Hashtbl.t mapping strings to pool strings. (We put only pairs
+(s,s) into the hashtable where the left and the right components are identical.)
+
+>Also, about my modification to ocamllex: Xavier Leroy reply was that I
+>really had to distribute it as a patch. This may make it difficult to some
+>user to build it, but as there is no restriction on the runtime
+>support package (LGPL), there is always the possibility to distribute the
+>result of wlex in addition to the .mll source. 
+
+Agreed.
+
+>Well, anyway, I used it to
+>support UTF-8 in Xpath (44 states, 176 transitions, table size 968 bytes:
+>I don't want to know how large it would have been with ocamllex).
+
+ocamllex: Approximately 8000 transitions per name/nmtoken.
+
+As your results are encouraging, I'll try to change the lexer definition for
+wlex. This should be relatively simple.
+
+I am currently also working on a namespace implementation. The approach:
+
+- The alternate class namespace_element_impl replaces element_impl if
+  namespaces are enabled. This means that the additional overhead must only be
+  payed if it is wanted.
+ 
+- It is possible to normalize namespace prefixes, i.e. if the same namespace is
+  declared with several prefixes, the parser chooses one preferred prefix (this
+  can be configured). Prefixes are a convenient way to reference namespaces
+  while canonical names are not.
+
+  This normalization can also solve the problem which prefix to use in the DTD.
+
+  Of course, normalization is an option.
+
+I'll send you a message when there is some code.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Wed, 6 Sep 2000 01:49:47 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Wed, 06 Sep 2000 13:16:49 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx04 with esmtp (Exim 2.12 #3)
+	id 13WSTF-0005No-00
+	for gerd@gerd-stolpmann.de; Wed, 6 Sep 2000 01:49:41 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e85NneT76505
+          for <gerd@gerd-stolpmann.de>; Wed, 6 Sep 2000 01:49:40 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id BAA00980 for <gerd@gerd-stolpmann.de>; Wed, 6 Sep 2000 01:49:39 +0200 (MET DST)
+Date: Wed, 6 Sep 2000 01:49:39 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: PXP memory footprint
+In-Reply-To: <00090518050001.09664@ice>
+Message-ID: <Pine.GSO.4.04.10009060129290.29324-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+> I am currently also working on a namespace implementation. The approach:
+
+Maybe it will help you for the design to know what is needed by XPath:
+- for element and attribute nodes: their expanded name (namespace uri,
+  local name)
+- it is also useful to be able to access the real qualified name (the one
+  from the XML document). The name() function from XPath explicitely
+  allows to rebuild the prefix (when many prefixes are declared for the
+  same namespace uri, the function can choose one of them). I find
+  this non-determinism inadequate.
+- for element node: one namespace child for each namespace declaration in
+  the scope for this element (including the default declaration;
+  overrided declarations excluded)
+- for element node: the attribute children list does not contain namespace
+  declarations
+
+> - It is possible to normalize namespace prefixes, i.e. if the same namespace is
+>   declared with several prefixes, the parser chooses one preferred prefix (this
+>   can be configured). Prefixes are a convenient way to reference namespaces
+>   while canonical names are not.
+
+What do you call canonical names ? Expanded name (uri, local) ?  As I see
+it, the information that matters is the uri, not the prefix, which is
+defined in the XML document for local naming only.
+
+Usually, the application will have its own namespace context (prefix ->
+uri bindings), so maybe the (small) machinery of context handling
+(adding/overidding a binding, resolving a prefix using, or not, the
+default namespace) could be external to the parser itself.
+
+
+-- 
+ Alain
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: PXP memory footprint
+Date: Wed, 6 Sep 2000 16:46:19 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: Multipart/Mixed;
+  boundary="Boundary-=_SCDXrJmOWFrxsjyBldbEFSArCByn"
+References: <Pine.GSO.4.04.10009060129290.29324-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10009060129290.29324-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00090617300804.09664@ice>
+Status: RO
+X-Status: S
+
+
+--Boundary-=_SCDXrJmOWFrxsjyBldbEFSArCByn
+Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
+
+Hello Alain,
+
+I've written a small test program that parses a file and counts the number of
+allocated words. For omcs.xml, the results are:
+
+>  ./count <omcs.xml 
+Number of nodes: 150746
+Total size in words: 7654182
+Average size per node: 50
+S   UID   PID  PPID  C PRI  NI  RSS    SZ WCHAN  TTY          TIME CMD
+S   500 17152   468 99  69   0 34036 8885 wait4  pts/5    00:00:34 count
+Total number of allocated words in minor stack:  40871466
+Total number of promoted words minor->major:      7902671
+Total number of allocated words in major stack:   8185561
+Total number of allocated words:                 41154356
+Number of minor collections:  1248
+Number of major collections:    10
+Current number of heap words:        8151040
+Current number of live heap words:    303569
+Current number of free heap words:   7847471
+
+This means that 88% of the allocated memory is consumed by the document tree.
+(The rest must be temporary memory.)
+
+On Wed, 06 Sep 2000, you wrote:
+>> - It is possible to normalize namespace prefixes, i.e. if the same namespace is
+>>   declared with several prefixes, the parser chooses one preferred prefix (this
+>>   can be configured). Prefixes are a convenient way to reference namespaces
+>>   while canonical names are not.
+>
+>What do you call canonical names ? Expanded name (uri, local) ?  As I see
+>it, the information that matters is the uri, not the prefix, which is
+>defined in the XML document for local naming only.
+
+If you want to match the name of an element/attribute, it is inconvenient to
+compare the URI, e.g.
+
+match n#uri_name, n#local_name with
+  "http://very.long", "name" ->
+| ... ->
+
+Not much better:
+
+let uri = "http://very.long" in
+match n#local_name with
+  "name" when n#uri_name = uri ->
+| ... ->
+
+Right, the prefixes occurring in the XML document are only local names, and
+they only exist in their context. You cannot use these prefixes in programs
+because the author of the XML document is free in the choice of prefixes. What
+I have in mind is the following:
+
+- You can declare a mapping from URIs to the prefixes you want to see in
+  the program, e.g.
+
+  declare_prefix "vl" "http://very.long"
+
+- The parser now replaces the prefixes found in the document by the declared
+  prefixes:
+
+  n # norm_name = "vl:name"
+
+  The normalized name is independent of the prefix the author of the document
+  uses (or whether the name is in the default namespace).
+
+- Furthermore, the normalized name will be used for validation; i.e. the
+  declarations in the DTD can be written with normalized names.
+
+Of course, normalization is only useful if you know the namespaces which occur
+in every possible document. In order to process arbitrary documents, it must
+also be possible to turn normalization off and to parse in a classical way.
+
+>Usually, the application will have its own namespace context (prefix ->
+>uri bindings), so maybe the (small) machinery of context handling
+>(adding/overidding a binding, resolving a prefix using, or not, the
+>default namespace) could be external to the parser itself.
+
+I will think about that. Especially tracking the bindings could be complicated
+with respect to tree transformations if implemented within the node objects.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+--Boundary-=_SCDXrJmOWFrxsjyBldbEFSArCByn
+Content-Type: text/plain;
+  name="count.ml"
+Content-Transfer-Encoding: base64
+Content-Description: The test program
+Content-Disposition: attachment; filename="count.ml"
+
+b3BlbiBQeHBfZG9jdW1lbnQ7OwpvcGVuIFB4cF95YWNjOzsKb3BlbiBQeHBfdHlwZXM7OwpvcGVu
+IFByaW50Zjs7Cm9wZW4gR2M7OwoKKCogTm90ZTogQ291bnRpbmcgd29ya3Mgb25seSBmb3Igd2Vs
+bC1mb3JtZWRuZXNzIHBhcnNpbmcgYmVjYXVzZSBzb21lIHNsb3RzCiAqIGNvbnRhaW4gc2hhcmVk
+IHZhbHVlcyBpbiB2YWxpZGF0ZWQgdHJlZXMuCiAqKQoKbGV0IGNvdW50X21lbW9yeV9vZl9vYmpl
+Y3QgeSA9CiAgKCogUmV0dXJucyB0aGUgbnVtYmVyIG9mIHdvcmRzIG9mIHRoZSBvYmplY3QgeCB3
+aXRob3V0IHRoZSBzdWIgb2JqZWN0cyAqKQogIGxldCByZWMgY291bnQgeCA9CiAgICAoKiBEbyBu
+b3QgYWxsb2NhdGUgbWVtb3J5IHdoaWxlIGNvdW50aW5nISAqKQogICAgaWYgT2JqLmlzX2Jsb2Nr
+IHggdGhlbiBiZWdpbiAgICgqIGJveGVkIHZhbHVlICopCiAgICAgIGxldCB0YWcgPSBPYmoudGFn
+IHggaW4KICAgICAgbWF0Y2ggKCkgd2l0aAoJICBfIHdoZW4gdGFnID0gT2JqLnN0cmluZ190YWcg
+LT4KCSAgICBPYmouc2l6ZSB4ICsgMiAgICAgICAgICAgICAgICAgICgqIHBvaW50ZXIgKyB0YWcg
+d29yZCArIGJsb2NrICopCgl8IF8gd2hlbiB0YWcgPSBPYmoub2JqZWN0X3RhZyAtPgoJICAgIDEg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKCogY291bnQgb25seSB0aGUgcG9pbnRlciAq
+KQoJfCBfIHdoZW4gdGFnIDwgT2JqLm5vX3NjYW5fdGFnIC0+CgkgICAgY291bnRfYmxvY2sgeCAw
+IDIKCXwgXyAtPgoJICAgIGZhaWx3aXRoICJVbnN1cHBvcnRlZCB0YWciCiAgICBlbmQKICAgIGVs
+c2UgMSAgICAgICAgICAoKiB1bmJveGVkIHZhbHVlICopCiAgYW5kIGNvdW50X2Jsb2NrIHggayBz
+dW0gPQogICAgbGV0IGwgPSBPYmouc2l6ZSB4IGluCiAgICBpZiBrIDwgbCB0aGVuIGJlZ2luCiAg
+ICAgIGxldCBhID0gY291bnQgKE9iai5maWVsZCB4IGspIGluCiAgICAgIGNvdW50X2Jsb2NrIHgg
+KGsrMSkgKHN1bSthKQogICAgZW5kCiAgICBlbHNlIHN1bQogIGluCiAgbGV0IHggPSBPYmoucmVw
+ciB5IGluCiAgaWYgT2JqLmlzX2Jsb2NrIHggJiYgT2JqLnRhZyB4ID0gT2JqLm9iamVjdF90YWcg
+dGhlbgogICAgY291bnRfYmxvY2sgeCAxIDIKICAgICAgKCogdGFnIHdvcmQgKyBjbGFzcyBkZXNj
+cmlwdG9yIHBvaW50ZXI7IGRvIE5PVCBjb3VudCB0aGUgcG9pbnRlciAqKQogIGVsc2UKICAgIGZh
+aWx3aXRoICJOb3QgYW4gb2JqZWN0Igo7OwoKCmxldCBjb3VudF9ub2RlX3RyZWVfbWVtb3J5IG4g
+PQogIGxldCB0b3RhbCA9IHJlZiAwIGluCiAgbGV0IG51bWJlciA9IHJlZiAwIGluCgogIGxldCBy
+ZWMgY291bnQgbiA9CiAgICBsZXQgYmFzZV9zaXplID0gY291bnRfbWVtb3J5X29mX29iamVjdCBu
+IGluCiAgICBsZXQgZXh0X3NpemUgPSBjb3VudF9tZW1vcnlfb2Zfb2JqZWN0IChuICMgZXh0ZW5z
+aW9uKSBpbgogICAgdG90YWwgOj0gIXRvdGFsICsgYmFzZV9zaXplICsgZXh0X3NpemU7CiAgICBp
+bmNyIG51bWJlcjsKICAgIG4gIyBpdGVyX25vZGVzIGNvdW50CiAgaW4KCiAgY291bnQgbjsKICAh
+dG90YWwsICFudW1iZXIKOzsKCgpsZXQgcGFyc2VfYW5kX2NvdW50ICgpID0KICB0cnkgCiAgICAo
+KiBQYXJzZSB0aGUgZG9jdW1lbnQ6ICopCiAgICBsZXQgZG9jID0KICAgICAgcGFyc2Vfd2Zkb2N1
+bWVudF9lbnRpdHkKICAgICAgICB7IGRlZmF1bHRfY29uZmlnIHdpdGggCiAgICAgICAgICAgIGVu
+Y29kaW5nID0gYEVuY191dGY4OwogICAgICAgIH0KICAgICAgICAoZnJvbV9jaGFubmVsIHN0ZGlu
+KQogICAgICAgIGRlZmF1bHRfc3BlYyAKICAgIGluCiAgICBsZXQgc2l6ZSwgbnVtYmVyID0gY291
+bnRfbm9kZV90cmVlX21lbW9yeSAoZG9jICMgcm9vdCkgaW4KICAgIHByaW50ZiAiTnVtYmVyIG9m
+IG5vZGVzOiAlZFxuIiBudW1iZXI7CiAgICBwcmludGYgIlRvdGFsIHNpemUgaW4gd29yZHM6ICVk
+XG4iIHNpemU7CiAgICBwcmludGYgIkF2ZXJhZ2Ugc2l6ZSBwZXIgbm9kZTogJWRcbiIgKHNpemUv
+bnVtYmVyKTsKICAgIGZsdXNoIHN0ZG91dDsKICAgICgpCiAgd2l0aAogICAgICBlIC0+CiAgICAg
+ICAgKCogUHJpbnQgZXJyb3I7IHJlbWVtYmVyIHRoYXQgdGhlcmUgd2FzIGFuIGVycm9yICopCiAg
+ICAgICAgcHJlcnJfZW5kbGluZSAoc3RyaW5nX29mX2V4biBlKQo7OwoKCmxldCBkaWFnbm9zdGlj
+cygpID0KICBpZ25vcmUoU3lzLmNvbW1hbmQoInBzIC1seXAgIiBeIHN0cmluZ19vZl9pbnQgKFVu
+aXguZ2V0cGlkKCkpKSk7CiAgKCogRXhwZWN0cyBhIFVOSVgtOTggcHMgKikKCiAgZnVsbF9tYWpv
+cigpOwogIGxldCBnID0gc3RhdCgpIGluCiAgcHJpbnRmICJUb3RhbCBudW1iZXIgb2YgYWxsb2Nh
+dGVkIHdvcmRzIGluIG1pbm9yIHN0YWNrOiAlOWRcbiIgZy5taW5vcl93b3JkczsKICBwcmludGYg
+IlRvdGFsIG51bWJlciBvZiBwcm9tb3RlZCB3b3JkcyBtaW5vci0+bWFqb3I6ICAgICU5ZFxuIiBn
+LnByb21vdGVkX3dvcmRzOwogIHByaW50ZiAiVG90YWwgbnVtYmVyIG9mIGFsbG9jYXRlZCB3b3Jk
+cyBpbiBtYWpvciBzdGFjazogJTlkXG4iIGcubWFqb3Jfd29yZHM7CiAgcHJpbnRmICJUb3RhbCBu
+dW1iZXIgb2YgYWxsb2NhdGVkIHdvcmRzOiAgICAgICAgICAgICAgICAlOWRcbiIgCiAgICAoZy5t
+aW5vcl93b3JkcyArIGcubWFqb3Jfd29yZHMgLSBnLnByb21vdGVkX3dvcmRzKTsKICBwcmludGYg
+Ik51bWJlciBvZiBtaW5vciBjb2xsZWN0aW9uczogJTVkXG4iIGcubWlub3JfY29sbGVjdGlvbnM7
+CiAgcHJpbnRmICJOdW1iZXIgb2YgbWFqb3IgY29sbGVjdGlvbnM6ICU1ZFxuIiBnLm1ham9yX2Nv
+bGxlY3Rpb25zOwogIHByaW50ZiAiQ3VycmVudCBudW1iZXIgb2YgaGVhcCB3b3JkczogICAgICAl
+OWRcbiIgZy5oZWFwX3dvcmRzOwogIHByaW50ZiAiQ3VycmVudCBudW1iZXIgb2YgbGl2ZSBoZWFw
+IHdvcmRzOiAlOWRcbiIgZy5saXZlX3dvcmRzOwogIHByaW50ZiAiQ3VycmVudCBudW1iZXIgb2Yg
+ZnJlZSBoZWFwIHdvcmRzOiAlOWRcbiIgZy5mcmVlX3dvcmRzOwogICgpCjs7CgoKcGFyc2VfYW5k
+X2NvdW50KCk7CmRpYWdub3N0aWNzKCkKOzsK
+
+--Boundary-=_SCDXrJmOWFrxsjyBldbEFSArCByn--
+

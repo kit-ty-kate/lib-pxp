@@ -1,0 +1,683 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <haruo@is.s.u-tokyo.ac.jp>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Fri, 30 Mar 2001 08:35:05 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Fri, 30 Mar 2001 20:00:47 +0200 (MEST)
+Received: from [202.224.39.39] (helo=mail.asahi-net.or.jp)
+	by mx04.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 14isUP-0000gB-00
+	for gerd@gerd-stolpmann.de; Fri, 30 Mar 2001 08:34:30 +0200
+Received: from localhost (d228026.ppp.asahi-net.or.jp [210.253.228.26])
+	by mail.asahi-net.or.jp (Postfix) with ESMTP id 30F5F5F37
+	for <gerd@gerd-stolpmann.de>; Fri, 30 Mar 2001 15:34:23 +0900 (JST)
+To: gerd@gerd-stolpmann.de
+Subject: Windows port
+X-Mailer: Mew version 1.94.1 on Emacs 20.4 / Mule 4.0 (HANANOEN)
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Message-Id: <20010329172142W.haruo@is.s.u-tokyo.ac.jp>
+Date: Thu, 29 Mar 2001 17:21:42 -0500
+From: Haruo Hosoya <haruo@is.s.u-tokyo.ac.jp>
+X-Dispatcher: imput version 20000228(IM140)
+Lines: 34
+Status: R 
+X-Status: N
+
+Dear Gerd,
+
+Since O'Caml now supports Cygwin (Unix-like environment for Windows),
+I attempted to compile findlib, netstring, and pxp on it.  I found
+that most of the sources can be compiled with just a few changes.
+
+1. Windows requires the .exe extension to any executable file.  By
+changing Makefiles for it, findlib, netstring, and utf8-disabled pxp
+were compiled.
+
+2. With utf8 enabled, the "ucs2_to_utf8" command generates the
+"pxp_lex_defs_utf8.def" file and then the "insert_variant" command
+generates "pxp_lex_..._utf8.mll" files.  But since ucs2_to_utf8
+inserts Windows carriage return code, this makes insert_variant
+generate corrupted files and ocamllex fails.  So I had to replace
+the carriage return code from the Windows one to the Unix one.
+Then, the rest worked.
+
+I could contribute these changes.  Now I have several questions about
+in what forms I should contribute.  
+
+I guess I should use the most recent version of pxp (I'm using 1.0
+now) and send you a diff?
+
+We need a switch in Makefile for giving execuatables .exe extension
+for Windows and no extension for Unix.  For findlib, should it be
+handled by configure?
+
+I'm still wondering how the second change above should be handled.  
+Do you have any idea?
+
+Haruo
+
+
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <info@gerd-stolpmann.de>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Tue, 03 Apr 2001 22:50:00 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Wed, 04 Apr 2001 20:00:30 +0200 (MEST)
+Received: from [195.20.224.204] (helo=mrvdom00.schlund.de)
+	by mxng00.kundenserver.de with esmtp (Exim 3.12 #1)
+	id 14kXkQ-00083E-00
+	for gerd@gerd-stolpmann.de; Tue, 03 Apr 2001 22:49:54 +0200
+Received: from drms-3e357804.pool.mediaways.net ([62.53.120.4] helo=ice.gerd-stolpmann.de)
+	by mrvdom00.schlund.de with esmtp (Exim 2.12 #2)
+	id 14kXkL-0000ba-00; Tue, 3 Apr 2001 22:49:49 +0200
+Received: from localhost (localhost [[UNIX: localhost]])
+	by ice.gerd-stolpmann.de (8.9.3/8.9.3) id WAA28048;
+	Tue, 3 Apr 2001 22:43:31 +0200
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Haruo Hosoya <haruo@is.s.u-tokyo.ac.jp>,
+ gerd@gerd-stolpmann.de
+Subject: Re: Windows port
+Date: Tue, 3 Apr 2001 22:33:56 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20010329172142W.haruo@is.s.u-tokyo.ac.jp>
+In-Reply-To: <20010329172142W.haruo@is.s.u-tokyo.ac.jp>
+MIME-Version: 1.0
+Message-Id: <01040322433102.00489@ice>
+Content-Transfer-Encoding: 8bit
+Status: R 
+X-Status: N
+
+On Fri, 30 Mar 2001, Haruo Hosoya wrote:
+>Dear Gerd,
+>
+>Since O'Caml now supports Cygwin (Unix-like environment for Windows),
+>I attempted to compile findlib, netstring, and pxp on it.  I found
+>that most of the sources can be compiled with just a few changes.
+>
+>1. Windows requires the .exe extension to any executable file.  By
+>changing Makefiles for it, findlib, netstring, and utf8-disabled pxp
+>were compiled.
+
+A configurable $suffix for executable could help.
+
+>2. With utf8 enabled, the "ucs2_to_utf8" command generates the
+>"pxp_lex_defs_utf8.def" file and then the "insert_variant" command
+>generates "pxp_lex_..._utf8.mll" files.  But since ucs2_to_utf8
+>inserts Windows carriage return code, this makes insert_variant
+>generate corrupted files and ocamllex fails.  So I had to replace
+>the carriage return code from the Windows one to the Unix one.
+>Then, the rest worked.
+>
+>I could contribute these changes.  Now I have several questions about
+>in what forms I should contribute.  
+>
+>I guess I should use the most recent version of pxp (I'm using 1.0
+>now) and send you a diff?
+
+A context diff would be fine.
+
+>We need a switch in Makefile for giving execuatables .exe extension
+>for Windows and no extension for Unix.  For findlib, should it be
+>handled by configure?
+
+How do I find out that the environment is Cygwin? (Perhaps uname?)
+
+>I'm still wondering how the second change above should be handled.  
+>Do you have any idea?
+
+Perhaps the following works: In insert_variant, function edit_file, 
+change 
+	let chcopy = open_in insname in
+into
+	let chcopy = open_in_bin insname in
+Then the length reported by in_channel_length matches the length implicitly
+assumed by really_input. (I think this is the error.)
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <haruo@is.s.u-tokyo.ac.jp>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Sun, 8 Apr 2001 14:18:25 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Sun, 08 Apr 2001 20:00:22 +0200 (MEST)
+Received: from [202.224.39.39] (helo=mail.asahi-net.or.jp)
+	by mx06.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 14mE7a-000773-00
+	for gerd@gerd-stolpmann.de; Sun, 8 Apr 2001 14:16:47 +0200
+Received: from localhost (d228081.ppp.asahi-net.or.jp [210.253.228.81])
+	by mail.asahi-net.or.jp (Postfix) with ESMTP id B7F646308
+	for <gerd@gerd-stolpmann.de>; Sun,  8 Apr 2001 21:16:40 +0900 (JST)
+To: gerd@gerd-stolpmann.de
+Subject: Re: Windows port
+In-Reply-To: <01040322433102.00489@ice>
+References: <20010329172142W.haruo@is.s.u-tokyo.ac.jp>
+	<01040322433102.00489@ice>
+X-Mailer: Mew version 1.94.1 on Emacs 20.4 / Mule 4.0 (HANANOEN)
+Mime-Version: 1.0
+Content-Type: Multipart/Mixed;
+ boundary="--Next_Part(Sun_Apr__8_00:03:35_2001_809)--"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20010408000337R.haruo@is.s.u-tokyo.ac.jp>
+Date: Sun, 08 Apr 2001 00:03:37 -0400
+From: Haruo Hosoya <haruo@is.s.u-tokyo.ac.jp>
+X-Dispatcher: imput version 20000228(IM140)
+Lines: 430
+Status: R 
+X-Status: N
+
+
+----Next_Part(Sun_Apr__8_00:03:35_2001_809)--
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+Dear Gerd,
+
+I send you my patches for Cygwin port for findlib and pxp (netstring
+compiles with no change).  Here are brief descriptions of what I did.
+
+1. findlib (0.5.1)
+
+I added code in "configure" that checks if $OSTYPE is "cygwin".  If
+so, it defines $EXEC_SUFFIX to be ".exe".  I also modified Makefile
+so as to add $EXEC_SUFFIX to the names of all executable files.
+
+2. pxp (1.0)
+
+I added a similar check for $OSTYPE and definition of $EXEC_SUFFIX.  I
+did similar suffix-addition modifications to m2parsergen/Makefile and
+tools/ucs_to_utf8/Makefile.  I also modified insert_variant as you
+suggested.
+
+Regards,
+
+Haruo
+
+
+Gerd Stolpmann <gerd@gerd-stolpmann.de> wrote:
+> On Fri, 30 Mar 2001, Haruo Hosoya wrote:
+> >Dear Gerd,
+> >
+> >Since O'Caml now supports Cygwin (Unix-like environment for Windows),
+> >I attempted to compile findlib, netstring, and pxp on it.  I found
+> >that most of the sources can be compiled with just a few changes.
+> >
+> >1. Windows requires the .exe extension to any executable file.  By
+> >changing Makefiles for it, findlib, netstring, and utf8-disabled pxp
+> >were compiled.
+> 
+> A configurable $suffix for executable could help.
+> 
+> >2. With utf8 enabled, the "ucs2_to_utf8" command generates the
+> >"pxp_lex_defs_utf8.def" file and then the "insert_variant" command
+> >generates "pxp_lex_..._utf8.mll" files.  But since ucs2_to_utf8
+> >inserts Windows carriage return code, this makes insert_variant
+> >generate corrupted files and ocamllex fails.  So I had to replace
+> >the carriage return code from the Windows one to the Unix one.
+> >Then, the rest worked.
+> >
+> >I could contribute these changes.  Now I have several questions about
+> >in what forms I should contribute.  
+> >
+> >I guess I should use the most recent version of pxp (I'm using 1.0
+> >now) and send you a diff?
+> 
+> A context diff would be fine.
+> 
+> >We need a switch in Makefile for giving execuatables .exe extension
+> >for Windows and no extension for Unix.  For findlib, should it be
+> >handled by configure?
+> 
+> How do I find out that the environment is Cygwin? (Perhaps uname?)
+> 
+> >I'm still wondering how the second change above should be handled.  
+> >Do you have any idea?
+> 
+> Perhaps the following works: In insert_variant, function edit_file, 
+> change 
+> 	let chcopy = open_in insname in
+> into
+> 	let chcopy = open_in_bin insname in
+> Then the length reported by in_channel_length matches the length implicitly
+> assumed by really_input. (I think this is the error.)
+> 
+> Gerd
+> -- 
+> ----------------------------------------------------------------------------
+> Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+> Viktoriastr. 100             
+> 64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+> Germany                     
+> ----------------------------------------------------------------------------
+> 
+
+----Next_Part(Sun_Apr__8_00:03:35_2001_809)--
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="findlib.diff"
+
+diff --context -r tmp/findlib/Makefile findlib/Makefile
+*** tmp/findlib/Makefile	Wed Mar 28 05:26:20 2001
+--- findlib/Makefile	Sun Apr  8 19:45:38 2001
+***************
+*** 30,45 ****
+  OCAMLFIND_OBJECTS = metacache_unix.cmo findlib_guess.cmo frontend.cmo
+  OCAMLFIND_XOBJECTS = metacache_unix.cmx findlib_guess.cmx frontend.cmx
+  
+! all: ocamlfind findlib.cma findlib_mt.cma findlib_top.cma findlib.conf
+  
+! opt: ocamlfind_opt findlib.cmxa findlib_mt.cmxa findlib.conf
+  
+! ocamlfind: findlib.cma $(OCAMLFIND_OBJECTS)
+! 	$(OCAMLC) -g -custom -o ocamlfind findlib.cma unix.cma \
+  	          $(OCAMLFIND_OBJECTS)
+  
+! ocamlfind_opt: findlib.cmxa  $(OCAMLFIND_XOBJECTS)
+! 	$(OCAMLOPT) -o ocamlfind_opt findlib.cmxa unix.cmxa \
+  		  $(OCAMLFIND_XOBJECTS)
+  
+  findlib.cma: $(OBJECTS) $(OBJECTS_NONMT)
+--- 30,45 ----
+  OCAMLFIND_OBJECTS = metacache_unix.cmo findlib_guess.cmo frontend.cmo
+  OCAMLFIND_XOBJECTS = metacache_unix.cmx findlib_guess.cmx frontend.cmx
+  
+! all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_mt.cma findlib_top.cma findlib.conf
+  
+! opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa findlib_mt.cmxa findlib.conf
+  
+! ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
+! 	$(OCAMLC) -g -custom -o ocamlfind$(EXEC_SUFFIX) findlib.cma unix.cma \
+  	          $(OCAMLFIND_OBJECTS)
+  
+! ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa  $(OCAMLFIND_XOBJECTS)
+! 	$(OCAMLOPT) -o ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa unix.cmxa \
+  		  $(OCAMLFIND_XOBJECTS)
+  
+  findlib.cma: $(OBJECTS) $(OBJECTS_NONMT)
+***************
+*** 86,93 ****
+  	cp findlib.cmi findlib.mli mt
+  
+  clean:
+! 	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa findlib.ml findlib_mt.mml \
+! 	  mt/*.* meta.ml findlib_config.ml findlib.mml ocamlfind ocamlfind_opt
+  
+  
+  distclean: clean
+--- 86,93 ----
+  	cp findlib.cmi findlib.mli mt
+  
+  clean:
+! 	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa findlib.ml$(EXEC_SUFFIX) findlib_mt.mml \
+! 	  mt/*.* meta.ml findlib_config.ml findlib.mml ocamlfind ocamlfind_opt$(EXEC_SUFFIX)
+  
+  
+  distclean: clean
+***************
+*** 115,122 ****
+  	mkdir -p $(PREFIX)$(OCAMLFIND_BIN)
+  	{ test ! -f findlib.cmxa || extra="*.cmxa *.a"; }; \
+  	cp Makefile.config findlib.cmi findlib.mli findlib.cma findlib_mt.cma topfind.cmi topfind.mli findlib_top.cma META $$extra $(PREFIX)$(OCAML_SITELIB)/$(NAME)
+! 	f="ocamlfind"; { test -f ocamlfind_opt && f="ocamlfind_opt"; }; \
+! 	cp $$f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind
+  	mkdir -p $(PREFIX)$(OCAMLFIND_MAN)/man1 $(PREFIX)$(OCAMLFIND_MAN)/man3 $(PREFIX)$(OCAMLFIND_MAN)/man5
+  	cp doc/man/ocamlfind.1 $(PREFIX)$(OCAMLFIND_MAN)/man1
+  	cp doc/man/Findlib.3 doc/man/Topfind.3 $(PREFIX)$(OCAMLFIND_MAN)/man3
+--- 115,122 ----
+  	mkdir -p $(PREFIX)$(OCAMLFIND_BIN)
+  	{ test ! -f findlib.cmxa || extra="*.cmxa *.a"; }; \
+  	cp Makefile.config findlib.cmi findlib.mli findlib.cma findlib_mt.cma topfind.cmi topfind.mli findlib_top.cma META $$extra $(PREFIX)$(OCAML_SITELIB)/$(NAME)
+! 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
+! 	cp $$f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
+  	mkdir -p $(PREFIX)$(OCAMLFIND_MAN)/man1 $(PREFIX)$(OCAMLFIND_MAN)/man3 $(PREFIX)$(OCAMLFIND_MAN)/man5
+  	cp doc/man/ocamlfind.1 $(PREFIX)$(OCAMLFIND_MAN)/man1
+  	cp doc/man/Findlib.3 doc/man/Topfind.3 $(PREFIX)$(OCAMLFIND_MAN)/man3
+***************
+*** 133,139 ****
+  uninstall:
+  	$(MAKE) uninstall-meta
+  	rm -rf $(PREFIX)$(OCAML_SITELIB)/$(NAME)
+! 	rm -f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man1/ocamlfind.1
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Findlib.3
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Topfind.3
+--- 133,139 ----
+  uninstall:
+  	$(MAKE) uninstall-meta
+  	rm -rf $(PREFIX)$(OCAML_SITELIB)/$(NAME)
+! 	rm -f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man1/ocamlfind.1
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Findlib.3
+  	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Topfind.3
+diff --context -r tmp/findlib/Makefile.config findlib/Makefile.config
+*** tmp/findlib/Makefile.config	Sun Apr  8 20:02:25 2001
+--- findlib/Makefile.config	Sun Apr  8 19:39:13 2001
+***************
+*** 8,10 ****
+--- 8,11 ----
+  OCAMLFIND_MAN=/usr/local/man
+  OCAMLFIND_CONF=/usr/local/etc/ocamlfind.conf
+  OCAML_AUTOLINK=true
++ EXEC_SUFFIX=.exe
+Only in findlib: Makefile~
+Binary files tmp/findlib/config/simple.exe and findlib/config/simple.exe differ
+diff --context -r tmp/findlib/configure findlib/configure
+*** tmp/findlib/configure	Sat Mar 10 17:59:17 2001
+--- findlib/configure	Sun Apr  8 19:38:05 2001
+***************
+*** 311,317 ****
+--- 311,326 ----
+      echo "Configuration for $lib written to site-lib/$lib/META"
+  done
+  
++ # Cygwin support
+  
++ case "$OSTYPE" in
++     cygwin)
++         exec_suffix=.exe
++ 	echo "platform: Cygwin"
++ 	;;
++     *)
++ 	exec_suffix=''
++ esac
+  
+  ######################################################################
+  # Write Makefile.config
+***************
+*** 326,331 ****
+--- 335,341 ----
+  echo "OCAMLFIND_MAN=${ocamlfind_man}" >>Makefile.config
+  echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
+  echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
++ echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
+  
+  # All OK
+  
+Only in findlib: configure~
+Only in findlib: findlib.ml
+Binary files tmp/findlib/ocamlfind.exe and findlib/ocamlfind.exe differ
+
+----Next_Part(Sun_Apr__8_00:03:35_2001_809)--
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="pxp.diff"
+
+diff --context -r tmp/pxp/Makefile.conf pxp/Makefile.conf
+*** tmp/pxp/Makefile.conf	Sun Aug 20 04:52:10 2000
+--- pxp/Makefile.conf	Sun Apr  8 20:26:25 2001
+***************
+*** 35,37 ****
+--- 35,45 ----
+  MLI = pxp_document.mli pxp_dtd.mli \
+        pxp_types.mli pxp_yacc.mli \
+        pxp_codewriter.mli pxp_dfa.mli
++ 
++ # executable suffix (for Cygwin)
++ 
++ ifeq ($(OSTYPE),cygwin)
++   EXEC_SUFFIX = .exe
++ else
++   EXEC_SUFFIX = 
++ endif
+Only in pxp: Makefile.conf~
+Only in pxp/compatibility: depend
+Only in pxp: depend
+Only in pxp/lexers: Makefile.generate~
+Only in pxp/lexers: pxp_lex_defs_utf8.def~
+diff --context -r tmp/pxp/m2parsergen/Makefile pxp/m2parsergen/Makefile
+*** tmp/pxp/m2parsergen/Makefile	Sun May  7 02:34:39 2000
+--- pxp/m2parsergen/Makefile	Sun Apr  8 20:12:54 2001
+***************
+*** 11,17 ****
+  
+  
+  .PHONY: all
+! all: m2parsergen
+  
+  .PHONY: clean
+  clean:
+--- 11,17 ----
+  
+  
+  .PHONY: all
+! all: m2parsergen$(EXEC_SUFFIX)
+  
+  .PHONY: clean
+  clean:
+***************
+*** 23,29 ****
+  
+  .PHONY: distclean
+  distclean: clean
+! 	rm -f *~ depend depend.pkg m2parsergen a.out x.ml
+  
+  #----------------------------------------------------------------------
+  # general rules:
+--- 23,29 ----
+  
+  .PHONY: distclean
+  distclean: clean
+! 	rm -f *~ depend depend.pkg m2parsergen$(EXEC_SUFFIX) a.out x.ml
+  
+  #----------------------------------------------------------------------
+  # general rules:
+***************
+*** 39,46 ****
+  depend: $(SRC) 
+  	$(OCAMLDEP) $(SRC) >depend
+  
+! m2parsergen: $(OBJ)
+! 	$(OCAMLC) -o m2parsergen $(OBJ)
+  
+  .SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+  
+--- 39,46 ----
+  depend: $(SRC) 
+  	$(OCAMLDEP) $(SRC) >depend
+  
+! m2parsergen$(EXEC_SUFFIX): $(OBJ)
+! 	$(OCAMLC) -o m2parsergen$(EXEC_SUFFIX) $(OBJ)
+  
+  .SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
+  
+Only in pxp/m2parsergen: Makefile~
+Only in pxp/m2parsergen: ast.cmi
+Only in pxp/m2parsergen: ast.cmo
+Only in pxp/m2parsergen: depend
+Only in pxp/m2parsergen: generator.cmi
+Only in pxp/m2parsergen: generator.cmo
+Only in pxp/m2parsergen: lexer.cmi
+Only in pxp/m2parsergen: lexer.cmo
+Only in pxp/m2parsergen: lexer.ml
+Only in pxp/m2parsergen: m2parsergen.exe
+Only in pxp/m2parsergen: parser.cmi
+Only in pxp/m2parsergen: parser.cmo
+Only in pxp/m2parsergen: parser.ml
+Only in pxp/m2parsergen: parser.mli
+Only in pxp/tmp: pxp_entity.cmi
+Only in pxp/tmp: pxp_entity.cmo
+Only in pxp/tmp: pxp_entity.ml
+Only in pxp/tmp: pxp_entity.mli
+diff --context -r tmp/pxp/tools/insert_variant pxp/tools/insert_variant
+*** tmp/pxp/tools/insert_variant	Sun May 21 06:14:33 2000
+--- pxp/tools/insert_variant	Sun Apr  8 20:17:02 2001
+***************
+*** 37,43 ****
+        if String.length line >= 8 & String.sub line 0 8 = "#insert " then begin
+  	let insname = get_arg variant line in
+  	(* Copy the file 'insname' to chout *)
+! 	let chcopy = open_in insname in
+  	let n = in_channel_length chcopy in
+  	let s = String.create n in
+  	really_input chcopy s 0 n;
+--- 37,43 ----
+        if String.length line >= 8 & String.sub line 0 8 = "#insert " then begin
+  	let insname = get_arg variant line in
+  	(* Copy the file 'insname' to chout *)
+! 	let chcopy = open_in_bin insname in
+  	let n = in_channel_length chcopy in
+  	let s = String.create n in
+  	really_input chcopy s 0 n;
+Only in pxp/tools: insert_variant~
+diff --context -r tmp/pxp/tools/ucs2_to_utf8/Makefile pxp/tools/ucs2_to_utf8/Makefile
+*** tmp/pxp/tools/ucs2_to_utf8/Makefile	Sun May 21 05:30:03 2000
+--- pxp/tools/ucs2_to_utf8/Makefile	Sun Apr  8 20:13:27 2001
+***************
+*** 9,16 ****
+  OCAMLLEX = ocamllex
+  OCAMLYACC = ocamlyacc
+  
+! all: ucs2_to_utf8
+! opt: ucs2_to_utf8.opt
+  
+  DEPOBJS = ucs2_to_utf8.ml lexer.ml parser.ml parser.mli types.ml
+  
+--- 9,16 ----
+  OCAMLLEX = ocamllex
+  OCAMLYACC = ocamlyacc
+  
+! all: ucs2_to_utf8$(EXEC_SUFFIX)
+! opt: ucs2_to_utf8.opt$(EXEC_SUFFIX)
+  
+  DEPOBJS = ucs2_to_utf8.ml lexer.ml parser.ml parser.mli types.ml
+  
+***************
+*** 29,39 ****
+  depend: lexer.ml parser.ml parser.mli
+  	$(OCAMLDEP) $(DEPOBJS) > depend
+   
+! ucs2_to_utf8: $(UCS2_TO_UTF8OBJS)
+! 	$(OCAMLC) -o ucs2_to_utf8 $(UCS2_TO_UTF8OBJS)
+  
+! ucs2_to_utf8.opt: $(UCS2_TO_UTF8OPTOBJS)
+! 	$(OCAMLOPT) -o ucs2_to_utf8.opt $(UCS2_TO_UTF8OPTOBJS)
+  
+  .SUFFIXES: .ml .mli .cmo .cmi .cmx
+  .ml.cmo:
+--- 29,39 ----
+  depend: lexer.ml parser.ml parser.mli
+  	$(OCAMLDEP) $(DEPOBJS) > depend
+   
+! ucs2_to_utf8$(EXEC_SUFFIX): $(UCS2_TO_UTF8OBJS)
+! 	$(OCAMLC) -o ucs2_to_utf8$(EXEC_SUFFIX) $(UCS2_TO_UTF8OBJS)
+  
+! ucs2_to_utf8.opt$(EXEC_SUFFIX): $(UCS2_TO_UTF8OPTOBJS)
+! 	$(OCAMLOPT) -o ucs2_to_utf8.opt$(EXEC_SUFFIX) $(UCS2_TO_UTF8OPTOBJS)
+  
+  .SUFFIXES: .ml .mli .cmo .cmi .cmx
+  .ml.cmo:
+***************
+*** 45,50 ****
+  
+  clean:
+  	rm -f *.cm[iox] *.o lexer.ml parser.ml parser.mli \
+! 	ucs2_to_utf8 ucs2_to_utf8.opt
+  
+  include depend
+--- 45,50 ----
+  
+  clean:
+  	rm -f *.cm[iox] *.o lexer.ml parser.ml parser.mli \
+! 	ucs2_to_utf8$(EXEC_SUFFIX) ucs2_to_utf8.opt$(EXEC_SUFFIX)
+  
+  include depend
+Only in pxp/tools/ucs2_to_utf8: Makefile~
+Only in pxp/tools/ucs2_to_utf8: depend
+Only in pxp/tools/ucs2_to_utf8: lexer.cmi
+Only in pxp/tools/ucs2_to_utf8: lexer.cmo
+Only in pxp/tools/ucs2_to_utf8: lexer.ml
+Only in pxp/tools/ucs2_to_utf8: parser.cmi
+Only in pxp/tools/ucs2_to_utf8: parser.cmo
+Only in pxp/tools/ucs2_to_utf8: parser.ml
+Only in pxp/tools/ucs2_to_utf8: parser.mli
+Only in pxp/tools/ucs2_to_utf8: types.cmi
+Only in pxp/tools/ucs2_to_utf8: types.cmo
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.cmi
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.cmo
+Only in pxp/tools/ucs2_to_utf8: ucs2_to_utf8.exe
+
+----Next_Part(Sun_Apr__8_00:03:35_2001_809)----
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Haruo Hosoya <haruo@is.s.u-tokyo.ac.jp>,
+ gerd@gerd-stolpmann.de
+Subject: Re: Windows port
+Date: Sat, 21 Apr 2001 19:45:13 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20010329172142W.haruo@is.s.u-tokyo.ac.jp> <01040322433102.00489@ice> <20010408000337R.haruo@is.s.u-tokyo.ac.jp>
+In-Reply-To: <20010408000337R.haruo@is.s.u-tokyo.ac.jp>
+MIME-Version: 1.0
+Message-Id: <01042119541103.02753@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Sun, 08 Apr 2001, Haruo Hosoya wrote:
+>
+>Dear Gerd,
+>
+>I send you my patches for Cygwin port for findlib and pxp (netstring
+>compiles with no change).  Here are brief descriptions of what I did.
+>
+>1. findlib (0.5.1)
+>
+>I added code in "configure" that checks if $OSTYPE is "cygwin".  If
+>so, it defines $EXEC_SUFFIX to be ".exe".  I also modified Makefile
+>so as to add $EXEC_SUFFIX to the names of all executable files.
+>
+>2. pxp (1.0)
+>
+>I added a similar check for $OSTYPE and definition of $EXEC_SUFFIX.  I
+>did similar suffix-addition modifications to m2parsergen/Makefile and
+>tools/ucs_to_utf8/Makefile.  I also modified insert_variant as you
+>suggested.
+>
+>Regards,
+>
+>Haruo
+
+The development release 1.0.98.5 of PXP contains some changes that should make
+PXP work under Cygwin. However, I have not Cygwin installed, and I would like
+you to check the changes.
+
+I did not apply the EXEC_SUFFIX changes; I hope the following trick works and
+makes EXEC_SUFFIX superflous:
+
+For m2parsergen and ucs2_to_utf8, there are Cygwin wrappers m2pasergen.exe and
+ucs2_to_utf8.exe. These wrapper scripts invoke the programs by directly calling
+ocamlrun, and thus bypassing the .exe convention under Windows.
+
+The Makefiles can remain unchanged (well, I do not want to defend my Makefiles,
+they are a mess and need some cleanup anyway).
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
