@@ -6,17 +6,17 @@
 #----------------------------------------------------------------------
 
 pxpvalidate: validate.ml
-	ocamlfind ocamlc -g -o pxpvalidate -package "pxp,unix" -linkpkg validate.ml
+	ocamlfind ocamlc -g -o pxpvalidate -package "pxp,unix,str" -linkpkg validate.ml
 
 pxpvalidate.opt: validate.ml
-	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp,unix" -linkpkg validate.ml
+	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp,unix,str" -linkpkg validate.ml
 
 BYTEPKG = pxp-engine pxp-lex-iso88591 pxp-lex-utf8
 
 # The following rules to create the bytecode executable assume O'Caml 3.03:
 
 pxpvalidate.byte: validate.ml
-	ocamlfind ocamlc -o pxpvalidate.byte -package "pxp,unix" -linkpkg validate.ml
+	ocamlfind ocamlc -o pxpvalidate.byte -package "pxp,unix,str" -linkpkg validate.ml
 
 pxpvalidate.1: pxpvalidate.pod
 	pod2man --section=1 --center "www.ocaml-programming.de" --release 'PXP 1.1 tools' --lax pxpvalidate.pod >pxpvalidate.1
