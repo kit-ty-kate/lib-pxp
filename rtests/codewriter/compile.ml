@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.3 2000/08/16 23:44:19 gerd Exp $
+(* $Id: compile.ml,v 1.4 2000/08/17 01:20:15 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -23,10 +23,13 @@ class warner =
 ;;
 
 
-let compile in_filename out_filename print =
+let compile in_filename out_filename print super_root pis comments =
   let spec =
     let e = new element_impl default_extension in
     make_spec_from_mapping
+      ~super_root_exemplar:      e
+      ~default_pinstr_exemplar:  e
+      ~comment_exemplar:         e
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
@@ -36,6 +39,9 @@ let compile in_filename out_filename print =
       { default_config with 
 	  encoding = `Enc_utf8;
 	  warner = new warner;
+	  enable_super_root_node = super_root;
+	  enable_pinstr_nodes = pis;
+	  enable_comment_nodes = comments;
       }
   in
   try 
@@ -64,6 +70,9 @@ let main() =
   let in_file = ref "" in
   let out_file = ref "" in
   let print_file = ref false in
+  let super_root = ref false in
+  let pis = ref false in
+  let comments = ref false in
   Arg.parse
       [ "-in", (Arg.String (fun s -> in_file := s)),
             " <file>      Set the XML file to read";
@@ -71,6 +80,12 @@ let main() =
 	     " <file>     Set the Ocaml file to write";
 	"-print", (Arg.Set print_file),
 	       "          Print the XML file in standard form";
+	"-super-root", Arg.Set super_root,
+	            "     Generate a super root node";
+	"-pis", Arg.Set pis,
+	     "            Generate wrapper nodes for processing instructions";
+	"-comments", Arg.Set comments,
+	          "       Generate nodes for comments";
       ]
       (fun x -> raise (Arg.Bad "Unexpected argument"))
       "
@@ -85,7 +100,7 @@ List of options:";
     prerr_endline "No output file specified.";
     exit 1
   end;
-  compile !in_file !out_file !print_file
+  compile !in_file !out_file !print_file !super_root !pis !comments
 ;;
 
 
@@ -96,6 +111,11 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.4  2000/08/17 01:20:15  gerd
+ * 	Update: Also tested whether super root nodes, pinstr nodes
+ * and comment nodes work.
+ * 	Note: comment nodes are not fully tested yet.
+ *
  * Revision 1.3  2000/08/16 23:44:19  gerd
  * 	Updates because of changes of the PXP API.
  *
