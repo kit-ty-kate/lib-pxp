@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.20 2002/08/31 23:23:43 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.21 2003/01/21 00:19:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -647,6 +647,13 @@ class virtual entity the_dtd the_name the_warner init_encoding =
       (raise Not_found : ext_id)
 
 
+    method resolver_id =
+      (* Returns the resolver ID for external entities. Raises Not_found
+       * for other types of entities.
+       *)
+      (raise Not_found : resolver_id)
+
+
     (* Methods for NDATA entities only: *)
     method notation = (assert false : string)
 
@@ -668,6 +675,7 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
     method name = (name : string)
     method ext_id = (ext_id : ext_id)
     method notation = (notation : string)
+    method resolver_id = (raise Not_found : resolver_id)
 
     method is_ndata = true
 
@@ -764,6 +772,7 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
 ;;
 
 class external_entity the_resolver the_dtd the_name the_warner the_ext_id
+                      the_system_base
                       the_p_special_empty_entities
 		      init_encoding
   =
@@ -786,7 +795,15 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
      *)
 
     val resolver = (the_resolver : resolver)
-    val ext_id = (the_ext_id : ext_id)
+    val ext_id = 
+      match (the_ext_id : ext_id) with
+	  Public(pubid,sysid) ->
+	    (* normalize pubid: *)
+	    Public(Pxp_aux.normalize_public_id pubid,sysid)
+	| other ->
+	    other
+
+    val system_base = (the_system_base : string option)
 
     val p_special_empty_entities = (the_p_special_empty_entities : bool)
 
@@ -818,6 +835,10 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
     method resolver = Some resolver
 
+    method resolver_id = 
+      let rid = resolver_id_of_ext_id ext_id in
+      { rid with rid_system_base = system_base }
+
     method open_entity ?(gen_att_events=false) force_parsing init_lex_id =
       (* Note that external entities are always parsed, i.e. Begin_entity
        * and End_entity tokens embrace the inner tokens to force that
@@ -827,7 +848,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       let lex = 
 	try
-	  resolver # open_in ext_id 
+	  resolver # open_rid (self # resolver_id)
 	with
 	    Pxp_reader.Not_competent ->
 	      raise(Error ("No input method available for this external entity: " ^ 
@@ -909,7 +930,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       let lex = 
 	try
-	  resolver # open_in ext_id 
+	  resolver # open_rid (self # resolver_id)
 	with
 	    Pxp_reader.Not_competent ->
 	      raise(Error ("No input method available for this external entity: " ^ 
@@ -983,11 +1004,12 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
 
 class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
+                       the_system_base
 		       init_encoding
   =
   object (self)
     inherit external_entity  the_resolver the_dtd the_name the_warner
-                             the_ext_id false 
+                             the_ext_id the_system_base false 
 			     init_encoding
 
     (* A document entity is an external entity that does not allow
@@ -1216,6 +1238,7 @@ object (self)
     failwith "Pxp_entity.entity_section#set_counts_as_external: not possible";
   method lexbuf = ent # lexbuf
   method resolver = ent # resolver
+  method resolver_id = ent # resolver_id
   method open_entity ?(gen_att_events:bool option) (_:bool) (lid:lexers) = 
     if is_open then
       failwith "Pxp_entity.entity_section#open_entity: already open";
@@ -1284,6 +1307,9 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.21  2003/01/21 00:19:05  gerd
+ * 	Support for resolver_id.
+ *
  * Revision 1.20  2002/08/31 23:23:43  gerd
  * 	Replaced the three comment lexers by only one unified comment
  * lexer.

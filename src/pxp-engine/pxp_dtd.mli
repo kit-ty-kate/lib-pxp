@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.16 2002/03/10 23:39:28 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.17 2003/01/21 00:19:18 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -491,6 +491,7 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (Pxp_types.ext_id * Pxp_reader.resolver)
+  | XExtID of (Pxp_types.ext_id * string option * Pxp_reader.resolver)
   (* Sources are pairs of (1) names of entities to open, and (2) methods
    * of opening entities. See Pxp_yacc for more documentation.
    *)
@@ -529,10 +530,16 @@ module Entity : sig
        * external ID may be meaningless.
        *)
 
-  (* TODO: get_resolver - only for external entities. The resolver API should
-   * be extended such that it is possible to retrieve the base URI, if
-   * any
-   *)
+  val get_resolver_id : Pxp_entity.entity -> Pxp_types.resolver_id option
+      (* Returns the resolver ID for external entities, and None for other
+       * entities. This is the version as returned by the [active_id] method
+       * by the resolver.
+       * The resolver ID contains more information than the external ID,
+       * for example the base URL relative to which SYSTEM IDs should
+       * be interpreted.
+       *)
+
+  (* CHECK: There is still no base URL for NDATA entities *)
 
   val get_notation : Pxp_entity.entity -> string option
       (* Returns the notation of NDATA entities, and None for the other
@@ -558,6 +565,7 @@ module Entity : sig
 
   val create_external_entity :
       ?doc_entity:bool ->
+      ?system_base:string ->
       name:string -> xid:Pxp_types.ext_id -> resolver:Pxp_reader.resolver ->
 	dtd ->
 	  Pxp_entity.entity
@@ -568,6 +576,8 @@ module Entity : sig
        * ~doc_entity: If true, the entity is a document entity. XML requires
        *   some additional restrictions for document entities. The default for
        *   the argument is false.
+       * ~system_base: The base URL if SYSTEM identifiers are passed 
+       *   as [xid]
        *)
 
   val from_external_source :
@@ -585,6 +595,9 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.17  2003/01/21 00:19:18  gerd
+ * 	Support for resolver_id.
+ *
  * Revision 1.16  2002/03/10 23:39:28  gerd
  * 	Extended the Entity module
  *
