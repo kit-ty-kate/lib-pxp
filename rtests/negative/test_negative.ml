@@ -1,4 +1,4 @@
-(* $Id: test_negative.ml,v 1.4 2000/07/09 01:49:09 gerd Exp $
+(* $Id: test_negative.ml,v 1.5 2000/07/14 14:20:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -11,39 +11,47 @@ open Pxp_types;;
 let error_happened = ref false;;
 
 let rec print_error e =
-  match e with
-      Pxp_types.At(where,what) ->
-	print_endline where;
-	print_error what
-    | _ ->
-	print_endline (Printexc.to_string e)
+  print_endline (string_of_exn e)
 ;;
 
+class warner =
+  object 
+    method warn w =
+      print_endline ("WARNING: " ^ w)
+    method print_warnings =
+      ""
+    method reset =
+      ()
+  end
+;;
 
 let parse debug wf iso88591 filename =
   try 
   let config =
       { default_config with 
+	  warner = new warner;
           debugging_mode = debug;
           encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
+	  idref_pass = true;
       }
   in
-    let tree =
-      (if wf then parse_wfdocument_entity 
-             else parse_document_entity ?transform_dtd:None)
-      config
-      (from_file filename)
-      default_spec
+    let parse_fn =
+      if wf then parse_wfdocument_entity 
+      else 
+	let index = new hash_index in
+	parse_document_entity 
+	  ?transform_dtd:None 
+	  ~id_index:(index :> 'ext index)
     in
-    let s = default_config.warner # print_warnings in
-    if s <> "" then prerr_endline s;
-    default_config.warner # reset;
+    let tree =
+      parse_fn
+	config
+	(from_file filename)
+	default_spec
+    in
     print_endline "Parsed without error";
   with
       e ->
-	let s = default_config.warner # print_warnings in
-	if s <> "" then prerr_endline s;
-	default_config.warner # reset;
 	error_happened := true;
 	print_error e
 ;;
@@ -76,6 +84,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_negative.ml,v $
+ * Revision 1.5  2000/07/14 14:20:11  gerd
+ * 	Updated because of PXP interface changes.
+ *
  * Revision 1.4  2000/07/09 01:49:09  gerd
  * 	Updated because of PXP interface changes.
  *
