@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.8 2000/09/09 16:39:05 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.9 2000/09/17 00:11:22 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -275,19 +275,53 @@ class virtual entity the_dtd the_name the_warner
 		| Ignored_section  -> assert false
 		      (* Ignored_section: only used by method next_ignored_token *)
 	    in
+
 	    if debug then
 	      prerr_endline ("- Entity " ^ name ^ ": " ^ string_of_tok tok);
+
 	    (* Find out the number of lines and characters of the last line: *)
 	    let n_lines, n_columns =
-	      if errors_with_line_numbers then
-		count_lines (Lexing.lexeme lexbuf)
-	      else
-		0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
+	      match lex_id with
+		  Content ->
+		    (* An optimized way: *)
+		    if errors_with_line_numbers then
+		      ( match tok with
+			    LineEnd _ -> 
+			      1,0
+			  | (PI(_,_)|PI_xml _|Cdata _) ->
+			      count_lines (Lexing.lexeme lexbuf)
+			  | _ -> 
+			      0, (Lexing.lexeme_end lexbuf - 
+				  Lexing.lexeme_start lexbuf) 
+		      )
+		    else
+		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
+		| Within_tag ->
+		    (* Another optimization *)
+		    if errors_with_line_numbers then
+		      ( match tok with
+			    Attval v -> 
+			      (* count v + delimiting quotes *)
+			      let nl,nc = count_lines v in
+			      if nl = 0 then 0,(nc+2) else nl,(nc+1)
+			  | _ -> 
+			      0, (Lexing.lexeme_end lexbuf - 
+				  Lexing.lexeme_start lexbuf) 
+		      )
+		    else
+		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
+		| _ ->
+		    (* The default way: *)
+		    if errors_with_line_numbers then
+		      count_lines (Lexing.lexeme lexbuf)
+		    else
+		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
 	    in
 	    line <- this_line + n_lines;
 	    column <- if n_lines = 0 then this_column + n_columns else n_columns;
-	    pos <- Lexing.lexeme_end lexbuf;
+  	    pos <- Lexing.lexeme_end lexbuf;
 	    lex_id <- lex_id';
+
 	    (* Throw Ignore and Comment away; Interpret entity references: *)
 	    (* NOTE: Of course, references to general entities are not allowed
 	     * everywhere; parameter references, too. This is already done by the
@@ -1065,6 +1099,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.9  2000/09/17 00:11:22  gerd
+ * 	Optimized line numbering.
+ *
  * Revision 1.8  2000/09/09 16:39:05  gerd
  * 	Changed comment.
  *
