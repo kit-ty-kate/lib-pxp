@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE ä [
+
+<!ELEMENT ä ANY>
+<!ATTLIST ä ö CDATA #IMPLIED>
+
+<?ü aöü?>
+
+<!NOTATION ß SYSTEM "xxx">
+<!ENTITY Mß "mü">
+]>
+
+<!-- ÄÖÜ -->
+<?ü äöü?>
+
+<ä ö="éáí">
+  <?ü µ?>
+  &Mß;
+  <ä ö="&Mß;"/>
+  <!-- äöü -->
+</ä>
+<!-- ÄÖÜ -->
+<?ü ß?>
+
