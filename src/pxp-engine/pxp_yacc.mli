@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.9 2000/09/21 21:30:46 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.10 2000/10/01 19:48:25 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -48,11 +48,8 @@ type config =
     { warner : collect_warnings;
          (* An object that collects warnings. *)
 
-      errors_with_line_numbers : bool;
-         (* Whether error messages contain line numbers or not. The parser
-	  * is 10 to 20 per cent faster if line numbers are turned off;
-	  * you get only byte positions in this case.
-	  *)
+      (* errors_with_line_numbers : bool;
+	 -- This option is no longer necessary due to code optimizations *)
 
       enable_pinstr_nodes : bool;
          (* true: turns a special mode for processing instructions on. Normally,
@@ -410,6 +407,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.10  2000/10/01 19:48:25  gerd
+ * 	Option errors_with_line_numbers has been removed.
+ *
  * Revision 1.9  2000/09/21 21:30:46  gerd
  * 	New option: disable_content_validation
  *
