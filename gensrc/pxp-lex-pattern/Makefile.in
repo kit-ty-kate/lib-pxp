@@ -1,14 +1,14 @@
 TOP_DIR = ../..
+include $(TOP_DIR)/Makefile.rules
+
 ENC = @ENCNAME@
 INPUT = $(TOP_DIR)/src/pxp-lex
 MLL = $(shell echo pxp_lex_$(ENC)_*.mll)
 CMO = $(MLL:.mll=.cmo)
 CMX = $(MLL:.mll=.cmx)
-OCAMLC_OPTIONS = -I $(TOP_DIR)/src/pxp-engine
-OCAMLOPT_OPTIONS = $(OCAMLC_OPTIONS)
+OCAMLC_OPTIONS += -I $(TOP_DIR)/src/pxp-engine
+OCAMLOPT_OPTIONS += -I $(TOP_DIR)/src/pxp-engine
 PACKAGES = netstring
-
-include $(TOP_DIR)/Makefile.rules
 
 .PHONY: all opt generate clean CLEAN distclean install uninstall
 
