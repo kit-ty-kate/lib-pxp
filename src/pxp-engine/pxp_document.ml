@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.29 2001/12/15 17:34:09 gerd Exp $
+(* $Id: pxp_document.ml,v 1.30 2002/03/15 21:34:25 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -3513,6 +3513,19 @@ let strip_whitespace ?(force = false) ?(left = `Disabled) ?(right = `Disabled)
 	    sub # set_data s;
 	    if s = "" && delete_empty_nodes then sub # delete;
     end
+    else begin
+      (* It is possible that there is a sub node that says again
+       * xml:space = "default".
+       *)
+      n # iter_nodes
+	(fun sub ->
+	   match sub # node_type with
+	       T_element _ ->
+		 strip_elements sub preserve_space'
+	     | _ ->
+		 ()
+	)
+    end
   in
   let rec preserve_mode n =
     try
@@ -3742,6 +3755,11 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.30  2002/03/15 21:34:25  gerd
+ * 	Fix: strip_whitespace traverses the subtree even for
+ * xml:space=preserve because there might be an xml:space=default
+ * node in the tree
+ *
  * Revision 1.29  2001/12/15 17:34:09  gerd
  * 	Fixes for O'Caml 3.04
  *
