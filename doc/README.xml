@@ -22,15 +22,21 @@
 
 ]>
 
-<readme title="README - Markup, the XML parser for O'Caml">
+<readme title="README - PXP, the XML parser for O'Caml">
   <sect1>
     <title>Abstract</title>
     <p>
-<em>Markup</em> is a validating parser for XML-1.0 which has been written
+<em>PXP</em> is a validating parser for XML-1.0 which has been written
 entirely and from scratch in Objective Caml.
 </p>
+
+    <p>PXP is the new name of the parser formerly known as "Markup". 
+PXP means "Polymorphic XML parser" and emphasizes its most useful
+property: that the API is polymorphic and can be configured such that
+different objects are used to store different types of elements.</p>
   </sect1>
 
+<!--
   <sect1>
     <title>Download</title>
     <p>
@@ -47,11 +53,13 @@ bunch of HTML files. An online version can be found <a
 						       href="&url.markup-manual;">here</a>.
 </p>
   </sect1>
+-->
 
   <sect1>
-    <title>Author, Copying</title>
+    <title>Author, Credits, Copying</title>
     <p>
-<em>Markup</em> has been written by &person.gps;. You may copy it as you like,
+<em>PXP</em> has been written by &person.gps;; it contains contributions by
+Claudio Sacerdoti Coen. You may copy it as you like,
 you may use it even for commercial purposes as long as the license conditions
 are respected, see the file LICENSE coming with the distribution. It allows
 almost everything. 
@@ -60,8 +68,10 @@ almost everything.
 
   <sect1>
     <title>Description</title>
+    <p><em>Warning! The following description is out-of-date.</em></p>
+
     <p>
-<em>Markup</em> is an experimental validating XML parser for <a
+<em>PXP</em> is an experimental validating XML parser for <a
 href="&url.ocaml;">O'Caml</a>. It is designed such that all of the requirements
 that the <a href="&url.xml-spec;">w3c demands of an XML parser</a> can be
 fulfilled, but this is not yet the case.
@@ -133,11 +143,13 @@ XML style, and how data records can be stored using XML.
 
     <sect2>
       <title>Restrictions</title>
+    <p><em>Warning! The following restrictions are out-of-date. Especially,
+the parser has now full support for UTF-8!</em></p>
       <p>
 The following list of restrictions seems to be rather long, but it is actually
 not compared with the much longer list of XML features that have been
 implemented. I enumerate the restrictions here to make clear that
-<em>Markup</em> is currently under development, and although it is stable
+<em>PXP</em> is currently under development, and although it is stable
 enough to be useable it should be taken with some care.
 </p>
 
@@ -223,6 +235,21 @@ There is currently no "early parser hook", i.e. a possibility to throw
     <sect2>
       <title>Recent Changes</title>
       <ul>
+        <li>
+	  <p>Changed in 0.99.1:</p>
+	  <p>In general, this release is an early pre-release of the
+next stable version 1.00. I do not recommend to use it for serious
+work; it is still very experimental!</p>
+	  <p>The core of the parser has been rewritten using a self-written
+parser generator.</p>
+	  <p>The lexer has been restructured, and can now handle UTF-8
+encoded files.</p>
+	  <p>Numerous other changes. Note: The bug fixes of 0.2.10 have
+not yet been merged back into this development branch.</p>
+	</li>
+
+<!-- MISSING: 0.2.10 -->
+
 	<li>
 	  <p>Changed in 0.2.9:</p>
 	  <p>New: The module Markup_codewriter generates for a given XML

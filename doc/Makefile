@@ -1,5 +1,5 @@
 .PHONY: all
-all: README INSTALL ABOUT-FINDLIB
+all: README INSTALL ABOUT-FINDLIB SPEC PRERELEASE
 
 README: README.xml common.xml config.xml
 	readme -text README.xml >README
@@ -9,6 +9,12 @@ INSTALL: INSTALL.xml common.xml config.xml
 
 ABOUT-FINDLIB: ABOUT-FINDLIB.xml common.xml config.xml
 	readme -text ABOUT-FINDLIB.xml >ABOUT-FINDLIB
+
+SPEC: SPEC.xml common.xml config.xml
+	readme -text SPEC.xml >SPEC
+
+PRERELEASE: PRERELEASE.xml common.xml config.xml
+	readme -text PRERELEASE.xml >PRERELEASE
 
 config.xml:
 	touch config.xml

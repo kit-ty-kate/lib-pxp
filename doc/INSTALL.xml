@@ -4,16 +4,17 @@
 <!ENTITY % common SYSTEM "common.xml">
 %common;
 
-<!ENTITY m "<em>Markup</em>">
+<!ENTITY m "<em>PXP</em>">
 
 ]>
 
-<readme title="INSTALL - Markup, the XML parser for O'Caml">
-  <sect1><title>The "markup" package</title>
+<readme title="INSTALL - PXP, the XML parser for O'Caml">
+  <sect1><title>The "pxp" package</title>
     <sect2><title>Prerequisites</title>
       <p>
-&m; does not need any other packages besides the O'Caml core. &m; is known to
-work with O'Caml 2.02 and 2.04, and does not work with 2.03.  The installation
+&m; does not need any other packages besides the O'Caml core. &m; works
+only with O'Caml 3.00 (the support for 2.04 has been dropped).
+The installation
 procedure defined in the Makefile requires <a
 href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
 package manager, see the file ABOUT-FINDLIB.</footnote>.
@@ -22,7 +23,7 @@ package manager, see the file ABOUT-FINDLIB.</footnote>.
 
     <sect2><title>Configuration</title>
       <p>
-It is not necessary to configure "markup".
+It is not necessary to configure PXP.
 </p>
     </sect2>
 
@@ -95,7 +96,7 @@ with building software again.</p></li>
 </code>
 </p></li>
       </ul>
-      <p>Note that in earlier versions of Markup than 0.2.3 there was a
+      <p>Note that in earlier versions of PXP/Markup than 0.2.3 there was a
 second problem with Solaris (and other System V systems) which does not
 allow ! in scripts executed by /bin/sh. Because of this, the ! command was 
 removed from the scripts.
