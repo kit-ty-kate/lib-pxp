@@ -1,11 +1,12 @@
-(* $Id: pxp_lexers.ml,v 1.3 2000/05/29 21:14:57 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.4 2000/05/29 23:48:38 gerd Exp $
  * ----------------------------------------------------------------------
- *
+ * PXP: The polymorphic XML parser for Objective Caml.
+ * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
  *)
 
 
-open Markup_types
-open Markup_lexer_types
+open Pxp_types
+open Pxp_lexer_types
 
 let lexer_set_iso88591 = 
   { lex_encoding         = `Enc_iso88591;
@@ -58,6 +59,20 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.4  2000/05/29 23:48:38  gerd
+ * 	Changed module names:
+ * 		Markup_aux          into Pxp_aux
+ * 		Markup_codewriter   into Pxp_codewriter
+ * 		Markup_document     into Pxp_document
+ * 		Markup_dtd          into Pxp_dtd
+ * 		Markup_entity       into Pxp_entity
+ * 		Markup_lexer_types  into Pxp_lexer_types
+ * 		Markup_reader       into Pxp_reader
+ * 		Markup_types        into Pxp_types
+ * 		Markup_yacc         into Pxp_yacc
+ * See directory "compatibility" for (almost) compatible wrappers emulating
+ * Markup_document, Markup_dtd, Markup_reader, Markup_types, and Markup_yacc.
+ *
  * Revision 1.3  2000/05/29 21:14:57  gerd
  * 	Changed the type 'encoding' into a polymorphic variant.
  *
