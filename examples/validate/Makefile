@@ -5,18 +5,19 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
+REQ = str pxp-engine pxp-lex-iso88591 pxp-wlex-utf8
+# Note: you can also use pxp-lex-utf8
+
 pxpvalidate: validate.ml
-	ocamlfind ocamlc -g -o pxpvalidate -package "pxp,unix,str" -linkpkg validate.ml
+	ocamlfind ocamlc -g -o pxpvalidate -package "$(REQ)" -linkpkg validate.ml
 
 pxpvalidate.opt: validate.ml
-	ocamlfind ocamlopt -o pxpvalidate.opt -package "pxp,unix,str" -linkpkg validate.ml
-
-BYTEPKG = pxp-engine pxp-lex-iso88591 pxp-lex-utf8
+	ocamlfind ocamlopt -o pxpvalidate.opt -package "$(REQ)" -linkpkg validate.ml
 
 # The following rules to create the bytecode executable assume O'Caml 3.03:
 
 pxpvalidate.byte: validate.ml
-	ocamlfind ocamlc -o pxpvalidate.byte -package "pxp,unix,str" -linkpkg validate.ml
+	ocamlfind ocamlc -o pxpvalidate.byte -package "$(REQ)" -linkpkg validate.ml
 
 pxpvalidate.1: pxpvalidate.pod
 	pod2man --section=1 --center "www.ocaml-programming.de" --release 'PXP 1.1 tools' --lax pxpvalidate.pod >pxpvalidate.1
