@@ -22,22 +22,22 @@ exception InvalidInterval of int * int;;
 let char_ucs2_to_utf8 =
  function
     n when n >= 0xD800 && n <= 0xDFFF -> raise SurrogatePairs
-  | n when n <= 0x007F -> Types.Char n
+  | n when n <= 0x007F -> Uni_types.Char n
   | n when n <= 0x07FF ->
-     Types.Concat
-      [[Types.Char (n lsr  6 land 0b00011111 lor 0b11000000)] ;
-       [Types.Char (n        land 0b00111111 lor 0b10000000)]]
+     Uni_types.Concat
+      [[Uni_types.Char (n lsr  6 land 0b00011111 lor 0b11000000)] ;
+       [Uni_types.Char (n        land 0b00111111 lor 0b10000000)]]
   | n when n <= 0xffff ->
-     Types.Concat
-      [[Types.Char (n lsr 12 land 0b00001111 lor 0b11100000)] ;
-       [Types.Char (n lsr  6 land 0b00111111 lor 0b10000000)] ;
-       [Types.Char (n        land 0b00111111 lor 0b10000000)]]
+     Uni_types.Concat
+      [[Uni_types.Char (n lsr 12 land 0b00001111 lor 0b11100000)] ;
+       [Uni_types.Char (n lsr  6 land 0b00111111 lor 0b10000000)] ;
+       [Uni_types.Char (n        land 0b00111111 lor 0b10000000)]]
   | n when n <= 0x1fffff ->
-     Types.Concat
-      [[Types.Char (n lsr 18 land 0b00000111 lor 0b11110000)] ;
-       [Types.Char (n lsr 12 land 0b00111111 lor 0b10000000)] ;
-       [Types.Char (n lsr  6 land 0b00111111 lor 0b10000000)] ;
-       [Types.Char (n        land 0b00111111 lor 0b10000000)]]
+     Uni_types.Concat
+      [[Uni_types.Char (n lsr 18 land 0b00000111 lor 0b11110000)] ;
+       [Uni_types.Char (n lsr 12 land 0b00111111 lor 0b10000000)] ;
+       [Uni_types.Char (n lsr  6 land 0b00111111 lor 0b10000000)] ;
+       [Uni_types.Char (n        land 0b00111111 lor 0b10000000)]]
   | _ ->
       failwith "Code point is outside the supported range 0..0x1fffff"
 ;;
@@ -72,14 +72,14 @@ let rec mklist e =
 ;;
 
 let sup =
- let t = Types.Char 0b10111111 in
+ let t = Uni_types.Char 0b10111111 in
   function
      1 -> t
-   | n -> Types.Concat (mklist [t] n)
+   | n -> Uni_types.Concat (mklist [t] n)
 ;;
 
 let rec inf =
- let b = Types.Char 0b10000000 in
+ let b = Uni_types.Char 0b10000000 in
   function
      1 -> [[b]]
    | n -> mklist [b] n
@@ -87,13 +87,13 @@ let rec inf =
 
 let mysucc =
  function
-    [Types.Char n] -> n + 1
+    [Uni_types.Char n] -> n + 1
   | _ -> assert false
 ;;
 
 let mypred =
  function
-    [Types.Char n] -> n - 1
+    [Uni_types.Char n] -> n - 1
   | _ -> assert false
 ;;
 
@@ -101,7 +101,7 @@ let mypred =
 (* whose 'length' is the same, it returns the utf8 regular expression *)
 (* matching all the characters in the interval                        *)
 let rec same_length_ucs2_to_utf8 =
- let module T = Types in
+ let module T = Uni_types in
   function
 
    (* Trivial cases: *)
@@ -172,10 +172,10 @@ let rec seq_ucs2_to_utf8 =
 ;;
 
 
-(* simplify: For example, 
-  '\224'('\160'['\128'-'\191'] | 
-         ['\161'-'\190']['\128'-'\191'] | 
-         '\191'['\128'-'\191']) | 
+(* simplify: For example,
+  '\224'('\160'['\128'-'\191'] |
+         ['\161'-'\190']['\128'-'\191'] |
+         '\191'['\128'-'\191']) |
   can be simplified to
   '\224' ['\160'-'\191'] ['\128'-'\191']
 *)
@@ -183,44 +183,44 @@ let rec seq_ucs2_to_utf8 =
 
 let rec simplify_disjunction =
   function
-      Types.Char n1 :: Types.Interval(n2,n3) :: rest when n1+1 = n2 ->
-	simplify_disjunction(Types.Interval(n2,n3) :: rest)
-    | Types.Interval(n1,n2) :: Types.Interval(n3,n4) :: rest when n2+1 = n3 ->
-	simplify_disjunction(Types.Interval(n1,n4) :: rest)
-    | Types.Interval(n1,n2) :: Types.Char n3 :: rest when n2+1 = n3 ->
-	simplify_disjunction(Types.Interval(n1,n3) :: rest)
+      Uni_types.Char n1 :: Uni_types.Interval(n2,n3) :: rest when n1+1 = n2 ->
+	simplify_disjunction(Uni_types.Interval(n2,n3) :: rest)
+    | Uni_types.Interval(n1,n2) :: Uni_types.Interval(n3,n4) :: rest when n2+1 = n3 ->
+	simplify_disjunction(Uni_types.Interval(n1,n4) :: rest)
+    | Uni_types.Interval(n1,n2) :: Uni_types.Char n3 :: rest when n2+1 = n3 ->
+	simplify_disjunction(Uni_types.Interval(n1,n3) :: rest)
 
-    | Types.Concat( [Types.Char n1] :: tail1 ) ::
-      Types.Concat( [Types.Interval(n2,n3)] :: tail2 ) :: 
+    | Uni_types.Concat( [Uni_types.Char n1] :: tail1 ) ::
+      Uni_types.Concat( [Uni_types.Interval(n2,n3)] :: tail2 ) ::
       rest when n1+1 = n2 && tail1 = tail2 ->
-	simplify_disjunction( 
-	  Types.Concat( [Types.Interval(n1,n3)] :: tail1 ) :: rest)
-    | Types.Concat( [Types.Interval(n1,n2)] :: tail1 ) ::
-      Types.Concat( [Types.Interval(n3,n4)] :: tail2 ) :: 
+	simplify_disjunction(
+	  Uni_types.Concat( [Uni_types.Interval(n1,n3)] :: tail1 ) :: rest)
+    | Uni_types.Concat( [Uni_types.Interval(n1,n2)] :: tail1 ) ::
+      Uni_types.Concat( [Uni_types.Interval(n3,n4)] :: tail2 ) ::
       rest when n2+1 = n3 && tail1 = tail2 ->
-	simplify_disjunction( 
-	  Types.Concat( [Types.Interval(n1,n4)] :: tail1 ) :: rest)
-    | Types.Concat( [Types.Interval(n1,n2)] :: tail1 ) :: 
-      Types.Concat( [Types.Char n3] :: tail2 ) ::
+	simplify_disjunction(
+	  Uni_types.Concat( [Uni_types.Interval(n1,n4)] :: tail1 ) :: rest)
+    | Uni_types.Concat( [Uni_types.Interval(n1,n2)] :: tail1 ) ::
+      Uni_types.Concat( [Uni_types.Char n3] :: tail2 ) ::
       rest when n2+1 = n3 && tail1 = tail2 ->
-	simplify_disjunction( 
-	  Types.Concat( [Types.Interval(n1,n3)] :: tail1 ) :: rest)
+	simplify_disjunction(
+	  Uni_types.Concat( [Uni_types.Interval(n1,n3)] :: tail1 ) :: rest)
 
-    | Types.Concat([[x]]) :: rest ->
+    | Uni_types.Concat([[x]]) :: rest ->
 	simplify_disjunction(x :: rest)
 
-    | Types.Concat([Types.Concat d] :: d') :: rest ->
+    | Uni_types.Concat([Uni_types.Concat d] :: d') :: rest ->
 	let d'' = List.map simplify_disjunction d' in
-	simplify_disjunction(Types.Concat(d @ d'') :: rest)
+	simplify_disjunction(Uni_types.Concat(d @ d'') :: rest)
 
     (* there are probably missing cases!!! *)
 
-    | Types.Concat l :: rest ->
+    | Uni_types.Concat l :: rest ->
 	let l' = List.map simplify_disjunction l in
 	if l = l' then
-	  Types.Concat l :: simplify_disjunction rest
+	  Uni_types.Concat l :: simplify_disjunction rest
 	else
-	  simplify_disjunction(Types.Concat l' :: simplify_disjunction rest)
+	  simplify_disjunction(Uni_types.Concat l' :: simplify_disjunction rest)
 
     | x :: rest -> x :: (simplify_disjunction rest)
     | [] -> []
@@ -235,17 +235,17 @@ let rec multi_simplify_disjunction l =
 
 (* Given an ucs2 regual expression, returns  *)
 (* the corresponding utf8 regular expression *)
-let ucs2_to_utf8 { Types.id = id ; Types.rel = rel } =
+let ucs2_to_utf8 { Uni_types.id = id ; Uni_types.rel = rel } =
  let rec aux re l2 =
   match re with
-     Types.Char i -> char_ucs2_to_utf8 i :: l2
-   | Types.Interval (l,u) -> seq_ucs2_to_utf8 (l,u) @ l2
-   | Types.Identifier _ as i -> i :: l2
-   | Types.Concat rell ->
+     Uni_types.Char i -> char_ucs2_to_utf8 i :: l2
+   | Uni_types.Interval (l,u) -> seq_ucs2_to_utf8 (l,u) @ l2
+   | Uni_types.Identifier _ as i -> i :: l2
+   | Uni_types.Concat rell ->
       let foo rel = List.fold_right aux rel [] in
-       Types.Concat (List.map foo rell) :: l2
+       Uni_types.Concat (List.map foo rell) :: l2
  in
-  { Types.id = id ; 
-    Types.rel = multi_simplify_disjunction (List.fold_right aux rel []) }
+  { Uni_types.id = id ;
+    Uni_types.rel = multi_simplify_disjunction (List.fold_right aux rel []) }
 ;;
 

@@ -19,7 +19,7 @@
 %token RANGE
 %token EOF
 %start main
-%type <Types.definition list> main
+%type <Uni_types.definition list> main
 
 %%
 
@@ -30,7 +30,7 @@ main:
 
 declaration:
    LET IDENT EQ regexp END_OF_LET
-      { { Types.id = $2 ; Types.rel = $4 } }
+      { { Uni_types.id = $2 ; Uni_types.rel = $4 } }
 ;
 
 regexp:
@@ -39,7 +39,7 @@ regexp:
 ;
 
 regexptoken:
-   CHAR                               { Types.Char $1 }
- | LBRACKET CHAR RANGE CHAR RBRACKET  { Types.Interval ($2,$4) }
- | IDENT                              { Types.Identifier $1 }
+   CHAR                               { Uni_types.Char $1 }
+ | LBRACKET CHAR RANGE CHAR RBRACKET  { Uni_types.Interval ($2,$4) }
+ | IDENT                              { Uni_types.Identifier $1 }
 ;

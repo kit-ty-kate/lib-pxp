@@ -3,25 +3,30 @@ include $(TOP_DIR)/Makefile.rules
 
 all: lexpp$(EXEC_SUFFIX)
 
-DEPOBJS = file.ml lexer.ml parser.ml parser.mli types.ml ucs2_to_utf8.ml \
-	  main.ml
+DEPOBJS = lexpp_file.ml uni_lexer.ml uni_parser.ml uni_parser.mli \
+	  uni_types.ml ucs2_to_utf8.ml main.ml
 
-OBJS = types.cmo lexer.cmo parser.cmo file.cmo ucs2_to_utf8.cmo main.cmo
+OBJS = uni_types.cmo uni_lexer.cmo uni_parser.cmo lexpp_file.cmo \
+	mll_lexer.cmo \
+       ucs2_to_utf8.cmo main.cmo
 
 PACKAGES=netstring
 
-lexer.ml:
-	$(OCAMLLEX) lexer.mll
+uni_lexer.ml:
+	$(OCAMLLEX) uni_lexer.mll
 
-parser.ml:
-	$(OCAMLYACC) parser.mly
+mll_lexer.ml:
+	$(OCAMLLEX) mll_lexer.mll
 
-parser.mli:
-	$(OCAMLYACC) parser.mly
+uni_parser.ml:
+	$(OCAMLYACC) uni_parser.mly
+
+uni_parser.mli:
+	$(OCAMLYACC) uni_parser.mly
 
 depend: $(DEPOBJS)
 	$(OCAMLDEP) $(DEPOBJS) > depend
- 
+
 lexpp$(EXEC_SUFFIX): $(OBJS)
 	$(OCAMLC) -o lexpp$(EXEC_SUFFIX) -linkpkg $(OBJS)
 
@@ -29,7 +34,8 @@ lexpp.cma: $(OBJS)
 	$(OCAMLC) -o lexpp.cma -a $(OBJS)
 
 clean:
-	rm -f $(CLEAN_LIST) lexer.ml parser.ml parser.mli \
+	rm -f $(CLEAN_LIST) uni_lexer.ml uni_parser.ml uni_parser.mli \
+	mll_lexer.ml \
 	lexpp$(EXEC_SUFFIX) depend
 
 CLEAN: clean

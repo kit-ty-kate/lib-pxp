@@ -9,7 +9,7 @@
 (*                   14/05/2000                       *)
 (******************************************************)
 
-open Parser
+open Uni_parser
 
 let comment_depth = ref 0;;
 
