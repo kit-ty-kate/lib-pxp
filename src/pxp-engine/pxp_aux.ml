@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.13 2001/10/12 21:38:14 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.14 2002/02/20 00:42:23 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -354,15 +354,38 @@ let split_attribute_value lexerset v =
 ;;
 
 
+let rev_concat l =
+  (* = String.concat "" (List.rev l) *)
+  let k = ref 0 in
+  List.iter 
+    (fun s -> k := !k + String.length s) 
+    l;
+  let r = String.create !k in
+  List.iter
+    (fun s -> 
+       let n = String.length s in
+       k := !k - n;
+       String.(*unsafe_*)blit s 0 r !k n;
+    )
+    l;
+  assert(!k = 0);
+  r
+;;
+
+
 let normalize_line_separators lexerset s =
+  (* Note: Returns [s] if [s] does not contain LFs *)
   let lexbuf = fast_lexing_from_string s in
-  let rec get_string() =
+  let rec get_string l =
     match lexerset.scan_for_crlf lexbuf with
-	Eof        -> ""
-      | CharData s -> s ^ get_string()
+	Eof        -> l
+      | CharData s -> get_string (s::l)
       | _          -> assert false
   in
-  get_string()
+  match get_string [] with
+      []  -> ""
+    | [s] -> s
+    | l   -> rev_concat l
 ;;
 
 
@@ -766,6 +789,11 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.14  2002/02/20 00:42:23  gerd
+ * 	New: rev_concat
+ * 	Improved normalize_line_separators; does no longer blow up
+ * memory if many lines are found
+ *
  * Revision 1.13  2001/10/12 21:38:14  gerd
  * 	Changes for O'caml 3.03-alpha.
  *
