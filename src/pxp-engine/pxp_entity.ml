@@ -1,13 +1,7 @@
-(* $Id: pxp_entity.ml,v 1.7 2000/09/05 21:52:31 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.8 2000/09/09 16:39:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
- *)
-
-
-(* TODO:
- * - Wie verhindert man, dass ein internal entity eine XML-Dekl. im 
- *   replacement text akzeptiert?
  *)
 
 
@@ -1071,6 +1065,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.8  2000/09/09 16:39:05  gerd
+ * 	Changed comment.
+ *
  * Revision 1.7  2000/09/05 21:52:31  gerd
  * 	class internal_entity: Previously, the method open_entity
  * intialized the slot last_token to Eof. This is wrong, because
