@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.25 2001/05/17 22:39:10 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.26 2001/06/07 22:55:14 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -30,6 +30,7 @@ type config =
       enable_pinstr_nodes : bool;
       enable_super_root_node : bool;
       enable_comment_nodes : bool;
+      drop_ignorable_whitespace : bool;
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;
       store_element_positions : bool;
@@ -334,15 +335,28 @@ class ['ext] parser_object
       (* Puts the material collected in 'current_data' into a new
        * node, and appends this node as new sub node to 'current'
        *)
+      let add_node d =
+	let cur = self # current in
+	match cur # classify_data_node d with
+	    CD_normal
+	  | CD_other ->
+	      cur # append_node d
+	  | CD_empty ->
+	      ()
+	  | CD_ignorable ->
+	      if not config.drop_ignorable_whitespace then
+		cur # append_node d
+	  | CD_error e ->
+	      raise e
+      in
       match current_data with
 	  [] ->
 	    if String.length current_string > 0 then
-	      self # current # add_node 
-		                     (create_data_node spec dtd current_string);
+	      add_node (create_data_node spec dtd current_string);
 	    current_string <- "";
 	| [ str ] ->
-	    self # current # add_node (create_data_node spec dtd 
-					   (current_string ^ str));
+	    add_node (create_data_node spec dtd 
+			(current_string ^ str));
 	    current_string <- "";
 	    current_data <- []
 	| _ ->
@@ -368,7 +382,7 @@ class ['ext] parser_object
 	      ~dst:str
 	      ~dst_pos:0
 	      ~len:(String.length current_string);
-	    self # current # add_node (create_data_node spec dtd str);
+	    add_node (create_data_node spec dtd str);
 	    current_string <- "";
 	    current_data <- []
 	      
@@ -418,7 +432,7 @@ class ['ext] parser_object
 	  try List.assoc prefix src_norm_mapping
 	  with
 	      Not_found ->
-		raise(WF_error ("Namespace prefix not declared: " ^ prefix))
+		raise(Namespace_error ("Namespace prefix not declared: " ^ prefix))
 	in
 	normprefix ^ ":" ^ localname
       end
@@ -1814,7 +1828,8 @@ start_tag():
                                   src_norm_mapping;               (* guard *)
 	      List.iter
 		(fun (srcprefix, uri) ->
-		   let normprefix = mng # add srcprefix uri in
+		   let normprefix = 
+		     mng # lookup_or_add_namespace srcprefix uri in
 		   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
 		)
 		!xmlns_attlist;
@@ -1828,7 +1843,7 @@ start_tag():
 		      let normprefix = 
 			try mng # get_normprefix uri
 			with Not_found -> 
-			  mng # add "default" uri
+			  mng # lookup_or_add_namespace "default" uri
 		      in
 		      default_normprefix <- normprefix
 	      );
@@ -1902,7 +1917,7 @@ start_tag():
 	    (* Assertion: self # current is the super root *)
 	    assert (self # current # node_type = T_super_root);
 	    root <- Some (self # current);
-	    self # current # add_node d;
+	    self # current # append_node d;
 	    doc # init_root (self # current);
 	  end
 	  else begin
@@ -1918,13 +1933,13 @@ start_tag():
       else begin
 	(* We have found some inner begin tag. *)
 	self # save_data;        (* Save outstanding data material first *)
-	self # current # add_node d
+	self # current # append_node d
       end;
 
       if emptiness then begin
 	(* An empty tag like <a/>. *)
 	if not config.disable_content_validation then
-	  d # local_validate ~use_dfa:config.validate_by_dfa ();
+	  d # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
 	if config.enable_namespace_processing <> None then
 	  self # pop_src_norm_mapping()
       end
@@ -1996,7 +2011,7 @@ end_tag():
 			"' not in the same entity as the start tag `" ^
 		       x_name ^ "'"));
        if not config.disable_content_validation then 
-	 x # local_validate ~use_dfa:config.validate_by_dfa ();
+	 x # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
        
        n_tags_open <- n_tags_open - 1;
        
@@ -2073,7 +2088,7 @@ pi():
 	  let pinstr = new proc_instruction target value config.encoding in
 	  let wrapper = create_pinstr_node 
 			  ?position:position spec dtd pinstr in
-	  self # current # add_node wrapper;
+	  self # current # append_node wrapper;
 	end
 	else
 	  (* Normal behaviour: Add the PI to the parent element. *)
@@ -2103,7 +2118,7 @@ comment():
 	let comment_text = String.concat "" mat in
 	let wrapper = create_comment_node 
 		        ?position:position spec dtd comment_text in
-	self # current # add_node wrapper;
+	self # current # append_node wrapper;
       end
     }}
   ? {{ match !yy_position with
@@ -2177,6 +2192,18 @@ let default_spec =
     ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
     ~data_exemplar:            (new data_impl default_extension)
     ~default_element_exemplar: (new element_impl default_extension)
+    ~element_mapping:          (Hashtbl.create 1)
+    ()
+;;
+
+
+let default_namespace_spec =
+  make_spec_from_mapping
+    ~super_root_exemplar:      (new super_root_impl default_extension)
+    ~comment_exemplar:         (new comment_impl default_extension)
+    ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
+    ~data_exemplar:            (new data_impl default_extension)
+    ~default_element_exemplar: (new namespace_element_impl default_extension)
     ~element_mapping:          (Hashtbl.create 1)
     ()
 ;;
@@ -2480,6 +2507,7 @@ let default_config =
     enable_pinstr_nodes = false;
     enable_super_root_node = false;
     enable_comment_nodes = false;
+    drop_ignorable_whitespace = true;
     encoding = `Enc_iso88591;
     recognize_standalone_declaration = true;
     store_element_positions = true;
@@ -2495,6 +2523,11 @@ let default_config =
     enable_namespace_processing = None;
     enable_namespace_info = false;
     debugging_mode = false;
+  }
+
+let default_namespace_config =
+  { default_config with
+      enable_namespace_processing = Some (new namespace_manager)
   }
 
 
@@ -2519,6 +2552,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.26  2001/06/07 22:55:14  gerd
+ * 	Uses methods classify_data_node, append_node, validate_contents
+ * now provided by nodes.
+ *
  * Revision 1.25  2001/05/17 22:39:10  gerd
  * 	Fix: default_spec
  *
