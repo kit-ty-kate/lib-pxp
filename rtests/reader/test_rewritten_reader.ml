@@ -27,7 +27,7 @@ let t001 () =
   in
   let r = new resolve_to_any_obj_channel ~channel_of_id () in
   r # init_rep_encoding `Enc_iso88591;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in xid in
   let aid = r # active_id in
   assert(aid.rid_private = Some pid);
@@ -93,7 +93,7 @@ let t010() =
     let ch = new input_string "" in
     let res = new resolve_to_this_obj_channel ~rid:r ch in
     res # init_rep_encoding `Enc_iso88591;
-    res # init_warner (new drop_warnings);
+    res # init_warner None (new drop_warnings);
     try
       ignore(res # open_rid r');
       assert(res # active_id = r'');
@@ -200,7 +200,7 @@ let t011() =
     let ch = new input_string "" in
     let res = new resolve_to_this_obj_channel ~id:r ch in
     res # init_rep_encoding `Enc_iso88591;
-    res # init_warner (new drop_warnings);
+    res # init_warner None (new drop_warnings);
     try
       ignore(res # open_rid r');
       assert(res # active_id = r'');
@@ -266,7 +266,7 @@ let t020 () =
     let res = new resolve_to_url_obj_channel
 		~url_of_id ~base_url_of_id ~channel_of_url () in
     res # init_rep_encoding `Enc_iso88591;
-    res # init_warner (new drop_warnings);
+    res # init_warner None (new drop_warnings);
     try
       ignore(res # open_rid null_rid);
       (res # active_id).rid_system = Some active_url
@@ -320,7 +320,7 @@ let t021 () =
   let res_a = new resolve_to_url_obj_channel
 		~url_of_id ~base_url_of_id ~channel_of_url () in
   res_a # init_rep_encoding `Enc_iso88591;
-  res_a # init_warner (new drop_warnings);
+  res_a # init_warner None (new drop_warnings);
 
   let lex_a = res_a # open_rid { null_rid with
 				   rid_private = Some pid_a;
@@ -350,7 +350,7 @@ let t021 () =
 let t022 () =
   let res_a = new resolve_as_file() in
   res_a # init_rep_encoding `Enc_iso88591;
-  res_a # init_warner (new drop_warnings);
+  res_a # init_warner None (new drop_warnings);
 
   let lex_a = res_a # open_rid { null_rid with
 				   rid_system = Some "t_a.dat";
@@ -378,7 +378,7 @@ let t023 () =
 		    ]
 		) in
   res_a # init_rep_encoding `Enc_iso88591;
-  res_a # init_warner (new drop_warnings);
+  res_a # init_warner None (new drop_warnings);
 
   let lex_a = res_a # open_rid { null_rid with
 				   rid_public = Some "A";
@@ -407,7 +407,7 @@ let t024 () =
 		    ]
 		) in
   res_a # init_rep_encoding `Enc_iso88591;
-  res_a # init_warner (new drop_warnings);
+  res_a # init_warner None (new drop_warnings);
 
   let lex_a = res_a # open_rid { null_rid with
 				   rid_system = 
@@ -433,7 +433,7 @@ let t025 () =
 		[ prefix ^ "/accessible/", prefix ^ "/accessible/" ]
 		( new resolve_as_file() ) in
   res_a # init_rep_encoding `Enc_iso88591;
-  res_a # init_warner (new drop_warnings);
+  res_a # init_warner None (new drop_warnings);
 
   (* try to open a file outside $HOME/accessible: *)
   try
@@ -456,7 +456,7 @@ let test f n =
     flush stdout;
     if f() then
       print_endline " ok"
-#    else
+    else
       print_endline " FAILED!!!!";
   with
       error ->

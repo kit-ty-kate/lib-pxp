@@ -25,7 +25,7 @@ let t001 () =
   let s = "0123456789abc" in
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_iso88591;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = nextchar lb in
   assert (c = Some '0');
@@ -64,7 +64,7 @@ let t002 () =
   let ch = make_channel "0123456789abc" in
   let r = new resolve_read_this_channel ch in
   r # init_rep_encoding `Enc_iso88591;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = nextchar lb in
   assert (c = Some '0');
@@ -103,7 +103,7 @@ let t003 () =
   let s = "0«»°áàâãäÁÀÂÃÄéèêëíìîïÍÌÎÏóòôõøöÓÒÔÕØÖúùûüýÿÝßç¡¿ñÑ" in
   let r = new resolve_read_this_string ~fixenc:`Enc_iso88591 s in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
@@ -129,7 +129,7 @@ let t004 () =
   let s = "0\194\171\194\187\194\176\195\161\195\160\195\162\195\163\195\164\195\129\195\128\195\130\195\131\195\132\195\169\195\168\195\170\195\171\195\173\195\172\195\174\195\175\195\141\195\140\195\142\195\143\195\179\195\178\195\180\195\181\195\184\195\182\195\147\195\146\195\148\195\149\195\152\195\150\195\186\195\185\195\187\195\188\195\189\195\191\195\157\195\159\195\167\194\161\194\191\195\177\195\145" in
   let r = new resolve_read_this_string ~fixenc:`Enc_utf8 s in
   r # init_rep_encoding `Enc_iso88591;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
@@ -155,7 +155,7 @@ let t005 () =
   let s = "0\194\171\194\187\194\176\195\161\195\160\195\162\195\163\195\164\195\129\195\128\195\130\195\131\195\132\195\169\195\168\195\170\195\171\195\173\195\172\195\174\195\175\195\141\195\140\195\142\195\143\195\179\195\178\195\180\195\181\195\184\195\182\195\147\195\146\195\148\195\149\195\152\195\150\195\186\195\185\195\187\195\188\195\189\195\191\195\157\195\159\195\167\194\161\194\191\195\177\195\145" in
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_iso88591;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
@@ -180,7 +180,7 @@ let t006 () =
   let s = "\254\255\0000\000«\000»\000°\000á\000à\000â\000ã\000ä\000Á\000À\000Â\000Ã\000Ä\000é\000è\000ê\000ë\000í\000ì\000î\000ï\000Í\000Ì\000Î\000Ï\000ó\000ò\000ô\000õ\000ø\000ö\000Ó\000Ò\000Ô\000Õ\000Ø\000Ö\000ú\000ù\000û\000ü\000ý\000ÿ\000Ý\000ß\000ç\000¡\000¿\000ñ\000Ñ" in
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
@@ -206,7 +206,7 @@ let t007 () =
   let s = "\254\255\0000\000«\000»\000°\000á\000à\000â\000ã\000ä\000Á\000À\000Â\000Ã\000Ä\000é\000è\000ê\000ë\000í\000ì\000î\000ï\000Í\000Ì\000Î\000Ï\000ó\000ò\000ô\000õ\000ø\000ö\000Ó\000Ò\000Ô\000Õ\000Ø\000Ö\000ú\000ù\000û\000ü\000ý\000ÿ\000Ý\000ß\000ç\000¡\000¿\000ñ\000Ñ" in
   let r = new resolve_read_this_string s in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in Anonymous in
   let c = ref (nextchar lb) in
   assert (!c = Some '0');
@@ -229,7 +229,7 @@ let t100 () =
   (* Reads from a file without recoding it *)
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
   let lb = r # open_in (System ("file://localhost" ^ cwd ^ "/t100.dat")) in
   let c = nextchar lb in
@@ -252,7 +252,7 @@ let t101 () =
   (* Reads from a file without recoding it *)
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
   let lb = r # open_in (System ("//localhost" ^ cwd ^ "/t100.dat")) in
   let c = nextchar lb in
@@ -275,7 +275,7 @@ let t102 () =
   (* Reads from a file without recoding it *)
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
   let lb = r # open_in (System (cwd ^ "/t100.dat")) in
   let c = nextchar lb in
@@ -298,7 +298,7 @@ let t103 () =
   (* Reads from a file without recoding it *)
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in (System "t100.dat") in
   let c = nextchar lb in
   assert (c = Some '0');
@@ -322,7 +322,7 @@ let t110 () =
   (* Checks whether relative URLs are properly handled *)
   let r = new resolve_as_file () in
   r # init_rep_encoding `Enc_utf8;
-  r # init_warner (new drop_warnings);
+  r # init_warner None (new drop_warnings);
   let lb = r # open_in (System "t100.dat") in
   let c = nextchar lb in
   assert (c = Some '0');

@@ -1,4 +1,4 @@
-(* $Id: test_negative.ml,v 1.6 2000/07/14 14:57:12 gerd Exp $
+(* $Id: test_negative.ml,v 1.7 2003/06/21 12:15:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -32,16 +32,15 @@ let parse debug wf iso88591 filename =
       }
   in
     let parse_fn =
-      if wf then parse_wfdocument_entity 
+      if wf then parse_wfdocument_entity config
       else 
 	let index = new hash_index in
 	parse_document_entity 
-	  ?transform_dtd:None 
 	  ~id_index:(index :> 'ext index)
+	  config
     in
     let tree =
       parse_fn
-	config
 	(from_file filename)
 	default_spec
     in
@@ -80,6 +79,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_negative.ml,v $
+ * Revision 1.7  2003/06/21 12:15:21  gerd
+ * 	Updates because of changed API
+ *
  * Revision 1.6  2000/07/14 14:57:12  gerd
  * 	Updated: warner
  *
