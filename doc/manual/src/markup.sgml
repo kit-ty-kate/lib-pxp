@@ -2,7 +2,12 @@
 <!ENTITY markup "<acronym>Markup</acronym>">
 <!ENTITY % readme.code.to-html SYSTEM "readme.ent">
 <!ENTITY apos "&#39;">
+<!ENTITY percent "&#37;">
+<!ENTITY % get.markup-yacc.mli SYSTEM "yacc.mli.ent">
+<!ENTITY % get.markup-dtd.mli SYSTEM "dtd.mli.ent">
 %readme.code.to-html;
+%get.markup-yacc.mli;
+%get.markup-dtd.mli;
 ]>
 
 
@@ -2640,33 +2645,43 @@ class type [ 'node ] extension =
       <para>
 <emphasis>
 Sorry, this chapter has not yet been written. For an introduction into parser
-configuration, see the previous chapters.
+configuration, see the previous chapters. As a first approximation, the
+interface definition of Markup_yacc outlines what could go here.
 </emphasis>
+</para>
+
+      <para>
+<programlisting>&markup-yacc.mli;</programlisting>
 </para>
 
       <sect1>
 	<title>Overview</title>
-	<para></para>
+	<para><emphasis>Sorry, not yet written.</emphasis></para>
       </sect1>
 
       <sect1>
 	<title>Resolvers and sources</title>
-	<para></para>
+	<para><emphasis>Sorry, not yet written.</emphasis></para>
       </sect1>
 
       <sect1>
 	<title>The DTD classes</title>
-	<para></para>
+	<para><emphasis>Sorry, not yet written. Perhaps the interface
+definition of Markup_dtd expresses the same:
+</emphasis></para>
+	<para>
+<programlisting>&markup-dtd1.mli;&markup-dtd2.mli;</programlisting>
+</para>
       </sect1>
 
       <sect1>
 	<title>Configuring the class exemplars of the node tree</title>
-	<para></para>
+	<para><emphasis>Sorry, not yet written.</emphasis></para>
       </sect1>
 
       <sect1>
 	<title>Invoking the parser</title>
-	<para></para>
+	<para><emphasis>Sorry, not yet written.</emphasis></para>
       </sect1>
     </chapter>
  
