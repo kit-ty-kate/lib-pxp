@@ -1,4 +1,4 @@
-(* $Id: test_negative.ml,v 1.3 2000/06/04 20:31:21 gerd Exp $
+(* $Id: test_negative.ml,v 1.4 2000/07/09 01:49:09 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -21,14 +21,6 @@ let rec print_error e =
 
 
 let parse debug wf iso88591 filename =
-  let dom = 
-    let d = Hashtbl.create 2 in
-    let e = new element_impl default_extension in
-    Hashtbl.add d T_data (new data_impl default_extension "");
-    { map = d;
-      default_element = e
-    }
-  in
   try 
   let config =
       { default_config with 
@@ -37,10 +29,11 @@ let parse debug wf iso88591 filename =
       }
   in
     let tree =
-      (if wf then parse_wf_entity else parse_document_entity)
+      (if wf then parse_wfdocument_entity 
+             else parse_document_entity ?transform_dtd:None)
       config
-      (File filename)
-      dom 
+      (from_file filename)
+      default_spec
     in
     let s = default_config.warner # print_warnings in
     if s <> "" then prerr_endline s;
@@ -83,6 +76,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_negative.ml,v $
+ * Revision 1.4  2000/07/09 01:49:09  gerd
+ * 	Updated because of PXP interface changes.
+ *
  * Revision 1.3  2000/06/04 20:31:21  gerd
  * 	Updates because of renamed PXP modules.
  *
