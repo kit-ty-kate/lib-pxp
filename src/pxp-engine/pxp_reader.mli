@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.12 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.13 2003/06/19 21:51:12 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -8,7 +8,7 @@
  * specify how external identifiers (SYSTEM or PUBLIC) are mapped to
  * files or channels. This is normally only necessary for advanced
  * configurations, as the functions from_file, from_channel, and
- * from_string in Pxp_yacc often suffice.
+ * from_string in Pxp_types often suffice.
  *
  * There are two ways to use this module. First, you can compose the
  * desired behaviour by combining several predefined resolver objects
@@ -182,8 +182,9 @@ class type resolver =
        * expanding relative URLs.
        *)
 
-    method close_all : unit
+(*  method close_all : unit *)
       (* Closes this resolver and every clone *)
+      (* This method is no longer supported in PXP 1.2 *)
 
   end
 ;;
@@ -289,7 +290,7 @@ class resolve_to_url_obj_channel :
    *
    * The third function, ~channel_of_url, is fed with the absolute URL
    * as input. This function opens the resource to read from, and returns
-   * the accepted_id like resolve_to_any_obj_channel. The resolver ID 
+   * the accepted_id like resolve_to_any_obj_channel does. The resolver ID 
    * passed to ~channel_of_url contains the string representation of the
    * absolute URL as system ID.
    *
@@ -513,7 +514,8 @@ class norm_system_id : resolver -> resolver
    * passed resolver.
    *
    * Normalization includes:
-   * - Relative URLs are made absolute if possible
+   * - Relative URLs are made absolute. If this fails, the problematic
+   *   relative URL will be rejected.
    * - .. and . and // are removed 
    * - Escaping of reserved characters is normalized
    *
@@ -623,6 +625,8 @@ class combine :
 
 
 (* ====================================================================== *)
+
+(* TODO: The following examples recommend deprecated classes. *)
 
 (* EXAMPLES OF RESOLVERS:
  *
@@ -880,6 +884,11 @@ val lookup_system_id_as_string :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.13  2003/06/19 21:51:12  gerd
+ * 	Removed the close_all method. It is no longer necessary, because
+ * we have now the entity_manager.
+ * 	Several smaller fixes.
+ *
  * Revision 1.12  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.23 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.24 2003/06/19 21:51:12 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -19,7 +19,8 @@ class type resolver =
     method open_rid : resolver_id -> Lexing.lexbuf
     method active_id : resolver_id
     method close_in : unit
-    method close_all : unit
+    (* method close_all : unit *)
+    (* [close_all] is no longer supported in PXP 1.2 *)
     method change_encoding : string -> unit
     method clone : resolver
   end
@@ -47,7 +48,9 @@ class virtual resolve_general
     val mutable enc_initialized = false
     val mutable wrn_initialized = false
 
+(* (* needed to support close_all: *)
     val mutable clones = []
+*)
 
     method init_rep_encoding e =
       internal_encoding <- e;
@@ -104,8 +107,10 @@ class virtual resolve_general
     method virtual close_in : unit
       (* must reset is_open! *)
 
+(*
     method close_all =
       List.iter (fun r -> r # close_in) clones
+*)
 
     method open_in xid =
       self # open_rid (resolver_id_of_ext_id xid)
@@ -265,7 +270,7 @@ object(self)
 		?close:(Some close) ~channel_of_id:f_open () in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
-      clones <- c :: clones;
+      (* clones <- c :: clones; *)
       (c :> resolver)
 
 end
@@ -421,7 +426,7 @@ class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
-      clones <- c :: clones;
+      (* clones <- c :: clones; *)
       (c :> resolver)
 
   end
@@ -648,21 +653,9 @@ let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
 ;;
 
 
-class lookup_id (catalog : (ext_id * resolver) list) =
-  let norm_catalog =
-    (* catalog with normalized PUBLIC ids *)
-    List.map 
-      (fun (id,s) -> 
-	 match id with
-	     Public(pubid,sysid) ->
-	       let norm_pubid = Pxp_aux.normalize_public_id pubid in
-	       (Public(norm_pubid,sysid), s)
-	   | _ ->
-	       (id,s)
-      )
-      catalog in
+class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
 ( object (self)
-    val cat = norm_catalog
+    val cat = catalog
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
     val mutable active_resolver = None
@@ -729,10 +722,11 @@ class lookup_id (catalog : (ext_id * resolver) list) =
 		    assert false
 	    )
 
+(*
     method close_all =
       (* CHECK: Müssen nicht die Klone auch geschlossen werden? *)
       self # close_in
-
+*)
 
     method change_encoding (enc:string) =
       match active_resolver with
@@ -741,12 +735,28 @@ class lookup_id (catalog : (ext_id * resolver) list) =
 
 
     method clone =
-      let c = new lookup_id cat in
-      (* CHECK: How to avoid that public ids are normalized again? *)
+      let c = new lookup_id_nonorm cat in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
       c
   end : resolver )
+;;
+
+
+class lookup_id (catalog : (ext_id * resolver) list) =
+  let norm_catalog =
+    (* catalog with normalized PUBLIC ids *)
+    List.map 
+      (fun (id,s) -> 
+	 match id with
+	     Public(pubid,sysid) ->
+	       let norm_pubid = Pxp_aux.normalize_public_id pubid in
+	       (Public(norm_pubid,sysid), s)
+	   | _ ->
+	       (id,s)
+      )
+      catalog in
+  lookup_id_nonorm norm_catalog
 ;;
 
 
@@ -839,7 +849,10 @@ class combine ?prefer ?mode rl =
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
     val mutable active_resolver = None
+
+(*  (* needed to support close_all: *)
     val mutable clones = []
+*)
 
     method init_rep_encoding enc =
       List.iter
@@ -911,8 +924,10 @@ class combine ?prefer ?mode rl =
 	| Some r -> r # close_in;
 	            active_resolver <- None
 
+(*
     method close_all =
       List.iter (fun r -> r # close_in) clones
+*)
 
     method change_encoding (enc:string) =
       match active_resolver with
@@ -941,7 +956,7 @@ class combine ?prefer ?mode rl =
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
-      clones <- c :: clones;
+      (* clones <- c :: clones; *)
       c
   end
 ;;
@@ -995,7 +1010,12 @@ object(self)
 	    sysurl
 	  else
 	    match rid.rid_system_base with
-		None -> sysurl (* CHECK *)
+		None -> 
+		  (* The sysurl is relative, but we do not have a base URL.
+		   * There is no way to interpret this case, so we reject
+		   * it.
+		   *)
+		  raise Not_competent
 	      | Some sysbase -> 
 		  let baseurl = Neturl.url_of_string norm_url_syntax sysbase in
 		  Neturl.apply_relative_url baseurl sysurl
@@ -1033,8 +1053,10 @@ object(self)
   method close_in =
     subresolver # close_in
 
+(*
   method close_all =
     subresolver # close_all
+*)
 
   method change_encoding enc =
     subresolver # change_encoding enc
@@ -1246,14 +1268,6 @@ class resolve_read_this_channel ?id ?fixenc ?close ch =
 ;;
 
 
-class resolve_read_this_string ?id ?fixenc s =
-  (* reduce resolve_read_this_string to resolve_to_this_obj_channel *)
-  let obj_ch =
-    new input_string s in
-  resolve_to_this_obj_channel ?id ?fixenc obj_ch
-;;
-
-
 class resolve_read_any_string ~string_of_id () =
   (* reduce resolve_read_any_string to resolve_to_any_obj_channel *)
   let obj_channel_of_id rid =
@@ -1268,6 +1282,22 @@ class resolve_read_any_string ~string_of_id () =
       (xid_list_of_rid rid)
   in
   resolve_to_any_obj_channel ~channel_of_id:obj_channel_of_id ()
+;;
+
+
+class resolve_read_this_string ?id ?fixenc s =
+  let string_of_id tried_xid =
+    match id with
+	None ->
+	  (* Open always! *)
+	  (s, fixenc)
+      | Some my_xid ->
+	  if my_xid = tried_xid then
+	    (s, fixenc)
+	  else
+	    raise Not_competent
+  in
+  resolve_read_any_string ~string_of_id ()
 ;;
 
 
@@ -1337,6 +1367,11 @@ let lookup_system_id_as_string ?fixenc catalog =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.24  2003/06/19 21:51:12  gerd
+ * 	Removed the close_all method. It is no longer necessary, because
+ * we have now the entity_manager.
+ * 	Several smaller fixes.
+ *
  * Revision 1.23  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *
