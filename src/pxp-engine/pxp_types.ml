@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_types.ml,v 1.2 2000/07/04 22:14:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -7,6 +7,7 @@
 type ext_id =
     System of string
   | Public of (string * string)
+  | Anonymous
 
 
 type dtd_id =
@@ -65,6 +66,16 @@ type att_value =
 ;;
 
 
+class type collect_warnings =
+  object 
+    method warn : string -> unit
+    method print_warnings : string
+    method reset : unit
+  end
+;;
+
+
+(*
 class collect_warnings =
   object 
     val mutable wlist = []
@@ -74,6 +85,16 @@ class collect_warnings =
       String.concat "\n" (List.rev wlist)
     method reset =
       wlist <- []
+  end
+;;
+*)
+
+
+class drop_warnings =
+  object 
+    method warn (w:string) = ()
+    method print_warnings = ""
+    method reset = ()
   end
 ;;
 
@@ -95,6 +116,28 @@ type rep_encoding =
   [  `Enc_utf8       (* UTF-8 *)
   |  `Enc_iso88591   (* ISO-8859-1 *)
   ]
+;;
+
+
+let encoding_of_string e =
+  match String.uppercase e with
+      ("UTF-16"|"UTF16"|"ISO-10646-UCS-2") -> `Enc_utf16
+    | ("UTF-16-BE"|"UTF16-BE")             -> `Enc_utf16_be
+    | ("UTF-16-LE"|"UTF16-LE")             -> `Enc_utf16_le
+    | ("UTF-8"|"UTF8")                     -> `Enc_utf8
+    | ("ISO-8859-1"|"ISO8859-1")           -> `Enc_iso88591
+    | _ ->
+	failwith "Pxp_types.encoding_of_string: unknown encoding"
+;;
+
+
+let string_of_encoding (e : encoding) =
+  match e with
+      `Enc_utf16    -> "UTF-16"
+    | `Enc_utf16_be -> "UTF-16-BE"
+    | `Enc_utf16_le -> "UTF-16-LE"
+    | `Enc_utf8     -> "UTF-8"
+    | `Enc_iso88591 -> "ISO-8859-1"
 ;;
 
 
@@ -154,6 +197,9 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.2  2000/07/04 22:14:05  gerd
+ * 	Implemented the changes of rev. 1.2 of pxp_types.mli.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
