@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.7 2000/07/14 14:11:06 gerd Exp $
+(* $Id: validate.ml,v 1.8 2000/07/14 14:13:15 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -28,21 +28,24 @@ class warner =
 let parse debug wf iso88591 filename =
   try 
     (* Parse the document: *)
+    let parse_fn =
+      if wf then parse_wfdocument_entity 
+      else 
+	let index = new hash_index in
+	parse_document_entity 
+	  ?transform_dtd:None 
+	  ~id_index:(index :> 'ext index)
+    in
     let doc =
-      (if wf then parse_wfdocument_entity 
-             else 
-	       let index = new hash_index in
-	       parse_document_entity 
-	         ?transform_dtd:None 
-	         ~id_index:(index :> 'ext index))
-	{ default_config with 
-	    debugging_mode = debug;
-	    encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
-	    idref_pass = true;
-	    warner = new warner
-        }
-	(from_file filename)
-	default_spec 
+      parse_fn
+	  { default_config with 
+	      debugging_mode = debug;
+	      encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
+	      idref_pass = true;
+	      warner = new warner
+          }
+	  (from_file filename)
+	  default_spec 
     in
     ()
   with
@@ -84,6 +87,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.8  2000/07/14 14:13:15  gerd
+ * 	Cosmetic changes.
+ *
  * Revision 1.7  2000/07/14 14:11:06  gerd
  * 	Updated because of changes of the PXP API.
  *
