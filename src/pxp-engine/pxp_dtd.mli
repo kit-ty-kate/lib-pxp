@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.11 2000/10/01 19:46:57 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.12 2001/06/07 22:49:11 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -194,11 +194,6 @@ class dtd :
        * square brackets).
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> bool -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
 
     (*----------------------------------------*)
     method invalidate : unit
@@ -326,11 +321,6 @@ and dtd_element : dtd -> string ->
        * Writes the <!ELEMENT ... > declaration to 'os' as 'enc'-encoded string.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
     method internal_vr : validation_record
       (* INTERNAL METHOD: Returns the validation record for this element type. 
        *)
@@ -355,11 +345,6 @@ and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
        * string.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
   end
 
 (* ---------------------------------------------------------------------- *)
@@ -381,11 +366,6 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
        * Writes the <?...?> PI to 'os' as 'enc'-encoded string.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* DEPRECATED METHOD; included only to keep compatibility with
-       * older versions of the parser
-       *)
-
     method parse_pxp_option : (string * string * (string * string) list)
       (* Parses a PI containing a PXP option. Such PIs are formed like:
        *   <?target option-name option-att="value" option-att="value" ... ?>
@@ -404,6 +384,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.12  2001/06/07 22:49:11  gerd
+ * 	Removed: method write_compact_as_latin1
+ *
  * Revision 1.11  2000/10/01 19:46:57  gerd
  * 	Changed type of the att_lookup component.
  *
