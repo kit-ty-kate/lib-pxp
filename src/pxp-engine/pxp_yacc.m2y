@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.30 2001/06/29 14:44:35 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.31 2001/06/30 00:05:12 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1799,12 +1799,12 @@ start_tag():
 		else name0 in
 	      
 	      create_element_node 
-                ?name_pool_for_attribute_values:
-		  (if config.enable_name_pool_for_attribute_values 
-		   then Some config.name_pool
-		   else None)
-                ?position:position 
-		spec dtd name !attlist 
+                 ?name_pool_for_attribute_values:
+		   (if config.enable_name_pool_for_attribute_values 
+		    then Some config.name_pool
+		    else None)
+                 ?position:position 
+		 spec dtd name !attlist
 	  | Some mng ->
 	      (* If namespace processing is enabled, preprocess the attribute
 	       * list:
@@ -1927,12 +1927,12 @@ start_tag():
 	    assert (self # current # node_type = T_super_root);
 	    root <- Some (self # current);
 	    self # current # append_node d;
-	    doc # init_root (self # current);
+	    doc # init_root (self # current) name0;
 	  end
 	  else begin
 	    (* Normal behaviour: The user wants to get the real root. *)
 	    root <- Some d;
-	    doc # init_root d;
+	    doc # init_root d name0;
 	  end;
 	end
 	else
@@ -2575,6 +2575,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.31  2001/06/30 00:05:12  gerd
+ * 	Fix: When checking the type of the root element, namespace
+ * rewritings are taken into account.
+ *
  * Revision 1.30  2001/06/29 14:44:35  gerd
  * 	Fixed: ~transform_dtd works now if enable_super_root
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.21 2001/06/28 22:42:07 gerd Exp $
+(* $Id: pxp_document.mli,v 1.22 2001/06/30 00:05:12 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2379,9 +2379,11 @@ class [ 'ext ] document :
     method init_xml_version : string -> unit
 	(* Set the XML version string of the XML declaration. *)
 
-    method init_root : 'ext node -> unit
+    method init_root : 'ext node -> string -> unit
 	(* Set the root element. It is expected that the root element has
 	 * a DTD.
+	 * The second argument is the original name of the root element
+	 * (without namespace prefix processing).
 	 * Note that 'init_root' checks whether the passed root element
 	 * has the type expected by the DTD. The check takes into account
 	 * that the root element might be a virtual root node.
@@ -2453,6 +2455,10 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.22  2001/06/30 00:05:12  gerd
+ * 	Fix: When checking the type of the root element, namespace
+ * rewritings are taken into account.
+ *
  * Revision 1.21  2001/06/28 22:42:07  gerd
  * 	Fixed minor problems:
  * 	- Comments must be contained in one entity

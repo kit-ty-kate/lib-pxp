@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.26 2001/06/29 14:45:32 gerd Exp $
+(* $Id: pxp_document.ml,v 1.27 2001/06/30 00:05:12 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -3595,7 +3595,7 @@ class ['ext] document the_warner enc =
 	warner # warn ("XML version '" ^ s ^ "' not supported");
       xml_version <- s
 
-    method init_root r =
+    method init_root r real_root_element_name =
       let dtd_r = r # dtd in
       if dtd_r # encoding <> encoding then
 	failwith "Pxp_document.document#init_root: encoding mismatch";
@@ -3624,11 +3624,6 @@ class ['ext] document the_warner enc =
 			       *)
 
 		    in
-		    let real_root_element_name =
-		      match real_root_element # node_type with
-			  T_element name -> name
-			| _              -> assert false
-		    in
 		    if real_root_element_name <> declared_root_element_name then
 		      raise
 			(Validation_error ("The root element is `" ^
@@ -3647,10 +3642,10 @@ class ['ext] document the_warner enc =
 	    if not (dtd_r # arbitrary_allowed) then begin
 	      match dtd_r # root with
 		  Some declared_root_element_name ->
-		    if root_element_name <> declared_root_element_name then
+		    if real_root_element_name <> declared_root_element_name then
 		      raise
 			(Validation_error ("The root element is `" ^
-					   root_element_name ^
+					   real_root_element_name ^
 					   "' but is declared as `" ^
 					   declared_root_element_name ^ "'"))
 		| None ->
@@ -3738,6 +3733,10 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.27  2001/06/30 00:05:12  gerd
+ * 	Fix: When checking the type of the root element, namespace
+ * rewritings are taken into account.
+ *
  * Revision 1.26  2001/06/29 14:45:32  gerd
  * 	Fixed: map_tree etc. do not catch a Not_found raised in the
  * passed closure

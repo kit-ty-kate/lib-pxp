@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.6 2001/06/28 22:42:07 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.7 2001/06/30 00:05:12 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -524,7 +524,7 @@ let document_from_cmd_sequence f config spec =
   let root = 
     subtree_from_cmd_sequence_nohead
       f dtd spec in
-  doc # init_root root;
+  doc # init_root root root_type;
   doc
 ;;
 
@@ -545,6 +545,10 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.7  2001/06/30 00:05:12  gerd
+ * 	Fix: When checking the type of the root element, namespace
+ * rewritings are taken into account.
+ *
  * Revision 1.6  2001/06/28 22:42:07  gerd
  * 	Fixed minor problems:
  * 	- Comments must be contained in one entity
