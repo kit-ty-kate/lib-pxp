@@ -1,3 +1,8 @@
+(* $Id: pxp_wlex_link.ml,v 1.2 2000/09/17 00:15:41 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
 module L = Lex_engines_ml;;
 
 let table_iso88591 =
@@ -322,3 +327,13 @@ struct
   let scan_for_crlf = Pxp_lex.scan_for_crlf engine_utf8
 end
 ;;
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_wlex_link.ml,v $
+ * Revision 1.2  2000/09/17 00:15:41  gerd
+ * 	Updated.
+ *
+ * 
+ *)
