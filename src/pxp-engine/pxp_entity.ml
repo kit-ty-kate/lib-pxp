@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.17 2002/07/14 23:03:29 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.18 2002/08/03 17:52:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -85,6 +85,8 @@ type 'entity entity_variables =
       mutable lexerset_scan_decl_comment : Lexing.lexbuf -> (token * lexers);
       mutable lexerset_scan_content_comment : Lexing.lexbuf -> (token * lexers);
       mutable lexerset_scan_document_comment : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_tag_eb : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_tag_eb_att : Lexing.lexbuf -> bool -> (token * lexers);
       mutable lexbuf : Lexing.lexbuf;
         (* The lexical buffer currently used as character source. *)
 
@@ -111,6 +113,9 @@ type 'entity entity_variables =
 
       mutable normalize_newline : bool;
         (* Whether this entity converts CRLF or CR to LF, or not *)
+
+      mutable generate_attribute_events : bool;
+        (* Whether attribute events are generated or not *)
 
       mutable line : int;          (* current line *)
       mutable column : int;        (* current column *)
@@ -153,6 +158,8 @@ let make_variables the_dtd the_name the_warner init_encoding =
     lexerset_scan_decl_comment     = ls.scan_decl_comment;
     lexerset_scan_content_comment  = ls.scan_content_comment;
     lexerset_scan_document_comment = ls.scan_document_comment;
+    lexerset_scan_tag_eb           = ls.scan_tag_eb;
+    lexerset_scan_tag_eb_att       = ls.scan_tag_eb_att;
     
     lexbuf = Pxp_lexing.from_string "";
     
@@ -165,7 +172,8 @@ let make_variables the_dtd the_name the_warner init_encoding =
     check_text_declaration = true;
     
     normalize_newline = true;
-    
+    generate_attribute_events = false;
+
     line = 1;
     column = 0;
 
@@ -278,7 +286,8 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 
     method virtual resolver : resolver option
 
-    method virtual open_entity : bool -> lexers -> unit
+    method virtual open_entity : 
+        ?gen_att_events:bool -> bool -> lexers -> unit
 	(* open_entity force_parsing lexid:
 	 * opens the entity, and the first token is scanned by the lexer
 	 * 'lexid'. 'force_parsing' forces that Begin_entity and End_entity
@@ -378,36 +387,52 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 	     * name lex_id' of the next lexer to be used.
 	     *)
 	    let update_fn = ref update_content_lines in
-	    let scan_fn =
+	    let tok, lex_id' =
 	      match v.lex_id with
 		  Document         -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document
+                                      v.lexerset_scan_document v.lexbuf 
 		| Document_type    -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document_type
-		| Content          -> v.lexerset_scan_content
+                                      v.lexerset_scan_document_type v.lexbuf
+		| Content          -> v.lexerset_scan_content v.lexbuf
 		| Within_tag       -> update_fn := update_lines_within_tag;
-                                      v.lexerset_scan_within_tag
+                                      v.lexerset_scan_within_tag v.lexbuf
+		| Within_tag_entry -> if v.generate_attribute_events then (
+		                        (* like Tag_eb: *)
+		                        update_fn := update_lines_within_tag;
+                                        v.lexerset_scan_tag_eb v.lexbuf
+                                      ) else (
+		                        (* like Within_tag: *)
+		                        update_fn := update_lines_within_tag;
+                                        v.lexerset_scan_within_tag v.lexbuf
+		                      )
 		| Declaration      -> update_fn := update_other_lines;
-                                      v.lexerset_scan_declaration
+                                      v.lexerset_scan_declaration v.lexbuf
 		| Content_comment  -> update_fn := update_other_lines;
-                                      v.lexerset_scan_content_comment
+                                      v.lexerset_scan_content_comment v.lexbuf
 		| Decl_comment     -> update_fn := update_other_lines;
-                                      v.lexerset_scan_decl_comment
+                                      v.lexerset_scan_decl_comment v.lexbuf
 		| Document_comment -> update_fn := update_other_lines;
-                                      v.lexerset_scan_document_comment
+                                      v.lexerset_scan_document_comment v.lexbuf
+		| Tag_eb           -> update_fn := update_lines_within_tag;
+                                      v.lexerset_scan_tag_eb v.lexbuf
+		| Tag_eb_att b     -> (* keep update_content_lines! *)
+                                      v.lexerset_scan_tag_eb_att v.lexbuf b
 		| Ignored_section  -> assert false
   	          (* Ignored_section: only used by method next_ignored_token *)
-		| Closed           -> (fun _ -> (Eof, Closed))
+		| Closed           -> (Eof, Closed)
 	    in
-	    let tok, lex_id' = scan_fn v.lexbuf in
 
+	    if debug then (
+	      prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok);
+	      prerr_endline ("         Transition: " ^ 
+			     string_of_lexers v.lex_id ^ " -> " ^ 
+			     string_of_lexers lex_id')
+	    );
+	    
 	    (* Find out the number of lines and characters of the last line: *)
 	    !update_fn v tok;
 	    v.lex_id <- lex_id';
 
-	    if debug then
-	      prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok);
-	    
 	    (* Throw Ignore and Comment away; Interpret entity references: *)
 	    (* NOTE: Of course, references to general entities are not allowed
 	     * everywhere; parameter references, too. This is already done by the
@@ -428,13 +453,17 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 			   ("Reference to entity `" ^ n ^ 
 			    "' violates standalone declaration"));
 		    en # set_debugging_mode debug;
-	            en # open_entity true v.lex_id;
+	            en # open_entity 
+                      ?gen_att_events:(Some v.generate_attribute_events) 
+                      true v.lex_id;
 		    self # manager # push_entity en;
 		    en # next_token;
 		| PERef n   -> 
 		    let en = v.dtd # par_entity n in
 		    en # set_debugging_mode debug;
-	            en # open_entity v.force_parameter_entity_parsing v.lex_id;
+	            en # open_entity 
+		      ?gen_att_events:(Some v.generate_attribute_events)
+                      v.force_parameter_entity_parsing v.lex_id;
 		    self # manager # push_entity en;
 		    en # next_token;
 
@@ -698,7 +727,7 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : Lexing.lexbuf )
 
-    method open_entity (_:bool) (_:lexers) =
+    method open_entity ?(gen_att_events:bool option) (_:bool) (_:lexers) =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : unit )
 
@@ -790,7 +819,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
     method resolver = Some resolver
 
-    method open_entity force_parsing init_lex_id =
+    method open_entity ?(gen_att_events=false) force_parsing init_lex_id =
       (* Note that external entities are always parsed, i.e. Begin_entity
        * and End_entity tokens embrace the inner tokens to force that
        * the entity is only called where the syntax allows it.
@@ -821,6 +850,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
       v.column <- 0;
       v.at_bof <- true;
       v.normalize_newline <- true;
+      v.generate_attribute_events <- gen_att_events;
 
 
     method private handle_bof tok =
@@ -1040,7 +1070,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
       assert(e = "");
 
 
-    method open_entity force_parsing init_lex_id =
+    method open_entity ?(gen_att_events = false) force_parsing init_lex_id =
       if is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
 
@@ -1057,6 +1087,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
       v.line <- 1;
       v.column <- 0;
       v.at_bof <- true;       (* CHECK: Is this right? *)
+      v.generate_attribute_events <- gen_att_events;
 
 
     method private handle_bof tok =
@@ -1176,7 +1207,7 @@ object (self)
     failwith "Pxp_entity.entity_section#set_counts_as_external: not possible";
   method lexbuf = ent # lexbuf
   method resolver = ent # resolver
-  method open_entity (_:bool) (lid:lexers) = 
+  method open_entity ?(gen_att_events:bool option) (_:bool) (lid:lexers) = 
     if is_open then
       failwith "Pxp_entity.entity_section#open_entity: already open";
     if not ent#is_open then
@@ -1184,6 +1215,7 @@ object (self)
     saved_lex_id <- ent # lex_id;
     state <- P_bof;
     is_open <- true;
+    ent # set_lex_id lid;
   method close_entity =
     if not is_open then
       failwith "Pxp_entity.entity_section#close_entity: not open";
@@ -1243,6 +1275,11 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.18  2002/08/03 17:52:34  gerd
+ * 	Support for event-based parsing of attribute values. There is
+ * now a flag gen_att_events that determines whether to use this feature.
+ * 	Fix in open_entity of class entity_section: Sets the lex_id.
+ *
  * Revision 1.17  2002/07/14 23:03:29  gerd
  * 	New class entity_section.
  *
