@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.14 2002/02/20 00:42:23 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.15 2002/03/13 22:45:42 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -63,7 +63,7 @@ let check_name warner name =
 
 let tokens_of_content_string lexerset s =
   (* tokenizes general entities and character entities *)
-  let lexbuf = fast_lexing_from_string s in
+  let lexbuf = Pxp_lexing.from_string_inplace s in
   let rec next_token () =
     match lexerset.scan_content_string lexbuf with
 	Eof        -> []
@@ -99,7 +99,7 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities nor
 	let l' =
 	  try
 	    expand_attvalue_with_rec_check
-	      (fast_lexing_from_string rtext)
+	      (Pxp_lexing.from_string_inplace rtext)
 	      (String.length rtext)
 	      lexerset dtd warner (n :: entities) false
 	  with
@@ -142,7 +142,7 @@ let expand_attvalue lexbuf lexerset dtd s warner norm_crlf =
    * lexbuf: must result from a previous Lexing.from_string
    *)
   try
-    reuse_lexing_from_string lexbuf s;
+    Pxp_lexing.from_another_string_inplace lexbuf s;
     let l =
       expand_attvalue_with_rec_check
 	lexbuf (String.length s) lexerset dtd warner [] norm_crlf in
@@ -188,7 +188,7 @@ let count_lines lc s =
 
 
 let tokens_of_xml_pi lexers s =
-  let lexbuf = fast_lexing_from_string (s ^ " ") in
+  let lexbuf = Pxp_lexing.from_string_inplace (s ^ " ") in
   let rec collect () =
     let t = lexers.scan_xml_pi lexbuf in
     match t with
@@ -299,7 +299,7 @@ let check_attribute_value_lexically lexerset x t v =
    * - t = A_enum _: v must match <nmtoken>
    * - t = A_cdata: not checked
    *)
-  let lexbuf = fast_lexing_from_string v in
+  let lexbuf = Pxp_lexing.from_string_inplace v in
   let rec get_name_list() =
     match lexerset.scan_name_string lexbuf with
 	Eof    -> []
@@ -341,7 +341,7 @@ let split_attribute_value lexerset v =
   (* splits 'v' into a list of names or nmtokens. The white space separating
    * the names/nmtokens in 'v' is suppressed and not returned.
    *)
-  let lexbuf = fast_lexing_from_string v in
+  let lexbuf = Pxp_lexing.from_string_inplace v in
   let rec get_name_list() =
     match lexerset.scan_name_string lexbuf with
 	Eof         -> []
@@ -375,7 +375,7 @@ let rev_concat l =
 
 let normalize_line_separators lexerset s =
   (* Note: Returns [s] if [s] does not contain LFs *)
-  let lexbuf = fast_lexing_from_string s in
+  let lexbuf = Pxp_lexing.from_string_inplace s in
   let rec get_string l =
     match lexerset.scan_for_crlf lexbuf with
 	Eof        -> l
@@ -789,6 +789,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.15  2002/03/13 22:45:42  gerd
+ * 	Improved Pxp_lexing.
+ *
  * Revision 1.14  2002/02/20 00:42:23  gerd
  * 	New: rev_concat
  * 	Improved normalize_line_separators; does no longer blow up

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.7 2001/06/28 22:42:32 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.8 2002/03/13 22:45:45 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -26,15 +26,15 @@ rule scan_content = parse
       (* One rule for Tag_beg and Tag_end saves transitions. *)
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
 	if Lexing.lexeme_char lexbuf 1 = '/' then
-	  Tag_end (sub_lexeme lexbuf 2 (l-2), dummy_entity), 
+	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag 
 	else
-	  Tag_beg (sub_lexeme lexbuf 1 (l-1), dummy_entity), 
+	  Tag_beg (Pxp_lexing.sub_lexeme lexbuf 1 (l-1), dummy_entity), 
 	  Within_tag 
       }
   | "<![CDATA[" cdata_string "]]>"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	Cdata (sub_lexeme lexbuf 9 (l-12)), Content }
+	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -43,13 +43,13 @@ rule scan_content = parse
       }
   | "&#" ascii_digit+ ";"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	CRef (int_of_string (sub_lexeme lexbuf 2 (l-3))), Content }
+	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	CRef (int_of_string ("0x" ^ sub_lexeme lexbuf 3 (l-4))), Content }
+	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	ERef (sub_lexeme lexbuf 1 (l-2)), Content }
+	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content }
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
       }
@@ -86,6 +86,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.8  2002/03/13 22:45:45  gerd
+ * 	Improved Pxp_lexing.
+ *
  * Revision 1.7  2001/06/28 22:42:32  gerd
  * 	Comment tokens have entity_id
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.6 2001/06/14 14:25:56 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.7 2002/03/13 22:45:45 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -29,14 +29,14 @@ rule scan_within_tag = parse
       { tok_Eq__Within_tag }
   | '"' character_except_quot* '"'
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	let v = sub_lexeme lexbuf 1 (l-2) in
+	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" character_except_apos* "'"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	let v = sub_lexeme lexbuf 1 (l-2) in
+	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
@@ -57,6 +57,9 @@ rule scan_within_tag = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.7  2002/03/13 22:45:45  gerd
+ * 	Improved Pxp_lexing.
+ *
  * Revision 1.6  2001/06/14 14:25:56  gerd
  * 	Removed insertion of pxp_lex_aux.src
  *
