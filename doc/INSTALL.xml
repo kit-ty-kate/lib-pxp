@@ -23,7 +23,15 @@ package manager, see the file ABOUT-FINDLIB.</footnote>.
 
     <sect2><title>Configuration</title>
       <p>
-It is not necessary to configure PXP.
+It is not necessary to configure PXP; but you can switch off the UTF-8
+support by setting the variable
+
+<code>
+UTF8_SUPPORT = no
+</code>
+
+in Makefile.conf. In this case, the UTF-8 modules are not even compiled.
+- By default, the UTF-8 support is enabled.
 </p>
     </sect2>
 
@@ -34,23 +42,29 @@ The Makefile defines the following goals:
       <ul>
 	<li>
 	  <p>make all</p>
-	  <p>compiles with the bytecode compiler and creates markup.cma</p>
+	  <p>compiles with the bytecode compiler and creates the files
+pxp_types.cma, pxp_lex_iso88591.cma, pxp_lex_utf8.cma (*), pxp_engine.cma,
+and pxp_utf8.cmo (*). The (*) files are not built if the UTF-8 support
+is switched off.</p>
 	</li>
 	<li>
 	  <p>make opt</p>
-	  <p>compiles with the native compiler and creates markup.cmxa</p>
+	  <p>compiles with the native compiler and creates  the files
+pxp_types.cmxa, pxp_lex_iso88591.cmxa, pxp_lex_utf8.cmxa (*), pxp_engine.cmxa,
+and pxp_utf8.cmx (*). The (*) files are not built if the UTF-8 support
+is switched off.</p>
 	</li>
       </ul>
     </sect2>
 
     <sect2><title>Installation</title>
       <p>
-The Makefile defines the following goal:</p>
+The Makefile defines the following goals:</p>
       <ul>
 	<li>
 	  <p>make install</p>
-	  <p>installs the bytecode archive, the interface definitions, and if
-present, the native archive in the default location of <em>findlib</em>
+	  <p>installs the bytecode archives, the interface definitions, and if
+present, the native archives in the default location of <em>findlib</em>
 </p>
 	</li>
 	<li>
@@ -59,6 +73,45 @@ present, the native archive in the default location of <em>findlib</em>
 	</li>
       </ul>
     </sect2>
+
+    <sect2>
+      <title>Usage with the help of "findlib"</title>
+      <p>You can refer to the parser as the findlib package "pxp":
+
+<code>
+ocamlfind ocamlc -package pxp ...
+</code>
+
+By default, the UTF-8 support will be linked in. If you do not need it,
+you may define the predicate "pxp_without_utf8", which causes that the
+UTF-8 relevant parts are not linked with your program; the difference
+in size is about 1 MB:
+
+<code>
+ocamlfind ocamlc -package pxp -predicates pxp_without_utf8 ...
+</code>
+
+</p>
+    </sect2>
+
+    <sect2>
+      <title>Linking with the archives directly</title>
+      <p>If you need UTF-8 support, you must link your program as follows:
+
+<code>
+ocamlc ... pxp_types.cma pxp_lex_iso88591.cma pxp_lex_utf8.cma 
+           pxp_engine.cma pxp_utf8.cmo ...
+</code>
+
+If you do not need UTF-8, the following suffices:
+
+<code>
+ocamlc ... pxp_types.cma pxp_lex_iso88591.cma pxp_engine.cma ...
+</code>
+
+</p>
+    </sect2>
+
   </sect1>
 
   <sect1><title>The examples</title>
