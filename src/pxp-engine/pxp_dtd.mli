@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.19 2003/06/20 15:14:13 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.20 2003/06/20 19:33:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -24,6 +24,8 @@
  *                           declaration
  * class dtd_notation ...... represents a notation declaration
  * class proc_instruction .. represents a processing instruction
+ * class namespace_manager . manages the mapping from normalized prefixes
+ *                           to namespace IDs
  * ======================================================================
  *
  *)
@@ -45,8 +47,6 @@ type validation_record =
    * Please do not use this type in your own programs.
    *)
 
-
-(* Very experimental namespace support: *)
 
 class namespace_manager :
   (* This class manages mappings from URIs to normalized prefixes. For every
@@ -136,15 +136,30 @@ class dtd :
   Pxp_core_types.rep_encoding ->
   object
     method root : string option
-      (* get the name of the root element if present *)
+      (* get the name of the root element if present. This is the name
+       * following "<!DOCTYPE". If there is no DOCTYPE declaration, 
+       * this method will return None.
+       *)
 
     method set_root : string -> unit
       (* set the name of the root element. This method can be invoked 
-       * only once
+       * only once (usually by the parser)
        *)
 
     method id : Pxp_core_types.dtd_id option
-      (* get the identifier for this DTD *)
+      (* get the identifier for this DTD. Possible return values:
+       * None: There is no DOCTYPE declaration, or only
+       *    "<!DOCTYPE name>"
+       * Some Internal: There is a DOCTYPE declaration with material
+       *    in brackets like "<!DOCTYPE name [ declarations ... ]>"
+       * Some(External xid): There is a DOCTYPE declaration with
+       *    a SYSTEM or PUBLIC identifier (described by xid), but without
+       *    brackets, i.e. "<!DOCTYPE name SYSTEM '...'>" or 
+       *    "<!DOCTYPE name PUBLIC '...' '...'>".
+       * Some(Derived xid): There is a DOCTYPE declaration with
+       *    a SYSTEM or PUBLIC identifier (described by xid), _and_ with
+       *    brackets
+       *)
 
     method set_id : Pxp_core_types.dtd_id -> unit
       (* set the identifier. This method can be invoked only once *)
@@ -614,6 +629,9 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.20  2003/06/20 19:33:05  gerd
+ * 	Improved docs.
+ *
  * Revision 1.19  2003/06/20 15:14:13  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants
