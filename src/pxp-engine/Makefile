@@ -13,18 +13,14 @@ opt:
 	$(MAKE) depend
 	$(MAKE) -f Makefile.code opt
 
-generate: pxp_yacc.ml pxp_lexing.ml
-
-pxp_lexing.ml: pxp_lexing.mlp
-	sed -e 's/LEX_BUFFER_LEN/$(LEX_BUFFER_LEN)/g' pxp_lexing.mlp \
-		>pxp_lexing.ml
+generate: pxp_yacc.ml 
 
 .PHONY: depend
 depend: 
 	$(OCAMLDEP) *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_lexing.ml pxp_yacc.ml
+	rm -f $(CLEAN_LIST) pxp_yacc.ml
 
 CLEAN: clean
 
