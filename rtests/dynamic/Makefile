@@ -8,13 +8,16 @@
 all: create_element modify strip
 
 create_element: create_element.ml
-	ocamlfind ocamlc -labels -g -custom -o create_element -package pxp -linkpkg create_element.ml
+	ocamlfind ocamlc -labels -g -a -o create_element.cma -package pxp create_element.ml
+	../create-wrapper create_element
 
 modify: modify.ml
-	ocamlfind ocamlc -g -custom -o modify -package pxp -linkpkg modify.ml
+	ocamlfind ocamlc -g -a -o modify.cma -package pxp modify.ml
+	../create-wrapper modify
 
 strip: strip.ml
-	ocamlfind ocamlc -g -custom -o strip -package pxp -linkpkg strip.ml
+	ocamlfind ocamlc -g -a -o strip.cma -package pxp strip.ml
+	../create-wrapper strip
 
 #----------------------------------------------------------------------
 .PHONY: all
@@ -23,6 +26,7 @@ all:
 .PHONY: clean
 clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa out.xml
+	rm -f create_element modify strip
 
 .PHONY: CLEAN
 CLEAN: clean
@@ -30,4 +34,3 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f create_element modify strip

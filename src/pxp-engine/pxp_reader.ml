@@ -7,11 +7,341 @@
 open Pxp_core_types;;
 open Netchannels;;
 
+module ULB = struct
+  type unicode_lexbuf =
+	{ mutable ulb_encoding : encoding;
+	  mutable ulb_encoding_start : int;
+	  mutable ulb_rawbuf : string;
+	  mutable ulb_rawbuf_len : int;
+	  mutable ulb_rawbuf_end : int;
+	  mutable ulb_rawbuf_const : bool;
+	  mutable ulb_chars : int array;
+	  mutable ulb_chars_pos : int array;
+	  mutable ulb_chars_len : int;
+	  mutable ulb_eof : bool;
+	  mutable ulb_refill : string -> int -> int -> int;
+	  mutable ulb_enc_change_hook : unicode_lexbuf -> unit;
+	}
+
+  let from_function ?(raw_size = 512) ?(char_size = 250) 
+                    ?(enc_change_hook = fun _ -> ())
+                    ~refill enc =
+    { ulb_encoding = enc;
+      ulb_encoding_start = 0;
+      ulb_rawbuf = String.create raw_size;
+      ulb_rawbuf_len = 0;
+      ulb_rawbuf_end = 0;
+      ulb_rawbuf_const = false;
+      ulb_chars = Array.make char_size (-1);
+      ulb_chars_pos = ( let cp = Array.make (char_size+1) (-1) in
+			cp.(0) <- 0;
+			cp );
+      ulb_chars_len = 0;
+      ulb_eof = false;
+      ulb_refill = refill;
+      ulb_enc_change_hook = enc_change_hook;
+    }
+
+  let from_string ?(enc_change_hook = fun _ -> ()) enc s =
+    let char_size = 250 in
+    { ulb_encoding = enc;
+      ulb_encoding_start = 0;
+      ulb_rawbuf = String.copy s;
+      ulb_rawbuf_len = String.length s;
+      ulb_rawbuf_end = 0;
+      ulb_rawbuf_const = true;
+      ulb_chars = Array.make char_size (-1);
+      ulb_chars_pos = ( let cp = Array.make (char_size+1) (-1) in
+			cp.(0) <- 0;
+			cp );
+      ulb_chars_len = 0;
+      ulb_eof = true;
+      ulb_refill = (fun _ _ _ -> assert false);
+      ulb_enc_change_hook = enc_change_hook;
+    }
+
+  let from_string_inplace ?(enc_change_hook = fun _ -> ()) enc s =
+    let char_size = 250 in
+    { ulb_encoding = enc;
+      ulb_encoding_start = 0;
+      ulb_rawbuf = s;
+      ulb_rawbuf_len = String.length s;
+      ulb_rawbuf_end = 0;
+      ulb_rawbuf_const = true;
+      ulb_chars = Array.make char_size (-1);
+      ulb_chars_pos = ( let cp = Array.make (char_size+1) (-1) in
+			cp.(0) <- 0;
+			cp );
+      ulb_chars_len = 0;
+      ulb_eof = true;
+      ulb_refill = (fun _ _ _ -> assert false);
+      ulb_enc_change_hook = enc_change_hook;
+    }
+
+(*
+  let append ~src ?(pos = 0) ?len ulb =
+    let len =
+      match len with
+	  None -> Array.length src - pos
+	| Some l -> l in
+    XXX
+*)
+
+  let delete n ulb =
+    if n < 0 || n > ulb.ulb_chars_len then
+      invalid_arg "ULB.delete";
+    let m = ulb.ulb_chars_len - n in
+    Array.blit ulb.ulb_chars n ulb.ulb_chars 0 m;
+    Array.blit ulb.ulb_chars_pos n ulb.ulb_chars_pos 0 (m+1);
+
+    if not ulb.ulb_rawbuf_const then (
+      let k = ulb.ulb_chars_pos.(0) in
+      assert (ulb.ulb_rawbuf_end >= k);
+      let m' = ulb.ulb_rawbuf_len - k in
+      String.blit ulb.ulb_rawbuf k ulb.ulb_rawbuf 0 m';
+      let cp = ulb.ulb_chars_pos in
+      for i = 0 to m do
+	cp.(i) <- cp.(i) - k
+      done;
+
+      ulb.ulb_rawbuf_len <- m';
+      ulb.ulb_rawbuf_end <- ulb.ulb_rawbuf_end - k;
+    );
+
+    ulb.ulb_chars_len  <- m;
+    ulb.ulb_encoding_start <- max 0 (ulb.ulb_encoding_start - n)
+      
+  let set_encoding enc ulb =
+    if enc <> ulb.ulb_encoding then (
+      ulb.ulb_encoding <- enc;
+      ulb.ulb_encoding_start <- ulb.ulb_chars_len;
+      ulb.ulb_enc_change_hook ulb
+    )
+
+  let close ulb =
+    ulb.ulb_eof <- true
+
+  let utf8_sub_string k n ulb =
+    if k < 0 || k > ulb.ulb_chars_len || n < 0 || k+n > ulb.ulb_chars_len then
+      invalid_arg "ULB.utf8_sub_string";
+
+    if ulb.ulb_encoding = `Enc_utf8 && k >= ulb.ulb_encoding_start then (
+      (* Extract the substring from [ulb_rawbuf] ! *)
+      let k' = ulb.ulb_chars_pos.(k) in
+      let n' = ulb.ulb_chars_pos.(k+n) - k' in
+      String.sub ulb.ulb_rawbuf k' n'
+    )
+    else (
+      (* Create the UTF-8 string from [ulb_chars] *)
+      Netconversion.ustring_of_uarray `Enc_utf8 ~pos:k ~len:n ulb.ulb_chars
+    )
+
+  let utf8_sub_string_length k n ulb =
+    if k < 0 || k > ulb.ulb_chars_len || n < 0 || k+n > ulb.ulb_chars_len then
+      invalid_arg "ULB.utf8_sub_string_length";
+
+    if ulb.ulb_encoding = `Enc_utf8 && k >= ulb.ulb_encoding_start then (
+      (* Extract the substring from [ulb_rawbuf] ! *)
+      let k' = ulb.ulb_chars_pos.(k) in
+      let n' = ulb.ulb_chars_pos.(k+n) - k' in
+      n'
+    )
+    else (
+      (* Count the UTF-8 string from [ulb_chars] *)
+      (* Maybe better algorithm: divide into several slices, and call
+       * ustring_of_uarray for them. Goal: Reduction of memory allocation
+       *)
+      let conv = Netconversion.ustring_of_uchar `Enc_utf8 in
+      let n' = ref 0 in
+      for i = k to k+n-1 do
+	n' := !n' + String.length (conv ulb.ulb_chars.(i))
+      done;
+      !n'
+    )
+
+
+  let rec refill_aux ulb = 
+    (* Check whether we cannot add at least one byte to [ulb_chars] because
+     * of EOF:
+     *)
+    if ulb.ulb_eof && ulb.ulb_rawbuf_len = ulb.ulb_rawbuf_end then
+      0
+    else (
+
+      (* Enlarge [ulb_chars] if necessary (need at least space for one character)
+       *)
+      if ulb.ulb_chars_len >= Array.length ulb.ulb_chars then (
+	let n = min (Sys.max_array_length-1) (2 * (Array.length ulb.ulb_chars)) in
+	if n = Array.length ulb.ulb_chars then
+	  failwith "ULB.refill: array too large";
+	
+	let c = Array.make n (-1) in
+	let cp = Array.make (n+1) (-1) in
+	Array.blit ulb.ulb_chars 0 c 0 ulb.ulb_chars_len;
+	Array.blit ulb.ulb_chars_pos 0 cp 0 (ulb.ulb_chars_len+1);
+	
+	ulb.ulb_chars <- c;
+	ulb.ulb_chars_pos <- cp;
+      );
+      
+      (* If there is unanalysed material in [ulb_rawbuf], try to convert it.
+       * It may happen, however, that there is only the beginning of a 
+       * multi-byte character, so this may not add any new character.
+       *)
+      let new_chars =
+	if ulb.ulb_rawbuf_end < ulb.ulb_rawbuf_len then (
+	  let cs = Netconversion.create_cursor 
+		     ~range_pos:ulb.ulb_rawbuf_end
+		     ~range_len:(ulb.ulb_rawbuf_len - ulb.ulb_rawbuf_end)
+		     ulb.ulb_encoding
+		     ulb.ulb_rawbuf in
+	  let counter = ref 0 in
+	  ( try
+	      while ulb.ulb_chars_len < Array.length ulb.ulb_chars do
+		let space = Array.length ulb.ulb_chars - ulb.ulb_chars_len in
+		(* cursor_blit may raise End_of_string, too *)
+		let n = Netconversion.cursor_blit 
+			  cs ulb.ulb_chars ulb.ulb_chars_len space in
+		let n' = Netconversion.cursor_blit_positions
+			   cs ulb.ulb_chars_pos ulb.ulb_chars_len space in
+		assert(n=n');
+		if n>0 then (
+		  ulb.ulb_chars_len <- ulb.ulb_chars_len+n;
+		  counter := !counter + n;
+		  Netconversion.move ~num:n cs; (* may raise Malformed_code *)
+		) 
+		else (
+		  (* We are at a special position in the string! *)
+		  try ignore(Netconversion.uchar_at cs); assert false
+		  with
+		      Netconversion.Byte_order_mark ->
+			(* Skip the BOM: *)
+			Netconversion.move cs   (* may raise Malformed_code *)
+			(* Note: this [move] does not count *)
+		    | Netconversion.Partial_character ->
+			(* Stop here *)
+			raise Exit
+		    (* Netconversion.End_of_string: already handled *)
+		)
+	      done
+	    with
+		Exit ->
+		  ()
+	      | Netconversion.End_of_string ->
+		  ()
+	  );
+	  
+	  let e = Netconversion.cursor_pos cs; in
+	  ulb.ulb_chars_pos.(ulb.ulb_chars_len) <- e;
+	  ulb.ulb_rawbuf_end <- e;
+
+	  (* Encoding might have changed: *)
+	  set_encoding (Netconversion.cursor_encoding cs) ulb;
+	
+	  !counter
+	)
+	else
+	  0
+      in
+      
+      (* In the case we still did not add any char: Check if we are near
+       * EOF (the last multi-byte character is not complete).
+       *)
+      if new_chars = 0 then (
+	if ulb.ulb_eof then raise Netconversion.Malformed_code;
+
+	assert(not ulb.ulb_rawbuf_const);
+
+	(* Now try to get new data into [ulb_rawbuf]. First, we check whether
+	 * we have enough free space in this buffer. We insist on at least
+	 * 50 bytes (quite arbitrary...). Then call the [ulb_refill] function
+	 * to get the data.
+	 *)
+	if ulb.ulb_rawbuf_len + 50 >= String.length ulb.ulb_rawbuf then (
+	  let n = min Sys.max_string_length (2 * (String.length ulb.ulb_rawbuf)) in
+	  if n = String.length ulb.ulb_rawbuf then
+	    failwith "ULB.refill: string too large";
+	  
+	  let s = String.create n in
+	  String.blit ulb.ulb_rawbuf 0 s 0 ulb.ulb_rawbuf_len;
+	  ulb.ulb_rawbuf <- s;
+	);
+	
+	(* Call now [ulb_refill]. If we detect EOF, record this. Anyway,
+	 * start over.
+	 *)
+	let space = (String.length ulb.ulb_rawbuf) - ulb.ulb_rawbuf_len in
+	let n = ulb.ulb_refill ulb.ulb_rawbuf ulb.ulb_rawbuf_len space in
+	assert(n>=0);
+	if n=0 then (
+	  (* EOF *)
+	  ulb.ulb_eof <- true;
+	)
+	else (
+	  ulb.ulb_rawbuf_len <- ulb.ulb_rawbuf_len + n
+	);
+	
+	refill_aux ulb
+      )
+      else
+	new_chars
+    )
+
+  let refill ulb =
+    let n = refill_aux ulb in
+    assert(n>=0);
+    if n=0 then (
+      assert(ulb.ulb_eof);
+      assert(ulb.ulb_rawbuf_len = ulb.ulb_rawbuf_end);
+      raise End_of_file
+    )
+
+end
+
+
 exception Not_competent;;
 exception Not_resolvable of exn;;
 
 type lexer_source =
-    string -> int -> int -> int
+    { lsrc_lexbuf : Lexing.lexbuf Lazy.t;
+      lsrc_unicode_lexbuf : ULB.unicode_lexbuf Lazy.t;
+    }
+
+
+
+let ensure_space_minimum p f g =
+  (* The functional [f] is called with a function as argument that refills
+   * a buffer string (think f = Lexing.from_function). This argument is [g],
+   * i.e. in most cases this is the same as [f g]. However, it is ensured
+   * that the string buffer has the minimum free space [p]. This is achieved
+   * by using an auxiliary buffer.
+   *)
+  let buf = String.create p in
+  let bufpos = ref 0 in
+  let buflen = ref 0 in
+  f (fun s n ->
+       assert(n>0);
+       if !buflen > 0 then (
+	 let m = min n !buflen in
+	 String.blit buf !bufpos s 0 m;
+	 bufpos := !bufpos + m;
+	 buflen := !buflen - m;
+	 m
+       )
+       else
+	 if n < p then (
+	   let l = g buf p in
+	   let m = min l n in
+	   String.blit buf 0 s 0 m;
+	   bufpos := m;
+	   buflen := l-m;
+	   m
+	 )
+	 else 
+	   g s n
+    )
+;;
+
 
 class type resolver =
   object
@@ -41,8 +371,14 @@ class virtual resolve_general
 
     val mutable is_open = false
 
+    val mutable mode = None
+		(* Whether the [lexbuf_reader] or the [unicode_lexbuf_reader]
+		 * is used. One can only invoke one of them.
+		 *)
+
     val mutable encoding = `Enc_utf8
     val mutable encoding_requested = false
+    val mutable encoding_request_post = (fun () -> ()) (* post action *)
 
     val mutable active_id = null_resolver
 
@@ -52,9 +388,6 @@ class virtual resolve_general
     val mutable enc_initialized = false
     val mutable wrn_initialized = false
 
-(* (* needed to support close_all: *)
-    val mutable clones = []
-*)
 
     method init_rep_encoding e =
       internal_encoding <- e;
@@ -67,13 +400,6 @@ class virtual resolve_general
 
     method rep_encoding = (internal_encoding :> rep_encoding)
 
-(*
-    method clone =
-      ( {< encoding = `Enc_utf8;
-	   encoding_requested = false;
-	>}
-	: # resolver :> resolver )
-*)
 
     method private warn (k:int) =
       (* Called if a character not representable has been found.
@@ -94,10 +420,11 @@ class virtual resolve_general
        * "UTF-16-BE": UTF-16/UCS-2 encoding big endian
        * "UTF-16-LE": UTF-16/UCS-2 encoding little endian
        * "UTF-8":     UTF-8 encoding
+       *
+       * Note: Four bytes are required for cases not yet handled 
+       * (e.g. UTF-32).
        *)
-      if String.length s < 4 then
-	encoding <- `Enc_utf8
-      else if String.sub s 0 2 = "\254\255" then
+      if String.sub s 0 2 = "\254\255" then
 	encoding <- `Enc_utf16
 	  (* Note: Netconversion.recode will detect the big endianess, too *)
       else if String.sub s 0 2 = "\255\254" then
@@ -112,10 +439,238 @@ class virtual resolve_general
     method virtual close_in : unit
       (* must reset is_open! *)
 
-(*
-    method close_all =
-      List.iter (fun r -> r # close_in) clones
-*)
+
+    method private lexbuf_reader () =
+      if mode <> None && mode <> Some `Lexbuf then 
+	failwith "lexbuf_reader: other reader already working";
+
+      mode <- Some `Lexbuf;
+      let direct_reader = ref false in  (* whether to bypass the buffer *)
+
+      let buf_max = 4096 in
+      let buf     = ref (String.make buf_max ' ')  in
+      let buf_beg = ref 0 in
+      let buf_end = ref 0 in
+      let buf_eof = ref false in
+      (* The buffer is used if [not direct_reader]. [buf_beg] is the 
+       * beginning of the filled part of the buffer, [buf_end] is the
+       * end (plus 1). [buf_eof] indicates that EOF was already signaled,
+       * and should be processed after the current contents.
+       *)
+
+      let refill() =
+	(* Refill the buffer from [next_string].
+	 * It is important to refill as much as possible for the
+	 * algorithm below.
+	 *)
+	while not !buf_eof && !buf_end < buf_max do
+	  let n = self # next_string !buf !buf_end (buf_max - !buf_end) in
+	  if n=0 then
+	    buf_eof := true
+	  else
+	    buf_end := !buf_end + n
+	done
+      in
+
+      let convert s n max_chars =
+	(* Convert characters from [buf] to [s], [n]. The number of characters
+	 * it limited by [max_chars]
+	 *)
+	assert(n>=6);
+	if !buf_beg + 6 > !buf_end && not !buf_eof then (
+	  (* Less than 6 bytes in [buf]. We need at least this
+	   * number of bytes, which is the length of the longest
+	   * UTF-8 char, otherwise we cannot ensure to convert
+	   * at least one character.
+	   *)
+	  let m = !buf_end - !buf_beg in
+	  String.blit !buf !buf_beg !buf 0 m;
+	  buf_beg := 0;
+	  buf_end := m;
+	  refill();
+	);
+
+	(* It is still possible that there are less than 6 bytes
+	 * in [buf], but only if [buf_eof] is true at the same
+	 * time.
+	 *)
+	
+	let m = !buf_end - !buf_beg in
+	if m=0 then (
+	  assert !buf_eof;
+	  0  (* EOF! *)
+	)
+	else (
+	  let (n_in, n_out, encoding') =
+	    Netconversion.recode
+	      ~in_enc:encoding
+	      ~in_buf:!buf
+	      ~in_pos:!buf_beg
+	      ~in_len:m
+	      ~out_enc:(internal_encoding : rep_encoding :> encoding)
+	      ~out_buf:s
+	      ~out_pos:0
+	      ~out_len:n
+	      ~max_chars
+	      ~subst:(fun k -> self # warn k; "") in
+	  if n_in = 0 then (
+	    (* An incomplete character at the end of the stream. 
+	     * Note: This test assumes that there is one character to 
+	     * convert in [buf], and that there is enough free space in [s].
+	     * This is the case because we ensure [m>=6] and [n>=6].
+	     *)
+	    assert !buf_eof;
+	    raise Netconversion.Malformed_code;
+	  );
+	  encoding <- encoding';
+	  buf_beg := !buf_beg + n_in;
+	  
+	  assert(n_out > 0);
+	  n_out
+	)
+      in
+
+      (* Fill the buffer initially. We start always with buffered reading,
+       * but we try to switch to direct reading later.
+       *)
+      refill();
+      if !buf_end >= 4 && not encoding_requested then self # autodetect !buf;
+
+      (* Ensure that [n >= 6], the longest UTF-8 character, so we can always
+       * put at least one character into [s]
+       *)
+      ensure_space_minimum 6
+	Lexing.from_function
+	(fun s n ->
+	   (* Fill the string [s] with at most [n] bytes. Return the number
+	    * of bytes, or 0 to signal EOF.
+	    *)
+	   if not is_open then
+	     failwith "trying to read from resolver, but resolver is not open";
+	   
+	   if !direct_reader then
+	     self # next_string s 0 n 
+	   else (
+	     if encoding_requested then (
+	       (* In this case, the encoding will not change any more. We
+		* can read any number of characters at once.
+		*)
+	       if encoding = (internal_encoding : rep_encoding :> encoding)
+	       then (
+		 (* No conversion is needed. In order to speed up reading,
+		  * we are going to enable [direct_reader].
+		  *)
+		 if !buf_beg < !buf_end then (
+		   (* There are still bytes in [buf], return them first *)
+		   let m = min n (!buf_end - !buf_beg) in
+		   String.blit !buf !buf_beg s 0 m;
+		   buf_beg := !buf_beg + m;
+		   m
+		 )
+		 else (
+		   (* Either we are already at EOF, or we can switch to
+		    * [direct_reader].
+		    *)
+		   buf := "";  (* Free buf, it will never be used again *)
+		   if !buf_eof then
+		     0
+		   else (
+		     direct_reader := true;
+		     self # next_string s 0 n
+		   )
+		 )
+	       )
+	       else (
+		 (* Character conversion is needed from [encoding] to
+		  * [internal_encoding].
+		  *)
+		 convert s n max_int
+	       )
+	     )
+	     else (
+	       (* In this case, the encoding might change at any time.
+		* Because of this, we only read one character at a time.
+		*)
+	       convert s n 1
+	     )
+	   )
+	)
+
+
+    method private unicode_lexbuf_reader () =
+      if mode <> None && mode <> Some `Unicode_lexbuf then 
+	failwith "unicode_lexbuf_reader: other reader already working";
+
+      mode <- Some `Unicode_lexbuf;
+
+      let buf = Netbuffer.create 4 in
+      (* Only used for autodetection! *)
+
+      let buf_eof = ref false in
+
+      if not encoding_requested then (
+	while not !buf_eof && Netbuffer.length buf < 4 do
+	  let n =
+	    Netbuffer.add_inplace ~len:(4-Netbuffer.length buf) buf self#next_string
+	  in
+	  buf_eof := (n=0)
+	done;
+	if Netbuffer.length buf >= 4  then
+	  self # autodetect (Netbuffer.contents buf);
+      );
+
+      let lexbuf =
+	ULB.from_function
+	  ~enc_change_hook:(
+	    fun ulb -> 
+	      encoding <- ulb.ULB.ulb_encoding )
+	  ~refill:(
+	    fun s p n ->
+	      (* Fill the string [s] at position [p] with at most [n] bytes. 
+	       * Return the number of bytes, or 0 to signal EOF.
+	       *)
+	      if not is_open then
+		failwith "trying to read from resolver, but resolver is not open";
+	      
+	      if encoding_requested && Netbuffer.length buf = 0 then (
+		(* In this case, the encoding will not change any more. We
+		 * can read any number of characters at once.
+		 *)
+		self # next_string s p n
+	      )
+	      else (
+		(* In this case, the encoding might change at any time.
+		 * Because of this, we only read one character at a time.
+		 * If there are still characters in [buf], take these first.
+		 *)
+		
+		if Netbuffer.length buf > 0 then (
+		  let c = (Netbuffer.contents buf).[0] in
+		  s.[p] <- c;
+		  Netbuffer.delete buf 0 1;
+		  1
+		)
+
+		else (
+		  if !buf_eof then
+		    0 (* EOF already seen *)
+		  else
+		    self # next_string s p 1
+		)
+	      )
+	  )
+	  encoding
+      in
+
+      encoding_request_post <- (
+	fun () ->
+	  (* This function is called after the encoding was requested for
+	   * the first time
+	   *)  
+	  ULB.set_encoding encoding lexbuf
+      );
+
+      lexbuf
 
     method open_in xid =
       self # open_rid (resolver_id_of_ext_id xid)
@@ -130,75 +685,9 @@ class virtual resolve_general
 
       is_open <- true;
 
-      let buffer_max = 512 in
-      let buffer = String.make buffer_max ' ' in
-      let buffer_len = ref 0 in
-      let buffer_end = ref false in
-      let fillup () =
-	if not !buffer_end & !buffer_len < buffer_max then begin
-	  let l =
-	    self # next_string buffer !buffer_len (buffer_max - !buffer_len) in
-	  if l = 0 then
-	    buffer_end := true
-	  else begin
-	    buffer_len := !buffer_len + l
-	  end
-	end
-      in
-      let consume n =
-	let l = !buffer_len - n in
-	if l > 0 then String.blit buffer n buffer 0 l;
-	buffer_len := l
-      in
-
-      fillup();
-      if not encoding_requested then self # autodetect buffer;
-
-      (fun s p n ->
-	 (* TODO: if encoding = internal_encoding, it is possible to
-	  * avoid copying buffer to s because s can be directly used
-	  * as buffer.
-	  *)
-	 
-	 if not is_open then
-	   failwith "trying to read from resolver, but resolver is not open";
-
-	 fillup();
-	 if !buffer_len = 0 then
-	   0
-	 else begin
-	   let m_in  = !buffer_len in
-	   let m_max = if encoding_requested then n else 1 in
-	   let n_in, n_out, encoding' =
-	     if encoding = (internal_encoding : rep_encoding :> encoding) &&
-	       encoding_requested
-	     then begin
-	       (* Special case encoding = internal_encoding *)
-	       String.blit buffer 0 s p m_in;  (* CHECK m_in > n *)
-	       m_in, m_in, encoding
-	     end
-	     else
-	       Netconversion.recode
-		 ~in_enc:encoding
-		 ~in_buf:buffer
-		 ~in_pos:0
-		 ~in_len:m_in
-		 ~out_enc:(internal_encoding : rep_encoding :> encoding)
-		 ~out_buf:s
-		 ~out_pos:p
-		 ~out_len:n
-		 ~max_chars:m_max
-		 ~subst:(fun k -> self # warn k; "")
-	   in
-	   if n_in = 0 then
-	     (* An incomplete character at the end of the stream: *)
-	     raise Netconversion.Malformed_code;
-	   (* failwith "Badly encoded character"; *)
-	   encoding <- encoding';
-	   consume n_in;
-	   assert(n_out <> 0);
-	   n_out
-	 end)
+      { lsrc_lexbuf         = lazy(self # lexbuf_reader() );
+	lsrc_unicode_lexbuf = lazy(self # unicode_lexbuf_reader() );
+      }
 
     method change_encoding enc =
       if not is_open then
@@ -218,6 +707,7 @@ class virtual resolve_general
 	end;
 	(* else: the autodetected encoding counts *)
 	encoding_requested <- true;
+	encoding_request_post();
       end;
 
     method active_id = 
@@ -259,7 +749,10 @@ object(self)
       match current_channel with
 	  None -> failwith "Pxp_reader.resolve_read_any_channel # next_string"
 	| Some ch ->
-	    ch # input s ofs len
+	    try
+	      ch # input s ofs len
+	    with
+		End_of_file -> 0
 
     method close_in =
       is_open <- false;

@@ -2,8 +2,8 @@ TOP_DIR = ../..
 ENC = utf8
 INPUT = $(TOP_DIR)/src/pxp-lex
 ML = $(shell echo pxp_ulex_$(ENC)_*.ml)
-CMO = $(MLL:.ml=.cmo)
-CMX = $(MLL:.ml=.cmx)
+CMO = $(ML:.ml=.cmo)
+CMX = $(ML:.ml=.cmx)
 OCAMLC_OPTIONS = -I $(TOP_DIR)/src/pxp-engine -syntax camlp4o
 OCAMLOPT_OPTIONS = $(OCAMLC_OPTIONS) -syntax camlp4o
 PACKAGES = netstring,ulex

@@ -121,7 +121,7 @@ let rec expand_attvalue_with_rec_check (lexobj : lexer_obj) l dtd entities norm_
 	expand_attvalue_with_rec_check
  	    lexobj l dtd entities norm_crlf
     | CharData _  ->
-	let ll = lexobj # lexeme_len in
+	let ll = lexobj # lexeme_strlen in
 	if ll > 1 && ll = l then
 	   raise Quick_exit
 	else
@@ -141,14 +141,19 @@ let expand_attvalue (lexobj : lexer_obj) dtd s norm_crlf =
    * not (i.e. two characters).
    * lexbuf: must result from a previous Lexing.from_string
    *)
+  (* print_string ("expand_attvalue \"" ^ s ^ "\" = "); *)
   try
     lexobj # open_string_inplace s;
     let l =
       expand_attvalue_with_rec_check
 	lexobj (String.length s) dtd [] norm_crlf in
-    String.concat "" l
+    let s' =
+      String.concat "" l in
+    (* print_string ("\"" ^ s' ^ "\"\n"); *)
+    s'
   with
       Quick_exit ->
+	(* print_string ("\"" ^ s ^ "\"\n"); *)
 	s
 ;;
 
@@ -343,6 +348,7 @@ let split_attribute_value (lfactory:lexer_factory) v =
   (* splits 'v' into a list of names or nmtokens. The white space separating
    * the names/nmtokens in 'v' is suppressed and not returned.
    *)
+  (* print_string ("split_attribute_value \"" ^ v ^ "\" = "); *)
   let lexobj = lfactory # open_string_inplace v in
   let scan = lexobj # scan_name_string in
   let rec get_name_list() =
@@ -353,7 +359,12 @@ let split_attribute_value (lfactory:lexer_factory) v =
       | Nametoken s -> s :: get_name_list()
       | _           -> raise(Validation_error("Illegal attribute value"))
   in
-  get_name_list()
+  let l = get_name_list() in
+  (* print_string "[";
+     print_string (String.concat "," l);
+     print_string "]\n";
+  *)
+  l
 ;;
 
 

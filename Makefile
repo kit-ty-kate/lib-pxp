@@ -12,6 +12,7 @@ include Makefile.rules
 all:
 	$(MAKE) -C tools all
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg all || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg clean || exit; done
 	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg generate || exit; done
 	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg all || exit; done
 
@@ -19,6 +20,18 @@ all:
 opt:
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg opt || exit; done
 	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg opt || exit; done
+
+# The following are for development:
+.PHONY: lexers
+lexers:
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg generate || exit; done
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg all || exit; done
+
+.PHONY: lexers-again
+lexers-again:
+	for pkg in $(GENPKGLIST); do $(MAKE) -C gensrc/$$pkg clean || exit; done
+	$(MAKE) lexers
+
 
 # The following PHONY rule is important for Cygwin:
 .PHONY: install

@@ -29,7 +29,7 @@ let t001 () =
   r # init_rep_encoding `Enc_iso88591;
   r # init_warner None (new drop_warnings);
   let lsrc = r # open_in xid in
-  let lb = Lexing.from_function (fun s n -> lsrc s 0 n) in
+  let lb = Lazy.force lsrc.lsrc_lexbuf in
   let aid = r # active_id in
   assert(aid.rid_private = Some pid);
   assert(aid.rid_public = None);
@@ -327,7 +327,7 @@ let t021 () =
 				       rid_private = Some pid_a;
 				       rid_system_base = Some "http://host/x/y"
 				   } in
-  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
+  let lex_a = Lazy.force lex_a_src.lsrc_lexbuf in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
@@ -336,7 +336,7 @@ let t021 () =
 				       rid_system_base = 
 				       (res_a # active_id).rid_system;
 				   } in
-  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
+  let lex_b = Lazy.force lex_b_src.lsrc_lexbuf in
   assert(nextchar lex_b = Some 'b');
   
   let res_c = res_b # clone in
@@ -345,7 +345,7 @@ let t021 () =
 				       rid_system_base = 
 				       (res_b # active_id).rid_system;
 				   } in
-  let lex_c = Lexing.from_function (fun s n -> lex_c_src s 0 n) in
+  let lex_c = Lazy.force lex_c_src.lsrc_lexbuf in
   assert(nextchar lex_c = Some 'c');
 
   true
@@ -360,7 +360,7 @@ let t022 () =
 				       rid_system = Some "t_a.dat";
 				       rid_system_base = None;
 				   } in
-  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
+  let lex_a = Lazy.force lex_a_src.lsrc_lexbuf in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
@@ -369,7 +369,7 @@ let t022 () =
 				       rid_system_base = 
 				       (res_a # active_id).rid_system;
 				   } in
-  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
+  let lex_b = Lazy.force lex_b_src.lsrc_lexbuf in
   assert(nextchar lex_b = Some 'b');
 
   true
@@ -390,7 +390,7 @@ let t023 () =
 				       rid_public = Some "A";
 				       rid_system_base = None;
 				   } in
-  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
+  let lex_a = Lazy.force lex_a_src.lsrc_lexbuf in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
@@ -399,7 +399,7 @@ let t023 () =
 				       rid_system_base = 
 				       (res_a # active_id).rid_system;
 				   } in
-  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
+  let lex_b = Lazy.force lex_b_src.lsrc_lexbuf in
   assert(nextchar lex_b = Some 'b');
 
   true
@@ -422,7 +422,7 @@ let t024 () =
 				       Some "http://user@foo/x/y/t_a.dat";
 				       rid_system_base = None;
 				   } in
-  let lex_a = Lexing.from_function (fun s n -> lex_a_src s 0 n) in
+  let lex_a = Lazy.force lex_a_src.lsrc_lexbuf in
   assert(nextchar lex_a = Some 'a');
 
   let res_b = res_a # clone in
@@ -431,7 +431,7 @@ let t024 () =
 				       rid_system_base = 
 				       (res_a # active_id).rid_system;
 				   } in
-  let lex_b = Lexing.from_function (fun s n -> lex_b_src s 0 n) in
+  let lex_b = Lazy.force lex_b_src.lsrc_lexbuf in
   assert(nextchar lex_b = Some 'b');
 
   true

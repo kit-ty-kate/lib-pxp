@@ -180,6 +180,7 @@ type rep_encoding =
   | `Enc_iso885913
   | `Enc_iso885914
   | `Enc_iso885915
+  | `Enc_iso885916
   | `Enc_koi8r
   | `Enc_windows1250
   | `Enc_windows1251

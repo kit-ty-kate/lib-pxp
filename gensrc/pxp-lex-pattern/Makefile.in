@@ -28,8 +28,9 @@ gen_done: $(INPUT)/*.def $(INPUT)/*.src
 	if [ "$(ENC)" = "utf8" ]; then flags="-multiple"; else flags=""; fi; \
 	$(LEXPP) -charclasses "$(INPUT)/char_classes_generic.def" \
 		-lexsrc "$(INPUT)/lex.src" \
-		-linksrc "$(INPUT)/link_generic.src" \
+		-linksrc "$(INPUT)/link_ocamllex.src" \
 		-encoding "$(ENC)" \
+		-outformat ocamllex \
 		-outlexprefix "pxp_lex_$(ENC)" \
 		-outlinkprefix "pxp_lex_link_$(ENC)" $$flags
 	for mll in *.mll; do echo "Doing $$mll:"; $(OCAMLLEX) $$mll; done

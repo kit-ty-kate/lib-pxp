@@ -8,14 +8,19 @@
 .PHONY: all
 all: test_reader test_rewritten_reader
 
-test_reader: test_reader.ml minilex.ml
-	ocamlfind ocamlc -o test_reader -package pxp,unix,threads \
-		-linkpkg -thread \
+test_reader: test_reader.cma
+	../create-wrapper test_reader
+
+test_rewritten_reader: test_rewritten_reader.cma
+	../create-wrapper test_rewritten_reader
+
+test_reader.cma: test_reader.ml minilex.ml
+	ocamlfind ocamlc -a -o test_reader.cma -package pxp,unix,threads \
+		-thread \
 		-g minilex.ml test_reader.ml
 
-test_rewritten_reader: test_rewritten_reader.ml minilex.ml
-	ocamlfind ocamlc -o test_rewritten_reader -package pxp,unix \
-		-linkpkg \
+test_rewritten_reader.cma: test_rewritten_reader.ml minilex.ml
+	ocamlfind ocamlc -a -o test_rewritten_reader.cma -package pxp,unix \
 		-g minilex.ml test_rewritten_reader.ml
 
 minilex.ml: minilex.mll
@@ -26,6 +31,7 @@ minilex.ml: minilex.mll
 .PHONY: clean
 clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa minilex.ml
+	rm -f test_reader test_rewritten_reader
 
 .PHONY: CLEAN
 CLEAN: clean
@@ -33,5 +39,5 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f test_reader test_rewritten_reader
+
 

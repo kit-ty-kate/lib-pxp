@@ -6,7 +6,8 @@
 #----------------------------------------------------------------------
 
 test_canonxml: test_canonxml.ml
-	ocamlfind ocamlc -g -custom -o test_canonxml -package pxp,str -linkpkg test_canonxml.ml
+	ocamlfind ocamlc -g -a -o test_canonxml.cma -package pxp,str test_canonxml.ml
+	../create-wrapper test_canonxml
 
 #----------------------------------------------------------------------
 .PHONY: all
@@ -15,6 +16,7 @@ all:
 .PHONY: clean
 clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa out.xml
+	rm -f test_canonxml
 
 .PHONY: CLEAN
 CLEAN: clean
@@ -22,4 +24,4 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f test_canonxml
+

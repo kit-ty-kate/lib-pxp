@@ -223,7 +223,7 @@ let update_content_lines v tok =
 	count_lines v.linecount v.lexobj#lexeme;
 	update_lines v;
     | _ -> 
-	v.column <- v.column + v.lexobj#lexeme_len
+	v.column <- v.column + v.lexobj#lexeme_strlen
 ;;
 
 let update_lines_within_tag v tok =
@@ -241,7 +241,7 @@ let update_lines_within_tag v tok =
 	v.line <- v.line + 1;
 	v.column <- 0;
     | _ -> 
-	v.column <- v.column + v.lexobj#lexeme_len
+	v.column <- v.column + v.lexobj#lexeme_strlen
 ;;
 
 let update_other_lines v tok =

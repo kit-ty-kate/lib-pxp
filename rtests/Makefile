@@ -1,7 +1,9 @@
+include ../Makefile.conf
+
 .PHONY: all
-all:
+all: toploops
 	top=`dirname $$PWD` &&                     \
-	OCAMLPATH="$$top/gensrc:$$top/src" &&      \
+	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" && \
 	export OCAMLPATH &&                        \
 	$(MAKE) -C reader &&                       \
 	$(MAKE) -C write &&                        \
@@ -11,9 +13,43 @@ all:
 	$(MAKE) -C dynamic &&                      \
 	$(MAKE) -C lex
 
+.PHONY: toploops
+toploops: exit.cmo
+	if echo $(GENPKGLIST) | grep pxp-lex-utf8 >/dev/null 2>/dev/null; \
+	  then $(MAKE) toploop.lex-utf8; fi
+	if echo $(GENPKGLIST) | grep pxp-wlex-utf8 >/dev/null 2>/dev/null; \
+	  then $(MAKE) toploop.wlex-utf8; fi
+	if echo $(GENPKGLIST) | grep pxp-ulex-utf8 >/dev/null 2>/dev/null; \
+	  then $(MAKE) toploop.ulex-utf8; fi
+
+toploops-again:
+	rm -f toploop.*
+	$(MAKE) toploops
+
+toploop.lex-utf8: 
+	top=`dirname $$PWD` &&                                 \
+	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
+	export OCAMLPATH &&                                    \
+	ocamlfind ocamlmktop -o toploop.lex-utf8 -linkpkg -package threads,pxp,pxp-lex-utf8,findlib,str -thread
+
+toploop.wlex-utf8: 
+	top=`dirname $$PWD` &&                                 \
+	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
+	export OCAMLPATH &&                                    \
+	ocamlfind ocamlmktop -o toploop.wlex-utf8 -linkpkg -package threads,pxp,pxp-wlex-utf8,str -thread
+
+toploop.ulex-utf8: 
+	top=`dirname $$PWD` &&                                 \
+	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
+	export OCAMLPATH &&                                    \
+	ocamlfind ocamlmktop -o toploop.ulex-utf8 -linkpkg -package threads,pxp,pxp-ulex-utf8,str -thread
+
+exit.cmo:
+	ocamlc -c exit.ml
+
 .PHONY: clean
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.cmxa
+	rm -f *.cmi *.cmo *.cma *.cmx *.cmxa toploop.*
 
 .PHONY: CLEAN
 CLEAN: clean

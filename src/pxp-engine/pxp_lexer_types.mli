@@ -193,11 +193,31 @@ object
   method scan_tag_eb          : unit -> (token * lexers)
   method scan_tag_eb_att      : unit -> bool -> (token * lexers)
 
+  method lexeme_length : int
+    (** The length of the lexeme in characters 
+     *
+     * For some implementations, this function is very ineffecient.
+     *)
+
+  method lexeme_char : int -> int
+    (** Returns one character of the lexeme as Unicode code point
+     *
+     * For some implementations, this function is very ineffecient.
+     *)
+
   method lexeme : string
     (** The lexeme scanned last, encoded as [encoding] *)
 
-  method lexeme_len : int
+  method lexeme_strlen : int
     (** = String.length lexeme, i.e. number of bytes of the lexeme,
      * not the number of characters
+     *)
+
+  method sub_lexeme : int -> int -> string
+    (** A substring of the current lexeme. The arguments are the position
+     * and length of the substring in characters (not bytes). The string
+     * is encoded in [encoding].
+     *
+     * For some implementations, this function is very ineffecient.
      *)
 end

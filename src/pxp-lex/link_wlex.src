@@ -215,6 +215,7 @@ let engine_utf8 =
 
 open Pxp_types
 open Pxp_lexer_types
+open Pxp_reader
 ;;
 
 
@@ -266,7 +267,7 @@ object(self)
   method open_source src = 
     new lobj 
       (self : #lexer_factory :> lexer_factory) 
-      (Lexing.from_function (fun s n -> src s 0 n)) false
+      (Lazy.force src.lsrc_lexbuf) false
 
   method open_string s =
     new lobj 
@@ -289,7 +290,7 @@ object(self)
   method encoding = `Enc_${encoding}
 
   method open_source src =
-    lexbuf <- Lexing.from_function (fun s n -> src s 0 n);
+    lexbuf <- Lazy.force src.lsrc_lexbuf;
     lexbuf_from_string <- false
 
   method open_string s =
@@ -305,12 +306,30 @@ object(self)
       lexbuf_from_string <- true
     )
 
+  method lexeme_length =
+    (* Very inefficient: *)
+    let s = Lexing.lexeme lexbuf in
+    Netconversion.ustring_length `Enc_${encoding} s
+
+  method lexeme_char pos =
+    (* Very inefficient: *)
+    let s = Lexing.lexeme lexbuf in
+    let cs = Netconversion.create_cursor `Enc_${encoding} s in
+    Netconversion.move ~num:pos cs;
+    Netconversion.uchar_at cs
+
   method lexeme =
     Lexing.lexeme lexbuf
 
-  method lexeme_len =
+  method lexeme_strlen =
     Pxp_lexing.lexeme_len lexbuf
     
+  method sub_lexeme pos len =
+    (* Very inefficient: *)
+    let s = Lexing.lexeme lexbuf in
+    let ua = Netconversion.uarray_of_ustring `Enc_${encoding} s in
+    Netconversion.ustring_of_uarray `Enc_${encoding} ~pos ~len ua
+
   method scan_document =
     fun () -> 
       ${scan_document}.scan_document 

@@ -1,21 +1,23 @@
 #! /bin/sh
 
-# $Id: configure,v 1.21 2003/11/04 22:44:40 gerd Exp $
+# $Id$
 
 # defaults:
 with_lex=1
 with_wlex=1
 with_wlex_compat=1
-lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915"
-version="1.1.94.2"
+with_ulex=1
+lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915,iso885916"
+version="1.1.95pre1"
 exec_suffix=""
 
 help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
 help_wlex="Enable/disable wlex-based lexical analyzer for UTF-8"
 help_wlex_compat="Enable/disable wlex-style compatibility package for UTF-8 and ISO-8859-1"
+help_ulex="Enable/disable ulex-based lexical analyzer for UTF-8"
 
-options="lex wlex wlex_compat"
-lexlist_options="utf8 usascii iso88591 iso88592 iso88593 iso88594 iso88595 iso88596 iso88597 iso88598 iso88599 iso885910 iso885913 iso885914 iso885915 koi8r windows1250 windows1251 windows1252 windows1253 windows1254 windows1255 windows1256 windows1257 windows1258 cp437 cp737 cp775 cp850 cp852 cp855 cp856 cp857 cp860 cp861 cp862 cp863 cp864 cp865 cp866 cp869 cp874 cp1006 macroman"
+options="lex wlex wlex_compat ulex"
+lexlist_options="utf8 usascii iso88591 iso88592 iso88593 iso88594 iso88595 iso88596 iso88597 iso88598 iso88599 iso885910 iso885913 iso885914 iso885915 iso885916 koi8r windows1250 windows1251 windows1252 windows1253 windows1254 windows1255 windows1256 windows1257 windows1258 cp437 cp737 cp775 cp850 cp852 cp855 cp856 cp857 cp860 cp861 cp862 cp863 cp864 cp865 cp866 cp869 cp874 cp1006 macroman"
 
 print_options () {
 	for opt in $options; do
@@ -128,6 +130,20 @@ else
 fi
 
 ######################################################################
+# Check ocamllex.opt
+
+printf "%s" "Checking for ocamllex.opt..."
+r=`ocamllex.opt -help 2>&1`
+lex_opt=""
+case "$r" in
+    *usage*)
+	echo "found"
+	lex_opt=".opt" ;;
+    *)
+	echo "not found" ;;
+esac
+
+######################################################################
 # Check netstring
 
 printf "%s" "Checking for netstring... "
@@ -175,6 +191,21 @@ if [ $with_wlex -gt 0 ]; then
 		with_wlex=0
 	fi
 fi
+
+######################################################################
+# ulex
+
+if [ $with_ulex -gt 0 ]; then
+    printf "%s" "Checking for ulex... "
+    if ocamlfind query ulex >/dev/null 2>/dev/null; then
+	echo "found"
+    else
+	echo "not found"
+	echo "ulex support is disabled"
+	with_ulex=0
+    fi
+fi
+
 
 ######################################################################
 # Check Lexing.lexbuf type
@@ -268,22 +299,36 @@ lexlist=`echo "$lexlist" | sed -e 's/,/ /g'`
 # reqall: the predecessor list for package "pxp":
 reqall="pxp-engine"
 for lexname in $lexlist; do
-    if [ $with_wlex -gt 0 -a "$lexname" = "utf8" ] ; then
-	# Leave UTF-8 out
-	:
-    else
+    include=1
+    if [ "$lexname" = "utf8" ]; then
+	if [ $with_wlex -gt 0 -o $with_ulex -gt 0 ]; then
+	    # Leave UTF-8 out
+	    include=0
+	fi
+    fi
+    if [ $include -gt 0 ]; then
 	reqall="$reqall pxp-lex-$lexname"
     fi
     genpkglist="$genpkglist pxp-lex-$lexname"
 done
 
-if [ $with_wlex -gt 0 ]; then
+if [ $with_wlex -gt 0 -a $with_ulex -eq 0 ]; then
     reqall="$reqall pxp-wlex-utf8"
+fi
+if [ $with_ulex -gt 0 ]; then
+    reqall="$reqall pxp-ulex-utf8"
+fi
+
+if [ $with_wlex -gt 0 ]; then
     genpkglist="$genpkglist pxp-wlex-utf8"
 fi
 
 if [ $with_wlex_compat -gt 0 ]; then
     genpkglist="$genpkglist pxp-wlex"
+fi
+
+if [ $with_ulex -gt 0 ]; then
+    genpkglist="$genpkglist pxp-ulex-utf8"
 fi
 
 for lexname in $lexlist_options; do
@@ -338,6 +383,17 @@ if [ $with_wlex_compat -gt 0 ]; then
 fi
 
 ######################################################################
+# Write META for ulex
+
+if [ $with_ulex -gt 0 ]; then
+    pkg="pxp-ulex-utf8"
+    echo "Writing gensrc/$pkg/META"
+    sed -e "s/@VERSION@/$version/g" \
+	-e "s/@ENCNAME@/$enc/g" \
+	gensrc/$pkg/META.in >gensrc/$pkg/META
+fi
+
+######################################################################
 # Write Makefile.conf
 
 echo "Writing Makefile.conf"
@@ -348,6 +404,7 @@ GENPKGLIST = $genpkglist
 ALLGENPKGLIST = $allgenpkglist
 EXEC_SUFFIX = $exec_suffix
 LEXBUF_307 = $lexbuf_307
+LEX_OPT = $lex_opt
 _EOF_
 
 ######################################################################

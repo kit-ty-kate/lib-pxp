@@ -1,0 +1,16 @@
+#! /bin/sh
+
+name="$1"
+
+cat <<_EOF_ >$name
+#! /bin/sh
+if [ -z "\$LEXER" ]; then
+    echo "Set the LEXER env variable to select the UTF-8 lexer." >&2
+    echo "Possible values for LEXER:" >&2
+    (cd ..; ls -1 toploop.* | sed -e 's/toploop\./- /')
+    exit 1
+fi
+exec ../toploop.\$LEXER "$name.cma" ../exit.ml "\$@"
+_EOF_
+
+chmod a+x "$name"

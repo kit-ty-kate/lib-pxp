@@ -9,7 +9,7 @@ OCAMLOPT  = $(OCAMLFIND) ocamlopt $(OCAMLOPT_OPTIONS) -package "$(PACKAGES)"
 OCAMLDEP  = ocamldep $(OCAMLDEP_OPTIONS)
 OCAMLFIND = ocamlfind
 OCAMLYACC = ocamlyacc
-OCAMLLEX  = ocamllex
+OCAMLLEX  = ocamllex$(LEX_OPT)
 WLEX      = wlex
 
 TOOLS_DIR = $(TOP_DIR)/tools

@@ -5,7 +5,8 @@
 #----------------------------------------------------------------------
 
 test_negative: test_negative.ml
-	ocamlfind ocamlc -g -custom -o test_negative -package pxp,str -linkpkg test_negative.ml
+	ocamlfind ocamlc -g -a -o test_negative.cma -package pxp,str test_negative.ml
+	../create-wrapper test_negative
 
 #----------------------------------------------------------------------
 .PHONY: all
@@ -14,6 +15,7 @@ all:
 .PHONY: clean
 clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa current.out
+	rm -f test_negative 
 
 .PHONY: CLEAN
 CLEAN: clean
@@ -21,6 +23,5 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f test_negative 
 
 

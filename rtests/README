@@ -6,7 +6,12 @@
   Do "make" to start the compilation of the tests.
 
 - To run the tests:
-  ./run
+  LEXER=<id> ./run
+
+  where <id> is one of:
+   - lex-utf8
+   - wlex-utf8
+   - ulex-utf8
 
 - Program dumpfiles: Do "make dumpfiles" to create it.
   It takes XML file names on the command line, and writes a Latex

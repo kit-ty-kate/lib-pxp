@@ -216,6 +216,9 @@ object
   method scan_tag_eb          : unit -> (token * lexers)
   method scan_tag_eb_att      : unit -> bool -> (token * lexers)
 
+  method lexeme_length : int
+  method lexeme_char : int -> int
   method lexeme : string
-  method lexeme_len : int
+  method lexeme_strlen : int
+  method sub_lexeme : int -> int -> string
 end

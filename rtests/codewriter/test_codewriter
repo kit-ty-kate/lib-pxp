@@ -6,7 +6,8 @@ sample="$1"
 echo "Testing $sample:"
 ./compile -in "$sample" -out "sample.ml" -print -super-root -pis -comments >"out1"
 echo "- code written to sample.ml, formatted data to out1"
-OCAMLPATH=../../src ocamlfind ocamlc -package pxp -linkpkg -custom sample.ml -o sample
+OCAMLPATH=../../src:../../gensrc:$OCAMLPATH ocamlfind ocamlc -package pxp -a sample.ml -o sample.cma
+../create-wrapper sample
 echo "- sample.ml compiled to sample"
 ./sample >out2
 echo "- re-read data written to out2"
