@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/113.xml", at line 2, position 18:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/113.xml", at line 2, position 18:
 ERROR (Well-formedness constraint): The character '&' must be written as '&amp;'

@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/088.xml", at line 6, position 7:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/088.xml", at line 6, position 7:
 ERROR (Well-formedness constraint): Cannot find the second quotation mark

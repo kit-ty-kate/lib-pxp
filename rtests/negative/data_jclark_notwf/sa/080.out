@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/080.xml", at line 6, position 29:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/080.xml", at line 6, position 29:
 ERROR (Well-formedness constraint): Recursive reference to general entity `e1'

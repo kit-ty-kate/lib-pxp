@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/170.xml", at line 1, position 5:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/170.xml", at line 1, position 5:
 ERROR: Bad character stream

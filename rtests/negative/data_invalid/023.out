@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/023.xml", at line 6, position 13:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_invalid/023.xml", at line 6, position 13:
 ERROR (Validity constraint): Attribute `nm' is lexically malformed

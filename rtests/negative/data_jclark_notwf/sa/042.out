@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/042.xml", at line 1, position 11:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/042.xml", at line 1, position 11:
 SYNTAX ERROR

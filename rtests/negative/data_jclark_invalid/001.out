@@ -1,3 +1,3 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_invalid/001.xml", at line 1, position 30:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_invalid/001.xml", at line 1, position 30:
 In entity [dtd] = SYSTEM "001.ent", at line 3, position 4:
 ERROR (Validity constraint): The first and the last token of comments must be in the same entity

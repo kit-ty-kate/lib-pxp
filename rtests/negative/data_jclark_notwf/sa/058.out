@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/058.xml", at line 3, position 21:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/058.xml", at line 3, position 21:
 ERROR (Well-formedness constraint): `|' and more names expected, or `)'

@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/082.xml", at line 4, position 22:
-ERROR: Unable to open the external entity: e = SYSTEM "nul"; reason: Other exception: Sys_error("/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/nul: No such file or directory")
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/082.xml", at line 4, position 22:
+ERROR: Unable to open the external entity: e = SYSTEM "nul"; reason: Other exception: Sys_error("/BASEDIR/data_jclark_notwf/sa/nul: No such file or directory")

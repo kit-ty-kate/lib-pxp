@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/143.xml", at line 4, position 5:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_jclark_notwf/sa/143.xml", at line 4, position 5:
 ERROR (Well-formedness constraint): Code point 31 outside the accepted range of code points

@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/017.xml" at line 12, position 2:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_invalid/017.xml" at line 12, position 2:
 ERROR (Validity constraint): Attribute `idref' of element `el' refers to unknown ID `a20'

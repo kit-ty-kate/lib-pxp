@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_notwf/sa/001.xml", at line 4, position 7:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_notwf/sa/001.xml", at line 4, position 7:
 ERROR (Validity constraint): Found reference to external entity in attribute value

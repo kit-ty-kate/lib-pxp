@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/081.xml", at line 4, position 0:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_invalid/081.xml", at line 4, position 0:
 ERROR (Validity constraint): The content model of element `b' is not deterministic

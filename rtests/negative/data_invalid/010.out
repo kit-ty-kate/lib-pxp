@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/010.xml", at line 7, position 14:
+In entity [toplevel] = SYSTEM "file://localhost/BASEDIR/data_invalid/010.xml", at line 7, position 14:
 ERROR (Validity constraint): Attribute `id' is lexically malformed
