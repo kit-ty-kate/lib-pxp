@@ -1,0 +1,20 @@
+----------------------------------------------------------------------
+Regression test "canonxml":
+----------------------------------------------------------------------
+
+- An XML file is parsed, and the contents are printed in a canonical
+  format.
+
+- The output is compared with a reference file. The test is only
+  passed if the output and the reference are equal.
+
+- Test data "data_jclark_valid":
+  Contains the samples by James Clark that are valid. The subdirectories:
+  - sa:           standalone documents
+  - not-sa:       non-standalone document (with external DTD)
+  - ext-sa:       non-standalone document (with other external entity)
+
+  Tests that are not passed have been moved into the *-problems directories.
+  The reason is typically that characters have been used not in the 
+  Latin 1 character set.
+

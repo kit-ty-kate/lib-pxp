@@ -1,0 +1,22 @@
+#! /bin/bash
+
+check_dir () {
+    dir="$1"
+    xmlfiles=`cd $dir && echo *.xml`
+    for file in $xmlfiles; do
+        echo -n "File $dir/$file: "
+	./test_canonxml "$dir/$file" >out.xml
+	if cmp out.xml "$dir/out/$file"; then
+	    echo "OK"
+	else
+	    echo "NOT OK"
+	    read
+	fi
+    done
+}
+
+
+check_dir "data_jclark_valid/sa"
+check_dir "data_jclark_valid/not-sa"
+check_dir "data_jclark_valid/ext-sa"
+
