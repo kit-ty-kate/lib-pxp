@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.2 2000/07/04 22:09:03 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.3 2000/07/08 16:26:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -184,18 +184,30 @@ val default_spec : ('a node extension as 'a) spec
   (* Specifies that you do not want to use extensions. *)
 
 val parse_dtd_entity      : config -> source -> dtd
-  (* Parse an entity containing a DTD, and return this DTD. *)
+  (* Parse an entity containing a DTD (external subset), and return this DTD. *)
 
-val parse_document_entity : config -> source -> 'ext spec -> 'ext document
+val extract_dtd_from_document_entity : config -> source -> dtd
+  (* Parses a closed document, i.e. a document beginning with <!DOCTYPE...>,
+   * and returns the DTD contained in the document.
+   * The parts of the document outside the DTD are actually not parsed,
+   * i.e. parsing stops when all declarations of the DTD have been read.
+   *)
+
+val parse_document_entity : 
+  ?transform_dtd:(dtd -> dtd) ->
+  config -> source -> 'ext spec -> 'ext document
   (* Parse a closed document, i.e. a document beginning with <!DOCTYPE...>,
    * and validate the contents of the document against the DTD contained
    * and/or referenced in the document.
+   *
+   * If the optional argument ~transform_dtd is passed, the following 
+   * modification applies: After the DTD (both the internal and external
+   * subsets) has been parsed, the function ~transform_dtd is called,
+   * and the resulting DTD is actually used to validate the document.
+   *
+   * If the optional argument ~transform_dtd is missing, the parser
+   * behaves in the same way as if the identity were passed as ~transform_dtd.
    *)
-
-val parse_document_entity_with_dtd :
-    config -> source -> (dtd -> dtd) -> 'ext spec -> 'ext document
-
-val extract_dtd_from_document_entity : unit
 
 val parse_wfdocument_entity : config -> source -> 'ext spec -> 'ext document
   (* Parse a closed document (see parse_document_entity), but do not
@@ -212,11 +224,17 @@ val parse_content_entity  : config ->
    * not a sequence like <a>...</a><b>...</b>). The element is validated
    * against the passed DTD, but it is not checked whether the element is
    * the root element specified in the DTD.
-   * Note that you can create DTDs that specify not to validate at all
-   * (invoke method allow_arbitrary on the DTD).
    *)
 
-val parse_wfcontent_entity : unit
+val parse_wfcontent_entity : config ->
+                             source ->
+ 	 		     'ext spec ->
+			       'ext node
+  (* Parse a file representing a well-formed fragment of a document
+   * (see parse_content_entity). The fragment is not validated, only
+   * checked for well-formedness.
+   *)
+  
 
 (*$-*)
 
@@ -225,6 +243,13 @@ val parse_wfcontent_entity : unit
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.3  2000/07/08 16:26:21  gerd
+ * 	Added the signatures of the functions
+ * 'extract_dtd_from_document_entity' and 'parse_wfcontent_entity'.
+ * Updated the signature of 'parse_document_entity': New optional
+ * argument 'transform_dtd'.
+ * 	Updated the comments.
+ *
  * Revision 1.2  2000/07/04 22:09:03  gerd
  * 	MAJOR CHANGE: Redesign of the interface (not yet complete).
  *
