@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.40 2002/08/05 22:34:29 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.41 2002/08/17 19:53:53 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -74,15 +74,11 @@ type event =
 
 
 type entry =
-    Entry_document
-  | Entry_declarations
-  | Entry_content        (* misc* <element>...</element> misc* *)
-(* TODO:
-  | Entry_single_element
-  | Entry_single_pi
-  | Entry_single_comment
-  | Entry_single_node    (* any of element, pi or comment *)
-*)
+  [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
+  | `Entry_declarations of [ `Extend_dtd_fully ] list
+  | `Entry_content      of [ `Dummy ] list
+  | `Entry_expr         of [ `Dummy ] list
+  ]
 
 type context =
     { mutable current : unit -> token;  (* get the current token *)
@@ -92,7 +88,7 @@ type context =
     }
 
 
-let make_context ?force_first_token entity_manager =
+let make_context ?first_token entity_manager =
   let c =
     { current = (fun _ -> assert false);
       get_next = (fun _ -> assert false);
@@ -110,7 +106,7 @@ let make_context ?force_first_token entity_manager =
   c.get_next <- (fun () -> let tok = !get_next_ref() in
 		           c.current_token <- tok;
 		           tok);
-  ( match force_first_token with
+  ( match first_token with
 	Some tok -> 
 	  c.current_token <- tok
       | None ->
@@ -253,8 +249,8 @@ let stack_pop st =
 (**********************************************************************)
 
 class ['ext] tree_parser
-  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_spec
-  init_process_xmldecl transform_dtd id_index
+  (init_doc:'ext document) init_dtd init_config init_spec
+  transform_dtd id_index
   =
 let make_pool_string = pool_string init_config.name_pool in
   object (self)
@@ -266,22 +262,11 @@ let make_pool_string = pool_string init_config.name_pool in
     val mutable dtd = init_dtd
 	(* The DTD being parsed; or the DTD currently assumed *)
 
-    val extend_dtd = init_extend_dtd
-	(* Whether the DTD should be extended by ELEMENT, ATTLIST, and
-	 * NOTATION declarations or not. (True for validating mode,
-	 * false for well-formedness mode.)
-	 *)
-
     val transform_dtd = transform_dtd
         (* A function transforming the DTD *)
 
     val id_index = (id_index : 'ext index option)
         (* The ID index or None *)
-
-    val process_xmldecl = init_process_xmldecl
-        (* Whether the XML declaration is parsed and the found XML version
-	 * and standalone declaration are passed to 'doc'.
-	 *)
 
     val lexerset = Pxp_lexers.get_lexer_set (init_config.encoding)
 
@@ -785,7 +770,34 @@ let make_pool_string = pool_string init_config.name_pool in
        *         transformed to a local function of this method
        *)
 
-      method parse context start_symbol =
+      method parse context (start_symbol : entry) =
+
+	(* extend_dtd:
+	 * Whether the DTD should be extended by ELEMENT, ATTLIST, and
+	 * NOTATION declarations or not. (True for validating mode,
+	 * false for well-formedness mode.)
+	 *)
+
+	let extend_dtd =
+	  match start_symbol with
+	      `Entry_document flags ->
+		List.mem `Extend_dtd_fully flags
+	    | `Entry_declarations flags ->
+		List.mem `Extend_dtd_fully flags
+	    | _ -> false
+	in
+
+        (* parse_xmldecl:
+	 * Whether the XML declaration is parsed and the found XML version
+	 * and standalone declaration are passed to 'doc'.
+	 *)
+
+	let process_xmldecl =
+	  match start_symbol with
+	      `Entry_document flags ->
+		List.mem `Parse_xml_decl flags
+	    | _ -> false
+	in
 
 	let parse_ignored_section yy_current yy_get_next =
 	  (* A special parser which should be used after <![IGNORE[.
@@ -970,13 +982,13 @@ let make_pool_string = pool_string init_config.name_pool in
 
 /* START SYMBOLS:
  *
- * "ext_document":       parses a complete XML document (i.e. containing a
- *                       <!DOCTYPE..> and an element)
- * "ext_declarations":   parses an "external DTD subset", i.e. a sequence
- *                       of declarations
- * "ext_element":        parses a single element (no <!DOCTYPE...> allowed);
- *                       the element needs not to be the root element of the
- *                       DTD
+ * "entry_document":       parses a complete XML document (i.e. containing a
+ *                         <!DOCTYPE..> and an element)
+ * "entry_declarations":   parses an "external DTD subset", i.e. a sequence
+ *                         of declarations
+ * "entry_content":        parses a single element (no <!DOCTYPE...> allowed);
+ *                         the element needs not to be the root element of the
+ *                         DTD
  *
  * The functions corresponding to these symbols return always () because
  * they only have side-effects.
@@ -998,7 +1010,7 @@ let make_pool_string = pool_string init_config.name_pool in
 %%
 
 
-ext_document():
+entry_document():
   Begin_entity
   doc_xmldecl_then_misc_then_prolog_then_rest() End_entity
     {{
@@ -1046,7 +1058,7 @@ doc_prolog_then_rest():
     {{ () }}
 
 
-ext_element():
+entry_content():
   Begin_entity el_xmldecl_then_misc_then_rest() End_entity
     {{
       if n_tags_open <> 0 then
@@ -1071,7 +1083,7 @@ el_xmldecl_then_misc_then_rest():
     {{ () }}
 
 
-ext_declarations():
+entry_declarations():
   /* Parses a sequence of declarations given by an entity. As side-effect,
    * the parsed declarations are put into the dtd object.
    */
@@ -1178,10 +1190,8 @@ doctypedecl_material(doctype_entid):
 	      new tree_parser
 		(new document config.warner config.encoding)
 		dtd
-		extend_dtd
 		config
 		spec
-		process_xmldecl
 		(fun x -> x)
 		None
 	    in
@@ -1194,7 +1204,9 @@ doctypedecl_material(doctype_entid):
 	    en # open_entity true Declaration;
 	    begin try
 	      let context = make_context mgr in
-	      pobj # parse context Entry_declarations;
+	      let flags =
+		(if extend_dtd then [`Extend_dtd_fully] else []) in
+	      pobj # parse context (`Entry_declarations flags);
 	      mgr # pop_entity_until en;
 	    with
 		error ->
@@ -2043,6 +2055,46 @@ contents_start():
     {{ () }}
 
 
+entry_expr():
+  $ {{ self # init_for_xml_body(); }}
+  entry_expr_content()
+    {{ () }}
+
+entry_expr_content():
+  start_tag() 
+  $ {{ begin try
+         while n_tags_open > 0 do 
+	   parse_content yy_current yy_get_next
+         done
+       with Not_found ->
+         yy_position := "expr";
+	 raise Parsing.Parse_error
+       end;
+     }}
+    {{ () }}
+  ? {{ match !yy_position with
+         "expr" -> raise(WF_error("Unexpected token"))
+       | _      -> raise(WF_error("Syntax error"))
+    }}
+| pi()
+    {{ () }}
+| comment()
+    {{ () }}
+| entry_expr_space()
+    {{ () }}
+| CRef
+    {{ raise(WF_error("Character entity not allowed here")) }}
+| Begin_entity entry_expr() entry_expr_space()* End_entity
+    {{ () }}
+
+
+entry_expr_space():
+  data:CharData
+    {{
+       self # only_whitespace data
+     }}
+
+
 content():
   /* parses: start tags, end tags, content, or processing
    * instructions. That the tags are properly nested is dynamically checked.
@@ -2399,12 +2451,14 @@ comment():
 
    try
      match start_symbol with
-	 Entry_document ->
-	   parse_ext_document context.current context.get_next
-       | Entry_declarations ->
-	   parse_ext_declarations context.current context.get_next
-       | Entry_content ->
-	   parse_ext_element context.current context.get_next
+	 `Entry_document flags ->
+	   parse_entry_document context.current context.get_next
+       | `Entry_declarations flags ->
+	   parse_entry_declarations context.current context.get_next
+       | `Entry_content flags ->
+	   parse_entry_content context.current context.get_next
+       | `Entry_expr flags ->
+	   parse_entry_expr context.current context.get_next
    with
        Not_found ->
 	 raise Parsing.Parse_error
@@ -2488,10 +2542,8 @@ object (self)
   inherit [ ('a node extension) as 'a ] tree_parser
                                           fake_doc
 					  init_dtd
-					  true
 					  init_config
 					  default_spec
-					  false   (* questionable *)
 					  (fun dtd -> dtd)
 					  None
 
@@ -2658,10 +2710,8 @@ exception Return_DTD of dtd;;
 let call_tree_parser ~configuration:cfg
                 ~source:src
 		~dtd
-		~extensible_dtd
 		~document:doc
 		~specification:spec
-		~process_xmldecl
 		~transform_dtd
                 ~(id_index : 'ext #index option)
 		~use_document_entity
@@ -2688,10 +2738,8 @@ let call_tree_parser ~configuration:cfg
     new tree_parser
       doc
       dtd
-      extensible_dtd
       cfg
       spec
-      process_xmldecl
       transform_dtd
       (id_index :> 'ext index option)
   in
@@ -2742,16 +2790,13 @@ let parse_dtd_entity cfg src =
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
-      ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
       ~document:doc
       ~specification:default_spec
-      ~process_xmldecl:false       (* The XML declaration is ignored
-				    * (except 'encoding')
-				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index: None
       ~use_document_entity:false
-      ~entry:Entry_declarations      (* Entry point of the grammar *)
+      ~entry:(`Entry_declarations [`Extend_dtd_fully])
+                                   (* Entry point of the grammar *)
       ~init_lexer:Declaration      (* The initially used lexer *)
   in
   dtd # validate;
@@ -2770,16 +2815,12 @@ let parse_content_entity ?id_index cfg src dtd spec =
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
-      ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
       ~document:doc
       ~specification:spec
-      ~process_xmldecl:false       (* The XML declaration is ignored
-				    * (except 'encoding')
-				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:false
-      ~entry:Entry_content           (* Entry point of the grammar *)
+      ~entry:(`Entry_content [])   (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with
@@ -2808,16 +2849,12 @@ let parse_wfcontent_entity cfg src spec =
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
-      ~extensible_dtd:false        (* Do not extend the DTD *)
       ~document:doc
       ~specification:spec
-      ~process_xmldecl:false       (* The XML declaration is ignored
-				    * (except 'encoding')
-				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:None
       ~use_document_entity:false
-      ~entry:Entry_content           (* Entry point of the grammar *)
+      ~entry:(`Entry_content [])   (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with
@@ -2851,18 +2888,17 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
       | None     -> ()
   );
   let doc = new document cfg.warner cfg.encoding in
+  let entry_flags =
+    (if p_wf then [] else [`Extend_dtd_fully]) @
+    [`Parse_xml_decl]
+  in
   let pobj =
     call_tree_parser
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
-      ~extensible_dtd:(not p_wf)   (* Extend the DTD by parsed declarations
-				    * only if in validating mode
-				    *)
       ~document:doc
       ~specification:spec
-      ~process_xmldecl:true        (* The XML declaration is processed *)
-                                   (* TODO: change to 'not p_wf' ? *)
       ~transform_dtd:(fun dtd ->
 			let dtd' = transform_dtd dtd in
 			if cfg.accept_only_deterministic_models then
@@ -2871,7 +2907,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:true
-      ~entry:Entry_document          (* Entry point of the grammar *)
+      ~entry:(`Entry_document entry_flags)   (* Entry point of the grammar *)
       ~init_lexer:Document         (* The initially used lexer *)
   in
   pobj # doc
@@ -2985,24 +3021,25 @@ let create_entity_manager ?(is_document=true) cfg src =
 ;;
 
 
-let call_event_parser ~configuration:cfg
-                      ~manager:mgr
-		      ~event_handler:eh
-                      ~entry =
-  (* generate_doc_events: whether E_start_doc/E_end_doc events are generated *)
+let process_entity 
+      cfg entry mgr eh =
+
+  let have_document_entry = 
+    match entry with `Entry_document _ -> true | _ -> false in
   let pobj =
     new event_parser
       mgr#dtd
       cfg
       eh
-      (entry = Entry_document)
+      have_document_entry
   in
   let resolver = mgr # current_resolver in
   let init_lexer =
     match entry with
-	Entry_document     -> Document
-      | Entry_declarations -> failwith "Pxp_yacc.process_entity: bad entry point"
-      | Entry_content      -> Content
+	`Entry_document _     -> Document
+      | `Entry_declarations _ -> failwith "Pxp_yacc.process_entity: bad entry point"
+      | `Entry_content _      -> Content
+      | `Entry_expr _         -> Content
   in
   let en = mgr # current_entity in
   let gen_att_events = Some(cfg.escape_attributes <> None) in
@@ -3012,6 +3049,8 @@ let call_event_parser ~configuration:cfg
 
     pobj # parse context entry;
     if en # is_open then ignore(en # close_entity);
+    if have_document_entry then eh (E_end_doc);
+    eh E_end_of_stream;
   with
     | Failure "Invalid UTF-8 stream" ->
 	(* raised by the wlex-generated lexers only: map to Malformed_code *)
@@ -3027,19 +3066,38 @@ let call_event_parser ~configuration:cfg
 	eh (E_error e);
 	raise e
   end;
-  pobj
 ;;
 
 
-let process_entity 
-      configuration entry manager event_handler =
-  let pobj = call_event_parser 
-	       ~configuration
-	       ~manager
-	       ~event_handler
-	       ~entry in
-  if entry = Entry_document then event_handler (E_end_doc);
-  event_handler E_end_of_stream
+let process_expr 
+      ?first_token
+      ?following_token
+      cfg mgr eh =
+  let pobj = new event_parser mgr#dtd cfg eh false in
+  let resolver = mgr # current_resolver in
+  let en = mgr # current_entity in
+  begin try
+    let context = make_context ?first_token mgr in
+    pobj # parse context (`Entry_expr []);
+    ( match following_token with
+          Some v -> v := context.current_token
+	| None   -> ()
+    );
+  with
+    | Failure "Invalid UTF-8 stream" ->
+	(* raised by the wlex-generated lexers only: map to Malformed_code *)
+	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
+	let e = At(pos, Netconversion.Malformed_code) in
+	eh (E_error e);
+	raise e
+    | error ->
+	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
+	let e = At(pos, error) in
+	eh (E_error e);
+	raise e
+  end
 ;;
 
 
@@ -3047,6 +3105,11 @@ let process_entity
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.41  2002/08/17 19:53:53  gerd
+ * 	Changed type [entry] into a polymorphic variant. New variant
+ * `Entry_expr. New: flags for [entry].
+ * 	New: [process_expr].
+ *
  * Revision 1.40  2002/08/05 22:34:29  gerd
  * 	escape_attributes: this config option has an additional
  * argument "position".

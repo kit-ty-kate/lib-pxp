@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.19 2002/08/05 22:34:29 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.20 2002/08/17 19:53:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -589,22 +589,42 @@ val create_entity_manager :
    * ~is_document: Pass [true] if the entity to read is a complete
    *   document, and [false] otherwise. The value [true] enforces
    *   several restrictions on document entities, e.g. that 
-   *   <![INCLUDE[ and <![IGNORE are not allowed and that additional
+   *   <![INCLUDE[..]> and <![IGNORE[..]> are not allowed and that additional
    *   nesting rules are respected by parameter entities.
    *)
 
 type entry =
-    Entry_document
-  | Entry_declarations
-  | Entry_content        (* misc* <element>...</element> misc* *)
+  [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
+  | `Entry_declarations of [ `Extend_dtd_fully ] list
+  | `Entry_content      of [ `Dummy ] list
+  | `Entry_expr         of [ `Dummy ] list
+  ]
    (* Entry points for the parser (used to call [process_entity]:
     * - Entry_document: The parser reads a complete document that
     *   may have a DOCTYPE and a DTD.
     * - Entry_declarations: The parser reads the external subset
     *   of a DTD
-    * - Entry_content: The parser reads the part containing contents,
+    * - Entry_content: The parser reads an entity containing contents,
     *   i.e. misc* element misc*.
+    * - Entry_expr: The parser reads a single element, a single
+    *   processing instruction or a single comment, or whitespace, whatever is
+    *   found. In contrast to the other entry points, the expression
+    *   need not to be a complete entity, but can start and end in 
+    *   the middle of an entity
     * More entry points might be defined in the future.
+    *
+    * The entry points have a list of flags. Note that `Dummy is
+    * ignored and only present because O'Caml does not allow empty
+    * variants.
+    * - `Extend_dtd_fully: By default, only the <!ENTITY> declarations
+    *   are processed (because this is sufficient for well-formedness
+    *   parsing). This flag causes that all declarations are processed;
+    *   this does not validate the document, however, but is a necessary
+    *   step to do so.
+    * - `Parse_xml_decl: By default, the XML declaration
+    *   <?xml version="1.0" encoding="..." standalone="..."?> is
+    *   ignored except for the encoding attribute. This flags causes
+    *   that the XML declaration is completely parsed.
     *)
 
 
@@ -651,6 +671,32 @@ val process_entity :
    * to resume parsing after an error.
    *)
 
+
+val process_expr :
+      ?first_token: Pxp_lexer_types.token ->
+      ?following_token: Pxp_lexer_types.token ref ->
+      config -> 
+      Pxp_entity_manager.entity_manager ->
+      (event -> unit) ->
+        unit
+  (* This is a special parsing function that corresponds to the entry
+   * Entry_expr, i.e. it parses a single element, processing instruction,
+   * or comment. In contrast to [process_entity], the current entity
+   * is not opened, but it is expected that the entity is already open.
+   * Of course, the entity is not closed after parsing (except an error
+   * happens).
+   *
+   * ~first_token: This token is prepended to the tokens read from the
+   *    entity manager.
+   * ~following_token: The token following the last parsed token is
+   *    optionally stored into this variable.
+   *    Note: By design the parser _always_ reads the following token.
+   *    I know that this may lead to serious problems when it is tried
+   *    to integrate this parser with another parser. It is currently
+   *    hard to change!
+   *)
+
+
 (*$-*)
 
 
@@ -658,6 +704,11 @@ val process_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.20  2002/08/17 19:53:53  gerd
+ * 	Changed type [entry] into a polymorphic variant. New variant
+ * `Entry_expr. New: flags for [entry].
+ * 	New: [process_expr].
+ *
  * Revision 1.19  2002/08/05 22:34:29  gerd
  * 	escape_attributes: this config option has an additional
  * argument "position".
