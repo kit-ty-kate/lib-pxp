@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.7 2000/08/30 15:58:49 gerd Exp $
+(* $Id: ds_context.ml,v 1.8 2001/07/02 22:50:43 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -44,7 +44,10 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
 	try node_index # find where with
 	    Not_found -> failwith ("Mask not found: " ^ where) in
       let w = n # extension # create_widget topframe self in
-      Tk.pack [w] (n # extension # pack_opts @ [ Tk.Expand true] );
+      (* Tk.pack [w] (n # extension # pack_opts @ [ Tk.Expand true] ); *) (*X*)
+      n # extension # pack 
+	?expand:(Some true) ?anchor:None ?fill:None ?side:None 
+	[Widget.forget_type w];
       wdg <- Some w
 
 
@@ -153,49 +156,8 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
     method save_obj =
       let fd = open_out filename in
       try
-
-	let re1 = Str.regexp "&" in
-	let re2 = Str.regexp "<" in
-	let re3 = Str.regexp "'" in
-	let re4 = Str.regexp ">" in
-	let protect s =
-	  let s1 = Str.global_replace re1 "&amp;" s in
-	  let s2 = Str.global_replace re2 "&lt;" s1 in
-	  let s3 = Str.global_replace re3 "&apos;" s2 in
-	  let s4 = Str.global_replace re2 "&gt;" s1 in
-	  s3
-	in
-
-	let rec iterate (n : 'node extension node as 'node) =
-	  match n # node_type with
-	      T_data ->
-		output_string fd (protect (n # data))
-	    | T_element name ->
-		output_string fd ("<" ^ name ^ "\n");
-		let anames = n # attribute_names in
-		List.iter
-		  (fun aname ->
-		     let aval = n # attribute aname in
-		     let v =
-		       match aval with
-			   Value s ->
-			     aname ^ "='" ^ protect s ^ "'\n"
-			 | Valuelist l ->
-			     aname ^ "='" ^ String.concat " " (List.map protect l) ^ "'\n"
-			 | Implied_value ->
-			     ""
-		     in
-		     output_string fd v)
-		  anames;
-		output_string fd ">";
-		List.iter iterate (n # sub_nodes);
-		output_string fd ("</" ^ name ^ "\n>");
-	    | _ ->
-		assert false
-	in
-
 	output_string fd "<?xml version='1.0' encoding='ISO-8859-1'?>\n";
-	iterate obj;
+        obj # write (`Out_channel fd) `Enc_iso88591;
 	close_out fd
       with
 	  e ->
@@ -210,6 +172,9 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.8  2001/07/02 22:50:43  gerd
+ * 	Ported from camltk to labltk.
+ *
  * Revision 1.7  2000/08/30 15:58:49  gerd
  * 	Updated.
  *

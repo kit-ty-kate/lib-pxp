@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.5 2000/08/30 15:58:49 gerd Exp $
+(* $Id: ds_style.ml,v 1.6 2001/07/02 22:50:43 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -14,11 +14,11 @@ let get_dimension s =
     let number = Str.matched_group 1 s in
     let dim = Str.matched_group 3 s in
     match dim with
-	"px" -> Tk.Pixels (int_of_float (float_of_string number))
-      | "cm" -> Tk.Centimeters (float_of_string number)
-      | "in" -> Tk.Inches (float_of_string number)
-      | "mm" -> Tk.Millimeters (float_of_string number)
-      | "pt" -> Tk.PrinterPoint (float_of_string number)
+	"px" -> `Pix (int_of_float (float_of_string number))
+      | "cm" -> `Cm (float_of_string number)
+      | "in" -> `In (float_of_string number)
+      | "mm" -> `Mm (float_of_string number)
+      | "pt" -> `Pt (float_of_string number)
       | _ -> assert false
   end
   else
@@ -89,20 +89,20 @@ class virtual shared =
 
 
     method private bg_color_opt =
-      [ Tk.Background (Tk.NamedColor (self # bgcolor)) ]
+      `Color (self # bgcolor)
 
     method private fg_color_opt =
-      [ Tk.Foreground (Tk.NamedColor (self # fgcolor)) ]
-
-    method private font_opt =
-      [ Tk.Font (self # font) ]
+      `Color (self # fgcolor)
 
     (* --- virtual --- *)
 
     method virtual prepare : shared Pxp_yacc.index -> unit
-    method virtual create_widget : Widget.widget -> context -> Widget.widget
+    method virtual create_widget : 
+           Widget.frame Widget.widget -> context -> Widget.any Widget.widget
 
-    method pack_opts = ( [] : Tk.options list )
+    method pack ?expand ?anchor ?fill ?side 
+                (wl : Widget.any Widget.widget list)  =
+      Tk.pack ?expand ?anchor ?fill ?side wl
     method xstretchable = false
     method ystretchable = false
 
@@ -195,8 +195,8 @@ class application =
     method create_widget w c =
       start_node # extension # create_widget w c
 
-    method pack_opts =
-      start_node # extension # pack_opts
+    method pack ?expand ?anchor ?fill ?side wl =
+      start_node # extension # pack ?expand ?anchor ?fill ?side wl
   end
 ;;
 
@@ -212,9 +212,9 @@ class sequence =
       let node = List.hd (self # node # sub_nodes) in
       node # extension # create_widget w c
 
-    method pack_opts =
+    method pack ?expand ?anchor ?fill ?side wl =
       let node = List.hd (self # node # sub_nodes) in
-      node # extension # pack_opts
+      node # extension # pack ?expand ?anchor ?fill ?side wl
   end
 ;;
 
@@ -232,30 +232,32 @@ class vbox =
 	| _ -> assert false
 
     method create_widget w c =
-      let f = Frame.create w (self # bg_color_opt) in
+      let f = Frame.create ~background:(self # bg_color_opt) w in
       let nodes = self # node # sub_nodes in
-      let options =
+      let anchor =
 	match att_halign with
-	    "left"     -> [ Tk.Anchor Tk.W ]
-	  | "right"    -> [ Tk.Anchor Tk.E ]
-	  | "center"   -> [ Tk.Anchor Tk.Center ]
+	    "left"     -> `W
+	  | "right"    -> `E
+	  | "center"   -> `Center
 	  | _ -> assert false
       in
       List.iter
 	(fun n ->
-	   let opts = n # extension # pack_opts in
 	   let wdg = n # extension # create_widget f c in
-	   Tk.pack [wdg] (options @ opts);
+	   n # extension # pack ~anchor [Widget.forget_type wdg]
 	)
 	nodes;
-      f
+      Widget.forget_type f
 
-    method pack_opts =
-      match self # xstretchable, self # ystretchable with
-	  true, false  -> [ Tk.Fill Tk.Fill_X; (* Tk.Expand true *) ]
-	| false, true  -> [ Tk.Fill Tk.Fill_Y;  (* Tk.Expand true *) ]
-	| true, true   -> [ Tk.Fill Tk.Fill_Both; (* Tk.Expand true *) ]
-	| false, false -> []
+    method pack ?expand ?anchor ?fill ?side wl =
+      let fill' =
+	match self # xstretchable, self # ystretchable with
+	    true, false  -> `X; (* Tk.Expand true *)
+	  | false, true  -> `Y;  (* Tk.Expand true *)
+	  | true, true   -> `Both; (* Tk.Expand true *)
+	  | false, false -> `None
+      in
+      Tk.pack ?expand ?anchor ~fill:fill' ?side wl
 
     method xstretchable =
       let nodes = self # node # sub_nodes in
@@ -307,52 +309,62 @@ class hbox =
       end
 
     method create_widget w c =
-      let f1 = Frame.create w (self # bg_color_opt) in
+      let f1 = Frame.create ~background:(self # bg_color_opt) w in
       let f_extra =
 	match att_width with
-	    None    -> []
+	    None    -> None
 	  | Some wd ->
-	      [ Canvas.create f1
-		  ( [ Tk.Width wd; Tk.Height (Tk.Pixels 0);
-		      Tk.Relief Tk.Flat;
-		      Tk.HighlightThickness (Tk.Pixels 0);
-		    ] @
-		    self # bg_color_opt ) ]
+	      Some (Canvas.create
+		      ~width:(Tk.pixels wd)
+		      ~height:0
+		      ~relief:`Flat
+		      ~highlightthickness:0
+		      ~background:(self # bg_color_opt)
+		      f1
+		   )
       in
-      let f2 = Frame.create f1 (self # bg_color_opt) in
+      let f2 = Frame.create ~background:(self # bg_color_opt) f1 in
       let nodes = self # node # sub_nodes in
 
-      let outer_pack_opts =
+      let outer_pack_anchor =
       	match att_halign with
-	    "left"     -> [ Tk.Anchor Tk.W ]
-	  | "right"    -> [ Tk.Anchor Tk.E ]
-	  | "center"   -> [ Tk.Anchor Tk.Center ]
+	    "left"     -> `W
+	  | "right"    -> `E
+	  | "center"   -> `Center
 	  | _ -> assert false
       in
-      let inner_pack_opts =
+      let inner_pack_anchor =
 	match att_valign with
-	    "top"      -> [ Tk.Anchor Tk.N ]
-	  | "bottom"   -> [ Tk.Anchor Tk.S ]
-	  | "center"   -> [ Tk.Anchor Tk.Center ]
+	    "top"      -> `N
+	  | "bottom"   -> `S
+	  | "center"   -> `Center
 	  | _ -> assert false
       in
       List.iter
 	(fun n ->
-	   let opts = n # extension # pack_opts in
 	   let wdg = n # extension # create_widget f2 c in
-	   Tk.pack [wdg] (inner_pack_opts @ [ Tk.Side Tk.Side_Left ] @ opts);
+	   n # extension # pack ~anchor:inner_pack_anchor ~side:`Left 
+	                        [Widget.forget_type wdg];
 	)
 	nodes;
-      let extra_opts = self # pack_opts in
-      Tk.pack (f_extra @ [f2]) (outer_pack_opts @ extra_opts);
-      f1
+      ( match f_extra with
+	    Some wdg -> self # pack ~anchor:outer_pack_anchor 
+		                    [Widget.forget_type wdg];
+	  | None -> ()
+      );
+      self # pack ~anchor:outer_pack_anchor [Widget.forget_type f2];
+      Widget.forget_type f1
 
-    method pack_opts =
-      match self # xstretchable, self # ystretchable with
-	  true, false  -> [ Tk.Fill Tk.Fill_X;  (* Tk.Expand true *) ]
-	| false, true  -> [ Tk.Fill Tk.Fill_Y;  (* Tk.Expand true *) ]
-	| true, true   -> [ Tk.Fill Tk.Fill_Both;  (* Tk.Expand true *) ]
-	| false, false -> []
+    method pack ?expand ?anchor ?fill ?side wl =
+      let fill' =
+	match self # xstretchable, self # ystretchable with
+	    true, false  -> `X  (* Tk.Expand true *)
+	  | false, true  -> `Y  (* Tk.Expand true *)
+	  | true, true   -> `Both  (* Tk.Expand true *)
+	  | false, false -> `None
+      in
+      Tk.pack ?expand ?anchor ~fill:fill' ?side wl
+
 
     method xstretchable =
       let nodes = self # node # sub_nodes in
@@ -369,7 +381,7 @@ class vspace =
   object (self)
     inherit shared
 
-    val mutable att_height = Tk.Pixels 0
+    val mutable att_height = `Pix 0
     val mutable att_fill  = false
 
     method prepare idx =
@@ -386,22 +398,27 @@ class vspace =
 
 
     method create_widget w c =
-      let f = Frame.create w ( self # bg_color_opt ) in
+      let f = Frame.create ~background:( self # bg_color_opt ) w in
       let strut =
-      	Canvas.create f
-	  ( [ Tk.Height att_height; Tk.Width (Tk.Pixels 0);
-	      Tk.Relief Tk.Flat;
-	      Tk.HighlightThickness (Tk.Pixels 0);
-	    ] @
-	    self # bg_color_opt ) in
+      	Canvas.create
+	  ~height:(Tk.pixels att_height)
+	  ~width:0
+	  ~relief:`Flat
+	  ~highlightthickness:0
+	  ~background:( self # bg_color_opt ) 
+	  f 
+      in
       if att_fill then
-	Tk.pack [strut] [Tk.Fill Tk.Fill_Y; Tk.Expand true]
+	Tk.pack ~fill:`Y ~expand:true [strut]
       else
-	Tk.pack [strut] [];
-      f
+	Tk.pack [strut];
+      Widget.forget_type f
 
-    method pack_opts =
-      if att_fill then [ Tk.Fill Tk.Fill_Y; Tk.Expand true ] else []
+    method pack ?expand ?anchor ?fill ?side wl =
+      if att_fill then
+	Tk.pack ~fill:`Y ~expand:true ?anchor ?side wl
+      else
+	Tk.pack ?fill ?expand ?anchor ?side wl
 
     method ystretchable = att_fill
   end
@@ -412,7 +429,7 @@ class hspace =
     inherit shared
 
 
-    val mutable att_width = Tk.Pixels 0
+    val mutable att_width = `Pix 0
     val mutable att_fill  = false
 
     method prepare idx =
@@ -429,22 +446,27 @@ class hspace =
 
 
     method create_widget w c =
-      let f = Frame.create w ( self # bg_color_opt ) in
+      let f = Frame.create ~background:( self # bg_color_opt ) w in
       let strut =
-      	Canvas.create f
-	  ( [ Tk.Width att_width; Tk.Height (Tk.Pixels 0);
-	      Tk.Relief Tk.Flat;
-	      Tk.HighlightThickness (Tk.Pixels 0);
-	    ] @
-	    self # bg_color_opt ) in
+      	Canvas.create 
+	  ~width:(Tk.pixels att_width)
+	  ~height:0
+	  ~relief:`Flat
+	  ~highlightthickness:0
+	  ~background:( self # bg_color_opt ) 
+	  f 
+      in
       if att_fill then
-	Tk.pack [strut] [Tk.Fill Tk.Fill_X; Tk.Expand true]
+	Tk.pack ~fill:`X ~expand:true [strut]
       else
-	Tk.pack [strut] [];
-      f
+	Tk.pack [strut];
+      Widget.forget_type f
 
-    method pack_opts =
-      if att_fill then [ Tk.Fill Tk.Fill_X; Tk.Expand true ] else []
+    method pack ?expand ?anchor ?fill ?side wl =
+      if att_fill then
+	Tk.pack ~fill:`X ~expand:true ?anchor ?side wl
+      else
+	Tk.pack ?fill ?expand ?anchor ?side wl
 
     method xstretchable = att_fill
   end
@@ -473,21 +495,25 @@ class label =
 
 
     method create_widget w c =
-      let opts_textwidth = if att_textwidth < 0 then [] else
-	                                       [ Tk.TextWidth att_textwidth ] in
-      let opts_halign =
+      let opts_textwidth = if att_textwidth < 0 then None 
+                                                else Some att_textwidth in
+      let opts_anchor =
 	match att_halign with
-	    "left"     -> [ Tk.Anchor Tk.W ]
-	  | "right"    -> [ Tk.Anchor Tk.E ]
-	  | "center"   -> [ Tk.Anchor Tk.Center ]
+	    "left"     -> `W
+	  | "right"    -> `E
+	  | "center"   -> `Center
 	  | _ -> assert false
       in
-      let opts_content =
-	[ Tk.Text (self # node # data) ] in
-      let label = Label.create w (opts_textwidth @ opts_halign @
-				  opts_content @ self # bg_color_opt @
-				  self # fg_color_opt @ self # font_opt) in
-      label
+      let opts_content = self # node # data in
+      let label = Label.create 
+		    ?width:opts_textwidth
+		    ~anchor:opts_anchor
+		    ~text:opts_content
+		    ~background:(self # bg_color_opt)
+		    ~foreground:(self # fg_color_opt)
+		    ~font:(self # font)
+		    w in
+      Widget.forget_type label
 
   end
 ;;
@@ -516,19 +542,20 @@ class entry =
 	| _ -> assert false);
 
     method create_widget w c =
-      let opts_textwidth = if att_textwidth < 0 then [] else
-	                                       [ Tk.TextWidth att_textwidth ] in
-      let e = Entry.create w ( [ Tk.TextVariable (Lazy.force tv) ] @
-			       self # fg_color_opt @
-			       self # bg_color_opt @
-			       self # font_opt @
-			       opts_textwidth
-			     ) in
+      let opts_textwidth = if att_textwidth < 0 then None 
+                                                else Some att_textwidth in
+      let e = Entry.create
+		~textvariable:(Lazy.force tv)
+		~foreground:(self # fg_color_opt)
+		~background:(self # bg_color_opt)
+		~font:(self # font)
+	        ?width:opts_textwidth
+		w in
       let s =
 	try c # get_slot att_slot with
 	    Not_found -> self # node # data in
       Textvariable.set (Lazy.force tv) s;
-      e
+      Widget.forget_type e
 
     method accept c =
       c # set_slot att_slot (Textvariable.get (Lazy.force tv))
@@ -570,24 +597,27 @@ class textbox =
 
 
     method create_widget w c =
-      let opts_textwidth = if att_textwidth < 0 then [] else
-	                                       [ Tk.TextWidth att_textwidth ] in
-      let opts_textheight = if att_textheight < 0 then [] else
-	                                    [ Tk.TextHeight att_textheight ] in
-      let f = Frame.create w (self # bg_color_opt) in
-      let vscrbar = Scrollbar.create f [ Tk.Orient Tk.Vertical ] in
-      let e = Text.create f ( [ ] @
-			      self # fg_color_opt @
-			      self # bg_color_opt @
-			      self # font_opt @
-			      opts_textwidth @ opts_textheight
-			    ) in
+      let opts_textwidth = if att_textwidth < 0 then None 
+                                                else Some att_textwidth in
+      let opts_textheight = if att_textheight < 0 then None 
+                                                else Some att_textheight in
+      let f = Frame.create ~background:(self # bg_color_opt) w in
+      let vscrbar = Scrollbar.create ~orient:`Vertical f in
+      let e = Text.create 
+	        ~foreground:(self # fg_color_opt)
+		~background:(self # bg_color_opt)
+		~font:(self # font)
+		?width:opts_textwidth
+		?height:opts_textheight
+		f in
       last_widget <- Some e;
-      Scrollbar.configure vscrbar [ Tk.ScrollCommand
-				      (fun s -> Text.yview e s);
-				    Tk.Width (Tk.Pixels 9) ];
-      Text.configure e [ Tk.YScrollCommand
-			   (fun a b -> Scrollbar.set vscrbar a b) ];
+      Scrollbar.configure 
+        ~command:(fun s -> Text.yview e s)
+	~width:9
+	vscrbar;
+      Text.configure 
+	~yscrollcommand:(fun a b -> Scrollbar.set vscrbar a b)
+	e;
       let s =
 	if att_slot <> "" then
 	  try c # get_slot att_slot with
@@ -603,12 +633,12 @@ class textbox =
 	  String.sub s 0 (String.length s - 1)
 	else 
 	  s in
-      Text.insert e (Tk.TextIndex(Tk.End,[])) s' [];
+      Text.insert ~index:(`End,[]) ~text:s' e;
       if att_slot = "" then
-	Text.configure e [ Tk.State Tk.Disabled ];
-      Tk.pack [e] [ Tk.Side Tk.Side_Left ];
-      Tk.pack [vscrbar] [ Tk.Side Tk.Side_Left; Tk.Fill Tk.Fill_Y ];
-      f
+	Text.configure ~state:`Disabled e;
+      Tk.pack ~side:`Left [e];
+      Tk.pack ~side:`Left ~fill:`Y [vscrbar];
+      Widget.forget_type f
 
     method accept c =
       if att_slot <> "" then
@@ -618,8 +648,9 @@ class textbox =
 	      let s =
 		Text.get
 		  w
-		  (Tk.TextIndex(Tk.LineChar(1,0),[]))
-		  (Tk.TextIndex(Tk.End,[])) in
+		  ~start:(`Linechar(1,0), [])
+		  ~stop:(`End,[])
+	      in
 	      c # set_slot att_slot s
 
   end
@@ -705,11 +736,15 @@ class button =
 	      (try c # next with Not_found -> ())
 	  | _ -> ()
       in
-      let b = Button.create w ( [ Tk.Text att_label; Tk.Command cmd ] @
-			      	self # fg_color_opt @
-			      	self # bg_color_opt @
-			      	self # font_opt ) in
-      b
+      let b = Button.create
+		~text:att_label
+		~command:cmd
+		~foreground:(self # fg_color_opt)
+		~background:(self # bg_color_opt)
+		~font:(self # font)
+		w 
+      in
+      Widget.forget_type b
 
 
   end
@@ -756,6 +791,9 @@ let tag_map =
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.6  2001/07/02 22:50:43  gerd
+ * 	Ported from camltk to labltk.
+ *
  * Revision 1.5  2000/08/30 15:58:49  gerd
  * 	Updated.
  *

@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.6 2000/07/16 19:36:03 gerd Exp $
+(* $Id: ds_app.ml,v 1.7 2001/07/02 22:50:43 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -51,13 +51,14 @@ let edit filename cmd =
   obj_dtd # set_root object_dtd_root;
 
   let topframe = openTk() in
-  let context = new context filename obj_dtd index root topframe in
+  let topframe_frame = Frame.create ~borderwidth:0 topframe in
+  let context = new context filename obj_dtd index root topframe_frame in
 
-  Toplevel.configure topframe [ Width (Centimeters 20.0);
-                                Height (Centimeters 12.0);
-                              ];
+  Toplevel.configure ~width:(Tk.pixels (`Cm 20.0))
+                     ~height:(Tk.pixels (`Cm 12.0)) topframe;
   Pack.propagate_set topframe false;
   Wm.title_set topframe cmd;
+  pack [topframe_frame];
   context # goto (root # extension # start_node_name);
   mainLoop()
 ;;
@@ -80,6 +81,9 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.7  2001/07/02 22:50:43  gerd
+ * 	Ported from camltk to labltk.
+ *
  * Revision 1.6  2000/07/16 19:36:03  gerd
  * 	Updated.
  *
