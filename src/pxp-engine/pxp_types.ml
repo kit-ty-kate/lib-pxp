@@ -1,7 +1,7 @@
-(* $Id: pxp_types.ml,v 1.12 2001/06/07 22:49:51 gerd Exp $
+(* $Id: pxp_types.ml,v 1.13 2001/06/27 23:33:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
- * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
 class private_id = object end;;
@@ -16,8 +16,8 @@ type ext_id =
 let allocate_private_id () = new private_id;;
   (* private_id is a class because allocate_private_id becomes thread-safe in
    * this case (without needing to lock a global variable).
-   * Note that when you can compare objects (=, < etc) you actually compare
-   * the object IDs. So private_id will have the indented semantics.
+   * Note that when you compare objects (=, < etc) you actually compare
+   * the object IDs. Hence, private_id has the intended semantics.
    *)
 
 
@@ -147,17 +147,18 @@ let rec string_of_exn x0 =
 
 
 type output_stream =
-    Out_buffer of Buffer.t
-  | Out_channel of out_channel
-  | Out_function of (string -> int -> int -> unit)
+  [ `Out_buffer of Buffer.t
+  | `Out_channel of out_channel
+  | `Out_function of (string -> int -> int -> unit)
+  ]
 ;;
 
 
 let write os str pos len =
   match os with
-      Out_buffer b -> Buffer.add_substring b str pos len
-    | Out_channel ch -> output ch str pos len
-    | Out_function f -> f str pos len
+      `Out_buffer b -> Buffer.add_substring b str pos len
+    | `Out_channel ch -> output ch str pos len
+    | `Out_function f -> f str pos len
 ;;
 
 
@@ -285,6 +286,9 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.13  2001/06/27 23:33:53  gerd
+ * 	Type output_stream is now a polymorphic variant
+ *
  * Revision 1.12  2001/06/07 22:49:51  gerd
  * 	New namespace exceptions.
  *

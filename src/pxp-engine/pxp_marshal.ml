@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.4 2001/06/08 01:15:47 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.5 2001/06/27 23:33:53 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -431,7 +431,7 @@ let document_to_cmd_sequence ?(omit_positions = false) ~f
   f (Head (enc, sa));
   f (Document (doc # xml_version));
   let dtd_buffer = Buffer.create 1000 in
-  doc # dtd # write (Out_buffer dtd_buffer) (doc # encoding :> encoding) false; 
+  doc # dtd # write (`Out_buffer dtd_buffer) (doc # encoding :> encoding) false; 
   let r = 
     match doc # dtd # root with
 	None -> ""
@@ -545,6 +545,9 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.5  2001/06/27 23:33:53  gerd
+ * 	Type output_stream is now a polymorphic variant
+ *
  * Revision 1.4  2001/06/08 01:15:47  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions

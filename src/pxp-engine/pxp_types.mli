@@ -1,7 +1,7 @@
-(* $Id: pxp_types.mli,v 1.13 2001/06/07 22:49:51 gerd Exp $
+(* $Id: pxp_types.mli,v 1.14 2001/06/27 23:33:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
- * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
 
@@ -91,10 +91,26 @@ type att_default =
 
 
 type att_value =
-    Value of string           (* a single value *)
-  | Valuelist of string list  (* a list of values *)
-  | Implied_value             (* a value left out *)
-;;
+    Value of string
+  | Valuelist of string list
+  | Implied_value
+  (* <ID:type-att-value>
+   * <TYPE:type>
+   * <CALL>   [att_value]
+   * <SIG>    AUTO
+   * <DESCR>  Enumerates the possible values of an attribute:
+   *   - [Value s]: The attribute is declared as a non-list type, or the
+   *     attribute is undeclared; and the attribute is either defined with
+   *     value ["s"], or it is missing but has the default value [s].
+   *   - [[Valuelist [s1;...;sk]]]: The attribute is declared as a list type,
+   *     and the attribute is either defined with value ["s1 ... sk"],
+   *     or it is missing but has the default value ["s1 ... sk"]. The
+   *     components of the list must be separated by whitespace.
+   *   - [Implied_value]: The attribute is declared without default value,
+   *     and there is no definition for the attribute.
+   *     --
+   * </ID>
+   *)
 
 
 class type collect_warnings =
@@ -166,9 +182,10 @@ val string_of_exn : exn -> string
 
 
 type output_stream =
-    Out_buffer of Buffer.t
-  | Out_channel of out_channel
-  | Out_function of (string -> int -> int -> unit)
+  [ `Out_buffer of Buffer.t
+  | `Out_channel of out_channel
+  | `Out_function of (string -> int -> int -> unit)
+  ]
 
 val write : output_stream -> string -> int -> int -> unit
   (* write os s pos len: Writes the string to the buffer/channel/stream *)
@@ -198,6 +215,9 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.14  2001/06/27 23:33:53  gerd
+ * 	Type output_stream is now a polymorphic variant
+ *
  * Revision 1.13  2001/06/07 22:49:51  gerd
  * 	New namespace exceptions.
  *
