@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.8 2002/08/03 17:54:47 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.9 2002/08/05 22:33:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -106,6 +106,7 @@ type token =
   | Rcurly                            (* } *)
   | RRcurly                           (* }} *)
   | LineEnd   of string
+  | LineEnd_att   of string
   | Name      of string               (* name *)
   | Nametoken of string               (* nmtoken but not name *)
   | Attval    of string           (* attribute value; may contain entity refs *)
@@ -175,6 +176,7 @@ let string_of_tok tok =
   | Attval_nl_normalized _ -> "Attval_nl_normalized"
   | Unparsed_string _ -> "Unparsed_string" 
   | LineEnd _ -> "LineEnd"
+  | LineEnd_att _ -> "LineEnd_att"
   | Lcurly -> "Lcurly"
   | LLcurly -> "LLcurly"
   | Rcurly -> "Rcurly"
@@ -209,6 +211,10 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.9  2002/08/05 22:33:33  gerd
+ * 	New token LineEnd_att for newline characters inside
+ * attribute values (event-based parser).
+ *
  * Revision 1.8  2002/08/03 17:54:47  gerd
  * 	Support for event-based parsing of attribute values: New
  * lexers Tag_eb, Tag_eb_att, and the new pseudo lexer Within_tag_entry

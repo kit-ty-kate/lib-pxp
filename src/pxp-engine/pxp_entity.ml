@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.18 2002/08/03 17:52:34 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.19 2002/08/05 22:33:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -471,6 +471,13 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 		| LineEnd s -> 
 		    if v.normalize_newline then 
 		      CharData "\n"
+		    else
+		      CharData s
+
+          (* Convert LineEnd_att to CharData *)
+		| LineEnd_att s -> 
+		    if v.normalize_newline then 
+		      CharData " "
 		    else
 		      CharData s
 
@@ -1275,6 +1282,10 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.19  2002/08/05 22:33:33  gerd
+ * 	New token LineEnd_att for newline characters inside
+ * attribute values (event-based parser).
+ *
  * Revision 1.18  2002/08/03 17:52:34  gerd
  * 	Support for event-based parsing of attribute values. There is
  * now a flag gen_att_events that determines whether to use this feature.
