@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.11 2001/04/03 20:22:44 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.12 2001/04/24 21:07:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -242,6 +242,7 @@ type source =
   | ExtID of (ext_id * Pxp_reader.resolver)
 
 val from_channel : 
+      ?alt:Pxp_reader.resolver list ->
       ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
       in_channel -> source
 
@@ -249,6 +250,7 @@ val from_string :
       ?fixenc:encoding -> string -> source
 
 val from_file :
+       ?alt:Pxp_reader.resolver list ->
        ?system_encoding:encoding -> ?enc:encoding -> string -> source
 
 (* Notes on sources (version 2):
@@ -286,6 +288,9 @@ val from_file :
  *   the names stored on the disks). By default, UTF-8 is assumed.
  *   The ?enc argument specifies the character encoding of the filename
  *   argument (default: UTF-8).
+ *
+ * ~alt: This parameter may specify alternate resolvers. They are tried
+ *   if the default resolving method is not applicable.
  *
  * Examples:
  *
@@ -410,6 +415,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.12  2001/04/24 21:07:13  gerd
+ * 	New option ~alt in from_channel and from_file.
+ *
  * Revision 1.11  2001/04/03 20:22:44  gerd
  * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
  * 	Improved "combine": PUBLIC and SYSTEM IDs are handled

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.21 2001/04/22 15:15:40 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.22 2001/04/24 21:07:13 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -88,7 +88,7 @@ let make_context entity_manager =
 ;;
 
 
-let from_channel ?system_encoding ?id:init_id ?fixenc ch =
+let from_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
   let channel_id = allocate_private_id() in
   match init_id with
       None ->
@@ -98,7 +98,7 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
 		  ?fixenc
 		  ch
 	in
-	ExtID(Private channel_id, r)
+	ExtID(Private channel_id, new combine (r :: alt))
     | Some (System sysname) ->
 	(* Here we use a specially configured resolve_as_file. The private
 	 * ID channel_id is mapped to the URL sysid and to the channel
@@ -135,13 +135,13 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
 			      )
 	    ()
 	in
-	ExtID(Private channel_id, r)
+	ExtID(Private channel_id, new combine (r :: alt))
     | Some _ ->
 	failwith "Pxp_yacc.from_channel: Bad ~id option (must be System)"
 ;;
 
 
-let from_file ?system_encoding ?enc utf8_filename =
+let from_file ?(alt = []) ?system_encoding ?enc utf8_filename =
   let r =
     new resolve_as_file
     ?system_encoding:system_encoding
@@ -155,7 +155,7 @@ let from_file ?system_encoding ?enc utf8_filename =
   
   let xid = System (Neturl.string_of_url url) in
   
-  ExtID(xid, r)
+  ExtID(xid, new combine (r :: alt))
 ;;
 
 
@@ -2363,6 +2363,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.22  2001/04/24 21:07:13  gerd
+ * 	New option ~alt in from_channel and from_file.
+ *
  * Revision 1.21  2001/04/22 15:15:40  gerd
  * 	Improved error messages.
  *
