@@ -217,17 +217,18 @@ type entry =
 
 
 type event =
-  | E_start_doc of (string * bool * dtd)
-  | E_end_doc
+  | E_start_doc of (string * dtd)
+  | E_end_doc of string
   | E_start_tag of (string * (string * string) list * 
+		    namespace_scope option *
 		    Pxp_lexer_types.entity_id)
-  | E_ns_start_tag of (string * string * (string * string * string) list *
-		       namespace_scope * Pxp_lexer_types.entity_id)
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
-  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
   | E_pinstr of (string * string)
+  | E_pinstr_member of (string * string)
   | E_comment of string
+  | E_start_super
+  | E_end_super
   | E_position of (string * int * int)
   | E_error of exn
   | E_end_of_stream

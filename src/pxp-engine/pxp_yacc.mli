@@ -148,53 +148,8 @@ val parse_dtd_entity : config -> source -> dtd
 val extract_dtd_from_document_entity : config -> source -> dtd
   (* now defined in Pxp_dtd_parser *)
 
-type event = Pxp_types.event =
-  | E_start_doc of (string * bool * dtd)
-  | E_end_doc
-  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
-  | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_dtd.namespace_scope * Pxp_lexer_types.entity_id)
-  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
-  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
-  | E_char_data of  string
-  | E_pinstr of (string * string)
-  | E_comment of string
-  | E_position of (string * int * int)
-  | E_error of exn
-  | E_end_of_stream
 
-val create_entity_manager :
-      ?is_document:bool ->
-      config -> 
-      source -> 
-        Pxp_entity_manager.entity_manager
-  (* now defined in Pxp_ev_parser *)
-
-type entry = Pxp_types.entry
-
-val process_entity :
-      config -> 
-      entry ->
-      Pxp_entity_manager.entity_manager ->
-      (event -> unit) ->
-        unit
-  (* now defined in Pxp_ev_parser *)
-
-val process_expr :
-      ?first_token: Pxp_lexer_types.token ->
-      ?following_token: Pxp_lexer_types.token ref ->
-      config -> 
-      Pxp_entity_manager.entity_manager ->
-      (event -> unit) ->
-        unit
-  (* now defined in Pxp_ev_parser *)
-
-val create_pull_parser :
-      config -> 
-      entry ->
-      Pxp_entity_manager.entity_manager ->
-        ('a -> event option)
-  (* now defined in Pxp_ev_parser *)
+(* Event-based stuff now only in Pxp_ev_parser! *)
 
 
 (*$-*)

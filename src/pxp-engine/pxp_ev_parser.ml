@@ -18,7 +18,7 @@ open Pxp_aux
 class any_entity_id = object end ;;
 
 class event_parser init_dtd init_config init_event_handler 
-                   init_want_start_doc init_pull_counter =
+                   init_want_start_doc init_pull_counter lit_root =
 object (self)
   inherit core_parser init_dtd init_config init_pull_counter
 
@@ -46,10 +46,13 @@ object (self)
 
   method private init_for_xml_body() =
     if not init_done then begin
+      if config.recognize_standalone_declaration then
+	dtd # set_standalone_declaration xml_standalone;
       if want_start_doc then
 	event_handler (E_start_doc(xml_version,
-				   xml_standalone,
 				   dtd));
+      if config.enable_super_root_node then
+	event_handler E_start_super;
       (* Init namespace processing, if necessary: *)
       ( match config.enable_namespace_processing with
 	    None -> ()
@@ -72,8 +75,7 @@ object (self)
       | Some "no" -> false
       | _ -> raise (WF_error("Illegal 'standalone' declaration"))
     in
-    if config.recognize_standalone_declaration then
-      xml_standalone <- v
+    xml_standalone <- v
 
 
   method private event_start_tag position name attlist emptiness tag_beg_entid =
@@ -85,6 +87,7 @@ object (self)
       if ep_root_element_seen then
 	raise(WF_error("Document must consist of only one toplevel element"));
       ep_root_element_seen <- true;
+      lit_root := name
     end;
 
     match config.enable_namespace_processing with
@@ -92,29 +95,23 @@ object (self)
 	  (* no namespaces *)
 	  if not emptiness then
 	    stack_push (position, name, "", tag_beg_entid) ep_elstack;
-	  event_handler(E_start_tag(name,attlist,tag_beg_entid));
+	  event_handler(E_start_tag(name,attlist,None,tag_beg_entid));
 	  if emptiness then
 	    event_handler(E_end_tag(name,tag_beg_entid))
       | Some mng ->
 	  (* enabled namespaces *)
 	  let (src_prefix, localname, norm_name, norm_attlist) =
             self # push_src_norm_mapping mng name attlist in
-	  let scope = match ns_scope with Some s -> s | None -> assert false 
-	  in
-	  let mixed_attlist =
+	  let attlist' =
 	    List.map (fun (orig_prefix, localname, norm_name, value) ->
-			(if orig_prefix = "" 
-			 then localname 
-			 else orig_prefix ^ ":" ^ localname),
-			 norm_name,
-			 value) norm_attlist in
+			(norm_name, value)) norm_attlist in
 	  if not emptiness then
 	    stack_push (position, name, norm_name, tag_beg_entid) ep_elstack;
-	  event_handler(E_ns_start_tag
-			  (name,norm_name,mixed_attlist,scope,tag_beg_entid));
+	  event_handler(E_start_tag
+			  (norm_name,attlist',ns_scope,tag_beg_entid));
 	  if emptiness then (
 	    self # pop_src_norm_mapping();
-	    event_handler(E_ns_end_tag(name,norm_name,tag_beg_entid));
+	    event_handler(E_end_tag(norm_name,tag_beg_entid));
 	  )
 
 
@@ -155,7 +152,7 @@ object (self)
       | Some mng ->
 	  (* namespaces *)
 	  self # pop_src_norm_mapping();
-	  event_handler(E_ns_end_tag(name,norm_name,tag_end_entid))
+	  event_handler(E_end_tag(norm_name,tag_end_entid))
 	  
 
   method private event_char_data data =
@@ -163,7 +160,8 @@ object (self)
 
 
   method private event_pinstr position target value =
-    if config.enable_pinstr_nodes then begin
+    if config.enable_pinstr_nodes &&
+       (n_tags_open > 0 || config.enable_super_root_node) then begin
       let ev_list = 
 	(match position with
 	     Some(e,l,c) -> [ E_position(e,l,c) ]
@@ -175,11 +173,19 @@ object (self)
       else
 	ep_early_events <- ep_early_events @ ev_list
     end
+    else begin
+      let ev = E_pinstr_member(target,value) in
+      if init_done then
+	event_handler ev
+      else
+	ep_early_events <- ep_early_events @ [ev]
+    end
 
 
   method private event_comment position mat =
-    if config.enable_comment_nodes then begin
-      let ev_list = 
+    if config.enable_comment_nodes && 
+       (n_tags_open > 0 || config.enable_super_root_node) then begin
+       let ev_list = 
 	(match position with
 	     Some(e,l,c) -> [ E_position(e,l,c) ]
 	   | None -> []
@@ -193,7 +199,7 @@ object (self)
 
 
   method private sub_parser () =
-    let pobj = new event_parser dtd config event_handler false (-1) in
+    let pobj = new event_parser dtd config event_handler false (-1) (ref "") in
     (pobj :> core_parser)
 
 end
@@ -226,6 +232,7 @@ let process_entity
 
   let have_document_entry = 
     match entry with `Entry_document _ -> true | _ -> false in
+  let lit_root = ref "" in
   let pobj =
     new event_parser
       mgr#dtd
@@ -233,6 +240,7 @@ let process_entity
       eh
       have_document_entry
       (-1)
+      lit_root
   in
   let resolver = mgr # current_resolver in
   let init_lexer =
@@ -250,7 +258,9 @@ let process_entity
 
     pobj # parse context (entry : entry :> extended_entry);
     if en # is_open then ignore(en # close_entity);
-    if have_document_entry then eh (E_end_doc);
+    if cfg.enable_super_root_node then
+      eh E_end_super;
+    if have_document_entry then eh (E_end_doc !lit_root);
     eh E_end_of_stream;
   with
     | Failure "Invalid UTF-8 stream" ->
@@ -276,7 +286,8 @@ let process_expr
       ?first_token
       ?following_token
       cfg mgr eh =
-  let pobj = new event_parser mgr#dtd cfg eh false (-1) in
+  let lit_root = ref "" in
+  let pobj = new event_parser mgr#dtd cfg eh false (-1) lit_root in
   let resolver = mgr # current_resolver in
   let en = mgr # current_entity in
   begin try
@@ -322,6 +333,7 @@ let create_pull_parser
 
   let have_document_entry = 
     match entry with `Entry_document _ -> true | _ -> false in
+  let lit_root = ref "" in
   let pobj =
     new event_parser
       mgr#dtd
@@ -329,6 +341,7 @@ let create_pull_parser
       eh
       have_document_entry
       100                   (* the number of loops until Interrupt_parsing *)
+      lit_root
   in
   let resolver = mgr # current_resolver in
   let init_lexer =
@@ -383,7 +396,8 @@ let create_pull_parser
       (* If the [parse] method terminates, the end of the stream is reached!
        *)
       if en # is_open then ignore(en # close_entity);
-      if have_document_entry then eh (E_end_doc);
+      if cfg.enable_super_root_node then eh E_end_super;
+      if have_document_entry then eh (E_end_doc !lit_root);
       eh E_end_of_stream;
       pull_queue_eof := true;
     with
@@ -472,7 +486,7 @@ let drop_ignorable_whitespace_filter get_ev =
   let rec get_ev' thing =
     let ev = get_ev thing in
     match ev with
-	Some(E_start_doc(_,_,dtd)) ->
+	Some(E_start_doc(_,dtd)) ->
 	  if !found_dtd <> None then
 	    failwith "Pxp_ev_parser.drop_ignorable_whitespace_filter: More than one E_start_doc event";
 	  found_dtd := Some dtd;
@@ -480,18 +494,11 @@ let drop_ignorable_whitespace_filter get_ev =
       | Some(E_position(e,line,col)) ->
 	  pos := (e,line,col);
 	  ev
-      |	Some(E_start_tag(name,_,_)) ->
-	  let ign_ws = has_ignorable_ws name in
-	  Stack.push ign_ws elements;
-	  ev
-      | Some(E_ns_start_tag(_,name,_,_,_)) ->
+      |	Some(E_start_tag(name,_,_,_)) ->
 	  let ign_ws = has_ignorable_ws name in
 	  Stack.push ign_ws elements;
 	  ev
       | Some(E_end_tag(name,_)) ->
-	  pop();
-	  ev
-      | Some(E_ns_end_tag(_,name,_)) ->
 	  pop();
 	  ev
       | Some(E_char_data s) ->

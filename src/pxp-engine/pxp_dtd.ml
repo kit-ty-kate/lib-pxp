@@ -117,6 +117,9 @@ object (self)
 ;;
 
 
+let create_namespace_manager () = new namespace_manager;;
+
+
 class type namespace_scope =
 object
   method namespace_manager : namespace_manager
@@ -202,6 +205,10 @@ object(self)
 
 end
 ;;
+
+
+let create_namespace_scope ?parent ?(decl = []) mng =
+  new namespace_scope_impl mng parent decl ;;
 
 
 class dtd  ?swarner the_warner init_encoding =
@@ -1259,6 +1266,10 @@ object (self)
 
   end
 ;;
+
+let create_dtd ?swarner ?(warner = new drop_warnings) enc =
+  new dtd ?swarner warner enc ;;
+
 
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)

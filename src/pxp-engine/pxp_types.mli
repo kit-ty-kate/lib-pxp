@@ -126,7 +126,6 @@ type config =
 	  *     T_element "-vr" instead of T_super_root.
 	  * (2) The T_super_root node is created from the super root exemplar
 	  *     in your spec.
-	  * (3) Event-based parser: no effect
 	  *)
 
       enable_comment_nodes : bool;
@@ -637,52 +636,53 @@ type entry =
 
 
 type event =
-  | E_start_doc of (string * bool * Pxp_dtd.dtd)
-  | E_end_doc
+  | E_start_doc of (string * Pxp_dtd.dtd)
+  | E_end_doc of string
   | E_start_tag of (string * (string * string) list * 
+		    Pxp_dtd.namespace_scope option *
 		    Pxp_lexer_types.entity_id)
-  | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_dtd.namespace_scope * Pxp_lexer_types.entity_id)
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
-  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
   | E_pinstr of (string * string)
+  | E_pinstr_member of (string * string)
   | E_comment of string
+  | E_start_super
+  | E_end_super
   | E_position of (string * int * int)
   | E_error of exn
   | E_end_of_stream
   (* may be extended in the future *)
 
   (* The type of XML events:
-   * E_start_doc (xmlversion,standalone,dtd)
-   * E_end_doc
+   * E_start_doc (xmlversion,dtd)
+   * E_end_doc lit_name
+   *    lit_name: The literal name of the root element
    *
-   * E_start_tag (name, attlist, entid):
+   * E_start_tag (name, attlist, scope_opt, entid):
    *    <name attlist>
-   *    only used in non-namespace mode
-   *
-   * E_ns_start_tag (orig_name, norm_name, attlist, scope, entid)
-   *    only used in namespace mode; orig_name is the element as found
-   *    in the XML text; norm_name is the normalized element name;
-   *    attlist consists of triples (orig_name, norm_name, value).
-   *    [scope] is the namespace scope object.
+   *    scope_opt is None in non-namespace mode, and the
+   *    namespace scope object in namespace mode.
    *
    * E_end_tag (name, entid):                 
    *    </name>
-   *    only used in non-namespace mode
-   *
-   * E_ns_end_tag (orig_name, norm_name, entid):
-   *    only used in namespace mode
    *
    * E_char_data data:
    *     The parser usually generates several E_char_data events for a
    *     longer section of character data.
    *
    * E_pinstr (target,value):                 
-   *     <?target value?>
+   *     <?target value?> as node
+   *
+   * E_pinstr_member (target,value):                 
+   *     <?target value?> as member of the parent element (add_pinstr)
    *
    * E_comment value:
    *     <!--value-->
+   *
+   * E_start_super, 
+   * E_end_super:
+   *    Indicates where the "super root node" is. Only generated when
+   *    enable_super_root_node is on.
    *
    * E_position(entity,line,col):
    *    these events are only created if the next event will be

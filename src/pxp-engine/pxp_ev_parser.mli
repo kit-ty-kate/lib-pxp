@@ -75,6 +75,7 @@ val process_entity :
    * - encoding
    * - enable_pinstr_nodes
    * - enable_comment_nodes
+   * - enable_super_root_node
    * - store_element_positions
    * - name_pool and all name pool options
    * - enable_namespace_processing
@@ -192,3 +193,4 @@ val drop_ignorable_whitespace_filter : 'a filter
    *)
 
 
+(* TODO: ID filter that creates an ID index *)

@@ -143,6 +143,10 @@ class namespace_manager :
 ;;
 
 
+val create_namespace_manager : unit -> namespace_manager
+  (* Preferred way of creating a namespace_manager *)
+
+
 (** The recursive class type [namespace_scope] represents the original
  * namespace declarations found in the XML text. A single [namespace_scope]
  * object contains a list of declared namespaces
@@ -223,6 +227,14 @@ class namespace_scope_impl :
     * parent scope, and [decl] is the declaration list.
     *)
 
+
+val create_namespace_scope : 
+    ?parent:namespace_scope -> 
+    ?decl:(string * string) list ->
+    namespace_manager ->
+      namespace_scope
+  (* Preferred way of creating a namespace_scope *)
+    
 
 class dtd :
   (* Creation:
@@ -617,6 +629,23 @@ and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
 ;;
 
 (*$-*)
+
+(* ---------------------------------------------------------------------- *)
+
+val create_dtd :
+      ?swarner:Pxp_core_types.symbolic_warnings ->
+      ?warner:Pxp_core_types.collect_warnings -> 
+      Pxp_core_types.rep_encoding ->
+	dtd
+  (* Preferred way of creating a DTD. Example:
+   * let dtd = create_dtd 
+   *             ?swarner:config.swarner
+   *             ~warner:config.warner
+   *             config.encoding
+   *
+   * See also Pxp_dtd_parser.create_empty_dtd.
+   *)
+
 
 (* ---------------------------------------------------------------------- *)
 

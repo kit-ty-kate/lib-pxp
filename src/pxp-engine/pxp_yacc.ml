@@ -89,30 +89,3 @@ let parse_dtd_entity = Pxp_dtd_parser.parse_dtd_entity
 let extract_dtd_from_document_entity = 
   Pxp_dtd_parser.extract_dtd_from_document_entity
 
-
-type event = Pxp_types.event =
-  | E_start_doc of (string * bool * dtd)
-  | E_end_doc
-  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
-  | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_dtd.namespace_scope * Pxp_lexer_types.entity_id)
-  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
-  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
-  | E_char_data of  string
-  | E_pinstr of (string * string)
-  | E_comment of string
-  | E_position of (string * int * int)
-  | E_error of exn
-  | E_end_of_stream
-
-let create_entity_manager = Pxp_ev_parser.create_entity_manager
-
-type entry = Pxp_types.entry
-
-let process_entity = Pxp_ev_parser.process_entity
-
-let process_expr = Pxp_ev_parser.process_expr
-
-let create_pull_parser = Pxp_ev_parser.create_pull_parser
-
-

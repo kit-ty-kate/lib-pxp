@@ -5,7 +5,7 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-all: create_element modify strip
+all: create_element modify strip symmetry
 
 create_element: create_element.ml
 	ocamlfind ocamlc -labels -g -a -o create_element.cma -package pxp create_element.ml
@@ -18,6 +18,10 @@ modify: modify.ml
 strip: strip.ml
 	ocamlfind ocamlc -g -a -o strip.cma -package pxp strip.ml
 	../create-wrapper strip
+
+symmetry: symmetry.ml
+	ocamlfind ocamlc -g -a -o symmetry.cma -package pxp symmetry.ml
+	../create-wrapper symmetry
 
 #----------------------------------------------------------------------
 .PHONY: all

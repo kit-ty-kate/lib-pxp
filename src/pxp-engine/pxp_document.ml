@@ -3747,6 +3747,7 @@ class ['ext] document ?swarner the_warner enc =
     val mutable xml_version = "1.0"
     val mutable dtd = (None : dtd option)
     val mutable root = (None : 'ext node option)
+    val mutable raw_root_name = ""
     val encoding = (enc : rep_encoding)
 
     val warner = (the_warner : collect_warnings)
@@ -3791,12 +3792,13 @@ class ['ext] document ?swarner the_warner enc =
 			(Validation_error ("The root element is `" ^
 					   real_root_element_name ^
 					   "' but is declared as `" ^
-					   declared_root_element_name ^ "'"))
+					   declared_root_element_name ^ "'"));
 		| None -> ()
 	    end;
 	    (* All is okay, so store dtd and root node: *)
 	    dtd <- Some dtd_r;
-	    root <- Some r
+	    root <- Some r;
+	    raw_root_name <- real_root_element_name;
 
 	(**************** CASE: No super root element **********************)
 
@@ -3820,7 +3822,8 @@ class ['ext] document ?swarner the_warner enc =
 	    end;
 	    (* All is okay, so store dtd and root node: *)
 	    dtd <- Some dtd_r;
-	    root <- Some r
+	    root <- Some r;
+	    raw_root_name <- real_root_element_name;
 
 	| _ ->
 	    failwith "Pxp_document.document#init_root: the root node must be an element or super-root"
@@ -3843,6 +3846,11 @@ class ['ext] document ?swarner the_warner enc =
       match root with
 	  None -> failwith "Pxp_document.document#root: Document has no root element"
 	| Some r -> r
+
+    method raw_root_name = 
+      match root with
+	  None -> failwith "Pxp_document.document#raw_root_name: Document has no root element"
+	| Some _ -> raw_root_name
 
     method write ?default ?(prefer_dtd_reference = false) os enc =
       let encoding = self # encoding in
@@ -3930,74 +3938,124 @@ let print_doc (n : 'ext document) =
 
 (**********************************************************************)
 
-exception Empty_tree
-exception Build_aborted
+exception Error_event of exn
 
 
 type state =
-    St_start | St_start_doc | St_node | St_end_doc | St_end_of_stream 
+    Null
+  | Start_seen   (* Start tag seen *)
+  | End_seen     (* End tag seen *)
+  | NA           (* Not applicable: Start/end tag cannot occur any longer *)
+;;
 
-let build_node_tree cfg dtd spec next_ev =
+
+type 'ext solid_xml =
+    [ `Node of 'ext node
+    | `Document of 'ext document
+    ]
+;;
+
+
+let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
+  let eff_dtd =
+    ref (match dtd with 
+	     Some d ->  
+	       if d#encoding <> cfg.encoding then
+		 failwith "Pxp_document.solidify: Encoding mismatch";
+	       d
+	   | None   -> 
+	       let d = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
+	       d # allow_arbitrary;
+	       ( match cfg.enable_namespace_processing with
+		     Some m -> d # set_namespace_manager m;
+		   | None -> ()
+	       );
+	       d) in
+  
   let return = ref None in
-  let root_found = ref false in
+  let return_doc = ref None in
   let stack = Stack.create() in
-  let state = ref St_start in
-  let doc_state = ref St_start in   (* only St_start/_start_doc/_end_doc *)
+  let depth = ref 0 in           (* Stack depth, without super root node *)
+  let doc_state = ref Null in
+  let super_state = ref Null in
+  let root_state = ref Null in
   let pos = ref None in
   let eof = ref false in
 
   let unexpected txt =
-    failwith ("Pxp_document.build_node_tree: Unexpected " ^ txt ^ " event")
+    failwith ("Pxp_document.solidify: Unexpected " ^ txt ^ " event")
   in
-
-  let check_state txt =
-    (* Checks !state for real tree nodes *)
-    ( match !state with
-	  St_start | St_start_doc | St_node -> ()
-	| _ ->
-	    unexpected txt
-    );
-    state := St_node;
-  in
-
-  if cfg.enable_super_root_node && Stack.is_empty stack then begin
-    let n = create_super_root_node spec dtd in
-    Stack.push n stack;
-    return := Some n
-  end;
 
   while not !eof do
     let ev = next_ev() in
     match ev with
-	Some (E_start_doc(_,_,_)) ->
-	  if !state <> St_start || !doc_state <> St_start then
-	    unexpected "E_start_doc";
-	  state := St_start_doc;
-	  doc_state := St_start_doc;
-	  pos := None
-
-      | Some (E_end_doc) ->
-	  ( match !state, !doc_state with
-		St_start_doc, St_start_doc -> ()
-	      | St_node, St_start_doc -> ()
-	      | _ ->
-		  unexpected "E_end_doc"
+	Some (E_start_doc(xml_version,found_dtd)) ->
+	  if !doc_state <> Null then unexpected "E_start_doc";
+	  doc_state := Start_seen;
+	  pos := None;
+	  let doc = 
+	    new document ?swarner:cfg.swarner cfg.warner cfg.encoding in
+	  doc # init_xml_version xml_version;
+	  if dtd = None then (
+	    if found_dtd#encoding <> cfg.encoding then
+	      failwith "Pxp_document.solidify: Encoding mismatch";
+	    eff_dtd := found_dtd;
 	  );
-	  state := St_end_doc;
-	  doc_state := St_end_doc;
-	  pos := None
+	  return_doc := Some doc;
 
-      | Some (E_start_tag(name,atts,eid)) ->
-	  check_state "E_start_tag";
-	  if Stack.is_empty stack && !root_found then
-	    failwith "Pxp_document.build_node_tree: More than one root element";
+      | Some (E_end_doc lit_root) ->
+	  if ((!doc_state <> Start_seen) ||
+	      (!super_state = Start_seen) ||
+	      (!root_state <> End_seen)) then unexpected "T_end_doc";
+	  doc_state := End_seen;
+	  pos := None;
+	  assert(Stack.is_empty stack);
+	  (match (!return, !return_doc) with
+	     | (Some r, Some r_doc) -> 
+		 r_doc # init_root r lit_root;
+	     | _ ->
+		 assert false
+	  );
+
+      | Some E_start_super ->
+	  if !super_state <> Null then unexpected "E_start_super";
+	  if !doc_state = Null then doc_state := NA;
+	  super_state := Start_seen;
+	  if cfg.enable_super_root_node then (
+	    let n = create_super_root_node ?position:!pos spec !eff_dtd in
+	    Stack.push n stack;
+	  )
+
+      | Some E_end_super ->
+	  if (!super_state <> Start_seen || !root_state <> End_seen) then
+	    unexpected "E_end_super";
+	  super_state := End_seen;
+	  if  cfg.enable_super_root_node then (
+	    let n = Stack.pop stack in
+	    assert(Stack.is_empty stack);
+	    assert(n#node_type = T_super_root);
+	    return := Some n;
+	  )
+
+      | Some (E_start_tag(name,atts,scope_opt,eid)) ->
+	  let is_root = (!depth = 0) in
+	  if is_root then (
+	    if !root_state <> Null then unexpected "E_start_tag";
+	    root_state := Start_seen;
+	    if !doc_state = Null then doc_state := NA;
+	    if !super_state = Null then super_state := NA;
+	  );
 	  let n = create_element_node 
 		    ?name_pool_for_attribute_values:
 		    (if cfg.enable_name_pool_for_attribute_values
 		     then Some cfg.name_pool
 		     else None)
 		    ?position:!pos
-		    spec dtd name atts in
+		    spec !eff_dtd name atts in
+	  ( match scope_opt with
+		None -> ()
+	      | Some scope -> n # set_namespace_scope scope
+	  );
 	  ( try
 	      let parent = Stack.top stack in
 	      parent # append_node n
@@ -4006,36 +4064,16 @@ let build_node_tree cfg dtd spec next_ev =
 		  return := Some n
 	  );
 	  Stack.push n stack;
-	  root_found := true;
+	  incr depth;
 	  pos := None
 
-      | Some (E_ns_start_tag(name,oname,atts,scope,eid)) ->
-	  check_state "E_ns_start_tag";
-	  if Stack.is_empty stack && !root_found then
-	    failwith "Pxp_document.build_node_tree: More than one root element";
-
-	  let atts' = List.map (fun (n,v,ov) -> (n,v)) atts in
-	  let n = create_element_node 
-		    ?name_pool_for_attribute_values:
-		    (if cfg.enable_name_pool_for_attribute_values
-		     then Some cfg.name_pool
-		     else None)
-		    ?position:!pos
-		    spec dtd name atts' in
-	  n # set_namespace_scope scope;
-	  ( try
-	      let parent = Stack.top stack in
-	      parent # append_node n
-	    with
-		Stack.Empty ->
-		  return := Some n
+      | Some (E_end_tag(name,eid)) ->
+	  decr depth;
+	  let is_root = (!depth = 0) in
+	  if is_root then (
+	    if !root_state <> Start_seen then unexpected "E_end_tag";
+	    root_state := End_seen;
 	  );
-	  Stack.push n stack;
-	  root_found := true;
-	  pos := None
-
-      | Some (E_end_tag(_,_)) ->
-	  check_state "E_end_tag";
 	  if Stack.is_empty stack then unexpected "E_end_tag";
 	  let top = Stack.pop stack in
 	  ( match top # node_type with
@@ -4044,47 +4082,69 @@ let build_node_tree cfg dtd spec next_ev =
 	  );
 	  if not cfg.disable_content_validation then
 	    top # validate_contents 
-	      ~use_dfa:cfg.validate_by_dfa ~check_data_nodes:false ();
-	  pos := None
-
-      | Some (E_ns_end_tag(_,_,_)) ->
-	  check_state "E_ns_end_tag";
-	  if Stack.is_empty stack then unexpected "E_ns_end_tag";
-	  let top = Stack.pop stack in
-	  ( match top # node_type with
-		T_element _ -> ()
-	      | _ -> unexpected "E_ns_end_tag"
-	  );
+	      ~use_dfa:cfg.validate_by_dfa ~check_data_nodes:true ();
 	  pos := None
 
       | Some (E_char_data data) ->
-	  check_state "E_char_data";
+	  if !root_state <> Start_seen then unexpected "E_char_data";
 	  ( try
-	      let n = create_data_node spec dtd data in
+	      let n = create_data_node spec !eff_dtd data in
 	      (Stack.top stack) # append_node n
 	    with
-		Stack.Empty -> ()
+		Stack.Empty -> assert false
 	  );
 	  pos := None
 
       | Some (E_pinstr(target,value)) ->
-	  check_state "E_pinstr";
-	  ( try
-	      if cfg.enable_pinstr_nodes then begin
-		let pi = new proc_instruction target value cfg.encoding in
-		let n = create_pinstr_node ?position:!pos spec dtd pi in
-		(Stack.top stack) # append_node n
-	      end
-	    with
-		Stack.Empty -> ()
-	  );
+	  (* A PI may occur everywhere between start_doc and end_doc.  *)
+	  if !doc_state = End_seen then unexpected "E_pinstr";
+	  if !doc_state = Null then doc_state := NA;
+	  let pi = new proc_instruction target value !eff_dtd#encoding in
+	  if !depth = 0 && (!super_state <> Start_seen || 
+			    not cfg.enable_super_root_node) then (
+	    (* Cannot process E_pinstr here. Should be E_pinstr_member. *)
+	    ()
+	  )
+	  else 
+	    if cfg.enable_pinstr_nodes then (
+	      let n = create_pinstr_node ?position:!pos spec !eff_dtd pi in
+	      (Stack.top stack) # append_node n
+	    )
+	    else (
+	      (* Cannot process E_pinstr here. Should be E_pinstr_member. *)
+	      ()
+	    );
+	  pos := None
+
+      | Some (E_pinstr_member(target,value)) ->
+	  if !doc_state = End_seen then unexpected "E_pinstr";
+	  if !doc_state = Null then doc_state := NA;
+	  let pi = new proc_instruction target value !eff_dtd#encoding in
+	  if !depth = 0 && (!super_state <> Start_seen || 
+			    not cfg.enable_super_root_node) then (
+	    (* Add processing instruction to document, if any *)
+	    match !return_doc with
+		Some doc -> doc # add_pinstr pi
+	      | None -> ()  (* PI is lost *)
+	  )
+	  else 
+	    if not cfg.enable_pinstr_nodes then (
+	      (Stack.top stack) # add_pinstr pi
+	    );
 	  pos := None
 	  
       | Some (E_comment data) ->
-	  check_state "E_comment";
-	  ( try
+	  (* A comment may occur everywhere between start_doc and end_doc. 
+	   * Only below the super root or the simple root node it is 
+	   * accepted, however.
+	   *)
+	  if !doc_state = End_seen then unexpected "E_comment";
+	  if !doc_state = Null then doc_state := NA;
+	  if (cfg.enable_super_root_node && !super_state = Start_seen) ||
+	     (!root_state = Start_seen) then ( 
+	    try
 	      if cfg.enable_comment_nodes then begin
-		let n = create_comment_node ?position:!pos spec dtd data in
+		let n = create_comment_node ?position:!pos spec !eff_dtd data in
 		(Stack.top stack) # append_node n
 	      end
 	    with
@@ -4093,34 +4153,212 @@ let build_node_tree cfg dtd spec next_ev =
 	  pos := None
 
       | Some (E_position(ent,line,colpos)) ->
-	  check_state "E_position";
 	  pos := Some (ent,line,colpos)
 
       | Some (E_error err) ->
-	  raise Build_aborted
+	  raise(Error_event err)
 
-      | Some E_end_of_stream ->
-	  if !doc_state = St_start_doc then
-	    failwith "Pxp_document.build_node_tree: E_start_doc without E_end_doc event";
-	  ( match !state with
-		St_start -> ()
-	      | St_node -> ()
-	      | St_end_doc -> ()
-	      | _ ->
-		  failwith "Pxp_document.build_node_tree: Unexpected E_end_of_stream event"
-	  );
-	  state := St_end_of_stream;
-	  pos := None
-
+      | Some E_end_of_stream
       | None ->
-	  if !state <> St_end_of_stream then
-	    failwith "Pxp_document.build_node_tree: Unexpected end of stream";
-	  eof := true
+	  if (!doc_state = Start_seen) ||
+	     (!super_state = Start_seen) ||
+	     (!root_state <> End_seen) then
+	       unexpected "E_end_of_stream/actual end"
+	  pos := None;
+	  eof := (ev = None)
   done;
-  ( match !return with
-	Some r -> r
-      | None   -> raise Empty_tree
+  ( match !return, !return_doc with
+	_, Some doc -> `Document doc
+      | Some n, None -> `Node n
+      | _ -> assert false
   )
 ;;
 
 
+type 'ext flux_state = 
+    [ `Node_start of 'ext node 
+    | `Node_end of 'ext node 
+    | `Output of (event list * 'ext flux_state)
+    | `EOS 
+    | `None 
+    ]
+
+
+class dummy = object end ;;
+
+
+let liquefy_node ?(omit_end = false) ?(omit_positions = false) 
+                 (init_fstate : 'ext flux_state) =
+  let fstate = ref init_fstate in
+  let eid = new dummy in
+  let rec generate arg =
+    match !fstate with
+	`Node_start n ->
+	  (* Find next node: *)
+	  let fstate' =
+	    ( match n#sub_nodes with
+		  [] ->
+		    `Node_end n
+		| n' :: _ ->
+		    `Node_start n'
+	    ) in
+	  fstate := fstate';
+	  (* Do action for n: *)
+	  ( match n # node_type with 
+		T_element name ->
+		  let atts =
+		    List.flatten
+		      (List.map
+			 (fun (n,v) ->
+			    match v with
+				Value s -> [n, s]
+			      | Valuelist l -> [n, String.concat " " l]
+			      | Implied_value -> []
+			 )
+			 n # attributes) in
+		  let scope_opt =
+		    try
+		      Some(n # namespace_scope)
+		    with
+			Namespace_method_not_applicable _ -> None in
+		  let (entity,line,colpos) = n # position in
+		  let pos = E_position(entity,line,colpos) in
+		  let tag = E_start_tag(name, atts, scope_opt, eid) in
+		  let out = 
+		    if omit_positions then [ tag ] else [ pos; tag ] in
+		  let out_pinstr =
+		    List.flatten
+		      (List.map
+			 (fun target ->
+			    List.map
+			      (fun pi ->
+				  E_pinstr_member(target,pi#value)
+			      )
+			      (n # pinstr target)
+			 )
+			 n # pinstr_names
+		      )
+		  in
+		  fstate := `Output(out @ out_pinstr, !fstate);
+		  generate arg
+	      | T_data ->
+		  Some(E_char_data(n # data))
+	      | T_super_root ->
+		  Some E_start_super
+	      | T_pinstr target -> 
+		  let (entity,line,colpos) = n # position in
+		  let pos = E_position(entity,line,colpos) in
+		  let value = (List.hd (n # pinstr target)) # value in
+		  let ev = E_pinstr(target,value) in
+		  let out =
+		    if omit_positions then [ ev ] else [ pos; ev ] in
+		  fstate := `Output(out, !fstate);
+		  generate arg
+	      | T_comment ->
+		  let (entity,line,colpos) = n # position in
+		  let pos = E_position(entity,line,colpos) in
+		  let s = try n # data with Not_found -> "" in
+		  let ev = E_comment s in
+		  let out =
+		    if omit_positions then [ ev ] else [ pos; ev ] in
+		  fstate := `Output(out, !fstate);
+		  generate arg
+	      | _ ->
+		  failwith "Pxp_document.liquefy_node: Unexpected node type"
+	  );
+
+      | `Node_end n ->
+	  let fstate' =
+	    ( try
+		`Node_start(n # next_node)
+	      with
+		  Not_found -> 
+		    ( try 
+			`Node_end(n # parent)
+		      with
+			  Not_found ->
+			    if omit_end then `None else `EOS
+		    )
+	    ) in
+	  fstate := fstate';
+	  (* Do action for n: *)
+	  ( match n # node_type with 
+		T_element name ->
+		  Some(E_end_tag(name,eid))
+	      | T_super_root ->
+		  Some E_end_super
+	      | _ ->
+		  generate arg
+	  );
+
+      | `Output(events, fstate') ->
+	  ( match events with
+		ev :: events' ->
+		  fstate := `Output(events', fstate');
+		  Some ev
+	      | [] ->
+		  fstate := fstate';
+		  generate arg
+	  )
+
+      | `EOS ->
+	  fstate := `None;
+	  Some E_end_of_stream
+
+      | `None ->
+	  None
+
+  in
+  generate
+;;
+
+
+let liquefy_doc ?(omit_end = false) ?(omit_positions = false) 
+                (doc : 'ext document) =
+  let fstate = ref `Start in
+  let rec generate arg =
+    match !fstate with
+	`Start ->
+	  let out_pinstr =
+	    List.flatten
+	      (List.map
+		 (fun target ->
+		    List.map
+		    (fun pi ->
+		       E_pinstr_member(target,pi#value)
+		    )
+		    (doc # pinstr target)
+		 )
+		 doc # pinstr_names
+	      )
+	  in
+	  let node_fstate =
+	    `Output(out_pinstr, `Node_start(doc#root)) in
+	  fstate := `Nodes 
+	               (liquefy_node ~omit_end:true ~omit_positions node_fstate);
+	  Some(E_start_doc(doc#xml_version,doc#dtd))
+      | `Nodes g ->
+	  let e = g arg in
+	  if e = None then (
+	    fstate := `End;
+	    generate arg
+	  )
+	  else e
+      | `End ->
+	  fstate := if omit_end then `None else `EOS;
+	  Some(E_end_doc doc#raw_root_name)
+      | `EOS ->
+	  fstate := `None;
+	  Some E_end_of_stream
+      | `None ->
+	  None
+  in
+  generate
+;;
+
+
+let liquefy ?omit_end ?omit_positions solid =
+  match solid with
+      `Node n     -> liquefy_node ?omit_end ?omit_positions (`Node_start n)
+    | `Document d -> liquefy_doc ?omit_end ?omit_positions d
+;;

@@ -7,6 +7,9 @@
 open Pxp_types
 open Pxp_dtd
 
+val create_empty_dtd : config -> dtd
+  (* Create an empty DTD *)
+
 val parse_dtd_entity : config -> source -> dtd
   (* Parse an entity containing a DTD (external subset), and return this DTD. *)
 

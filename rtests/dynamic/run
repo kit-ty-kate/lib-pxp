@@ -9,3 +9,5 @@ echo "modify:"
 echo "strip:"
 ./strip
 
+echo "symmetry:"
+./symmetry

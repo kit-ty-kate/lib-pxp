@@ -9,9 +9,12 @@ open Pxp_lexers
 open Pxp_lexer_types
 open Pxp_entity_manager
 open Pxp_dtd
-open Pxp_document
 open Pxp_core_parser
 open Pxp_ev_parser
+
+
+let create_empty_dtd config =
+  create_dtd ?swarner:config.swarner ~warner:config.warner config.encoding ;;
 
 class dtd_parser init_dtd init_config =
 object (self)
@@ -97,7 +100,7 @@ let extract_dtd_from_document_entity cfg src =
   let entry = `Entry_document [ `Val_mode_dtd; `Parse_xml_decl ] in
   let handle ev =
     match ev with
-	E_start_doc(_,_,dtd) -> raise(Return_DTD dtd)
+	E_start_doc(_,dtd) -> raise(Return_DTD dtd)
       | E_error _ -> ()  (* ignore now, exception will be raised anyway *)
       | E_position(_,_,_) -> ()
       | _ -> assert false
