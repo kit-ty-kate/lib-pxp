@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE readme SYSTEM "readme.dtd" [
 
+<!--
 <!ENTITY url.ocaml           "http://caml.inria.fr/">
 <!ENTITY url.xml-spec        "http://www.w3.org/TR/1998/REC-xml-19980210.html">
 <!ENTITY url.jclark-xmltdata "ftp://ftp.jclark.com/pub/xml/xmltest.zip">
@@ -8,6 +9,10 @@
 <!ENTITY url.markup-download    "&url.gps-ocaml-download;/markup-0.1.tar.gz">
 <!ENTITY person.gps             '<a
   href="mailto:Gerd.Stolpmann@darmstadt.netsurf.de">Gerd Stolpmann</a>'>
+-->
+
+<!ENTITY % common SYSTEM "common.xml">
+%common;
 
 ]>
 

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd" [
+
+<!ENTITY % common SYSTEM "common.xml">
+%common;
+
+<!ENTITY m "<em>Markup</em>">
+
+]>
+
+<readme title="INSTALL - Markup, the XML parser for O'Caml">
+  <sect1><title>The "markup" package</title>
+    <sect2><title>Prerequisites</title>
+      <p>
+&m; does not need any other packages besides the O'Caml core. The installation
+procedure defined in the Makefile requires <a
+href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
+package manager.</footnote>.
+</p>
+    </sect2>
+
+    <sect2><title>Configuration</title>
+      <p>
+It is not necessary to configure "markup".
+</p>
+    </sect2>
+
+    <sect2><title>Compilation</title>
+      <p>
+The Makefile defines the following goals:
+</p>
+      <ul>
+	<li>
+	  <p>make all</p>
+	  <p>compiles with the bytecode compiler and creates markup.cma</p>
+	</li>
+	<li>
+	  <p>make opt</p>
+	  <p>compiles with the native compiler and creates markup.cmxa</p>
+	</li>
+      </ul>
+    </sect2>
+
+    <sect2><title>Installation</title>
+      <p>
+The Makefile defines the following goal:</p>
+      <ul>
+	<li>
+	  <p>make install</p>
+	  <p>installs the bytecode archive, the interface definitions, and if
+present, the native archive in the default location of <em>findlib</em>
+</p>
+	</li>
+	<li>
+	  <p>make uninstall</p>
+	  <p>removes the package</p>
+	</li>
+      </ul>
+    </sect2>
+  </sect1>
+
+  <sect1><title>The examples</title>
+    <p>
+In the "examples" directory you find several applications of &m;. They require
+that &m; has been installed using <em>findlib</em>. See the Makefiles in the
+directories for descriptions of "make" goals.
+</p>
+  </sect1>
+</readme>
