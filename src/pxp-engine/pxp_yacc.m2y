@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.15 2000/09/09 16:41:03 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.16 2000/09/16 22:48:23 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2112,6 +2112,12 @@ let call_parser ~configuration:cfg
       Return_DTD d ->
 	ignore(en # close_entity);
 	raise(Return_DTD d)
+    | Failure "Invalid UTF-8 stream" ->
+	(* raised by the wlex-generated lexers only: map to Malformed_code *)
+	ignore(en # close_entity);
+	r # close_all;
+	let pos = mgr # position_string in
+	raise (At(pos, Netconversion.Malformed_code))
     | error ->
 	ignore(en # close_entity);
 	r # close_all;
@@ -2188,7 +2194,14 @@ let parse_content_entity ?id_index cfg src dtd spec =
 
 let parse_wfcontent_entity cfg src spec =
   let dtd = new dtd cfg.warner cfg.encoding in
-  dtd # allow_arbitrary;
+  (* Instead of dtd # allow_arbitrary, because the processing instruction
+   * survives marshalling:
+   *)
+  dtd # add_pinstr
+    (new proc_instruction 
+       "pxp:dtd"
+       "optional-element-and-notation-declarations"
+       cfg.encoding);
   let doc = new document cfg.warner in
   let pobj =
     call_parser
@@ -2223,8 +2236,16 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
                    cfg0.recognize_standalone_declaration && (not p_wf) 
             } in
   let dtd = new dtd cfg.warner cfg.encoding in
-  if p_wf then
-    dtd # allow_arbitrary;
+  if p_wf then begin
+    (* Instead of dtd # allow_arbitrary, because the processing instruction
+     * survives marshalling:
+     *)
+    dtd # add_pinstr
+      (new proc_instruction 
+	 "pxp:dtd"
+	 "optional-element-and-notation-declarations"
+	 cfg.encoding);
+  end;
   let doc = new document cfg.warner in
   let pobj =
     call_parser 
@@ -2324,6 +2345,13 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.16  2000/09/16 22:48:23  gerd
+ * 	Failure "Invalid UTF-8 stream" which may raised by wlex-
+ * generated code is converted to Malformed_code.
+ * 	Instead of dtd#allow_arbitrary the corresponding
+ * processing instruction is added to the DTD. Advantage: When
+ * marshalled, this property will not be lost.
+ *
  * Revision 1.15  2000/09/09 16:41:03  gerd
  * 	Effort to reduce the amount of allocated memory: The number of
  * instance variables in document nodes has been miminized; the class
