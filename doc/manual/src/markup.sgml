@@ -2209,6 +2209,7 @@ class type [ 'ext ] node =
     method parent : 'ext node
     method root : 'ext node
     method orphaned_clone : 'self
+    method orphaned_flat_clone : 'self
     method add_node : 'ext node -> unit
     method add_pinstr : proc_instruction -> unit
     method pinstr : string -> proc_instruction list
@@ -2224,6 +2225,11 @@ class type [ 'ext ] node =
     method attribute : string -> Markup_types.att_value
     method attribute_names : string list
     method attribute_type : string -> Markup_types.att_type
+    method required_string_attribute : string -> string
+    method required_list_attribute : string -> string list
+    method optional_string_attribute : string -> string option
+    method optional_list_attribute : string -> string list
+    method quick_set_attributes : (string * Markup_types.att_value) list -> unit
     method dtd : dtd
     method create_element : dtd -> node_type -> (string * string) list 
                             -> 'ext node
@@ -2343,6 +2349,38 @@ if necessary, expansion is performed recursively.
 	      </listitem>
 	      <listitem>
 		<para>
+<literal>required_string_attribute n</literal>: returns the Value attribute
+called n, or the Valuelist attribute as a string where the list elements
+are separated by spaces. If the attribute value is implied, or if the
+attribute does not exists, the method will fail.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>optional_string_attribute n</literal>: returns the Value attribute
+called n, or the Valuelist attribute as a string where the list elements
+are separated by spaces. If the attribute value is implied, or if the
+attribute does not exists, the method returns None.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>required_list_attribute n</literal>: returns the Valuelist attribute
+called n, or the Value attribute as a list with a single element.
+If the attribute value is implied, or if the
+attribute does not exists, the method will fail.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>optional_list_attribute n</literal>: returns the Valuelist attribute
+called n, or the Value attribute as a list with a single element.
+If the attribute value is implied, or if the
+attribute does not exists, an empty list will be returned.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
 <literal>attribute_names</literal>: returns the list of all attribute names of
 this element.</para>
 	      </listitem>
@@ -2400,7 +2438,12 @@ node loses the connection to the father as well.</para>
 has a parent.
 </para>
 	      </listitem>
-
+	      <listitem>
+		<para>
+<literal>quick_set_attributes atts</literal>: sets the attributes of this
+element to atts. It is not checked whether atts matches the DTD or not.
+</para>
+	      </listitem>
 	    </itemizedlist>
 </para>
 	</formalpara>
@@ -2413,6 +2456,16 @@ has a parent.
 		<para>
 <literal>orphaned_clone</literal>: Returns a clone of the node and the complete
 tree below this node (deep clone). The clone does not have a parent. It is
+allowed that strings are shared between the original nodes and the copy nodes.
+Whether extension objects are cloned as well depends on the implemention of the
+<literal>clone</literal> method of the extension objects.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>orphaned_flat_clone</literal>: Returns a clone of the node,
+but sets the sub nodes to [].
+The clone does not have a parent. It is
 allowed that strings are shared between the original nodes and the copy nodes.
 Whether extension objects are cloned as well depends on the implemention of the
 <literal>clone</literal> method of the extension objects.

@@ -224,6 +224,11 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.2.7:</p>
+	  <p>Added some methods in Markup_document.</p>
+	  <p>Bugfix: in method orphaned_clone</p>
+	</li>
+	<li>
 	  <p>Changed in 0.2.6:</p>
 	  <p>Enhancement: The config parameter has a new component
 "errors_with_line_numbers". If "true", error exceptions come with line numbers 
