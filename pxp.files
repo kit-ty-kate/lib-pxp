@@ -342,7 +342,10 @@ d rtests/reader
 f rtests/reader/Makefile
 f rtests/reader/minilex.mll
 f rtests/reader/test_reader.ml
+f rtests/reader/test_rewritten_reader.ml
 f rtests/reader/t100.dat
+f rtests/reader/t_a.dat
+f rtests/reader/t_b.dat
 
 d rtests/write
 f rtests/write/Makefile
