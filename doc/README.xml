@@ -224,6 +224,19 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>From 0.2.3 to 0.2.4:</p>
+	  <p>A problem with some kind of DTD that does not specify the name
+of the root element was fixed. As a result, the "xmlforms" application works
+again. Again thanks to Haruo.</p>
+	  <p>Due to the XML specs it is forbidden that parameter entities are
+referenced within the internal subset if the referenced text is not a 
+complete declaration itself. This is checked, but the check was too hard;
+even in external entities referenced from the internal subset this rule
+was enforced. This has been corrected; in external entities it is now possible
+to use parameter entities in an unrestricted way.
+</p>
+	</li>
+	<li>
 	  <p>From 0.2.2 to 0.2.3:</p>
 	  <p>A fix for a problem when installing Markup on Solaris. 
 Haruo detected the problem.</p>
