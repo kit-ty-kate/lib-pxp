@@ -1,4 +1,4 @@
-/* $Id: parser.mly,v 1.2 2000/05/06 21:51:46 gerd Exp $
+/* $Id: parser.mly,v 1.3 2000/05/08 22:03:01 gerd Exp $
  * ----------------------------------------------------------------------
  *
  */
@@ -84,8 +84,15 @@ alt_branches:
     { [] }
 
 branch:
+  simple_branch
+    { $1 }
+| Dollar Code simple_branch
+    { { $3 with branch_early_code = $2 } }
+
+simple_branch:
   symbol Dollar Code patterns Code opt_error_handler
     { { branch_selector = $1;
+        branch_early_code = ("",0,0);
 	branch_binding_code = $3;
 	branch_pattern = $4;
 	branch_result_code = $5;
@@ -94,6 +101,7 @@ branch:
     }
 | symbol patterns Code opt_error_handler
     { { branch_selector = $1;
+        branch_early_code = ("",0,0);
 	branch_binding_code = ("", 0, 0);
 	branch_pattern = $2;
 	branch_result_code = $3;
@@ -158,6 +166,11 @@ opt_error_handler:
  * History:
  * 
  * $Log: parser.mly,v $
+ * Revision 1.3  2000/05/08 22:03:01  gerd
+ * 	It is now possible to have a $ {{ }} sequence right BEFORE
+ * the first token. This code is executed just after the first token
+ * has been recognized.
+ *
  * Revision 1.2  2000/05/06 21:51:46  gerd
  * 	New Dollar tag.
  *

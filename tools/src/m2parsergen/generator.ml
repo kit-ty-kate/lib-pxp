@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.2 2000/05/06 21:51:08 gerd Exp $
+(* $Id: generator.ml,v 1.3 2000/05/08 22:03:01 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -235,8 +235,10 @@ let output_code_location b file_name (_, line, column) =
 
 
 let output_code b file_name ((code, line, column) as triple) = 
-  output_code_location b file_name triple;
-  Buffer.add_string b code
+  if code <> "" then begin
+    output_code_location b file_name triple;
+    Buffer.add_string b code
+  end
 ;;
 
 
@@ -247,6 +249,10 @@ let process_branch b file_name tree branch =
      * If not allow_not_found, the exception Not_found is caught and
      * changed into Parsing.Parse_error.
      *)
+    let r = lookup_rule tree called_rule in
+    if List.length r.rule_arguments <> List.length args then
+      failwith("Calling rule `" ^ called_rule ^ "' with the wrong number of arguments!");
+
     Buffer.add_string b "let ";
     begin match lab with
 	None   -> Buffer.add_string b "_"
@@ -456,6 +462,10 @@ let process_branch b file_name tree branch =
 
 
   let process_inner_branch current_position =
+    (* If there is "early code", run this now: *)
+    output_code b file_name branch.branch_early_code;
+    Buffer.add_string b "\n";
+
     (* If the first symbol is a rule invocation, call the corresponding
      * parser function now.
      *)
@@ -786,6 +796,11 @@ exit 0;;
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.3  2000/05/08 22:03:01  gerd
+ * 	It is now possible to have a $ {{ }} sequence right BEFORE
+ * the first token. This code is executed just after the first token
+ * has been recognized.
+ *
  * Revision 1.2  2000/05/06 21:51:08  gerd
  * 	Numerous bugfixes.
  *

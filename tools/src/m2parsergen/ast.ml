@@ -1,4 +1,4 @@
-(* $Id: ast.ml,v 1.1 2000/05/06 17:36:17 gerd Exp $
+(* $Id: ast.ml,v 1.2 2000/05/08 22:03:01 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -30,6 +30,7 @@ type pattern =
 
 type branch = 
     { branch_selector : symbol;
+      branch_early_code : (string * int * int);
       branch_binding_code : (string * int * int);
       branch_pattern : pattern list;
       branch_result_code : (string * int * int);
@@ -54,6 +55,11 @@ type text =
  * History:
  * 
  * $Log: ast.ml,v $
+ * Revision 1.2  2000/05/08 22:03:01  gerd
+ * 	It is now possible to have a $ {{ }} sequence right BEFORE
+ * the first token. This code is executed just after the first token
+ * has been recognized.
+ *
  * Revision 1.1  2000/05/06 17:36:17  gerd
  * 	Initial revision.
  *
