@@ -1,4 +1,4 @@
-(* $Id: to_html.ml,v 1.4 2000/07/08 17:58:17 gerd Exp $
+(* $Id: to_html.ml,v 1.5 2000/08/18 21:15:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -142,35 +142,35 @@ class readme =
       let html_header, _ =
 	try (self # node # dtd # par_entity "readme:html:header") 
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_trailer, _ =
 	try (self # node # dtd # par_entity "readme:html:trailer")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_bgcolor, _ =
 	try (self # node # dtd # par_entity "readme:html:bgcolor")
             # replacement_text
-	with Validation_error _ -> "white", false in
+	with WF_error _ -> "white", false in
       let html_textcolor, _ =
 	try (self # node # dtd # par_entity "readme:html:textcolor")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_alinkcolor, _ =
 	try (self # node # dtd # par_entity "readme:html:alinkcolor")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_vlinkcolor, _ =
 	try (self # node # dtd # par_entity "readme:html:vlinkcolor")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_linkcolor, _ =
 	try (self # node # dtd # par_entity "readme:html:linkcolor")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
       let html_background, _ =
 	try (self # node # dtd # par_entity "readme:html:background")
             # replacement_text
-	with Validation_error _ -> "", false in
+	with WF_error _ -> "", false in
 
       output_string ch "<html><header><title>\n";
       output_string ch (escape_html title);
@@ -410,6 +410,7 @@ let tag_map =
 	Hashtbl.add m "a"
 	              (new element_impl (new a));
 	m)
+    ()
 ;;
 (*$-*)
 
@@ -418,6 +419,11 @@ let tag_map =
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.5  2000/08/18 21:15:14  gerd
+ * 	Update because of PXP API change: par_entity raises WF_error
+ * instead of Validation error if the entity is not defined.
+ * 	Further minor updates.
+ *
  * Revision 1.4  2000/07/08 17:58:17  gerd
  * 	Updated because of PXP API changes.
  *
