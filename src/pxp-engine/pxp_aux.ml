@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.10 2001/05/17 21:38:53 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.11 2001/06/07 22:51:10 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -463,6 +463,120 @@ let value_of_attribute lexerset dtd n atype v =
        *)
 ;;
 
+let check_value_of_attribute lexerset dtd n atype av =
+  (* This function checks whether the decomposed attribute value av
+   * matches the attribute type, i.e. it checks whether av is the
+   * result of the above function value_of_attribute for some
+   * unprocessed value v.
+   * If the check fails, a validation error is indicated.
+   *)
+
+  let lexical_error() =
+    lazy (raise(Validation_error("Attribute `" ^ n ^ "' is lexically malformed"))) in
+
+  let unexpected_valuelist() =
+    raise(Validation_error("A list value cannot be assigned to attribute `" ^ 
+			   n ^ "'"))
+  in
+
+  let unexpected_value() =
+    raise(Validation_error("A non-list value cannot be assigned to attribute `" ^ 
+			   n ^ "'"))
+  in
+
+  let no_leading_and_trailing_spaces u =
+    if u <> "" then begin
+      let is_whitespace c =
+	c = ' ' || c = '\t' || c = '\r' || c = '\n' in
+      if (is_whitespace u.[0]) || (is_whitespace u.[ String.length u - 1 ])
+      then
+	raise(Validation_error("Attribute `" ^ n ^ "' has leading or trailing whitespace"))
+    end
+  in
+
+  let check_ndata_entity u =
+    let en, extdecl = dtd # gen_entity u in  (* or Validation_error *)
+    if not (en # is_ndata) then
+      raise(Validation_error("Reference to entity `" ^ u ^
+			     "': NDATA entity expected"));
+    if dtd # standalone_declaration && extdecl then
+      raise(Validation_error("Reference to entity `" ^ u ^
+			     "' violates standalone declaration"));
+  in
+
+  match atype with
+      A_cdata ->
+	(match av with
+	   | Valuelist _ -> unexpected_valuelist()
+	   | _  -> ()
+	)
+    | (A_id | A_idref | A_nmtoken) ->
+	(match av with
+	   | Valuelist _ -> unexpected_valuelist()
+	   | Value v ->
+	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       no_leading_and_trailing_spaces v
+	   | _ -> ()
+	)
+    | A_entity ->
+	(match av with
+	   | Valuelist _ -> unexpected_valuelist()
+	   | Value v ->
+	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       no_leading_and_trailing_spaces v;
+	       check_ndata_entity v
+	   | _ -> ()
+	)
+    | (A_idrefs | A_nmtokens) ->
+	(match av with
+	   | Value _ -> unexpected_value()
+	   | Valuelist l ->
+	       List.iter no_leading_and_trailing_spaces l;
+	       let subst_type = 
+		 if atype = A_idrefs then A_id else A_nmtoken in
+	       List.iter
+		 (check_attribute_value_lexically 
+		    lexerset (lexical_error()) subst_type) 
+		 l
+	   | _ -> ()
+	)
+    | A_entities ->
+	(match av with
+	   | Value _ -> unexpected_value()
+	   | Valuelist l ->
+	       List.iter no_leading_and_trailing_spaces l;
+	       List.iter
+		 (check_attribute_value_lexically 
+		    lexerset (lexical_error()) A_entity) 
+		 l;
+	       List.iter check_ndata_entity l
+	   | _ -> ()
+	)
+    | A_notation nl ->
+	(match av with
+	   | Valuelist _ -> unexpected_valuelist()
+	   | Value v ->
+	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       no_leading_and_trailing_spaces v;
+	       if not (List.mem v nl) then
+		 raise(Validation_error
+			 ("Attribute `" ^ n ^
+			  "' does not match one of the declared notation names"));
+	   | _ -> ()
+	)
+    | A_enum enuml ->
+	(match av with
+	   | Valuelist _ -> unexpected_valuelist()
+	   | Value v ->
+	       check_attribute_value_lexically lexerset (lexical_error()) atype v;
+	       no_leading_and_trailing_spaces v;
+	       if not (List.mem v enuml) then
+		 raise(Validation_error
+			 ("Attribute `" ^ n ^
+			  "' does not match one of the declared enumerator tokens"));
+	   | _ -> ()
+	)
+;;
 
 let normalization_changes_value lexerset atype v =
   (* Returns true if:
@@ -634,6 +748,10 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.11  2001/06/07 22:51:10  gerd
+ * 	New function: check_value_of_attribute (needed for
+ * ~att_values option of create_element_node)
+ *
  * Revision 1.10  2001/05/17 21:38:53  gerd
  * 	New function namespace_split.
  *
