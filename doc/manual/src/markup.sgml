@@ -1642,8 +1642,9 @@ name <literal>a</literal>. The method returns a value for every
 <emphasis>declared</emphasis> attribute, independently of whether the attribute
 instance is defined or not. If the attribute is not declared,
 <literal>Not_found</literal> will be raised. (In well-formedness mode, every
-attribute is considered as being implicitly declared with type
-<literal>CDATA</literal>.) 
+existing attribute is considered as being implicitly declared with type
+<literal>CDATA</literal>, so you will get either <literal>Value s</literal>
+or an exception <literal>Not_found</literal>.) 
 </para>
 
 <para>
