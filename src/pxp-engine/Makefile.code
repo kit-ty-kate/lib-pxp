@@ -5,8 +5,8 @@ PACKAGES = netstring
 
 OBJ =   pxp_types.cmo pxp_lexer_types.cmo \
 	pxp_lexers.cmo \
-	pxp_dfa.cmo \
 	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
+	pxp_dfa.cmo \
 	pxp_entity.cmo pxp_dtd.cmo pxp_document.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
