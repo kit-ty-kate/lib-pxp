@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.9 2001/02/01 20:38:49 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.10 2001/05/17 21:38:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -529,6 +529,22 @@ let normalize_public_id s =
 
 (**********************************************************************)
 
+let namespace_split name =
+  (* Searches ':' in name and returns (prefix, localname).
+   * If there is no ':', prefix = "".
+   *)
+  try
+    let n = String.index name ':' in   (* may raise Not_found *)
+    let prefix = String.sub name 0 n in
+    let localname = String.sub name (n+1) (String.length name - n - 1) 
+    in
+    (prefix, localname)
+  with
+      Not_found -> ("", name)
+;;
+
+(**********************************************************************)
+
 let write_markup_string ~(from_enc:rep_encoding) ~to_enc os s =
   (* Write the 'from_enc'-encoded string 's' as 'to_enc'-encoded string to
    * 'os'. All characters are written as they are.
@@ -618,6 +634,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.10  2001/05/17 21:38:53  gerd
+ * 	New function namespace_split.
+ *
  * Revision 1.9  2001/02/01 20:38:49  gerd
  * 	New support for PUBLIC identifiers.
  *
