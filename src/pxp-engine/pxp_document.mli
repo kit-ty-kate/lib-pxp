@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.12 2000/09/21 21:29:41 gerd Exp $
+(* $Id: pxp_document.mli,v 1.13 2001/04/26 23:59:36 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -144,7 +144,7 @@ type node_type =
    * enable_super_root_node, enable_pinstr_nodes, enable_comment_nodes.
    * By default, such nodes are not created.
    *)
-  | T_super_root
+  | T_super_root                        (* XPath calls them simply root nodes *)
   | T_pinstr of string                  (* The string is the target of the PI *)
   | T_comment
 
@@ -155,7 +155,7 @@ type node_type =
    *)
   | T_none
   | T_attribute of string          (* The string is the name of the attribute *)
-  | T_namespace of string               (* The string is the namespace prefix *)
+  | T_namespace of string           (* The string is the namespace normprefix *)
 ;;
 
 
@@ -240,9 +240,16 @@ class type [ 'ext ] node =
     method node_path : int list
       (* Returns the list of node positions of the ancestors of this node,
        * including this node. The first list element is the node position
-       * of this child of the root, and the last list element is the 
+       * of this child of the root, and the last list element is the
        * node position of this node.
        * Returns [] if the node is the root node.
+       *
+       * Attribute and namespace nodes: By definition of the document order
+       * these nodes occur after their parent and before the regular children
+       * (elements). Because of this, attribute nodes at position p have the 
+       * node path [ -1; p ] relative to their parent, and namespace nodes
+       * at position p have the node path [ -2; p ] relative to their
+       * parent.
        *)
 
     method sub_nodes : 'ext node list
@@ -267,7 +274,7 @@ class type [ 'ext ] node =
     method previous_node : 'ext node
     method next_node : 'ext node
       (* Return the previous and next nodes, respectively. These methods are
-       * equivalent to 
+       * equivalent to
        * - parent # nth_node (self # node_position - 1) and
        * - parent # nth_node (self # node_position + 1), respectively.
        *)
@@ -279,9 +286,20 @@ class type [ 'ext ] node =
        *)
 
     method data : string
-      (* Get the data string of this node. For data nodes, this string is just
-       * the content. For elements, this string is the concatenation of all
-       * subordinate data nodes.
+      (* Get the data string of this node. (This method conforms to the
+       * string-value method of XPath.)
+       *
+       * Data nodes: returns the character data
+       * Element nodes, Super root node: returns the concatenation of all
+       *   subordinate data nodes (ignores attributes, comments, PIs, and
+       *   namespaces)
+       * Attribute nodes: Returns the attribute value as string
+       *   (raises Not_found for implied values)
+       * Comment nodes: Returns the comment string (inside <-- and -->)
+       *   (raises Not_found if there is no comment string)
+       * PI nodes: Returns the data part of the processing instruction
+       *   (returns "" if the data part is missing)
+       * Namespace nodes: Returns the namespace URI
        *)
 
     method node_type : node_type
@@ -350,6 +368,62 @@ class type [ 'ext ] node =
     method comment : string option
       (* Get the comment string.
        * Returns always None for nodes with a type other than T_comment.
+       *
+       * Note: The 'data' method also returns the comment string, and ""
+       * if the string is not available.
+       *)
+
+    method normprefix : string
+      (* For namespace-aware implementations of the node class, this method
+       * returns the normalized prefix of the element or attribute.
+       * If the object does not have a prefix, "" will be passed back.
+       *
+       * This method is only supported by the implementations
+       * namespace_element_impl, namespace_attribute_impl.
+       * When invoked for other classes, it will fail.
+       *)
+
+    method localname : string
+      (* For namespace-aware implementations of the node class, this method
+       * returns the local part of the name of the element or attribute.
+         *
+       * This method is only supported by the implementations
+       * namespace_element_impl, namespace_attribute_impl.
+       * When invoked for other classes, it will fail.
+       *)
+
+    method namespace_uri : string
+      (* For namespace-aware implementations of the node class, this method
+       * returns the namespace URI of the element, attribute or namespace.
+       *
+       * If the object does not have a namespace prefix, and there is no
+       * default namespace, this method returns "".
+       *
+       * This method is only supported by the implementations
+       * namespace_element_impl, namespace_attribute_impl, namespace_impl.
+       * When invoked for other classes, it will fail.
+       *)
+
+    method namespace_info : 'ext namespace_info
+      (* Returns additional information about the namespace prefixes
+       * in the parsed XML source. This method has been added for
+       * better XPath conformance.
+       *
+       * This record is only available if the parser has been configured
+       * to support namespaces, and if the parser has been configured
+       * to set this record (requires a lot of memory). Furthermore, only
+       * the implementation namespace_element_impl supports this method.
+       *
+       * This method raises Not_found if the namespace_info field has not
+       * been set.
+       *
+       * This method fails if the class does not support it.
+       *)
+
+    method set_namespace_info : 'ext namespace_info option -> unit
+      (* Sets the namespace_info field.
+       * Only the implementation namespace_element_impl supports this
+       * method.
        *)
 
     method dtd : dtd
@@ -364,7 +438,7 @@ class type [ 'ext ] node =
        * no DTD is present.)
        *)
 
-    method create_element : 
+    method create_element :
              ?name_pool_for_attribute_values:Pxp_types.pool ->
              ?position:(string * int * int) ->
              dtd -> node_type -> (string * string) list -> 'ext node
@@ -378,10 +452,10 @@ class type [ 'ext ] node =
     method create_data : dtd -> string -> 'ext node
       (* create an "empty copy" of this data node: *)
 
-    method local_validate : 
+    method local_validate :
              ?use_dfa:bool ->
              unit -> unit
-      (* Check that this element conforms to the DTD. 
+      (* Check that this element conforms to the DTD.
        * Option ~use_dfa: If true, the deterministic finite automaton of
        *   regexp content models is used for validation, if available.
        *   Defaults to false.
@@ -424,6 +498,23 @@ class type [ 'ext ] node =
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
   end
+
+and ['ext] namespace_info =
+  object
+    method srcprefix : string
+      (* Returns the prefix before it is normalized *)
+
+    method declaration : 'ext node list
+      (* Returns the currently active namespace declaration. The list
+       * enumerates all namespace objects with
+       *   namespace # node_type = T_namespace "srcprefix"
+       * meaning that the srcprefix is declared to correspond to the
+       * namespace URI
+       *   namespace # namespace_uri.
+       * This list always declares the prefix "xml". If there is a default
+       * namespace, it is declared for the prefix "".
+       *)
+  end
 ;;
 
 
@@ -444,20 +535,66 @@ class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
 ;;
 
 
-(* Attribute and namespace nodes are experimental: *)
+class [ 'ext ] comment_impl : 'ext -> [ 'ext ] node ;;
 
-class [ 'ext ] attribute_impl : 
+class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
+
+class [ 'ext ] pinstr_impl : 'ext -> [ 'ext ] node ;;
+    (* These classes work like element_impl, but create new empty nodes
+     * for comments, super roots, and processing instructions, resp.
+     *)
+
+
+(* Attribute nodes are experimental: *)
+
+class [ 'ext ] attribute_impl :
   element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
-
+;;
     (* Creation:
      *   new attribute_impl element_name attribute_name attribute_value dtd
      * Note that attribute nodes do intentionally not have extensions.
      *)
 
-(* Once namespaces get implemented:
-class [ 'ext ] namespace_impl : 
-  prefix:string -> name:string -> dtd -> [ 'ext ] node
-*)
+(* Very experimental namespace support: *)
+
+class namespace_manager :
+  object
+    method add : string -> string -> string
+      (* let normprefix = mng # add prefix uri
+       * Normalizes prefix and adds the pair (normprefix, uri) to the
+       * managed set of namespaces.
+       * "Normalizing" means that the prefix is changed such that it becomes
+       * unique.
+       *)
+    method get_uri : string -> string
+      (* Return the URI for a normprefix *)
+    method get_normprefix : string -> string
+      (* Return the normprefix for a URI *)
+
+    (* Encodings: prefixes and URIs are always encoded in the default
+     * encoding of the document
+     *)
+  end
+;;
+
+class [ 'ext ] namespace_element_impl :
+  namespace_manager -> 'ext -> [ 'ext ] node
+;;
+
+class [ 'ext ] namespace_attribute_impl :
+  namespace_manager ->
+  element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
+;;
+
+class [ 'ext ] namespace_impl :
+  namespace_manager ->
+  (* normprefix: *) string -> dtd -> [ 'ext ] node
+;;
+  (* Namespace objects are only used to represent the namespace declarations
+   * occurring in the attribute lists of elements.
+   * They are stored in the namespace_info object if that is requested.
+   *)
+
 
 (********************************** spec *********************************)
 
@@ -474,8 +611,8 @@ val make_spec_from_mapping :
       ?pinstr_mapping : (string, 'ext node) Hashtbl.t ->
       data_exemplar: 'ext node ->
       default_element_exemplar: 'ext node ->
-      element_mapping: (string, 'ext node) Hashtbl.t -> 
-      unit -> 
+      element_mapping: (string, 'ext node) Hashtbl.t ->
+      unit ->
         'ext spec
     (* Specifies:
      * - For new data nodes, the ~data_exemplar must be used
@@ -494,16 +631,16 @@ val make_spec_from_alist :
       ?pinstr_alist : (string * 'ext node) list ->
       data_exemplar: 'ext node ->
       default_element_exemplar: 'ext node ->
-      element_alist: (string * 'ext node) list -> 
-      unit -> 
+      element_alist: (string * 'ext node) list ->
+      unit ->
         'ext spec
-    (* This is a convenience function: You can pass the mappings from 
+    (* This is a convenience function: You can pass the mappings from
      * elements and PIs to exemplar by associative lists.
      *)
 
-val create_data_node : 
+val create_data_node :
       'ext spec -> dtd -> string -> 'ext node
-val create_element_node : 
+val create_element_node :
       ?name_pool_for_attribute_values:Pxp_types.pool ->
       ?position:(string * int * int) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
@@ -520,9 +657,12 @@ val create_pinstr_node :
    * node objects from them.
    *)
 
-val create_no_node : 
+val create_no_node :
        ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
-  (* Creates a T_none node with limited functionality *)
+  (* Creates a T_none node with limited functionality 
+   * NOTE: This function is conceptually broken and may be dropped in the
+   * future.
+   *)
 
 val get_data_exemplar :
       'ext spec -> 'ext node
@@ -536,7 +676,7 @@ val get_pinstr_exemplar :
       'ext spec -> proc_instruction -> 'ext node
   (* These functions just return the exemplars (or raise Not_found).
    * Notes:
-   * (1) In future versions, it may be possible that the element exemplar 
+   * (1) In future versions, it may be possible that the element exemplar
    *     depends on attributes, too, so the attlist must be passed
    *     to get_element_exemplar
    * (2) In future versions, it may be possible that the pinstr exemplar
@@ -547,6 +687,10 @@ val get_pinstr_exemplar :
 
 
 (*********************** Ordering of nodes ******************************)
+
+(* CHECK: whether the document order is correct for attribute and namespace
+ * nodes
+ *)
 
 val compare : 'ext node -> 'ext node -> int
   (* Returns -1 if the first node is before the second node, or +1 if the
@@ -570,7 +714,14 @@ val create_ord_index : 'ext node -> 'ext ord_index
    *)
 
 val ord_number : 'ext ord_index -> 'ext node -> int
-  (* Returns the ordinal number of the node, or raises Not_found *)
+  (* Returns the ordinal number of the node, or raises Not_found.
+   * Note that attribute nodes and namespace nodes are treated specially:
+   * All attribute nodes for a certain element node have the _same_
+   * ordinal index. All namespace nodes for a certain element node
+   * have the _same_ ordinal index.
+   * (So ord_number x = ord_number y does not imply x == y for these
+   * nodes. However, this is true for the other node types.)
+   *)
 
 val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
   (* Compares two nodes like 'compare':
@@ -584,7 +735,9 @@ val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
 
 (***************************** Iterators ********************************)
 
-val find : ?deeply:bool -> 
+(* General note: The iterators ignore attribute and namespace nodes *)
+
+val find : ?deeply:bool ->
            f:('ext node -> bool) -> 'ext node -> 'ext node
   (* Searches the first node for which the predicate f is true, and returns
    * it. Raises Not_found if there is no such node.
@@ -624,7 +777,7 @@ val find_all_elements : ?deeply:bool ->
 exception Skip
 val map_tree :  pre:('exta node -> 'extb node) ->
                ?post:('extb node -> 'extb node) ->
-               'exta node -> 
+               'exta node ->
                    'extb node
   (* Traverses the passed node and all children recursively. After entering
    * a node, the function ~pre is called. The result of this function must
@@ -641,12 +794,12 @@ val map_tree :  pre:('exta node -> 'extb node) ->
    * raised.
    *)
 
-val map_tree_sibl : 
-        pre: ('exta node option -> 'exta node -> 'exta node option -> 
+val map_tree_sibl :
+        pre: ('exta node option -> 'exta node -> 'exta node option ->
                   'extb node) ->
-       ?post:('extb node option -> 'extb node -> 'extb node option -> 
+       ?post:('extb node option -> 'extb node -> 'extb node option ->
                   'extb node) ->
-       'exta node -> 
+       'exta node ->
            'extb node
    (* Works like map_tree, but the function ~pre and ~post have additional
     * arguments:
@@ -660,14 +813,14 @@ val map_tree_sibl :
 
 val iter_tree : ?pre:('ext node -> unit) ->
                 ?post:('ext node -> unit) ->
-                'ext node -> 
+                'ext node ->
                     unit
    (* Iterates only instead of mapping the nodes. *)
 
 val iter_tree_sibl :
        ?pre: ('ext node option -> 'ext node -> 'ext node option -> unit) ->
        ?post:('ext node option -> 'ext node -> 'ext node option -> unit) ->
-       'ext node -> 
+       'ext node ->
            unit
    (* Iterates only instead of mapping the nodes. *)
 
@@ -676,10 +829,10 @@ val iter_tree_sibl :
 
 
 class [ 'ext ] document :
-  Pxp_types.collect_warnings -> 
+  Pxp_types.collect_warnings ->
   object
     (* Documents: These are containers for root elements and for DTDs.
-     * 
+     *
      * Important invariant: A document is either empty (no root element,
      * no DTD), or it has both a root element and a DTD.
      *
@@ -710,7 +863,7 @@ class [ 'ext ] document :
        *)
 
     method dtd : dtd
-      (* Returns the DTD of the root element. 
+      (* Returns the DTD of the root element.
        * Fails if there is no root element.
        *)
 
@@ -756,6 +909,12 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.13  2001/04/26 23:59:36  gerd
+ * 	Experimental support for namespaces: classes namespace_impl,
+ * namespace_element_impl, namespace_attribute_impl.
+ * 	New classes comment_impl, pinstr_impl, super_root_impl. These
+ * classes have been added for stricter (runtime) type checking.
+ *
  * Revision 1.12  2000/09/21 21:29:41  gerd
  * 	New functions get_*_exemplar.
  *
