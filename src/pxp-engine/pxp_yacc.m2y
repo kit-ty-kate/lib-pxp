@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.36 2002/03/10 23:40:52 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.37 2002/07/14 23:05:01 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -9,6 +9,7 @@ open Pxp_types
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_entity
+open Pxp_entity_manager
 open Pxp_document
 open Pxp_aux
 open Pxp_reader
@@ -46,6 +47,8 @@ type config =
       enable_name_pool_for_pinstr_targets   : bool;
       enable_namespace_processing : namespace_manager option;
       enable_namespace_info : bool;
+      escape_contents : 
+	             (Pxp_lexer_types.token -> entity_manager -> string) option;
       debugging_mode : bool;
     }
 
@@ -54,11 +57,29 @@ type source = Pxp_dtd.source =
   | ExtID of (ext_id * Pxp_reader.resolver)
 
 
-type start_symbol =
-    Ext_document
-  | Ext_declarations
-  | Ext_element
+type event =
+  | E_start_doc of (string * bool * dtd)
+  | E_end_doc
+  | E_start_tag of (string * (string * string) list * entity_id)
+  | E_end_tag   of (string * entity_id)
+  | E_char_data of  string
+  | E_pinstr of (string * string)
+  | E_comment of string
+  | E_position of (string * int * int)
+  | E_error of exn
+  | E_end_of_stream
 
+
+type entry =
+    Entry_document
+  | Entry_declarations
+  | Entry_content        (* misc* <element>...</element> misc* *)
+(* TODO:
+  | Entry_single_element
+  | Entry_single_pi
+  | Entry_single_comment
+  | Entry_single_node    (* any of element, pi or comment *)
+*)
 
 type context =
     { mutable current : unit -> token;  (* get the current token *)
@@ -68,7 +89,7 @@ type context =
     }
 
 
-let make_context entity_manager =
+let make_context ?force_first_token entity_manager =
   let c =
     { current = (fun _ -> assert false);
       get_next = (fun _ -> assert false);
@@ -86,7 +107,12 @@ let make_context entity_manager =
   c.get_next <- (fun () -> let tok = !get_next_ref() in
 		           c.current_token <- tok;
 		           tok);
-  ignore(c.get_next());
+  ( match force_first_token with
+	Some tok -> 
+	  c.current_token <- tok
+      | None ->
+	  ignore(c.get_next());
+  );
   c
 ;;
 
@@ -223,10 +249,11 @@ let stack_pop st =
 
 (**********************************************************************)
 
-class ['ext] parser_object
-  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_resolver init_spec
+class ['ext] tree_parser
+  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_spec
   init_process_xmldecl transform_dtd id_index
   =
+let make_pool_string = pool_string init_config.name_pool in
   object (self)
 
       (* Note that the 'ext parameter has been the motivation to make the
@@ -259,9 +286,6 @@ class ['ext] parser_object
         (* The current document *)
 
     method doc = (doc : 'ext document)
-
-    val resolver = init_resolver
-        (* The resolver for external IDs *)
 
     val config = init_config
         (* The current configuration *)
@@ -323,13 +347,6 @@ class ['ext] parser_object
     val mutable current_data = []
     val mutable current_string = ""
 	(* Collect character data. *)
-
-    method collect_data s =
-        (* Collects the character material 's' *)
-      if String.length current_string = 0 then
-	current_string <- s
-      else
-        current_data <- s :: current_data
 
     method save_data =
       (* Puts the material collected in 'current_data' into a new
@@ -485,6 +502,274 @@ class ['ext] parser_object
       end
 
 
+    (********************************* EVENTS *****************************)
+    (* In this class, the events are defined for a tree parser. The
+     * subclass event_parser redefines them.
+     *)
+
+    method event_start_tag position name attlist emptiness tag_beg_entid =
+      (* position: The position of the start tag
+       * name: The name of the tag
+       * attlist: The attribute list
+       * emptiness: Whether this is an empty tag or not
+       * tag_beg_entid: The entity_id of the start tag
+       *)
+      let d =
+	(* The following "match" returns the new element node: *)
+	match config.enable_namespace_processing with
+	    None ->
+	      (* Simple case: no namespaces *)
+	      create_element_node
+                 ?name_pool_for_attribute_values:
+		   (if config.enable_name_pool_for_attribute_values
+		    then Some config.name_pool
+		    else None)
+                 ?position:position
+		 spec dtd name attlist
+	  | Some mng ->
+	      (* If namespace processing is enabled, preprocess the attribute
+	       * list:
+	       *)
+	      let splitted_attlist =
+		List.map
+		  (fun (name, value) -> namespace_split name, value)
+		  attlist
+		  (* TODO: Check that localname matches NCName *)
+	      in
+	      let xmlns_attlist = ref [] in
+	      let xmlns_default = ref None in
+	      let regular_attlist = ref [] in
+	      List.iter
+		(fun ((prefix, localname), value) ->
+		   if prefix = "" && localname = "xmlns" then
+		     xmlns_default := Some value
+		   else
+		     if prefix = "xmlns" then
+		       xmlns_attlist := (localname, value) :: !xmlns_attlist
+		     else
+		       regular_attlist := (prefix, localname, value) ::
+			 !regular_attlist
+		)
+		splitted_attlist;
+	      (* Apply xmlns_attlist: *)
+	      src_norm_mapping <- ( "!", default_normprefix ) ::
+                                  src_norm_mapping;               (* guard *)
+	      List.iter
+		(fun (srcprefix, uri) ->
+		   let normprefix =
+		     mng # lookup_or_add_namespace srcprefix uri in
+		   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
+		)
+		!xmlns_attlist;
+	      (* Apply xmlns_default: *)
+	      ( match !xmlns_default with
+		    None -> ()
+		  | Some "" ->
+		      (* Delete default namespace: *)
+		      default_normprefix <- "";
+		  | Some uri ->
+		      let normprefix =
+			try mng # get_normprefix uri
+			with Not_found ->
+			  mng # lookup_or_add_namespace "default" uri
+		      in
+		      default_normprefix <- normprefix
+	      );
+	      (* Normalize the regular_attlist: *)
+	      let norm_attlist =
+		List.map
+		  (fun (prefix, localname, value) ->
+		     (self # normalize_namespace_prefix prefix localname,
+		      value
+		     )
+		  )
+		  !regular_attlist
+	      in
+	      (* Normalize the element name: *)
+	      let prefix, localname = namespace_split name in
+	          (* TODO: Check that localname matches NCName *)
+	      let norm_name0 =
+		self # normalize_namespace_prefix
+		         ~apply_default:true prefix localname in
+	      let norm_name =
+		if config.enable_name_pool_for_element_types
+		then make_pool_string norm_name0
+		else norm_name0 in
+
+	      let element =
+		create_element_node
+                  ?name_pool_for_attribute_values:
+		    (if config.enable_name_pool_for_attribute_values
+		     then Some config.name_pool
+		     else None)
+                  ?position:position
+		  spec dtd norm_name norm_attlist
+	      in
+
+	      if config.enable_namespace_info then begin
+		let info =
+		  new namespace_info_impl
+		    prefix
+		    element
+		    ( ("!", default_normprefix) :: src_norm_mapping) in
+		element # set_namespace_info (Some info);
+	      end;
+
+	      element
+
+      (* end of match *)
+      in
+
+      begin match id_index with
+	  None -> ()
+	| Some idx ->
+	    (* Put the ID attribute into the index, if present *)
+	    begin try
+	      let v = d # id_attribute_value in  (* may raise Not_found *)
+	      idx # add v d                      (* may raise ID_not_unique *)
+	    with
+		Not_found ->
+		  (* No ID attribute *)
+		  ()
+	      | ID_not_unique ->
+		  (* There is already an ID with the same value *)
+		  raise(Validation_error("ID not unique"))
+	    end
+      end;
+
+      if n_tags_open = 0 then begin
+	if root = None then begin
+	  (* We have found the begin tag of the root element. *)
+	  if config.enable_super_root_node then begin
+	    (* The user wants the super root instead of the real root.
+	     * The real root element becomes the child of the VR.
+	     *)
+	    (* Assertion: self # current is the super root *)
+	    assert (self # current # node_type = T_super_root);
+	    root <- Some (self # current);
+	    self # current # append_node d;
+	    doc # init_root (self # current) name;
+	  end
+	  else begin
+	    (* Normal behaviour: The user wants to get the real root. *)
+	    root <- Some d;
+	    doc # init_root d name;
+	  end;
+	end
+	else
+	  (* We have found a second topmost element. This is illegal. *)
+	  raise(WF_error("Document must consist of only one toplevel element"))
+      end
+      else begin
+	(* We have found some inner begin tag. *)
+	self # save_data;        (* Save outstanding data material first *)
+	self # current # append_node d
+      end;
+
+      if emptiness then begin
+	(* An empty tag like <a/>. *)
+	if not config.disable_content_validation then
+	  d # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
+	if config.enable_namespace_processing <> None then
+	  self # pop_src_norm_mapping()
+      end
+      else begin
+	(* A non-empty tag. *)
+	stack_push (d, name, tag_beg_entid) elstack;
+      end;
+      
+      (* end of event_start_tag *)
+
+    method event_end_tag name tag_end_entid =
+      (* name: The name of the end tag 
+       * tag_end_entid: The entity_id of the end tag
+       *)
+
+      self # save_data;        (* Save outstanding data material first *)
+      
+      let x, x_name, tag_beg_entid = stack_pop elstack in
+      if config.enable_namespace_processing <> None then
+	self # pop_src_norm_mapping();
+      if name <> x_name then begin
+	let x_entname, x_line, x_col = x # position in
+	raise(WF_error("End tag `" ^ name ^
+		       "' does not match start tag `" ^ x_name ^ "'" ^
+		       (if x_line = 0 then "" else
+			  " (was at line " ^ string_of_int x_line ^
+			  ", position " ^ string_of_int x_col ^ ")" )));
+      end;
+      if tag_beg_entid != tag_end_entid then
+	raise(WF_error("End tag `" ^ name ^
+		       "' not in the same entity as the start tag `" ^
+		       x_name ^ "'"));
+      if not config.disable_content_validation then
+	x # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
+      
+      (* end of event_end_tag *)
+
+    method event_char_data data =           (* formerly: collect_data *)
+      (* data: The parsed character data *)
+      (* We collect the chardata material until the next end tag is
+       * reached. Then the collected material will concatenated and
+       * stored as a single T_data node (see method event_end_tag above)
+       * using save_data.
+       *)
+      if String.length current_string = 0 then
+	current_string <- data
+      else
+        current_data <- data :: current_data
+
+    method event_pinstr position target value =
+      (* position: The position of the processing instruction
+       * target: The name following <?
+       * value: The string following the name
+       *)
+      let pinstr = new proc_instruction target value config.encoding in
+      if n_tags_open = 0 && not config.enable_super_root_node
+      then
+	doc # add_pinstr pinstr
+      else begin
+	(* Special case: if processing instructions are processed inline,
+	 * they are wrapped into T_pinstr nodes.
+	 *)
+	if config.enable_pinstr_nodes then begin
+	  if init_done then begin
+	    self # save_data;        (* Save outstanding data material first *)
+	    let wrapper = create_pinstr_node
+			    ?position:position spec dtd pinstr in
+	    self # current # append_node wrapper;
+	  end
+	  else self # add_early_pinstr_node position pinstr
+	end
+	else
+	  (* Normal behaviour: Add the PI to the parent element. *)
+	  if init_done then
+	    self # current # add_pinstr pinstr
+	  else
+	    self # add_early_pinstr position pinstr
+      end
+
+
+    method event_comment position mat =
+      (* position: where the comment occurs
+       * mat: List of Comment_material tokens 
+       *)
+      if config.enable_comment_nodes then begin
+	let comment_text = String.concat "" mat in
+	if init_done then begin
+	  self # save_data;        (* Save outstanding data material first *)
+	  let wrapper = create_comment_node
+		          ?position:position spec dtd comment_text in
+	  self # current # append_node wrapper;
+	end
+	else
+	  self # add_early_comment position comment_text
+      end
+
+
+    (************************************************************************)
+
+
     initializer
       (* CHECKS: *)
       if config.encoding <> dtd # encoding then
@@ -565,8 +850,28 @@ class ['ext] parser_object
 	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
 	in
 
+	let process_curly_brace tok =
+	  let s =
+	    match config.escape_contents with
+		None -> 
+		  ( match tok with
+			Lcurly -> "{"
+		      | LLcurly -> "{{"
+		      | Rcurly -> "}"
+		      | RRcurly -> "\125\125"
+		   | _ -> assert false
+		  )
+	      | Some f -> 
+		  f tok context.manager
+	  in
+	  if s <> "" then begin
+	    if n_tags_open = 0 then 
+	      self # only_whitespace s
+	    else
+	      self # event_char_data s
+	  end
+	in
 
-	let make_pool_string = pool_string config.name_pool in
 (*
 	let rec start_tag_check_attlist al =
 	  match al with
@@ -626,6 +931,11 @@ class ['ext] parser_object
 %token Implied
 %token Fixed
 %token Eof
+
+%token Lcurly
+%token LLcurly
+%token Rcurly
+%token RRcurly
 
 %token <> Comment_material
 %token <> Doctype
@@ -864,36 +1174,42 @@ doctypedecl_material(doctype_entid):
 	    if not ws then
 	      raise(WF_error("Whitespace is missing after `DOCTYPE " ^
 			     root_name ^ "'"));
-	    let r' = resolver # clone in
+	    let resolver = 
+	      context.manager # current_resolver # clone in
 	    let pobj =
-	      new parser_object
+	      new tree_parser
 		(new document config.warner config.encoding)
 		dtd
 		extend_dtd
 		config
-		r'
 		spec
 		process_xmldecl
 		(fun x -> x)
 		None
 	    in
-	    let en = new external_entity r' dtd "[dtd]"
+	    let en = new external_entity resolver dtd "[dtd]"
 		         config.warner id false
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
-	    let mgr = new entity_manager en in
 	    en # open_entity true Declaration;
-	    try
-	      let context = make_context mgr in
-	      pobj # parse context Ext_declarations;
-	      ignore(en # close_entity);
+	    context.manager # push_entity en;
+	    begin try
+	      let context = make_context context.manager in
+	      (* CHECK: do we need a new context here? *)
+	      pobj # parse context Entry_declarations;
+	      if en # is_open then ignore(en # close_entity);
+	      context.manager # pop_entity();
 	    with
 		error ->
-		  ignore(en # close_entity);
-		  r' # close_all;
-		  let pos = mgr # position_string in
+		  (* When the error happens, the current entity can be
+		   * different than [en]. So the entity stack is muddled up,
+		   * and we need to pop entites until we find [en] again.
+		   *)
+		  let pos = context.manager # position_string in
+		  context.manager # pop_entity_until en;
 		  raise (At(pos, error))
+	    end;
       end;
       dtd # validate
     }}
@@ -1530,7 +1846,9 @@ entitydecl(decl_entity_entid):
 	      new internal_entity dtd name config.warner s p_internal_subset
 		  false config.encoding
 	  | (None,   Some xid, None)   ->
-	      new external_entity (resolver # clone) dtd name config.warner
+	      let resolver = 
+		context.manager # current_resolver # clone in
+	      new external_entity resolver dtd name config.warner
                                   xid false
 		                  config.encoding
 
@@ -1567,7 +1885,9 @@ entitydecl(decl_entity_entid):
 	      new internal_entity dtd name config.warner s p_internal_subset
   		  true config.encoding
 	  | (None,   Some xid)   ->
-	      new external_entity (resolver # clone) dtd name config.warner
+	      let resolver = 
+		context.manager # current_resolver # clone in
+	      new external_entity resolver dtd name config.warner
                                   xid true
 		                  config.encoding
 	  | _ -> assert false
@@ -1820,176 +2140,15 @@ start_tag():
    */
     {{
       let name0, tag_beg_entid = tag in
+      let name =
+	if config.enable_name_pool_for_element_types
+	then make_pool_string name0
+	else name0 in
 
-      let d =
-	(* The following "match" returns the new element node: *)
-	match config.enable_namespace_processing with
-	    None ->
-	      (* Simple case: no namespaces *)
-	      let name =
-		if config.enable_name_pool_for_element_types
-		then make_pool_string name0
-		else name0 in
-
-	      create_element_node
-                 ?name_pool_for_attribute_values:
-		   (if config.enable_name_pool_for_attribute_values
-		    then Some config.name_pool
-		    else None)
-                 ?position:position
-		 spec dtd name !attlist
-	  | Some mng ->
-	      (* If namespace processing is enabled, preprocess the attribute
-	       * list:
-	       *)
-	      let splitted_attlist =
-		List.map
-		  (fun (name, value) -> namespace_split name, value)
-		  !attlist
-		  (* TODO: Check that localname matches NCName *)
-	      in
-	      let xmlns_attlist = ref [] in
-	      let xmlns_default = ref None in
-	      let regular_attlist = ref [] in
-	      List.iter
-		(fun ((prefix, localname), value) ->
-		   if prefix = "" && localname = "xmlns" then
-		     xmlns_default := Some value
-		   else
-		     if prefix = "xmlns" then
-		       xmlns_attlist := (localname, value) :: !xmlns_attlist
-		     else
-		       regular_attlist := (prefix, localname, value) ::
-			 !regular_attlist
-		)
-		splitted_attlist;
-	      (* Apply xmlns_attlist: *)
-	      src_norm_mapping <- ( "!", default_normprefix ) ::
-                                  src_norm_mapping;               (* guard *)
-	      List.iter
-		(fun (srcprefix, uri) ->
-		   let normprefix =
-		     mng # lookup_or_add_namespace srcprefix uri in
-		   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
-		)
-		!xmlns_attlist;
-	      (* Apply xmlns_default: *)
-	      ( match !xmlns_default with
-		    None -> ()
-		  | Some "" ->
-		      (* Delete default namespace: *)
-		      default_normprefix <- "";
-		  | Some uri ->
-		      let normprefix =
-			try mng # get_normprefix uri
-			with Not_found ->
-			  mng # lookup_or_add_namespace "default" uri
-		      in
-		      default_normprefix <- normprefix
-	      );
-	      (* Normalize the regular_attlist: *)
-	      let norm_attlist =
-		List.map
-		  (fun (prefix, localname, value) ->
-		     (self # normalize_namespace_prefix prefix localname,
-		      value
-		     )
-		  )
-		  !regular_attlist
-	      in
-	      (* Normalize the element name: *)
-	      let prefix, localname = namespace_split name0 in
-	          (* TODO: Check that localname matches NCName *)
-	      let norm_name0 =
-		self # normalize_namespace_prefix
-		         ~apply_default:true prefix localname in
-	      let norm_name =
-		if config.enable_name_pool_for_element_types
-		then make_pool_string norm_name0
-		else norm_name0 in
-
-	      let element =
-		create_element_node
-                  ?name_pool_for_attribute_values:
-		    (if config.enable_name_pool_for_attribute_values
-		     then Some config.name_pool
-		     else None)
-                  ?position:position
-		  spec dtd norm_name norm_attlist
-	      in
-
-	      if config.enable_namespace_info then begin
-		let info =
-		  new namespace_info_impl
-		    prefix
-		    element
-		    ( ("!", default_normprefix) :: src_norm_mapping) in
-		element # set_namespace_info (Some info);
-	      end;
-
-	      element
-
-      (* end of match *)
-      in
-
-      begin match id_index with
-	  None -> ()
-	| Some idx ->
-	    (* Put the ID attribute into the index, if present *)
-	    begin try
-	      let v = d # id_attribute_value in  (* may raise Not_found *)
-	      idx # add v d                      (* may raise ID_not_unique *)
-	    with
-		Not_found ->
-		  (* No ID attribute *)
-		  ()
-	      | ID_not_unique ->
-		  (* There is already an ID with the same value *)
-		  raise(Validation_error("ID not unique"))
-	    end
-      end;
-
-      if n_tags_open = 0 then begin
-	if root = None then begin
-	  (* We have found the begin tag of the root element. *)
-	  if config.enable_super_root_node then begin
-	    (* The user wants the super root instead of the real root.
-	     * The real root element becomes the child of the VR.
-	     *)
-	    (* Assertion: self # current is the super root *)
-	    assert (self # current # node_type = T_super_root);
-	    root <- Some (self # current);
-	    self # current # append_node d;
-	    doc # init_root (self # current) name0;
-	  end
-	  else begin
-	    (* Normal behaviour: The user wants to get the real root. *)
-	    root <- Some d;
-	    doc # init_root d name0;
-	  end;
-	end
-	else
-	  (* We have found a second topmost element. This is illegal. *)
-	  raise(WF_error("Document must consist of only one toplevel element"))
-      end
-      else begin
-	(* We have found some inner begin tag. *)
-	self # save_data;        (* Save outstanding data material first *)
-	self # current # append_node d
-      end;
-
-      if emptiness then begin
-	(* An empty tag like <a/>. *)
-	if not config.disable_content_validation then
-	  d # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
-	if config.enable_namespace_processing <> None then
-	  self # pop_src_norm_mapping()
-      end
-      else begin
-	(* A non-empty tag. *)
-	stack_push (d, name0, tag_beg_entid) elstack;
+      self # event_start_tag position name !attlist emptiness tag_beg_entid;
+      
+      if not emptiness then
 	n_tags_open <- n_tags_open + 1;
-      end;
     }}
   ? {{ match !yy_position with
 	 | "emptiness" -> raise(WF_error("`>' or `/>' expected"))
@@ -2035,28 +2194,9 @@ end_tag():
        if n_tags_open = 0 then
 	 raise(WF_error("End-tag without start-tag"));
 
-       self # save_data;        (* Save outstanding data material first *)
-
-       let x, x_name, tag_beg_entid = stack_pop elstack in
-       if config.enable_namespace_processing <> None then
-	 self # pop_src_norm_mapping();
-       if name <> x_name then begin
-	 let x_entname, x_line, x_col = x # position in
-	 raise(WF_error("End tag `" ^ name ^
-			"' does not match start tag `" ^ x_name ^ "'" ^
-			(if x_line = 0 then "" else
-			   " (was at line " ^ string_of_int x_line ^
-			   ", position " ^ string_of_int x_col ^ ")" )));
-       end;
-       if tag_beg_entid != tag_end_entid then
-	 raise(WF_error("End tag `" ^ name ^
-			"' not in the same entity as the start tag `" ^
-		       x_name ^ "'"));
-       if not config.disable_content_validation then
-	 x # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
+       self # event_end_tag name tag_end_entid;
 
        n_tags_open <- n_tags_open - 1;
-
        assert (n_tags_open >= 0);
 
     }}
@@ -2073,19 +2213,21 @@ char_data():
 	(* only white space is allowed *)
 	self # only_whitespace data
       else
-	self # collect_data data
-          (* We collect the chardata material until the next end tag is
-	   * reached. Then the collected material will concatenated and
-	   * stored as a single T_data node (see end_tag rule above)
-	   * using save_data.
-	   *)
+	self # event_char_data data
     }}
+| Lcurly
+    {{ process_curly_brace Lcurly }}
+| LLcurly
+    {{ process_curly_brace LLcurly }}
+| Rcurly
+    {{ process_curly_brace Rcurly }}
+| RRcurly
+    {{ process_curly_brace RRcurly }}
 | data:Cdata
     {{
       if n_tags_open = 0 then
 	raise (WF_error("CDATA section not allowed here"));
-      self # collect_data data
-          (* Also collect CDATA material *)
+       self # event_char_data data
     }}
 
 cref():
@@ -2095,8 +2237,7 @@ cref():
        if n_tags_open = 0 then
 	 (* No surrounding element: character references are not allowed *)
 	 raise(WF_error("Character reference not allowed here"));
-       self # collect_data (character config.encoding config.warner code)
-          (* Also collect character references *)
+       self # event_char_data (character config.encoding config.warner code)
     }}
 
 pi():
@@ -2118,30 +2259,7 @@ pi():
 	then make_pool_string target0
 	else target0 in
 
-      let pinstr = new proc_instruction target value config.encoding in
-      if n_tags_open = 0 && not config.enable_super_root_node
-      then
-	doc # add_pinstr pinstr
-      else begin
-	(* Special case: if processing instructions are processed inline,
-	 * they are wrapped into T_pinstr nodes.
-	 *)
-	if config.enable_pinstr_nodes then begin
-	  if init_done then begin
-	    self # save_data;        (* Save outstanding data material first *)
-	    let wrapper = create_pinstr_node
-			    ?position:position spec dtd pinstr in
-	    self # current # append_node wrapper;
-	  end
-	  else self # add_early_pinstr_node position pinstr
-	end
-	else
-	  (* Normal behaviour: Add the PI to the parent element. *)
-	  if init_done then
-	    self # current # add_pinstr pinstr
-	  else
-	    self # add_early_pinstr position pinstr
-      end
+      self # event_pinstr position target value
     }}
 
 
@@ -2162,17 +2280,7 @@ comment():
     {{
       if begin_entid != end_entid then
 	raise(Validation_error("The first and the last token of comments must be in the same entity"));
-      if config.enable_comment_nodes then begin
-	let comment_text = String.concat "" mat in
-	if init_done then begin
-	  self # save_data;        (* Save outstanding data material first *)
-	  let wrapper = create_comment_node
-		          ?position:position spec dtd comment_text in
-	  self # current # append_node wrapper;
-	end
-	else
-	  self # add_early_comment position comment_text
-      end
+      self # event_comment position mat
     }}
   ? {{ match !yy_position with
 	 | "end_entid"  -> raise(WF_error("`-->' expected"))
@@ -2185,11 +2293,11 @@ comment():
 
    try
      match start_symbol with
-	 Ext_document ->
+	 Entry_document ->
 	   parse_ext_document context.current context.get_next
-       | Ext_declarations ->
+       | Entry_declarations ->
 	   parse_ext_declarations context.current context.get_next
-       | Ext_element ->
+       | Entry_content ->
 	   parse_ext_element context.current context.get_next
    with
        Not_found ->
@@ -2261,6 +2369,134 @@ let default_namespace_spec =
     ()
 ;;
 
+(**********************************************************************)
+
+(* The subclass event_parser for the event-based interface: *)
+
+class any_entity_id = object end ;;
+
+class event_parser init_dtd init_config init_event_handler 
+                   init_want_start_doc =
+let fake_doc = new document init_config.warner init_config.encoding in
+object (self)
+  inherit [ ('a node extension) as 'a ] tree_parser
+                                          fake_doc
+					  init_dtd
+					  true
+					  init_config
+					  default_spec
+					  false   (* questionable *)
+					  (fun dtd -> dtd)
+					  None
+
+  val event_handler = init_event_handler
+  val want_start_doc = init_want_start_doc
+
+  val mutable ep_root_element_seen = false
+  val mutable ep_elstack = stack_create (None,"",new any_entity_id)
+  val mutable ep_early_events = []
+
+
+  method root_element_seen = ep_root_element_seen
+
+
+  method check_whether_root_is_closed() =
+    assert(ep_root_element_seen);
+    if n_tags_open <> 0 then
+      raise(WF_error("Root element is not closed"));
+
+
+  method private init_for_xml_body() =
+    if not init_done then begin
+      if want_start_doc then
+	event_handler (E_start_doc(fake_doc#xml_version,
+				   fake_doc#xml_standalone,
+				   dtd));
+      init_done <- true;
+      List.iter event_handler ep_early_events;
+      ep_early_events <- [];
+    end
+
+
+  method event_start_tag position name attlist emptiness tag_beg_entid =
+    (match position with
+	 Some(e,l,c) -> event_handler(E_position(e,l,c))
+       | None -> ()
+    );
+    if n_tags_open = 0 then begin
+      if ep_root_element_seen then
+	raise(WF_error("Document must consist of only one toplevel element"));
+      ep_root_element_seen <- true;
+    end;
+    if not emptiness then
+      stack_push (position, name, tag_beg_entid) ep_elstack;
+
+    event_handler(E_start_tag(name,attlist,tag_beg_entid));
+    if emptiness then
+      event_handler(E_end_tag(name,tag_beg_entid))
+
+  method event_end_tag name tag_end_entid =
+    ( try
+	let x_pos, x_name, tag_beg_entid = stack_pop ep_elstack in
+	if name <> x_name then begin
+	  let where = 
+	    match x_pos with
+	      | None -> ""
+	      | Some (_, 0, _) -> ""
+	      | Some (x_entname, x_line, x_col) ->
+		  " (was at line " ^ string_of_int x_line ^
+		  ", position " ^ string_of_int x_col ^ ")" 
+	  in
+	  raise(WF_error("End tag `" ^ name ^
+			 "' does not match start tag `" ^ x_name ^ "'" ^
+			 where))
+	end;
+	if tag_beg_entid != tag_end_entid then
+	  raise(WF_error("End tag `" ^ name ^
+			 "' not in the same entity as the start tag `" ^
+			 x_name ^ "'"));
+      with
+	  Stack.Empty ->
+	    assert false;   (* because n_tags_open = 0 is checked *)
+    );
+    event_handler(E_end_tag(name,tag_end_entid))
+
+  method event_char_data data =
+    event_handler(E_char_data(data))
+
+  method event_pinstr position target value =
+    if config.enable_pinstr_nodes then begin
+      let ev_list = 
+	(match position with
+	     Some(e,l,c) -> [ E_position(e,l,c) ]
+	   | None -> []
+	)
+	@ [ E_pinstr(target,value) ] in
+      if init_done then
+	List.iter event_handler ev_list
+      else
+	ep_early_events <- ep_early_events @ ev_list
+    end
+
+  method event_comment position mat =
+    if config.enable_comment_nodes then begin
+      let ev_list = 
+	(match position with
+	     Some(e,l,c) -> [ E_position(e,l,c) ]
+	   | None -> []
+	)
+	@ [ E_comment(String.concat "" mat) ] in
+      if init_done then
+	List.iter event_handler ev_list
+      else
+	ep_early_events <- ep_early_events @ ev_list
+    end
+end
+;;
+
+(**********************************************************************)
+
+
 
 let idref_pass id_index root =
   let error t att value =
@@ -2313,7 +2549,7 @@ exception Return_DTD of dtd;;
   (* Used by extract_dtd_from_document_entity to jump out of the parser *)
 
 
-let call_parser ~configuration:cfg
+let call_tree_parser ~configuration:cfg
                 ~source:src
 		~dtd
 		~extensible_dtd
@@ -2343,37 +2579,34 @@ let call_parser ~configuration:cfg
   r # init_warner w;
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
-    new parser_object
+    new tree_parser
       doc
       dtd
       extensible_dtd
       cfg
-      r
       spec
       process_xmldecl
       transform_dtd
       (id_index :> 'ext index option)
   in
-  let mgr = new entity_manager en in
+  let mgr = new entity_manager en dtd in
   en # open_entity true init_lexer;
   begin try
     let context = make_context mgr in
     pobj # parse context entry;
-    ignore(en # close_entity);
+    if en # is_open then ignore(en # close_entity);
   with
       Return_DTD d ->
 	ignore(en # close_entity);
 	raise(Return_DTD d)
     | Failure "Invalid UTF-8 stream" ->
 	(* raised by the wlex-generated lexers only: map to Malformed_code *)
-	ignore(en # close_entity);
-	r # close_all;
 	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
 	raise (At(pos, Netconversion.Malformed_code))
     | error ->
-	ignore(en # close_entity);
-	r # close_all;
 	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
 	raise (At(pos, error))
   end;
   if cfg.idref_pass then begin
@@ -2398,7 +2631,7 @@ let parse_dtd_entity cfg src =
   );
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser
+    call_tree_parser
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
@@ -2411,7 +2644,7 @@ let parse_dtd_entity cfg src =
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index: None
       ~use_document_entity:false
-      ~entry:Ext_declarations      (* Entry point of the grammar *)
+      ~entry:Entry_declarations      (* Entry point of the grammar *)
       ~init_lexer:Declaration      (* The initially used lexer *)
   in
   dtd # validate;
@@ -2426,7 +2659,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
   if cfg.accept_only_deterministic_models then dtd # only_deterministic_models;
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser
+    call_tree_parser
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
@@ -2439,7 +2672,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:false
-      ~entry:Ext_element           (* Entry point of the grammar *)
+      ~entry:Entry_content           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with
@@ -2464,7 +2697,7 @@ let parse_wfcontent_entity cfg src spec =
   );
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser
+    call_tree_parser
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
@@ -2477,7 +2710,7 @@ let parse_wfcontent_entity cfg src spec =
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:None
       ~use_document_entity:false
-      ~entry:Ext_element           (* Entry point of the grammar *)
+      ~entry:Entry_content           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with
@@ -2512,7 +2745,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
   );
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser
+    call_tree_parser
       ~configuration:cfg
       ~source:src
       ~dtd:dtd
@@ -2531,7 +2764,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:true
-      ~entry:Ext_document          (* Entry point of the grammar *)
+      ~entry:Entry_document          (* Entry point of the grammar *)
       ~init_lexer:Document         (* The initially used lexer *)
   in
   pobj # doc
@@ -2587,6 +2820,7 @@ let default_config =
     enable_name_pool_for_attribute_values = false;
     enable_namespace_processing = None;
     enable_namespace_info = false;
+    escape_contents = None;
     debugging_mode = false;
   }
 
@@ -2612,11 +2846,101 @@ object
   method index = ht
 end
 
+(**********************************************************************)
+(* event-based interface *)
+
+let create_entity_manager ?(is_document=true) cfg src =
+  let dtd = new dtd cfg.warner cfg.encoding in
+  dtd # add_pinstr               (* select well-formedness mode *)
+    (new proc_instruction
+       "pxp:dtd"
+       "optional-element-and-notation-declarations"
+       cfg.encoding);
+  let w = cfg.warner in
+  let r, en =
+    match src with
+	Entity(m,r')  -> r', m dtd
+      | ExtID(xid,r') -> r',
+	                 if is_document then
+                           new document_entity
+			     r' dtd "[toplevel]" w xid
+                             cfg.encoding
+			 else
+                           new external_entity
+			     r' dtd "[toplevel]" w xid false
+                             cfg.encoding
+  in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
+  en # set_debugging_mode (cfg.debugging_mode);
+  new entity_manager en dtd
+;;
+
+
+let call_event_parser ~configuration:cfg
+                      ~manager:mgr
+		      ~event_handler:eh
+                      ~entry =
+  (* generate_doc_events: whether E_start_doc/E_end_doc events are generated *)
+  let pobj =
+    new event_parser
+      mgr#dtd
+      cfg
+      eh
+      (entry = Entry_document)
+  in
+  let resolver = mgr # current_resolver in
+  let init_lexer =
+    match entry with
+	Entry_document     -> Document
+      | Entry_declarations -> failwith "Pxp_yacc.process_entity: bad entry point"
+      | Entry_content      -> Content
+  in
+  let en = mgr # current_entity in
+  en # open_entity true init_lexer;
+  begin try
+    let context = make_context mgr in
+
+    pobj # parse context entry;
+    if en # is_open then ignore(en # close_entity);
+  with
+    | Failure "Invalid UTF-8 stream" ->
+	(* raised by the wlex-generated lexers only: map to Malformed_code *)
+	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
+	let e = At(pos, Netconversion.Malformed_code) in
+	eh (E_error e);
+	raise e
+    | error ->
+	let pos = mgr # position_string in
+	mgr # pop_entity_until en;
+	let e = At(pos, error) in
+	eh (E_error e);
+	raise e
+  end;
+  pobj
+;;
+
+
+let process_entity 
+      configuration entry manager event_handler =
+  let pobj = call_event_parser 
+	       ~configuration
+	       ~manager
+	       ~event_handler
+	       ~entry in
+  if entry = Entry_document then event_handler (E_end_doc);
+  event_handler E_end_of_stream
+;;
+
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.37  2002/07/14 23:05:01  gerd
+ * 	Event-based interface.
+ *
  * Revision 1.36  2002/03/10 23:40:52  gerd
  * 	type source is now primarily defined in Pxp_dtd.
  *

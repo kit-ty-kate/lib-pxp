@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.16 2002/03/10 23:40:52 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.17 2002/07/14 23:05:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -11,7 +11,7 @@ open Pxp_types
 open Pxp_dtd
 open Pxp_document
 
-exception ID_not_unique
+exception ID_not_unique        (* see class index below *)
 
 class type [ 'ext ] index =
 object 
@@ -304,6 +304,20 @@ type config =
 	 * Default: false
 	 *)
 
+      (* Experimental stuff: *)
+
+      escape_contents : 
+	             (Pxp_lexer_types.token -> Pxp_entity_manager.entity_manager -> 
+			string) option;
+        (* If defined, the [escape_contents] function is called whenever 
+	 * the tokens "{", "{{", "}", or "}}" are found in the context
+	 * of character data contents. The first argument is the token.
+	 * The second argument is the entity manager, it can be used to
+	 * access the lexing buffer directly. The result of the function
+	 * are the characters to substitute.
+	 *
+	 * Default: None
+	 *)
 
       (* The following options are not implemented, or only for internal
        * use.
@@ -491,7 +505,122 @@ val parse_wfcontent_entity :
    * (see parse_content_entity). The fragment is not validated, only
    * checked for well-formedness.
    *)
-  
+
+
+(******************* Event-based interface **************************)
+
+type event =
+  | E_start_doc of (string * bool * dtd)
+  | E_end_doc
+  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
+  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
+  | E_char_data of  string
+  | E_pinstr of (string * string)
+  | E_comment of string
+  | E_position of (string * int * int)
+  | E_error of exn
+  | E_end_of_stream
+  (* may be extended in the future *)
+
+  (* The type of XML events:
+   * E_start_doc (xmlversion,standalone,dtd)
+   * E_end_doc
+   * E_start_tag (name, attlist, entid):      <name attlist>
+   * E_end_tag (name, entid):                 </name>
+   * E_char_data data:                        data
+   * E_pinstr (target,value):                 <?target value?>
+   * E_comment value:                         <!--value-->
+   * E_position(entity,line,col):             (position of next event)
+   * E_end_of_stream:                         always the last event
+   *
+   * E_position events are only created if the next event will be
+   * E_start_tag, E_empty_tag, E_pinstr, or E_comment, and if
+   * the configuration option store_element_position is true.
+   *
+   * The parser usually generates several E_char_data events for a
+   * longer section of character data.
+   *
+   * MAYBE TODO: Events with preprocessed namespaces
+   *)
+
+val create_entity_manager :
+      ?is_document:bool ->       (* default: true *)
+      config -> 
+      source -> 
+        Pxp_entity_manager.entity_manager
+  (* Creates an entity manager that is initialized with the toplevel
+   * entity referenced by the source argument. The entity manager
+   * can be used by [process_entity] below.
+   *
+   * The following configuration options are used:
+   * - warner
+   * - encoding
+   * - debugging_mode
+   *
+   * ~is_document: Pass [true] if the entity to read is a complete
+   *   document, and [false] otherwise. The value [true] enforces
+   *   several restrictions on document entities, e.g. that 
+   *   <![INCLUDE[ and <![IGNORE are not allowed and that additional
+   *   nesting rules are respected by parameter entities.
+   *)
+
+type entry =
+    Entry_document
+  | Entry_declarations
+  | Entry_content        (* misc* <element>...</element> misc* *)
+   (* Entry points for the parser (used to call [process_entity]:
+    * - Entry_document: The parser reads a complete document that
+    *   may have a DOCTYPE and a DTD.
+    * - Entry_declarations: The parser reads the external subset
+    *   of a DTD
+    * - Entry_content: The parser reads the part containing contents,
+    *   i.e. misc* element misc*.
+    * More entry points might be defined in the future.
+    *)
+
+
+val process_entity :
+      config -> 
+      entry ->
+      Pxp_entity_manager.entity_manager ->
+      (event -> unit) ->
+        unit
+  (* Parses a document or a document fragment, but do not validate
+   * it. Only checks on well-formedness are performed.
+   * While parsing, events are generated and the passed function is
+   * called for every event. The parsed text is read from the
+   * current entity of the entity manager. It is allowed that the
+   * current entity is open or closed.
+   * 
+   * The entry point to the parsing rules can be specified.
+   * Notes to entry points:
+   * - Entry_document:
+   *   The first generated event is always E_start_doc,
+   *   it contains the whole DTD as object (no events are generated
+   *   during DTD parsing, only the result is passed back). The
+   *   events for the contents follow, terminated by E_end_doc and
+   *   E_end_of_stream.
+   * - Entry_content:
+   *   Only events for contents are generated. They are terminated
+   *   by E_end_of_stream.
+   * - Entry_declaration:
+   *   Currently not supported.
+   *
+   * Only the following config options have an effect:
+   * - warner
+   * - encoding
+   * - enable_pinstr_nodes
+   * - enable_comment_nodes
+   * - store_element_positions
+   * - name_pool and all name pool options
+   * 
+   * In the future, enable_namespace_processing might be interpreted, too.
+   *
+   * If an error happens, the callback function is invoked exactly once
+   * with the E_error event. The error is additionally passed to the caller
+   * by letting the exception fall through to the caller. It is not possible
+   * to resume parsing after an error.
+   *)
 
 (*$-*)
 
@@ -500,6 +629,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.17  2002/07/14 23:05:01  gerd
+ * 	Event-based interface.
+ *
  * Revision 1.16  2002/03/10 23:40:52  gerd
  * 	type source is now primarily defined in Pxp_dtd.
  *
