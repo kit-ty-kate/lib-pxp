@@ -9,6 +9,7 @@ CLEAN: clean
 	$(MAKE) -C xmlforms CLEAN
 	$(MAKE) -C validate CLEAN
 	$(MAKE) -C readme CLEAN
+	$(MAKE) -C simple-transformation CLEAN
 
 .PHONY: distclean
 distclean: clean
@@ -16,3 +17,6 @@ distclean: clean
 	$(MAKE) -C xmlforms distclean
 	$(MAKE) -C validate distclean
 	$(MAKE) -C readme distclean
+	$(MAKE) -C simple-transformation distclean
+
+
