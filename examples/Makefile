@@ -10,6 +10,7 @@ CLEAN: clean
 	$(MAKE) -C validate CLEAN
 	$(MAKE) -C readme CLEAN
 	$(MAKE) -C simple_transformation CLEAN
+	$(MAKE) -C namespaces CLEAN
 
 .PHONY: distclean
 distclean: clean
@@ -18,5 +19,7 @@ distclean: clean
 	$(MAKE) -C validate distclean
 	$(MAKE) -C readme distclean
 	$(MAKE) -C simple_transformation distclean
+	$(MAKE) -C namespaces distclean
+
 
 

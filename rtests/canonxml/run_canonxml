@@ -1,11 +1,11 @@
-#! /bin/bash
+#! /bin/sh
 
 check_dir () {
     dir="$1"
     shift
     xmlfiles=`cd $dir && echo *.xml`
     for file in $xmlfiles; do
-        echo -n "File $dir/$file: "
+        printf "%s" "File $dir/$file: "
 	./test_canonxml "$@" "$dir/$file" >out.xml
 	if cmp out.xml "$dir/out/$file"; then
 	    echo "OK"
