@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.4 2000/07/06 22:11:01 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.5 2000/07/06 23:05:18 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1745,6 +1745,8 @@ let parse_dtd_entity cfg src =
 			   r' dtd "[toplevel dtd]" w xid false e
                            cfg.encoding
   in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
     new parser_object
@@ -1785,6 +1787,8 @@ let parse_content_entity cfg src a_dtd spec =
 			   r' a_dtd "[toplevel element]" w xid
                            false e cfg.encoding
   in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
     new parser_object
@@ -1833,6 +1837,8 @@ let iparse_document_entity cfg0 src spec p_wf =
 			   r' a_dtd "[toplevel document]" w xid e
                            cfg.encoding
   in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
     new parser_object
@@ -1895,6 +1901,9 @@ let parse_document_entity_with_dtd _ _ _ _ = failwith "xxx"
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.5  2000/07/06 23:05:18  gerd
+ * 	Initializations of resolvers were missing.
+ *
  * Revision 1.4  2000/07/06 22:11:01  gerd
  * 	Fix: The creation of the non-virtual root element is protected
  * in the same way as the virtual root element.
