@@ -725,12 +725,18 @@ class resolve_as_file
   let default_base_url =
     if base_url_defaults_to_cwd then begin
       let cwd = Sys.getcwd() in
-      let cwd_slash = if cwd = "/" then cwd else cwd ^ "/" in
-      Some(Neturl.make_url
-	     ~scheme: "file"
-	     ~host:   ""
-	     ~path:   (Neturl.split_path cwd_slash)
-	     base_url_syntax)
+      let cwd_utf8 = 
+	Netconversion.recode_string
+	  ~in_enc: system_encoding
+	  ~out_enc: `Enc_utf8 
+	  cwd in
+      let l = String.length cwd_utf8 in
+      let cwd_utf8 =
+	if cwd_utf8 = "" || cwd_utf8.[l-1] <> '/' then 
+	  cwd_utf8 ^ "/" 
+	else
+	  cwd_utf8 in
+      Some(Neturl.file_url_of_local_path cwd_utf8)
     end
     else
       None
@@ -797,9 +803,9 @@ class resolve_as_file
     else begin
       try
 	let path_utf8 =
-	  try Neturl.join_path (Neturl.url_path ~encoded:false url)
-	  with Not_found -> raise Not_competent
+	  Neturl.local_path_of_file_url url (* may fail *)
 	in
+	(* Note: it is only assumed that the path is UTF-8 *)
 	      
 	let path =
 	  Netconversion.recode_string
@@ -812,8 +818,8 @@ class resolve_as_file
 	(* May raise Sys_error *)
 		
       with
-	| Netconversion.Malformed_code -> assert false
-  	    (* should not happen *)
+	| Malformed_code as e ->
+	    raise (Not_resolvable e)
 	| Sys_error _ as e ->
 	    raise (Not_resolvable e)
     end
@@ -835,26 +841,17 @@ let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
       filename
   in
 
-  let utf8_abs_filename =
-    if utf8_filename <> "" && utf8_filename.[0] = '/' then
-      utf8_filename
-    else
-      let cwd = Sys.getcwd() in
-      let cwd_utf8 =
-	Netconversion.recode_string
+  let getcwd() =
+    let cwd = Sys.getcwd() in
+    let cwd_utf8 = 
+      Netconversion.recode_string
 	~in_enc: system_encoding
-	~out_enc: `Enc_utf8 cwd in
-      if cwd = "/" then "/" ^ utf8_filename else cwd_utf8 ^ "/" ^ utf8_filename
+	~out_enc: `Enc_utf8 
+	cwd in
+    cwd_utf8
   in
 
-  let syntax = { Neturl.ip_url_syntax with Neturl.url_accepts_8bits = true } in
-  let url = Neturl.make_url
-	    ~scheme:"file"
-	    ~host:"localhost"
-	    ~path:(Neturl.split_path utf8_abs_filename)
-	      syntax
-  in
-  url
+  Neturl.file_url_of_local_path ~getcwd utf8_filename
 ;;
 
 
