@@ -3,6 +3,8 @@ include $(TOP_DIR)/Makefile.rules
 
 all:
 
+opt:
+
 clean:
 	rm -f META
 
