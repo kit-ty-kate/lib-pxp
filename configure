@@ -1,12 +1,12 @@
 #! /bin/sh
 
-# $Id: configure,v 1.5 2001/10/12 21:38:11 gerd Exp $
+# $Id: configure,v 1.6 2001/12/03 23:47:17 gerd Exp $
 
 # defaults:
 with_lex_iso88591=1
 with_lex_utf8=1
 with_wlex=1
-version="1.1.1"
+version="1.1.2"
 exec_suffix=""
 
 help_lex_iso88591="Enable/disable ocamllex-based lexical analyzer for ISO-8859-1"
