@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.16 2000/09/21 21:29:41 gerd Exp $
+(* $Id: pxp_document.ml,v 1.17 2000/09/22 22:54:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -711,6 +711,11 @@ let no_validation =
     content_dfa = lazy None;
     id_att_name = None;
     idref_att_names = [];
+    init_att_vals = [| |];
+    att_lookup = Hashtbl.create 1;
+    att_info = [| |];
+    att_required = [];
+    accept_undeclared_atts = true;
   }
 ;;
 
@@ -780,6 +785,20 @@ let rec att_map_make f l =
     | (n,v) :: l' -> 
 	let v' = f v in
 	Att (n,v', att_map_make f l')
+;;
+
+
+let att_make_from_2_arrays a b =
+  let l = ref No_atts in
+  let add_array x =
+    for k = Array.length x - 1 downto 0 do
+      let (n,v) = x.( k ) in
+      l := Att(n,v,!l);
+    done
+  in
+  add_array b;
+  add_array a;
+  !l
 ;;
 
 
@@ -1302,6 +1321,290 @@ class ['ext] element_impl an_ext : ['ext] node =
 	self # set_flag flag_ext_decl false;
 
 
+
+      (* New attribute parsing algorithm:
+       *
+       * Get the attribute declaration of the element type. This is a 
+       * record containing:
+       * - init_att_vals: an array of initial attribute values (default values 
+       *   or implied values)
+       * - init_att_found: an array of booleans storing whether a default
+       *   value has been replaced by an actual value. Initially, an array
+       *   of 'false'.
+       * - att_info: an array of attribute types and other per-attribute 
+       *   information. All arrays have the same size, and for the same
+       *   attribute the same array position is used.
+       * - att_lookup: a hashtable that allows quick lookup of the array
+       *   position for a given attribute name
+       * - att_required: a list of indexes of attributes that are required
+       *
+       * ROUND 1:
+       *
+       * In the first round the array init_att_vals is modified such that
+       * the actual values replace the defaults. Furthermore, the undeclared
+       * attributes are accumulated in a list undeclared_atts:
+       *
+       * (Round 1 can be left out if there are no declared attributes.)
+       *
+       * Input: The list of actual attributes new_attlist
+       *
+       * Initialization: init_att_vals is a copy of the array returned by 
+       * the DTD. Also, init_att_found must be initialized.
+       *
+       * For every element att of new_attlist:
+       * (1) Look the index k of the attribute att up (by using att_lookup).
+       *     If the attribute is undeclared, add it to undeclared_atts and
+       *     continue with the next attribute. Otherwise continue with (2).
+       * (2) If init_att_found.(k): failure (attribute has been defined twice)
+       * (3) Get the type t of the attribute (by using att_info)
+       * (4) Get the normalized value v of the attribute (by calling 
+       *     value_of_attribute with the lexical value and t)
+       * (5) Try to overwrite the init_att_vals.(k). This may fail because the
+       *     default value is #FIXED.
+       * (6) If necessary: Check whether the stand-alone declaration is
+       *     violated by the attribute
+       * (7) Set init_att_found.(k) to true.
+       *
+       * After that loop, check for every member of att_required whether
+       * init_att_found is set. If not, a required attribute is missing.
+       *
+       * If the DTD does not allow undeclared attributes, there is no
+       * second round: undeclared_atts <> [] is a violation of the
+       * validation constraint.
+       *
+       * ROUND 2:
+       *
+       * Input: Let n be the length of undeclared_atts.
+       *
+       * Variant A: Used if n is small
+       *
+       * Initialization: extra_att_vals is an array of n implied values.
+       * k := 0
+       *
+       * For every attribute att and tail tl of undeclared_attributes:
+       * (1) If the attribute name occurs in tl, the attribute is defined
+       *     twice (failure)
+       * (2) Put into extra_att_vals.(k) the normalized CDATA value of
+       *     the attribute.
+       * (3) Increment k
+       *
+       * Variant B: Used if n is big
+       *
+       * Initialization: extra_att_vals is an array of n implied values.
+       * k := 0
+       * att_names is a hashtable containing attribute names 
+       *
+       * For every attribute att of undeclared_attributes:
+       * (1) If the attribute name occurs in att_names, the attribute is
+       *     defined twice (failure)
+       * (2) Add the attribute name to att_names
+       * (3) Put into extra_att_vals.(k) the normalized CDATA value of
+       *     the attribute.
+       * (4) Increment k
+       *
+       * MERGE RESULTS:
+       *
+       * Finally, init_att_vals and extra_att_vals are merged.
+       *)
+
+      method internal_init new_pos attval_name_pool new_dtd new_name 
+                           new_attlist =
+	(* ONLY FOR T_Element NODES!!! *)
+	(* resets the contents of the object *)
+	parent <- None;
+	rev_nodes <- [];
+	nodes <- LA_not_available;
+	ntype <- T_element new_name;
+	position <- new_pos;
+	dtd <- Some new_dtd;
+
+	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
+	let sadecl = new_dtd # standalone_declaration in
+
+	let mk_pool_value av0 =
+	  match attval_name_pool with
+	      None -> av0
+	    | Some pool ->
+		(match av0 with
+		     Implied_value -> Implied_value
+		   | Value s -> Value (pool_string pool s)
+		   | Valuelist l ->
+		       Valuelist (List.map (pool_string pool) l)
+		)
+	in
+
+	let undeclared_atts = ref [] in
+	let att_vals =
+	  try
+	    (* catch Undeclared in the following block: *)
+	    let eltype = new_dtd # element new_name in (* may raise Undeclared *)
+	    vr <- eltype # internal_vr;
+	    self # set_flag flag_ext_decl (eltype # externally_declared);
+
+	    let init_att_vals = Array.copy vr.init_att_vals in
+	    let m = Array.length init_att_vals in
+
+	    if m > 0 then begin
+	      (* round 1 *)
+	      let att_found = Array.create m false in
+	      List.iter
+		(fun (att_name, att_val) ->
+		   let bad = ref false in
+		   try
+		     let k = Hashtbl.find vr.att_lookup att_name in
+		             (* or raise Not_found *)
+		     bad := true;
+		     if att_found.(k) then
+		       raise (WF_error("Attribute `" ^ att_name ^ 
+				       "' occurs twice in element `" ^ 
+				       new_name ^ "'"));
+		     let att_type, att_fixed = vr.att_info.(k) in
+		     let v0 = value_of_attribute 
+				lexerset new_dtd att_name att_type att_val in
+		     let v = mk_pool_value v0 in
+		     if att_fixed then begin
+		       let _, v' = init_att_vals.(k) in
+		       if v <> v' then
+			 raise
+			   (Validation_error
+			      ("Attribute `" ^ att_name ^ 
+			       "' is fixed, but has here a different value"));
+		     end
+		     else begin
+		       init_att_vals.(k) <- att_name, v
+		     end;
+		     
+		     (* If necessary, check whether normalization violates
+		      * the standalone declaration.
+		      *)
+		     if sadecl &&
+                       eltype # 
+		       attribute_violates_standalone_declaration 
+		         att_name (Some att_val)
+		     then
+		       raise
+			 (Validation_error
+			    ("Attribute `" ^ att_name ^ "' of element type `" ^
+			     new_name ^ "' violates standalone declaration"));
+		     
+		     att_found.(k) <- true;
+		     
+		   with
+		       Not_found ->
+			 assert(not !bad);
+			 (* Raised by Hashtbl.find *)
+			 undeclared_atts := (att_name, att_val):: !undeclared_atts
+		)
+		new_attlist;
+
+              (* Check required attributes: *)
+	      List.iter
+		(fun k ->
+		   if not att_found.(k) then begin
+		     let n, _ = init_att_vals.(k) in
+		     raise(Validation_error("Required attribute `" ^ 
+					    n ^ "' is missing"))
+		   end
+		)
+		vr.att_required;
+
+	      (* Check standalone declaration of missing atts: *)
+	      if sadecl then begin
+		for k = 0 to m - 1 do 
+		  if not att_found.(k) then begin
+		    let n, _ = init_att_vals.(k) in
+		    if eltype # 
+		         attribute_violates_standalone_declaration
+			   n None then
+		      raise
+			(Validation_error
+			   ("Attribute `" ^ n ^ "' of element type `" ^
+			    new_name ^ "' violates standalone declaration"));
+		  end
+		done
+	      end;
+  
+	    end (* of round 1 *)
+	    else 
+	      undeclared_atts := new_attlist; 
+
+	    init_att_vals
+	  with
+	      Undeclared ->
+		(* raised by #element *)
+		vr <- no_validation;
+		undeclared_atts := new_attlist;
+		[| |]
+	in
+
+	let att_vals' =
+	  if !undeclared_atts <> [] then begin
+	    if not vr.accept_undeclared_atts then begin
+	      raise (Validation_error
+		       ("The following attributes are not declared: " ^ 
+			String.concat ", " 
+			  (List.map fst !undeclared_atts)))
+	    end;
+	    
+	    (* round 2 *)
+	    
+	    let n = List.length !undeclared_atts in
+	    let extra_att_vals = Array.create n ("", Implied_value) in
+	    
+	    if n < 5 then begin
+	      (* variant A *)
+	      let k = ref 0 in
+	      let rec add_att l =
+		match l with
+		    [] -> ()
+		  | (n,att_val) :: l' ->
+		      if List.mem_assoc n l' then
+			raise (WF_error("Attribute `" ^ n ^ 
+					"' occurs twice in element `" ^ 
+					new_name ^ "'"));
+		      let v0 = value_of_attribute
+				 lexerset new_dtd n A_cdata att_val in
+		      let v = mk_pool_value v0 in
+		      extra_att_vals.( !k ) <- (n, v);
+		      incr k;
+		      add_att l'
+	      in
+	      add_att !undeclared_atts
+	    end
+	    else begin
+	      (* variant B *)
+	      let k = ref 0 in
+	      let att_names = Hashtbl.create n in
+	      let rec add_att l =
+		match l with
+		    [] -> ()
+		  | (n,att_val) :: l' ->
+		      if Hashtbl.mem att_names n then
+			raise (WF_error("Attribute `" ^ n ^ 
+					"' occurs twice in element `" ^ 
+					new_name ^ "'"));
+		      let v0 = value_of_attribute
+				 lexerset new_dtd n A_cdata att_val in
+		      let v = mk_pool_value v0 in
+		      extra_att_vals.( !k ) <- (n, v);
+		      incr k;
+		      Hashtbl.add att_names n ();
+		      add_att l'
+	      in
+	      add_att !undeclared_atts
+	    end;
+	    extra_att_vals
+	  end (* of round 2 *)
+	  else [| |]
+	in 
+
+	attributes <- att_make_from_2_arrays att_vals att_vals'
+
+
+(* ------------------------------------------------------------
+   OLD IMPLEMENTATION
+   ------------------------------------------------------------
+
       method internal_init new_pos attval_name_pool new_dtd new_name 
                            new_attlist =
 	(* ONLY FOR T_Element NODES!!! *)
@@ -1437,6 +1740,9 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      dtd <- Some new_dtd;
 	      attributes <- att_map_make (fun v -> Value v) new_attlist;
 	      vr <- no_validation;
+
+  ------------------------------------------------------------
+*)
 
       method local_validate ?(use_dfa=false) () =
 	(* validates that the content of this element matches the model *)
@@ -2065,6 +2371,11 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.17  2000/09/22 22:54:30  gerd
+ * 	Optimized the attribute checker (internal_init of element
+ * nodes). The validation_record has now more fields to support
+ * internal_init.
+ *
  * Revision 1.16  2000/09/21 21:29:41  gerd
  * 	New functions get_*_exemplar.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.12 2000/09/16 22:40:50 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.13 2000/09/22 22:54:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -18,6 +18,11 @@ type validation_record =
       content_dfa     : dfa_definition option Lazy.t;
       id_att_name     : string option;
       idref_att_names : string list;
+      att_lookup      : (string, int) Hashtbl.t;
+      init_att_vals   : (string * att_value) array;
+      att_info        : (att_type * bool) array;
+      att_required    : int list;
+      accept_undeclared_atts : bool;
     }
 ;;
 
@@ -530,10 +535,12 @@ and dtd_element the_dtd the_name =
     method encoding = dtd # encoding
 
     method allow_arbitrary =
-      allow_arbitrary <- true
+      allow_arbitrary <- true;
+      self # update_vr;
 
     method disallow_arbitrary =
-      allow_arbitrary <- false
+      allow_arbitrary <- false;
+      self # update_vr;
 
     method arbitrary_allowed = allow_arbitrary
 
@@ -559,16 +566,15 @@ and dtd_element the_dtd the_name =
 	begin match t with
 	    A_id ->
 	      id_att_name <- Some aname;
-	      self # update_vr;
 	  | (A_idref | A_idrefs) ->
 	      idref_att_names <- aname :: idref_att_names;
-	      self # update_vr;
 	  | _ ->
 	      ()
 	end;
 	attributes <- (aname, ((t,d),extdecl)) :: attributes;
 	attributes_validated <- false;
 	dtd # invalidate;
+	self # update_vr;
       end
 
     method attribute attname =
@@ -627,10 +633,44 @@ and dtd_element the_dtd the_name =
     method internal_vr =
       (	match vr with
 	    None ->
+	      let n = List.length attributes in
+	      let init_att_vals = Array.create n ("", Implied_value) in
+	      let att_lookup = Hashtbl.create n in
+	      let att_info = Array.create n (A_cdata, false) in
+	      let att_required = ref [] in
+	      let k = ref 0 in
+	      List.iter
+		(fun (n, ((t,d), ext)) ->
+
+		   Hashtbl.add att_lookup n !k;
+
+		   let init_val = 
+		     match d with
+			 (D_required | D_implied) -> Implied_value
+		       | D_default v ->
+			   value_of_attribute lexerset dtd n t v
+		       | D_fixed v ->
+			   value_of_attribute lexerset dtd n t v
+		   in
+
+		   init_att_vals.( !k ) <- (n, init_val);
+		   att_info.( !k ) <- (t, match d with D_fixed _ -> true 
+				                     | _         -> false);
+		   if d = D_required then
+		     att_required := !k :: !att_required;
+		   incr k;
+		)
+		attributes;
+		
 	      vr <- Some { content_model = content_model;
 			   content_dfa =  content_dfa;
 			   id_att_name = id_att_name;
 			   idref_att_names = idref_att_names;
+			   init_att_vals = init_att_vals;
+			   att_lookup = att_lookup;
+			   att_info = att_info;
+			   att_required = !att_required;
+			   accept_undeclared_atts = allow_arbitrary;
 			 }
 	  | _ -> ()
       );
@@ -1006,6 +1046,11 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.13  2000/09/22 22:54:30  gerd
+ * 	Optimized the attribute checker (internal_init of element
+ * nodes). The validation_record has now more fields to support
+ * internal_init.
+ *
  * Revision 1.12  2000/09/16 22:40:50  gerd
  * 	Bug processing processing instructions: Method
  * pinstr_names returned wrong results; method write wrote

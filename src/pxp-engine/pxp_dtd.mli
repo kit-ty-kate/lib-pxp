@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.9 2000/09/09 16:41:32 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.10 2000/09/22 22:54:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -34,6 +34,11 @@ type validation_record =
       content_dfa     : Pxp_dfa.dfa_definition option Lazy.t;
       id_att_name     : string option;
       idref_att_names : string list;
+      att_lookup      : (string, int) Hashtbl.t;
+      init_att_vals   : (string * Pxp_types.att_value) array;
+      att_info        : (Pxp_types.att_type * bool) array;
+      att_required    : int list;
+      accept_undeclared_atts : bool;
     }
   (* This is an internally structure used to pass validation information 
    * efficiently from the DTD to the document nodes.
@@ -399,6 +404,11 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.10  2000/09/22 22:54:30  gerd
+ * 	Optimized the attribute checker (internal_init of element
+ * nodes). The validation_record has now more fields to support
+ * internal_init.
+ *
  * Revision 1.9  2000/09/09 16:41:32  gerd
  * 	New type validation_record.
  *
