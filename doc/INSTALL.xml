@@ -19,7 +19,7 @@ The installation
 procedure defined in the Makefile requires <a
 href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
 package manager, see the file ABOUT-FINDLIB.</footnote>. &m; may
-now be optionally compiled with support for Alain Frischs patch of
+now be optionally compiled with support for Alain Frisch's patch of
 ocamllex called <a href="&url.ocaml.frisch;">"wlex"</a>.
 </p>
     </sect2>
