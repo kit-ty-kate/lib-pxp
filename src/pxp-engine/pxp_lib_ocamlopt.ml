@@ -1,4 +1,4 @@
-(* $Id: pxp_lib_ocamlopt.ml,v 1.1 2000/10/01 19:50:29 gerd Exp $
+(* $Id: pxp_lib_ocamlopt.ml,v 1.2 2001/01/13 22:48:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -26,7 +26,7 @@ let rec index_lim_rec s lim i =
 let crlf_index_from s i =
   let lim = String.length s in
   assert (i>=0 && i <= lim);
-  if lim = 0 then
+  if lim = 0 || i = lim then
     -1
   else if lim <= 9 then begin
     index_lim_rec s lim i
@@ -67,6 +67,9 @@ let only_whitespace s =
  * History:
  *
  * $Log: pxp_lib_ocamlopt.ml,v $
+ * Revision 1.2  2001/01/13 22:48:15  gerd
+ * 	Fix: Avoid that array indexes get out of bounds
+ *
  * Revision 1.1  2000/10/01 19:50:29  gerd
  * 	Initial revision.
  *
