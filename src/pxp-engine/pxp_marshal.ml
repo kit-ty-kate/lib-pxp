@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.1 2000/09/17 00:10:31 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.2 2000/09/21 21:30:23 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -9,8 +9,9 @@ open Pxp_dtd
 
 type reconstruction_cmd =
     Start_data_node of string
+  | Declare_element_exemplar of (int * string)             (* number, eltype *)
   | Start_element_node of ( (string * int * int) option *     (* position *)
-                            string *                          (* eltype *)
+                            int *                          (* exemplar number *)
                             (string * string) list)           (* attributes *)
   | Start_super_root_node of ( (string * int * int) option )  (* position *)
   | Start_comment_node of ( (string * int * int) option *     (* position *)
@@ -22,6 +23,7 @@ type reconstruction_cmd =
   | End_node
   | DTD_string of (string * string) (* Encoding, The declarations as XML text *)
   | Document of string                                         (* XML version *)
+  | Cmd_array of reconstruction_cmd array
 ;;
 
 (* A node is represented as sequence of reconstruction_cmd values in the
@@ -43,21 +45,26 @@ type reconstruction_cmd =
  *)
 
 
-let cmd_string cmd =
-  match cmd with
-      Start_data_node _ -> "Start_data_node"
-    | Start_element_node (_,eltype,_) -> "Start_element_node " ^ eltype
-    | Start_super_root_node _ -> "Start_super_root_node"
-    | Start_comment_node (_,_) -> "Start_comment_node"
-    | Start_pinstr_node (_,target,_) -> "Start_pinstr_node " ^ target
-    | Add_pinstr (target,_) -> "Add_pinstr " ^ target
-    | End_node -> "End_node"
-    | DTD_string _ -> "DTD_string"
-    | Document _ -> "Document"
-;;
-
-
-let subtree_to_cmd_sequence ?(omit_positions = false) ~f n = 
+let subtree_to_cmd_sequence ?(omit_positions = false) ~f:f0 n = 
+  let m = 100 in
+  let current_array = Array.create m End_node in
+  let current_pos = ref 0 in
+  let f cmd =
+    if !current_pos < Array.length current_array then begin
+      current_array.( !current_pos ) <- cmd;
+      incr current_pos
+    end
+    else begin
+      f0 (Cmd_array(Array.copy current_array));
+      current_array.( 0 ) <- cmd;
+      current_pos := 1;
+    end
+  in
+  let finish() =
+    f0 (Cmd_array(Array.sub current_array 0 !current_pos))
+  in
+  let next_ex_number = ref 0 in
+  let ex_hash = Hashtbl.create 100 in
   let rec do_subtree n = (
     match n # node_type with
 	T_data ->
@@ -79,7 +86,18 @@ let subtree_to_cmd_sequence ?(omit_positions = false) ~f n =
 	       (n # attributes)
 	    )
 	  in
-	  f (Start_element_node (pos, eltype, atts));
+	  let ex_nr =
+	    try
+	      Hashtbl.find ex_hash eltype 
+	    with
+		Not_found ->
+		  let nr = !next_ex_number in
+		  incr next_ex_number;
+		  Hashtbl.add ex_hash eltype nr;
+		  f (Declare_element_exemplar(nr,eltype));
+		  nr
+	  in
+	  f (Start_element_node (pos, ex_nr, atts));
 	  do_pinstr n;
 	  do_subnodes n;
 	  f End_node;
@@ -126,7 +144,8 @@ let subtree_to_cmd_sequence ?(omit_positions = false) ~f n =
       let entity, line, column = n # position in
       if line = 0 then None else Some (entity,line,column)
   in
-  do_subtree n
+  do_subtree n;
+  finish()
 ;;
 
 
@@ -140,13 +159,49 @@ let subtree_to_channel ?(omit_positions = false) ch n =
 ;;
 
 
-let subtree_from_cmd_sequence ~f dtd spec =
-  let rec read_node first_cmd =
+let subtree_from_cmd_sequence ~f:f0 dtd spec =
+  let current_array = ref( [| |] ) in
+  let current_pos = ref 0 in
+  let rec f() =
+    if !current_pos < Array.length !current_array then begin
+      incr current_pos;
+      !current_array.( !current_pos - 1)
+    end
+    else begin
+      let c = f0() in
+      match c with
+	  Cmd_array a ->
+	    current_array := a;
+	    current_pos := 0;
+	    f()
+	| _ ->
+	    c
+    end
+  in
+  let default = get_data_exemplar spec in
+  let eltypes = ref (Array.create 100 ("",default)) in
+  let rec read_node dont_add first_cmd =
     let n =
       match first_cmd with
 	  Start_data_node data ->
 	    create_data_node spec dtd data
-	| Start_element_node (pos, eltype, atts) ->
+	| Declare_element_exemplar (nr, eltype) ->
+	    if nr > Array.length !eltypes then begin
+	      eltypes := 
+	        Array.append !eltypes (Array.create 100 ("",default));
+	    end;
+	    !eltypes.(nr) <- (eltype,
+			      get_element_exemplar spec eltype []);
+	    read_node true (f())
+	| Start_element_node (pos, nr, atts) ->
+	    let eltype, ex = !eltypes.(nr) in
+(* -- saves 4% time, but questionable approach:
+	    ex # create_element 
+	      ?position:pos
+	      dtd
+	      (T_element eltype)
+	      atts
+*)
 	    create_element_node
 	      ?position:pos
 	      spec
@@ -187,9 +242,10 @@ let subtree_from_cmd_sequence ~f dtd spec =
 	   Start_element_node (_,_,_) |
 	   Start_super_root_node _ |
 	   Start_comment_node (_,_) |
-	   Start_pinstr_node (_,_,_)) as cmd ->
+	   Start_pinstr_node (_,_,_) |
+	   Declare_element_exemplar(_,_)) as cmd ->
 	    (* Add a new sub node *)
-	    let n' = read_node cmd in
+	    let n' = read_node false cmd in
 	    n # add_node ~force:true n';
 	    add()
 	| Add_pinstr(target,value) ->
@@ -201,10 +257,11 @@ let subtree_from_cmd_sequence ~f dtd spec =
 	| _ ->
 	    failwith "Pxp_marshal.subtree_from_cmd_sequence"
     in
-    add();
+    if not dont_add then
+      add();
     n
   in
-  read_node (f())
+  read_node false (f())
 ;;
 
 
@@ -288,6 +345,10 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.2  2000/09/21 21:30:23  gerd
+ * 	Optimization: repeated elements are created from
+ * shared exemplars.
+ *
  * Revision 1.1  2000/09/17 00:10:31  gerd
  * 	Initial revision.
  *
