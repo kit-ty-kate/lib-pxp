@@ -30,7 +30,7 @@ lexpp.cma: $(OBJS)
 
 clean:
 	rm -f $(CLEAN_LIST) lexer.ml parser.ml parser.mli \
-	lexpp$(EXEC_SUFFIX)
+	lexpp$(EXEC_SUFFIX) depend
 
 CLEAN: clean
 
