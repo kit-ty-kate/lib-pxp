@@ -203,8 +203,13 @@ version to version).</p></li>
 
 	<li><p>
 The exact locations of processing instructions are not stored in the
-  document object. It is only known which element is the direct parent
-  of the processing instruction.</p></li>
+document object. It is only known which element is the direct parent
+of the processing instruction. (NEW since 0.2.9: It is possible to 
+configure the parser such that imaginary nodes are automatically added
+for PIs; as these nodes can be located exactly this is also true for
+the PIs in them - see option "processing_instructions_inline".)
+
+</p></li>
 
 	<li><p>
 XML comments are always dropped<footnote>In the DOM standard, comments are
@@ -262,11 +267,16 @@ work; it is still very experimental!</p>
 parser generator.</p>
 	  <p>The lexer has been restructured, and can now handle UTF-8
 encoded files.</p>
-	  <p>Numerous other changes. Note: The bug fixes of 0.2.10 have
-not yet been merged back into this development branch.</p>
+	  <p>Numerous other changes.</p>
 	</li>
 
-<!-- MISSING: 0.2.10 -->
+	<li>
+	  <p>Changed in 0.2.10:</p>
+	  <p>Bugfix: in the "allow_undeclared_attributes" feature.</p>
+	  <p>Bugfix: in the methods write_compact_as_latin1.</p>
+	  <p>Improvement: The code produced by the codewriter module can be
+faster compiled and with less memory usage.</p>
+	</li>
 
 	<li>
 	  <p>Changed in 0.2.9:</p>
