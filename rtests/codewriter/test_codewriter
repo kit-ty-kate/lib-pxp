@@ -1,0 +1,18 @@
+#! /bin/sh
+
+set -e
+
+sample="$1"
+echo "Testing $sample:"
+./compile -in "$sample" -out "sample.ml" -print >"out1"
+echo "- code written to sample.ml, formatted data to out1"
+OCAMLPATH=../.. ocamlfind ocamlc -package pxp -linkpkg -custom sample.ml -o sample
+echo "- sample.ml compiled to sample"
+./sample >out2
+echo "- re-read data written to out2"
+if cmp out1 out2; then
+    echo "- out1 and out2 are identical! OK"
+else
+    echo "- out1 and out2 differ! FAILURE!"
+    exit 1
+fi

@@ -1,0 +1,37 @@
+<!DOCTYPE a [
+
+<!ELEMENT a (b | (c, d)* | (e, f)+ | g?)>
+<!ELEMENT b (#PCDATA | a)*>
+<!ELEMENT c EMPTY>
+<!ELEMENT d ANY>
+<!ELEMENT e EMPTY>
+<!ELEMENT f EMPTY>
+<!ELEMENT g EMPTY>
+
+<!ATTLIST a u CDATA #IMPLIED
+            v NMTOKEN "huhu"
+            w (q|p)   #REQUIRED
+            x NOTATION (n1|n2) "n1"
+            y ENTITY #IMPLIED>
+
+<!NOTATION n1 SYSTEM "/bin/n1-processor">
+<!NOTATION n2 SYSTEM "/bin/n2-processor">
+
+<!ENTITY u1 SYSTEM "file-u1" NDATA n1>
+<!ENTITY u2 SYSTEM "file-u2" NDATA n2>
+
+<?pi1 args ...?>
+]>
+
+<a u="1" w="q" x="n2">
+  <b>
+    <?pi2 args ...?>
+    This is text!
+    <a w="p" y="u1">
+      <c/>
+      <d/>
+    </a>
+  </b>
+</a>
+
+<?pi3 args ...?>

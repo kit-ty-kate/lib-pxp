@@ -1,0 +1,3 @@
+#! /bin/sh
+
+./test_codewriter sample001.xml
