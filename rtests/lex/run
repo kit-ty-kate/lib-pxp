@@ -1,0 +1,4 @@
+#! /bin/sh
+
+echo "test_lex_utf8:"
+./test_lex_utf8
