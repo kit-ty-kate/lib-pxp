@@ -224,6 +224,13 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>From 0.2.4 to 0.2.5:</p>
+	  <p>If the XML source is a string (i.e. Latin1 some_string is passed
+to the parser functions as source), resolving did not work properly in 
+previous releases. This is now fixed.
+</p>
+	</li>
+	<li>
 	  <p>From 0.2.3 to 0.2.4:</p>
 	  <p>A problem with some kind of DTD that does not specify the name
 of the root element was fixed. As a result, the "xmlforms" application works
