@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.2 2000/07/08 22:59:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -17,6 +17,8 @@ let write_expr_ext_id out extid =
 	output_string out ("(Pxp_types.Public(\"" ^ String.escaped s ^ 
 			   "\",\"" ^
 			   String.escaped t ^ "\"))")
+    | Anonymous ->
+	output_string out "Pxp_types.Anonymous"
 ;;
 
 
@@ -129,10 +131,21 @@ let write_expr_att_value out av =
 ;;
 
 
+let ocaml_encoding enc =
+  match enc with
+      `Enc_utf8      -> "`Enc_utf8"
+    | `Enc_utf16     -> "`Enc_utf16"
+    | `Enc_utf16_le  -> "`Enc_utf16_le"
+    | `Enc_utf16_be  -> "`Enc_utf16_be"
+    | `Enc_iso88591  -> "`Enc_iso88591"
+;;
+
+
 let write_expr_new_pi out pi =
   output_string out ("(new Pxp_dtd.proc_instruction \"" ^
 		     String.escaped(pi # target) ^ "\" \"" ^
-		     String.escaped(pi # value) ^ "\")")
+		     String.escaped(pi # value) ^ "\"" ^ 
+		     ocaml_encoding(pi # encoding) ^ ")")
 ;;
 
 
@@ -147,7 +160,9 @@ let write_expr_node_type out nt =
 let write_local_dtd out (dtd : dtd) =
   (* Outputs "let mkdtd warner = ... in" to 'out' *)
   output_string out "let mkdtd warner =\n";
-  output_string out "let dtdobj = new Pxp_dtd.dtd warner in\n";
+  output_string out ("let encoding = " ^ ocaml_encoding (dtd # encoding) ^ 
+                     " in\n");
+  output_string out "let dtdobj = new Pxp_dtd.dtd warner encoding in\n";
   
   (* Set the ID: *)
   output_string out "dtdobj # set_id ";
@@ -165,6 +180,10 @@ let write_local_dtd out (dtd : dtd) =
 	output_string out "Pxp_types.Internal;\n";
   end;
 
+  (* Set standalone declaration: *)
+  output_string out ("dtdobj # set_standalone_declaration " ^
+                     string_of_bool (dtd # standalone_declaration) ^ ";\n");
+
   (* Add elements: *)
   List.iter
     (fun elname ->
@@ -175,7 +194,9 @@ let write_local_dtd out (dtd : dtd) =
        output_string out "let cm = ";
        write_expr_content_model out (el # content_model);
        output_string out " in\n";
-       output_string out "el # set_content_model cm;\n";
+       output_string out ("let extdecl = " ^ 
+                          string_of_bool (el # externally_declared) ^ " in\n");
+       output_string out "el # set_cm_and_extdecl cm extdecl;\n";
        (* Add attributes: *)
        List.iter
 	 (fun attname ->
@@ -188,6 +209,12 @@ let write_local_dtd out (dtd : dtd) =
 	    output_string out ";\n";
 	 )
 	 (el # attribute_names);
+
+       (* Allow arbitrary? *)
+       if el # arbitrary_allowed then
+         output_string out "el # allow_arbitrary;\n"
+       else
+         output_string out "el # disallow_arbitrary;\n";
 
        (* Validate: *)
        output_string out "el # validate;\n";
@@ -204,7 +231,7 @@ let write_local_dtd out (dtd : dtd) =
        output_string out ("let no = new Pxp_dtd.dtd_notation \"" ^
 			  String.escaped noname ^ "\" ");
        write_expr_ext_id out (no # ext_id);
-       output_string out " in\n";
+       output_string out " encoding in\n";
        output_string out "dtdobj # add_notation no;\n";
     )
     (dtd # notation_names);
@@ -244,19 +271,20 @@ let write_local_dtd out (dtd : dtd) =
 
 
 let rec write_local_subtree out n =
-  (* Outputs "let mktree map dtd =  ... in" *)
+  (* Outputs the term generating the subtree *)
   
-  output_string out "let mktree map dtd =\n";
   output_string out "let nt = ";
   write_expr_node_type out (n # node_type);
   output_string out " in\n";
-  output_string out "let exemplar = try Hashtbl.find map.Pxp_yacc.map nt with Not_found -> map.Pxp_yacc.default_element in\n";
+
   begin match n # node_type with
       T_data ->
-	output_string out ("let t = exemplar # create_data dtd \"" ^ 
+	output_string out ("let t = Pxp_document.create_data_node spec dtd \"" ^
 			   String.escaped (n # data) ^ "\" in\n")
-    | T_element _ ->
-	output_string out "let atts = [ ";
+    | T_element elname ->
+	output_string out 
+          ("let t = Pxp_document.create_element_node spec dtd \"" ^
+           String.escaped elname ^ "\" [ ");
 	List.iter
 	  (fun (name,value) ->
 	     begin match value with
@@ -274,7 +302,6 @@ let rec write_local_subtree out n =
 	  )
 	  (n # attributes);
 	output_string out " ] in\n";
-	output_string out ("let t = exemplar # create_element dtd nt atts in\n");
   end;
 
   (* Add processing instructions: *)
@@ -286,7 +313,7 @@ let rec write_local_subtree out n =
 	    output_string out "let pi = ";
 	    write_expr_new_pi out pi;
 	    output_string out " in\n";
-	    output_string out "t # add_pinstr pi;\n";
+	    output_string out "add_pinstr t pi;\n";
 	 )
 	 pilist;
     )
@@ -295,32 +322,31 @@ let rec write_local_subtree out n =
   (* Add the sub nodes: *)
   n # iter_nodes
     (fun n' ->
+       output_string out "add_node t (\n";
        write_local_subtree out n';
-       output_string out "t # add_node (mktree map dtd);\n";
+       output_string out ");\n";
     );
 
   (* Validate: *)
-  output_string out "t # local_validate;\n";
+  output_string out "local_validate t;\n";
 
   (* Return: *)
-  output_string out "t in\n"
+  output_string out "t\n"
 ;;
 
 
 let write_local_document out (d : 'ext document) =
-  (* Outputs "let mkdoc warner map = ... in" *)
+  (* Outputs "let mkdoc warner spec = ... in" *)
   
-  output_string out "let mkdoc warner map =\n";
+  output_string out "let mkdoc warner spec =\n";
   output_string out "let doc = new Pxp_document.document warner in\n";
   output_string out ("doc # init_xml_version \"" ^
 		     String.escaped (d # xml_version) ^ "\";\n");
-  output_string out ("doc # init_xml_standalone " ^
-		     (if d # xml_standalone then "true" else "false") ^
-		     ";\n");
   write_local_dtd out (d # dtd);
   output_string out "let dtd = mkdtd warner in\n";
+  output_string out "let root = ";
   write_local_subtree out (d # root);
-  output_string out "let root = mktree map dtd in\n";
+  output_string out " in\n";
   output_string out "doc # init_root root;\n";
 
   (* Add processing instructions: *)
@@ -342,11 +368,19 @@ let write_local_document out (d : 'ext document) =
   output_string out "doc in\n"
 ;;
 
- 
+
+let write_helpers out =
+  output_string out "let add_node t n = (t : 'ext Pxp_document.node) # add_node (n : 'ext Pxp_document.node) in\n";
+  output_string out "let add_pinstr t pi = (t : 'ext Pxp_document.node) # add_pinstr (pi : Pxp_dtd.proc_instruction) in\n";
+  output_string out "let local_validate t = (t : 'ext Pxp_document.node) # local_validate in\n"
+;;
+
+
 let write_document out d =
-  output_string out "let create_document warner map =\n";
+  output_string out "let create_document warner spec =\n";
+  write_helpers out;
   write_local_document out d;
-  output_string out "mkdoc warner map;;\n"
+  output_string out "mkdoc warner spec;;\n"
 ;;
 
 
@@ -358,15 +392,21 @@ let write_dtd out dtd =
 
 
 let write_subtree out t =
-  output_string out "let create_subtree dtd map =\n";
+  output_string out "let create_subtree dtd spec =\n";
+  write_helpers out;
   write_local_subtree out t;
-  output_string out "mktree dtd map;;\n"
+  output_string out "mktree dtd spec;;\n"
 ;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.2  2000/07/08 22:59:14  gerd
+ * 	[Merging 0.2.10:] Improved: The resulting code can be compiled
+ * faster, and the compiler is less hungry on memory.
+ * 	Updated because of PXP interface changes.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
