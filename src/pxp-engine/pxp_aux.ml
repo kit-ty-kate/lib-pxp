@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.11 2001/06/07 22:51:10 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.12 2001/06/27 23:34:54 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -23,6 +23,13 @@ end;;
 
 module Str_hashtbl = Hashtbl.Make(HashedString);;
 
+module StringOrd = struct
+  type t = string
+  let compare = (compare : string -> string -> int)
+end;;
+
+module StringMap = Map.Make(StringOrd);;
+  (* 'a StringMap.t: the type of maps (dictionaries) from string to 'a *)
 
 let character enc warner k =
   assert (k>=0);
@@ -657,6 +664,17 @@ let namespace_split name =
       Not_found -> ("", name)
 ;;
 
+
+let extract_prefix name =
+  (* Returns the prefix of a name, or "" if there is no colon *)
+  try
+    let n = String.index name ':' in   (* may raise Not_found *)
+    String.sub name 0 n
+  with
+      Not_found -> ""
+;;
+
+
 (**********************************************************************)
 
 let write_markup_string ~(from_enc:rep_encoding) ~to_enc os s =
@@ -748,6 +766,10 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.12  2001/06/27 23:34:54  gerd
+ * 	StringMap now here.
+ * 	New function extract_prefix.
+ *
  * Revision 1.11  2001/06/07 22:51:10  gerd
  * 	New function: check_value_of_attribute (needed for
  * ~att_values option of create_element_node)
