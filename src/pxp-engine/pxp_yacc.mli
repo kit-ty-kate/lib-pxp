@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.13 2001/05/17 21:39:15 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.14 2001/06/07 22:53:20 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -135,6 +135,40 @@ type config =
 	  * The nodes of type T_comment are created from the comment exemplars
 	  * in your spec.
 	  *)
+
+      drop_ignorable_whitespace : bool;
+        (* Ignorable whitespace is whitespace between XML nodes where
+	 * the DTD does not specify that #PCDATA must be parsed. For example,
+	 * if the DTD contains
+	 * <!ELEMENT a (b,c)>
+	 * <!ELEMENT b (#PCDATA)*>
+	 * <!ELEMENT c EMPTY>
+	 * the XML text <a><b> </b> <c></c></a> is legal. There are two
+	 * spaces:
+	 * (1) Between <b> and </b>. Because b is declared with #PCDATA,
+	 *     this space character is not ignorable, and the parser will
+	 *     create a data node containing the character
+	 * (2) Between </b> and <c>. Because the declaration of a does not
+	 *     contain the keyword #PCDATA, character data is not expected
+	 *     at this position. However, XML allows that whitespace can be
+	 *     written here in order to improve the readability of the XML
+	 *     text. Such whitespace material is considered as "ignorable
+	 *     whitespace". If drop_ignorable_whitespace=true, the parser
+	 *     will not create a data node containing the character.
+	 *     Otherwise, the parser creates such a data node anyway.
+	 * Note that c is declared as EMPTY. XML does not allow space
+	 * characters between <c> and </c> such that it is not the question
+	 * whether such characters are to be ignored or not - they are
+	 * simply illegal and will lead to a parsing error.
+	 *    In the well-formed mode, the parser treats every whitespace
+	 * character occuring in an element as non-ignorable.
+	 *
+	 * The default is to drop ignorable whitespace.
+	 *
+	 * Note that this option supersedes the effect of the method
+	 * keep_always_whitespace_mode which was defined for document
+	 * nodes in PXP 1.0.
+	 *)
 
       encoding : rep_encoding;
         (* Specifies the encoding used for the *internal* representation
@@ -386,11 +420,19 @@ val default_config : config
    * - Namespace processing is turned off
    *) 
 
+val default_namespace_config : config
+  (* Same as default_config, but namespace processing is turned on *)
+
 val default_extension : ('a node extension) as 'a
   (* A "null" extension; an extension that does not extend the functionality *)
 
 val default_spec : ('a node extension as 'a) spec
   (* Specifies that you do not want to use extensions. *)
+
+val default_namespace_spec : ('a node extension as 'a) spec
+  (* Specifies that you want to use namespace, but not extensions *)
+
+
 
 val parse_dtd_entity : config -> source -> dtd
   (* Parse an entity containing a DTD (external subset), and return this DTD. *)
@@ -458,6 +500,10 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.14  2001/06/07 22:53:20  gerd
+ * 	New config option: drop_ignorable_whitespace.
+ * 	New defaults: default_namespace_config, default_namespace_spec.
+ *
  * Revision 1.13  2001/05/17 21:39:15  gerd
  * 	New options: enable_namespace_processing, enable_namespace_info.
  *
