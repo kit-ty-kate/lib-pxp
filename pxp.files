@@ -244,10 +244,17 @@ f gensrc/pxp-wlex/META.in
 d gensrc/pxp-wlex-utf8
 f gensrc/pxp-wlex-utf8/Makefile
 f gensrc/pxp-wlex-utf8/META.in
-f gensrc/pxp-wlex-utf8/gen_done
-f gensrc/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
-f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.ml
-f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
+#f gensrc/pxp-wlex-utf8/gen_done
+#f gensrc/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
+#f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.ml
+#f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
+
+d gensrc-pre
+d gensrc-pre/pxp-wlex-utf8
+f gensrc-pre/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
+f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
+f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.306
+f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.307
 
 d rtests
 f rtests/Makefile

@@ -1,13 +1,13 @@
 #! /bin/sh
 
-# $Id: configure,v 1.19 2003/06/22 15:10:50 gerd Exp $
+# $Id: configure,v 1.20 2003/10/03 20:59:44 gerd Exp $
 
 # defaults:
 with_lex=1
 with_wlex=1
 with_wlex_compat=1
 lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915"
-version="1.1.94"
+version="1.1.94.1"
 exec_suffix=""
 
 help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
@@ -185,7 +185,7 @@ open Lexing
 let lb = from_string "";;
 let _ = lb.lex_mem;;
 let _ = lb.lex_start_p;;
-lex _ = lb.lex_curr_p;;
+let _ = lb.lex_curr_p;;
 EOF
 
 lexbuf_307=""
@@ -198,6 +198,38 @@ fi
 
 rm -f tmp.*
 
+######################################################################
+# Pregenerated wlex lexers
+
+if [ $with_wlex -gt 0 ]; then
+    printf "%s" "Selecting pregenerated wide lexer... "
+    case `ocamlc -version` in
+	3.06*)
+	    echo "Using 3.06 version"
+	    suffix="306"
+	    ;;
+	3.07*)
+	    echo "Using 3.07 version"
+	    suffix="307"
+	    ;;
+	    *)
+	    echo "No lexer matches"
+	    echo "You need the 'wlex' tool to generate the wide lexer,"
+	    echo "because there is no pregenerated lexer for your"
+	    echo "version of O'Caml."
+	    suffix=""
+	    ;;
+    esac 
+
+    if [ -n "$suffix" ]; then
+	s="gensrc-pre/pxp-wlex-utf8"
+	d="gensrc/pxp-wlex-utf8"
+	cp "$s/pxp_wlex_link_utf8.ml" "$d"
+	cp "$s/pxp_wlex_utf8_01.mll" "$d"
+	cp "$s/pxp_wlex_utf8_01.ml.$suffix" "$d/pxp_wlex_utf8_01.ml"
+	touch "$d/gen_done"
+    fi
+fi
 
 ######################################################################
 # Check cygwin

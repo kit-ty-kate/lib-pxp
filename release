@@ -5,15 +5,7 @@ set -e
 version=`./configure -version 2>/dev/null`
 destdir="pxp-$version"
 
-#test src/pxp-wlex/pxp_wlex.ml -nt src/pxp-wlex/pxp_wlex.mlw || {
-#    echo src/pxp-wlex/pxp_wlex.ml is not up-to-date
-#    exit 1
-#}
-
-make -q -C gensrc/pxp-wlex-utf8 || {
-    echo  gensrc/pxp-wlex-utf8 is not up-to-date
-    exit 1
-}
+echo "Ensure the gensrc-pre lexers are up to date!"
 
 mkdir -p packages
 rm -rf "packages/$destdir"
