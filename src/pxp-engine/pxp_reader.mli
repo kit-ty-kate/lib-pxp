@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.5 2000/07/09 01:05:33 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.6 2001/02/01 20:38:49 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -7,7 +7,7 @@
 open Pxp_types;;
 
 exception Not_competent;;
-  (* Raised by the 'open_in' method if the object does not know how to 
+  (* Raised by the 'open_in' method if the object does not know how to
    * handle the passed external ID.
    *)
 
@@ -19,8 +19,8 @@ exception Not_resolvable of exn;;
    *)
 
 
-(* The class type 'resolver' is the official type of all "resolvers". 
- * Resolvers take file names (or better, external identifiers) and 
+(* The class type 'resolver' is the official type of all "resolvers".
+ * Resolvers take file names (or better, external identifiers) and
  * return lexbufs, scanning the file for tokens. Resolvers may be
  * cloned, and clones can interpret relative file names relative to
  * their creator.
@@ -56,7 +56,7 @@ class type resolver =
      * Lexing.lexbuf.
      *
      * After creating a resolver, one must invoke the two methods
-     * init_rep_encoding and init_warner to set the internal encoding of 
+     * init_rep_encoding and init_warner to set the internal encoding of
      * strings and the warner object, respectively. This is normally
      * done by the parsing functions in Pxp_yacc.
      * It is not necessary to invoke these two methods for a fresh
@@ -79,7 +79,7 @@ class type resolver =
      * (2.3) If the XML declaration is missing, the encoding is UTF-8.
      * The resolver needs only to distinguish between cases (1), (2.1),
      * and the rest.
-     * The details of analyzing whether (2.2) or (2.3) applies are programmed 
+     * The details of analyzing whether (2.2) or (2.3) applies are programmed
      * elsewhere, and the resolver will be told the result (see below).
      *
      * A resolver is like a file: it must be opened before one can work
@@ -99,8 +99,8 @@ class type resolver =
      * The method 'change_encoding' is called from the parser after the
      * analysis of case (2) has been done; the argument is either the
      * string name of the encoding, or the empty string to indicate
-     * that no XML declaration was found. It is guaranteed that 
-     * 'change_encoding' is invoked after only a few tokens of the 
+     * that no XML declaration was found. It is guaranteed that
+     * 'change_encoding' is invoked after only a few tokens of the
      * file. The resolver should react as follows:
      * - If case (1) applies:   Ignore the encoding passed to 'change_encoding'.
      * - If case (2.1) applies: The encoding passed to 'change_encoding' must
@@ -161,8 +161,8 @@ class type resolver =
 
 (* The next classes are resolvers for concrete input sources. *)
 
-class resolve_read_this_channel : 
-  ?id:ext_id -> ?fixenc:encoding -> ?auto_close:bool -> 
+class resolve_read_this_channel :
+  ?id:ext_id -> ?fixenc:encoding -> ?auto_close:bool ->
   in_channel -> resolver;;
 
   (* Reads from the passed channel (it may be even a pipe). If the ~id
@@ -181,9 +181,9 @@ class resolve_read_this_channel :
    *)
 
 
-class resolve_read_any_channel : 
-  ?auto_close:bool -> 
-  channel_of_id:(ext_id -> (in_channel * encoding option)) -> 
+class resolve_read_any_channel :
+  ?auto_close:bool ->
+  channel_of_id:(ext_id -> (in_channel * encoding option)) ->
   resolver;;
 
   (* resolve_read_any_channel f_open:
@@ -200,9 +200,9 @@ class resolve_read_any_channel :
 
 class resolve_read_url_channel :
   ?base_url:Neturl.url ->
-  ?auto_close:bool -> 
-  url_of_id:(ext_id -> Neturl.url) -> 
-  channel_of_url:(Neturl.url -> (in_channel * encoding option)) -> 
+  ?auto_close:bool ->
+  url_of_id:(ext_id -> Neturl.url) ->
+  channel_of_url:(Neturl.url -> (in_channel * encoding option)) ->
     resolver;;
 
   (* resolve_read_url_channel url_of_id channel_of_url:
@@ -222,13 +222,13 @@ class resolve_read_url_channel :
    * is converted to Not_resolvable. So only ~url_of_id decides which URLs
    * are accepted by the resolver and which not.
    *
-   * The function ~channel_of_url must return None as encoding if the default 
+   * The function ~channel_of_url must return None as encoding if the default
    * mechanism to recognize the encoding should be used. It must return
    * Some e if it is already known that the encoding of the channel is e.
    *
    * If ?auto_close = true (which is the default), the channel is
    * closed after use. If ?auto_close = false, the channel is left open.
-   * 
+   *
    * Objects of this class contain a base URL relative to which relative
    * URLs are interpreted. When creating a new object, you can specify
    * the base URL by passing it as ~base_url argument. When an existing
@@ -239,7 +239,7 @@ class resolve_read_url_channel :
    *)
 
 
-class resolve_read_this_string : 
+class resolve_read_this_string :
   ?id:ext_id -> ?fixenc:encoding -> string -> resolver;;
 
   (* Reads from the passed string. If the ~id
@@ -256,7 +256,7 @@ class resolve_read_this_string :
    *)
 
 
-class resolve_read_any_string : 
+class resolve_read_any_string :
   string_of_id:(ext_id -> (string * encoding option)) -> resolver;;
 
   (* resolver_read_any_string f_open:
@@ -273,9 +273,9 @@ class resolve_as_file :
   ?file_prefix:[ `Not_recognized | `Allowed | `Required ] ->
   ?host_prefix:[ `Not_recognized | `Allowed | `Required ] ->
   ?system_encoding:encoding ->
-  ?url_of_id:(ext_id -> Neturl.url) -> 
+  ?url_of_id:(ext_id -> Neturl.url) ->
   ?channel_of_url: (Neturl.url -> (in_channel * encoding option)) ->
-  unit -> 
+  unit ->
   resolver;;
 
   (* Reads from the local file system. Every file name is interpreted as
@@ -284,7 +284,7 @@ class resolve_as_file :
    * The full form of a file URL is: file://host/path, where
    * 'host' specifies the host system where the file identified 'path'
    * resides. host = "" or host = "localhost" are accepted; other values
-   * will raise Not_competent. The standard for file URLs is 
+   * will raise Not_competent. The standard for file URLs is
    * defined in RFC 1738.
    *
    * Option ~file_prefix: Specifies how the "file:" prefix of file names
@@ -306,26 +306,59 @@ class resolve_as_file :
    *)
 
 
+
+val resolve_public_id_as_file :
+  ?fixenc:encoding ->
+  catalog:((string * string) list) ->
+  unit ->
+    resolver;;
+
+  (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
+   * pairs (pubid, filename) mapping PUBLIC identifiers to filenames. The
+   * filenames must already be encoded in the character set the system uses
+   * for filenames.
+   *
+   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   *     standard rule is applied to find out the encoding of the file.
+   *)
+
+
+val resolve_public_id_as_string :
+  ?fixenc:encoding ->
+  catalog:((string * string) list) ->
+  unit ->
+    resolver;;
+
+  (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
+   * pairs (pubid, text) mapping PUBLIC identifiers to XML text (which must
+   * begin with <?xml ...?>).
+   *
+   * ~fixenc: Overrides the encoding of the strings.
+   *)
+
+
 class combine : ?prefer:resolver -> resolver list -> resolver;;
-  
+
   (* Combines several resolver objects. If a concrete entity with an
    * ext_id is to be opened, the combined resolver tries the contained
    * resolvers in turn until a resolver accepts opening the entity
    * (i.e. it does not raise Not_competent on open_in).
    *
    * Clones: If the 'clone' method is invoked before 'open_in', all contained
-   * resolvers are cloned and again combined. If the 'clone' method is 
+   * resolvers are cloned and again combined. If the 'clone' method is
    * invoked after 'open_in' (i.e. while the resolver is open), only the
    * active resolver is cloned.
-   *) 
+   *
+   * ~prefer: This is an internally used option.
+   *)
 
 (* EXAMPLES OF RESOLVERS:
  *
  * let r1 = new resolve_as_file
  *   - r1 can open all local files
  *
- * let r2 = new resolve_read_this_channel 
- *            ~id:"file:/dir/f.xml" 
+ * let r2 = new resolve_read_this_channel
+ *            ~id:"file:/dir/f.xml"
  *            (open_in "/dir/f.xml")
  *   - r2 can only read /dir/f.xml of the local file system. If this file
  *     contains references to other files, r2 will fail
@@ -338,8 +371,11 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
 
 (* ======================================================================
  * History:
- * 
+ *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.6  2001/02/01 20:38:49  gerd
+ * 	New support for PUBLIC identifiers.
+ *
  * Revision 1.5  2000/07/09 01:05:33  gerd
  * 	New methode 'close_all' that closes the clones, too.
  *
@@ -381,5 +417,5 @@ class combine : ?prefer:resolver -> resolver list -> resolver;;
  * Revision 1.1  2000/03/13 23:41:54  gerd
  * 	Initial revision.
  *
- * 
+ *
  *)

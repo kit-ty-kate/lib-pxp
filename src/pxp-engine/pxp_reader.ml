@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.9 2000/08/14 22:24:55 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.10 2001/02/01 20:38:49 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -22,7 +22,7 @@ class type resolver =
 ;;
 
 
-class virtual resolve_general 
+class virtual resolve_general
  =
   object (self)
     val mutable internal_encoding = `Enc_utf8
@@ -64,7 +64,7 @@ class virtual resolve_general
 	     warner # warn ("Code point cannot be represented: " ^ string_of_int k);
 	   end
 	else
-	  raise (WF_error("Code point " ^ string_of_int k ^ 
+	  raise (WF_error("Code point " ^ string_of_int k ^
 		    " outside the accepted range of code points"))
 
 
@@ -223,7 +223,7 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id =
 	    current_channel <- None
 
     method clone =
-      let c = new resolve_read_any_channel 
+      let c = new resolve_read_any_channel
 		?auto_close:(Some auto_close) f_open in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
@@ -239,8 +239,8 @@ class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
   let getchannel = ref (fun xid -> assert false) in
 
   object (self)
-    inherit resolve_read_any_channel 
-              ?auto_close:auto_close 
+    inherit resolve_read_any_channel
+              ?auto_close:auto_close
 	      (fun xid -> !getchannel xid)
 	      as super
 
@@ -260,7 +260,7 @@ class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
     method private getchannel xid =
       begin match fixid with
 	  None -> ()
-	| Some bound_xid -> 
+	| Some bound_xid ->
 	    if xid <> bound_xid then raise Not_competent
       end;
       ch, fixenc
@@ -277,8 +277,8 @@ class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
       current_channel <- None
 
     method clone =
-      let c = new resolve_read_this_channel1 
-		is_stale 
+      let c = new resolve_read_this_channel1
+		is_stale
 		?id:fixid ?fixenc:fixenc ?auto_close:(Some auto_close) fixch
       in
       c # init_rep_encoding internal_encoding;
@@ -347,7 +347,7 @@ class resolve_read_this_string1 is_stale ?id ?fixenc str =
     inherit resolve_read_any_string (fun xid -> !getstring xid) as super
 
     val is_stale = is_stale
-      (* For some reasons, it is not allowed to open a clone of the resolver 
+      (* For some reasons, it is not allowed to open a clone of the resolver
        * a second time when the original resolver is already open.
        *)
 
@@ -361,7 +361,7 @@ class resolve_read_this_string1 is_stale ?id ?fixenc str =
     method private getstring xid =
       begin match fixid with
 	  None -> ()
-	| Some bound_xid -> 
+	| Some bound_xid ->
 	    if xid <> bound_xid then raise Not_competent
       end;
       fixstr, fixenc
@@ -374,8 +374,8 @@ class resolve_read_this_string1 is_stale ?id ?fixenc str =
 	super # init_in id
 
     method clone =
-      let c = new resolve_read_this_string1 
-		(is_stale or current_string <> None) 
+      let c = new resolve_read_this_string1
+		(is_stale or current_string <> None)
 		?id:fixid ?fixenc:fixenc fixstr
       in
       c # init_rep_encoding internal_encoding;
@@ -391,11 +391,11 @@ class resolve_read_this_string =
 ;;
 
 
-class resolve_read_url_channel 
+class resolve_read_url_channel
   ?(base_url = Neturl.null_url)
   ?auto_close
   ~url_of_id
-  ~channel_of_url 
+  ~channel_of_url
 
   : resolver
   =
@@ -403,9 +403,9 @@ class resolve_read_url_channel
   let getchannel = ref (fun xid -> assert false) in
 
   object (self)
-    inherit resolve_read_any_channel 
-              ?auto_close:auto_close 
-	      (fun xid -> !getchannel xid) 
+    inherit resolve_read_any_channel
+              ?auto_close:auto_close
+	      (fun xid -> !getchannel xid)
 	      as super
 
     val base_url = base_url
@@ -427,7 +427,7 @@ class resolve_read_url_channel
                       (* may raise Malformed_URL *)
 
 	(* Simple check whether 'abs_url' is really absolute: *)
-	if not(Neturl.url_provides ~scheme:true abs_url) 
+	if not(Neturl.url_provides ~scheme:true abs_url)
 	then raise Not_competent;
 
 	own_url <- abs_url;
@@ -440,11 +440,11 @@ class resolve_read_url_channel
 	| Not_competent        -> raise (Not_resolvable Not_found)
 
     method clone =
-      let c = 
-	new resolve_read_url_channel 
-	  ?base_url:(Some own_url) 
+      let c =
+	new resolve_read_url_channel
+	  ?base_url:(Some own_url)
 	  ?auto_close:(Some auto_close)
-	  ~url_of_id:url_of_id 
+	  ~url_of_id:url_of_id
 	  ~channel_of_url:channel_of_url
       in
       c # init_rep_encoding internal_encoding;
@@ -460,7 +460,7 @@ type spec = [ `Not_recognized | `Allowed | `Required ]
 class resolve_as_file
   ?(file_prefix = (`Allowed :> spec))
   ?(host_prefix = (`Allowed :> spec))
-  ?(system_encoding = `Enc_utf8) 
+  ?(system_encoding = `Enc_utf8)
   ?url_of_id:passed_url_of_id
   ?channel_of_url:passed_channel_of_url
   ()
@@ -478,16 +478,16 @@ class resolve_as_file
 	Neturl.url_enable_host   = enable_if host_prefix;
 	Neturl.url_enable_path   = Neturl.Url_part_required;
 	Neturl.url_accepts_8bits = true;
-    } 
+    }
   in
 
-  let base_url_syntax = 
+  let base_url_syntax =
     { Neturl.null_url_syntax with
 	Neturl.url_enable_scheme = Neturl.Url_part_required;
 	Neturl.url_enable_host   = Neturl.Url_part_allowed;
 	Neturl.url_enable_path   = Neturl.Url_part_required;
 	Neturl.url_accepts_8bits = true;
-    } 
+    }
   in
 
   let default_base_url =
@@ -502,10 +502,10 @@ class resolve_as_file
     let file_url_of_sysname sysname =
       (* By convention, we can assume that sysname is a URL conforming
        * to RFC 1738 with the exception that it may contain non-ASCII
-       * UTF-8 characters. 
+       * UTF-8 characters.
        *)
       try
-	Neturl.url_of_string url_syntax sysname 
+	Neturl.url_of_string url_syntax sysname
           (* may raise Malformed_URL *)
       with
 	  Neturl.Malformed_URL -> raise Not_competent
@@ -521,10 +521,10 @@ class resolve_as_file
       try Neturl.url_scheme url with Not_found -> "file" in
     let host =
       try Neturl.url_host url with Not_found -> "" in
-    
+
     if scheme <> "file" then raise Not_competent;
     if host <> "" && host <> "localhost" then raise Not_competent;
-    
+
     url
   in
 
@@ -534,14 +534,14 @@ class resolve_as_file
 	try Neturl.join_path (Neturl.url_path ~encoded:false url)
 	with Not_found -> raise Not_competent
       in
-      
-      let path = 
+
+      let path =
 	Netconversion.recode_string
 	  ~in_enc:  `Enc_utf8
 	  ~out_enc: system_encoding
 	  path_utf8 in
         (* May raise Bad_character_stream *)
-      
+
       open_in_bin path, None
 	(* May raise Sys_error *)
 
@@ -553,33 +553,81 @@ class resolve_as_file
 
   let url_of_id id =
     match passed_url_of_id with
-	None -> 
+	None ->
 	  file_url_of_id id
-      | Some f -> 
-	  begin 
+      | Some f ->
+	  begin
 	    try f id
-	    with 
+	    with
 		Not_competent -> file_url_of_id id
 	  end
   in
 
   let channel_of_url url =
     match passed_channel_of_url with
-	None -> 
+	None ->
 	  channel_of_file_url url
-      | Some f -> 
-	  begin 
+      | Some f ->
+	  begin
 	    try f url
-	    with 
+	    with
 		Not_competent -> channel_of_file_url url
 	  end
   in
-  
-  resolve_read_url_channel 
+
+  resolve_read_url_channel
     ~base_url:       default_base_url
     ~auto_close:     true
     ~url_of_id:      url_of_id
     ~channel_of_url: channel_of_url
+;;
+
+
+let resolve_public_id_as_file ?(fixenc:encoding option) ~catalog () =
+  let norm_catalog =
+    List.map (fun (id,s) -> Pxp_aux.normalize_public_id id, s) catalog in
+  let ch_of_id id =
+    match id with
+	Public(pubid,_) ->
+	  begin
+	    (* Search pubid in catalog: *)
+	    try
+	      let norm_pubid = Pxp_aux.normalize_public_id pubid in
+	      let filename = List.assoc norm_pubid norm_catalog in
+	                     (* or Not_found *)
+	      let ch = open_in_bin filename in  (* may raise Sys_error *)
+	      ch, fixenc
+	    with
+		Not_found ->
+		  raise Not_competent
+	  end
+      | _ ->
+	  raise Not_competent
+  in
+  new resolve_read_any_channel ch_of_id
+;;
+
+
+let resolve_public_id_as_string ?(fixenc:encoding option) ~catalog () =
+  let norm_catalog =
+    List.map (fun (id,s) -> Pxp_aux.normalize_public_id id, s) catalog in
+  let str_of_id id =
+    match id with
+	Public(pubid,_) ->
+	  begin
+	    (* Search pubid in catalog: *)
+	    try
+	      let norm_pubid = Pxp_aux.normalize_public_id pubid in
+	      let str = List.assoc norm_pubid norm_catalog in (* or Not_found *)
+	      str, fixenc
+	    with
+		Not_found ->
+		  raise Not_competent
+	  end
+      | _ ->
+	  raise Not_competent
+  in
+  new resolve_read_any_string str_of_id
 ;;
 
 
@@ -611,7 +659,7 @@ class combine ?prefer rl =
       let rec find_competent_resolver rl =
 	match rl with
 	    r :: rl' ->
-	      begin try 
+	      begin try
 		r, (r # open_in xid)
 	      with
 		  Not_competent -> find_competent_resolver rl'
@@ -621,9 +669,9 @@ class combine ?prefer rl =
       in
 
       if active_resolver <> None then failwith "Pxp_reader.combine # open_in";
-      let r, lb = 
+      let r, lb =
 	match prefered_resolver with
-	    None ->   find_competent_resolver resolvers 
+	    None ->   find_competent_resolver resolvers
 	  | Some r -> find_competent_resolver (r :: resolvers)
       in
       active_resolver <- Some r;
@@ -646,14 +694,14 @@ class combine ?prefer rl =
     method clone =
       let c =
 	match active_resolver with
-	    None   -> 
+	    None   ->
 	      new combine ?prefer:None (List.map (fun q -> q # clone) resolvers)
-	  | Some r -> 
+	  | Some r ->
 	      let r' = r # clone in
-	      new combine 
+	      new combine
 		?prefer:(Some r')
-		(List.map 
-		   (fun q -> if q == r then r' else q # clone) 
+		(List.map
+		   (fun q -> if q == r then r' else q # clone)
 		   resolvers)
       in
       c # init_rep_encoding internal_encoding;
@@ -666,8 +714,11 @@ class combine ?prefer rl =
 
 (* ======================================================================
  * History:
- * 
+ *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.10  2001/02/01 20:38:49  gerd
+ * 	New support for PUBLIC identifiers.
+ *
  * Revision 1.9  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.
@@ -723,5 +774,5 @@ class combine ?prefer rl =
  * Revision 1.1  2000/03/13 23:41:44  gerd
  * 	Initial revision; this code was formerly part of Markup_entity.
  *
- * 
+ *
  *)

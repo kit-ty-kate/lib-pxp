@@ -1,8 +1,8 @@
-(* $Id: pxp_aux.ml,v 1.8 2000/10/01 19:45:28 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.9 2001/02/01 20:38:49 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
- * Some auxiliary functions 
+ * Some auxiliary functions
  *)
 
 (**********************************************************************)
@@ -18,7 +18,7 @@ open Netconversion
 module HashedString = struct
   type t = string
   let equal (a:string) (b:string) = (a = b)
-  let hash = Hashtbl.hash 
+  let hash = Hashtbl.hash
 end;;
 
 module Str_hashtbl = Hashtbl.Make(HashedString);;
@@ -29,7 +29,7 @@ let character enc warner k =
   if (k >= 0xd800 & k < 0xe000) or (k >= 0xfffe & k <= 0xffff) or k > 0x10ffff
      or (k < 8) or (k = 11) or (k = 12) or (k >= 14 & k <= 31)
   then
-    raise (WF_error("Code point " ^ string_of_int k ^ 
+    raise (WF_error("Code point " ^ string_of_int k ^
 		    " outside the accepted range of code points"));
 
   try
@@ -84,25 +84,25 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities nor
 	  raise(WF_error("Recursive reference to general entity `" ^ n ^ "'"));
 	let en, extdecl = dtd # gen_entity n in
 	if dtd # standalone_declaration && extdecl then
-	  raise(Validation_error("Reference to entity `" ^ n ^ 
+	  raise(Validation_error("Reference to entity `" ^ n ^
 				 "' violates standalone declaration"));
 	let rtext, rtext_contains_ext_refs = en # replacement_text in
 	if rtext_contains_ext_refs then
 	  raise(Validation_error("Found reference to external entity in attribute value"));
-	let l' = 
+	let l' =
 	  try
-	    expand_attvalue_with_rec_check 
-	      (fast_lexing_from_string rtext) 
+	    expand_attvalue_with_rec_check
+	      (fast_lexing_from_string rtext)
 	      (String.length rtext)
 	      lexerset dtd warner (n :: entities) false
 	  with
 	      Quick_exit -> [rtext]
 	  in
-	  l' @ expand_attvalue_with_rec_check 
+	  l' @ expand_attvalue_with_rec_check
 	         lexbuf l lexerset dtd warner entities norm_crlf
     | CRef(-1) ->
 	if norm_crlf then begin
-	  " " :: expand_attvalue_with_rec_check 
+	  " " :: expand_attvalue_with_rec_check
 	             lexbuf l lexerset dtd warner entities norm_crlf
 	end
 	else begin
@@ -110,12 +110,12 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities nor
  	              lexbuf l lexerset dtd warner entities norm_crlf
 	end
     | CRef n ->
-	(character lexerset.lex_encoding warner n) :: 
+	(character lexerset.lex_encoding warner n) ::
 	expand_attvalue_with_rec_check
  	    lexbuf l lexerset dtd warner entities norm_crlf
     | CharData _  ->
 	if Lexing.lexeme_char lexbuf 0 = '<' then
-	  raise 
+	  raise
 	    (WF_error
 	       ("Attribute value contains character '<' literally"));
 	if Lexing.lexeme_start lexbuf = 0 &&
@@ -137,7 +137,7 @@ let expand_attvalue lexbuf lexerset dtd s warner norm_crlf =
   try
     reuse_lexing_from_string lexbuf s;
     let l =
-      expand_attvalue_with_rec_check 
+      expand_attvalue_with_rec_check
 	lexbuf (String.length s) lexerset dtd warner [] norm_crlf in
     String.concat "" l
   with
@@ -262,7 +262,7 @@ let check_public_id s =
 let rec check_dups l =
   match l with
       [] -> false
-    | c :: l' -> 
+    | c :: l' ->
 	if List.mem c l' then true else check_dups l'
 ;;
 
@@ -270,7 +270,7 @@ let rec check_dups l =
 let rec count pred l =
   match l with
       [] -> 0
-    | x :: l' -> 
+    | x :: l' ->
 	if pred x then  1 + (count pred l') else count pred l'
 ;;
 
@@ -307,7 +307,7 @@ let check_attribute_value_lexically lexerset x t v =
 	  | _          -> raise (Lazy.force x)
 	end
     | (A_idrefs | A_entities) ->
-	if List.exists (fun tok -> 
+	if List.exists (fun tok ->
 			  match tok with
 			      Name _ -> false
 			    | _ -> true) l then
@@ -319,7 +319,7 @@ let check_attribute_value_lexically lexerset x t v =
 	  | _               -> raise (Lazy.force x)
 	end
     | A_nmtokens ->
-	if List.exists (fun tok -> 
+	if List.exists (fun tok ->
 			  match tok with
 			      Name _ -> false
 			    | Nametoken _ -> false
@@ -375,10 +375,10 @@ let value_of_attribute_aux lexerset dtd n atype v =
   let check_ndata_entity u =
     let en, extdecl = dtd # gen_entity u in  (* or Validation_error *)
     if not (en # is_ndata) then
-      raise(Validation_error("Reference to entity `" ^ u ^ 
+      raise(Validation_error("Reference to entity `" ^ u ^
 			     "': NDATA entity expected"));
     if dtd # standalone_declaration && extdecl then
-      raise(Validation_error("Reference to entity `" ^ u ^ 
+      raise(Validation_error("Reference to entity `" ^ u ^
 			     "' violates standalone declaration"));
   in
 
@@ -410,7 +410,7 @@ let value_of_attribute_aux lexerset dtd n atype v =
 	let v' = remove_leading_and_trailing_spaces v in
 	if not (List.mem v' nl) then
 	  raise(Validation_error
-		  ("Attribute `" ^ n ^ 
+		  ("Attribute `" ^ n ^
 		   "' does not match one of the declared notation names"));
 	Value v'
 
@@ -419,7 +419,7 @@ let value_of_attribute_aux lexerset dtd n atype v =
 	let v' = remove_leading_and_trailing_spaces v in
 	if not (List.mem v' enuml) then
 	  raise(Validation_error
-		  ("Attribute `" ^ n ^ 
+		  ("Attribute `" ^ n ^
 		   "' does not match one of the declared enumerator tokens"));
 	Value v'
 ;;
@@ -436,7 +436,7 @@ let value_of_attribute lexerset dtd n atype v =
    * - If 'atype = A_enum d', it is checked whether 'v' matches one of the
    *   tokens from d
    * - If 'atype' refers to a "single-value" type, the value is retured as
-   *   Value u, where u is the normalized value. If 'atype' refers to a 
+   *   Value u, where u is the normalized value. If 'atype' refers to a
    *   "list" type, the value if returned as Valuelist l, where l contains
    *   the tokens.
    *
@@ -478,7 +478,7 @@ let normalization_changes_value lexerset atype v =
    *)
 
   match atype with
-      A_cdata -> 
+      A_cdata ->
 	false
 
     | (A_id | A_idref | A_entity | A_nmtoken | A_notation _ | A_enum _) ->
@@ -489,7 +489,7 @@ let normalization_changes_value lexerset atype v =
 
     | (A_idrefs | A_entities | A_nmtokens) ->
 	(* Split the list, and concatenate the tokens as required by
-	 * the normal form. Return 'true' if this operation results in 
+	 * the normal form. Return 'true' if this operation results in
 	 * a different string than 'v'.
 	 * This check works for both ISO-8859-1 and UTF-8.
 	 *)
@@ -501,18 +501,46 @@ let normalization_changes_value lexerset atype v =
 
 (**********************************************************************)
 
+let re_multi_ws = Netstring_str.regexp "[ \010\013\009]+";;
+let re_beg_ws =   Netstring_str.regexp "^[ \010\013\009]+";;
+let re_end_ws =   Netstring_str.regexp "[ \010\013\009]+$";;
+
+let normalize_public_id s =
+  (* Replaces multiple occurrences of white space characters by a single
+   * &#32;, and removes leading and trailing white space.
+   *)
+  let s1 = Netstring_str.global_replace
+	     ~pat:re_multi_ws
+	     ~templ:" "
+	     s in
+
+  let s2 = Netstring_str.global_replace
+	     ~pat:re_beg_ws
+	     ~templ:""
+	     s1 in
+
+  let s3 = Netstring_str.global_replace
+	     ~pat:re_end_ws
+	     ~templ:""
+	     s2 in
+  s3
+;;
+
+
+(**********************************************************************)
+
 let write_markup_string ~(from_enc:rep_encoding) ~to_enc os s =
   (* Write the 'from_enc'-encoded string 's' as 'to_enc'-encoded string to
    * 'os'. All characters are written as they are.
    *)
   let s' =
     if to_enc = (from_enc :> encoding)
-    then s 
-    else recode_string 
+    then s
+    else recode_string
 	         ~in_enc:(from_enc :> encoding)
 		 ~out_enc:to_enc
-		 ~subst:(fun n -> 
-			   failwith 
+		 ~subst:(fun n ->
+			   failwith
 			     ("Pxp_aux.write_markup_string: Cannot represent " ^
 			      "code point " ^ string_of_int n))
 		 s
@@ -531,7 +559,7 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
     (* Convert the ASCII-encoded string 's'. Note that 'from_enc' is
      * always ASCII-compatible
      *)
-    if to_enc = (from_enc :> encoding) 
+    if to_enc = (from_enc :> encoding)
     then s
     else
       recode_string
@@ -546,17 +574,17 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
     let s' = convert_ascii s in
     write os s' 0 (String.length s')
   in
-      
+
   let write_part j l =
     (* Writes the substring of 'content' beginning at pos 'j' with length 'l'
      *)
     if to_enc = (from_enc :> encoding) then
       write os content j l
     else begin
-      let s' = recode_string 
+      let s' = recode_string
 	         ~in_enc:(from_enc :> encoding)
 	         ~out_enc:to_enc
-	         ~subst:(fun n -> 
+	         ~subst:(fun n ->
 			   convert_ascii ("&#" ^ string_of_int n ^ ";"))
 		 (String.sub content j l)
       in
@@ -588,8 +616,11 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
 
 (* ======================================================================
  * History:
- * 
+ *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.9  2001/02/01 20:38:49  gerd
+ * 	New support for PUBLIC identifiers.
+ *
  * Revision 1.8  2000/10/01 19:45:28  gerd
  * 	New module: Str_hashtbl.
  * 	Many optimizations, especially expand_attvalue and count_lines.
@@ -709,5 +740,5 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * Revision 1.1  1999/08/10 00:35:50  gerd
  * 	Initial revision.
  *
- * 
+ *
  *)
