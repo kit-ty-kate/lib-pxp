@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.2 2000/06/14 22:19:06 gerd Exp $
+(* $Id: pxp_document.mli,v 1.3 2000/07/04 22:05:10 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -314,10 +314,10 @@ class type [ 'ext ] node =
 ;;
 
 
-class [ 'ext ] data_impl : 'ext -> string -> [ 'ext ] node
+class [ 'ext ] data_impl : 'ext -> [ 'ext ] node
     (* Creation:
-     *   new data_impl an_extension a_string
-     * creates a new data node with the given extension and the given string
+     *   new data_impl an_extension
+     * creates a new data node with the given extension and the empty string
      * as content.
      *)
 ;;
@@ -329,6 +329,27 @@ class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
      * creates a new empty element node with the given extension.
      *)
 ;;
+
+
+type 'ext spec
+constraint 'ext = 'ext node #extension
+    (* Contains the exemplars used for the creation of new nodes
+     *)
+
+
+val make_spec_from_mapping :
+      data_exemplar: 'ext node ->
+      default_element_exemplar: 'ext node ->
+      element_mapping: (string, 'ext node) Hashtbl.t -> 'ext spec
+    (* Specifies:
+     * - For new data nodes, the ~data_exemplar must be used
+     * - For new element nodes: If the element type is mentioned in the
+     *   ~element_mapping hash table, the exemplar found in this table is
+     *   used. Otherwise, the ~default_element_exemplar is used.
+     *)
+
+val create_data_node : 'ext spec -> dtd -> string -> 'ext node
+val create_element_node : 'ext spec -> dtd -> string -> (string * string) list -> 'ext node
 
 
 class [ 'ext ] document :
@@ -407,6 +428,10 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.3  2000/07/04 22:05:10  gerd
+ * 	New functions make_spec_from_mapping, create_data_node,
+ * create_element_node.
+ *
  * Revision 1.2  2000/06/14 22:19:06  gerd
  * 	Added checks such that it is impossible to mix encodings.
  *
