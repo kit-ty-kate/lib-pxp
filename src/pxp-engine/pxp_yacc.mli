@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.6 2000/07/23 02:16:33 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.7 2000/08/18 20:15:43 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -51,46 +51,92 @@ type config =
       errors_with_line_numbers : bool;
          (* Whether error messages contain line numbers or not. The parser
 	  * is 10 to 20 per cent faster if line numbers are turned off;
-	  * you get only character positions in this case.
+	  * you get only byte positions in this case.
 	  *)
 
-      processing_instructions_inline : bool;
+      enable_pinstr_nodes : bool;
          (* true: turns a special mode for processing instructions on. Normally,
 	  * you cannot determine the exact location of a PI; you only know
-	  * in which element the PI occurs. The "inline" mode makes it possible
+	  * in which element the PI occurs. This mode makes it possible
 	  * to find the exact location out: Every PI is artificially wrapped
-	  * by a special element with name "-pi". For example, if the XML text
+	  * by a special node with type T_pinstr. For example, if the XML text
 	  * is <a><?x?><?y?></a>, the parser normally produces only an element
 	  * object for "a", and puts the PIs "x" and "y" into it (without
-	  * order). In inline mode, the object "a" will contain two objects
-	  * with name "-pi", and the first object will contain "x", and the
-	  * second "y".
+	  * order). In this mode, the object "a" will contain two objects
+	  * with type T_pinstr, and the first object will contain "x", and the
+	  * second "y": the object tree looks like
+	  * - Node with type = T_element "a"
+	  *   - Node with type = T_pinstr "x"
+	  *     + contains processing instruction "x"
+	  *   - Node with type = T_pinstr "y"
+	  *     + contains processing instruction "y"
+	  *
 	  * Notes:
-	  * (1) The name "-pi" is reserved. You cannot use it for your own
-	  *     tags because tag names must not begin with '-'.
-	  * (2) You need not to add a declaration for "-pi" to the DTD. These
-	  *     elements are handled separately.
-	  * (3) Of course, the "-pi" objects are created from exemplars of
-	  *     your DOM map.
+	  * (1) In past versions of PXP this mode was called
+	  *     processing_instructions_inline, and it produced nodes of
+	  *     type T_element "-pi" instead of T_pinstr.
+	  * (2) The T_pinstr nodes are created from the pinstr exemplars
+	  *     in your spec
 	  *)
 
-      virtual_root : bool;
+      enable_super_root_node : bool;
          (* true: the topmost element of the XML tree is not the root element,
-	  * but the so-called virtual root. The root element is a son of the
-	  * virtual root. The virtual root is an ordinary element with name
-	  * "-vr".
+	  * but the so-called super root. The root element is a son of the
+	  * super root. The super root is a node with type T_super_root.
 	  * The following behaviour changes, too:
 	  * - PIs occurring outside the root element and outside the DTD are
-	  *   added to the virtual root instead of the document object
-	  * - If processing_instructions_inline is also turned on, these PIs
-	  *   are added inline to the virtual root
+	  *   added to the super root instead of the document object
+	  * - If enable_pinstr_nodes is also turned on, the PI wrappers
+	  *   are added to the super root
+	  *
+	  * For example, the document
+	  *   <?x?><a>y</a><?y?>
+	  * is normally represented by:
+	  * - document object
+	  *   + contains PIs x and y
+	  *   - reference to root node with type = T_element "a"
+	  *     - node with type = T_data: contains "y"
+	  * With enabled super root node:
+	  * - document object
+	  *   - reference to super root node with type = T_super_root
+	  *     + contains PIs x and y
+	  *     - root node with type = T_element "a"
+	  *       - node with type = T_data: contains "y"
+	  * If also enable_pinstr_nodes:
+	  * - document object
+	  *   - reference to super root node with type = T_super_root
+	  *     - node with type = T_pinstr "x"
+	  *       + contains PI "x"
+	  *     - root node with type = T_element "a"
+	  *       - node with type = T_data: contains "y"
+	  *     - node with type = T_pinstr "y"
+	  *       + contains PI "y"
 	  * Notes:
-	  * (1) The name "-vr" is reserved. You cannot use it for your own
-	  *     tags because tag names must not begin with '-'.
-	  * (2) You need not to add a declaration for "-vr" to the DTD. These
-	  *     elements are handled separately.
-	  * (3) Of course, the "-vr" objects are created from exemplars of
-	  *     your DOM map.
+	  * (1) In previous versions of PXP this mode was called
+	  *     virtual_root, and it produced an additional node of type
+	  *     T_element "-vr" instead of T_super_root.
+	  * (2) The T_super_root node is created from the super root exemplar
+	  *     in your spec.
+	  *)
+
+      enable_comment_nodes : bool;
+         (* When enabled, comments are represented as nodes with type =
+	  * T_comment.
+	  * To access the contents of comments, use the method "comment"
+	  * for the comment nodes. 
+	  * These nodes behave like elements; however, they are normally
+	  * empty and do not have attributes. Note that it is possible to
+	  * add children to comment nodes and to set attributes, but it is
+	  * strongly recommended not to do so. There are no checks on
+	  * such abnormal use, because they would cost too
+	  * much time, even when no comment nodes are generated at all.
+	  *
+	  * Comment nodes should be disabled unless you must parse a 
+	  * third-party XML text which uses comments as another data
+	  * container.
+	  *
+	  * The nodes of type T_comment are created from the comment exemplars
+	  * in your spec.
 	  *)
 
       encoding : rep_encoding;
@@ -105,19 +151,43 @@ type config =
 	 * in this case such declarations are never recognized.
 	 *
 	 * Recognizing the "standalone" declaration means that the 
-	 * value of the declaration is scanned and passed to the DTD.
+	 * value of the declaration is scanned and passed to the DTD,
+	 * and that the "standalone-check" is performed. 
+	 *
+	 * Standalone-check: If a document is flagged standalone='yes' 
+	 * some additional constraints apply. The idea is that a parser
+	 * without access to any external document subsets can still parse
+	 * the document, and will still return the same values as the parser
+	 * with such access. For example, if the DTD is external and if
+	 * there are attributes with default values, it is checked that there
+	 * is no element instance where these attributes are omitted - the
+	 * parser would return the default value but this requires access to
+	 * the external DTD subset.
 	 *)
 
       store_element_positions : bool;
         (* Whether the file name, the line and the column of the
 	 * beginning of elements are stored in the element nodes.
-	 * This option may be useful to generate helpful error messages.
+	 * This option may be useful to generate error messages.
+	 * 
+	 * Positions are only stored for:
+	 * - Elements
+	 * - Wrapped processing instructions (see enable_pinstr_nodes)
+	 * For all other node types, no position is stored.
+	 *
+	 * You can access positions by the method "position" of nodes.
 	 *)
 
       idref_pass : bool;
         (* Whether the parser does a second pass and checks that all
 	 * IDREF and IDREFS attributes contain valid references.
-	 * This option works only if an ID index is available.
+	 * This option works only if an ID index is available. To create
+	 * an ID index, pass an index object as id_index argument to the
+	 * parsing functions (such as parse_document_entity; see below).
+	 *
+	 * "Second pass" does not mean that the XML text is again parsed;
+	 * only the existing document tree is traversed, and the check
+	 * on bad IDREF/IDREFS attributes is performed for every node.
 	 *)
 
       validate_by_dfa : bool;
@@ -126,6 +196,14 @@ type config =
 	 * If false, or if no DFAs are available, the standard backtracking
 	 * algorithm will be used.
 	 * DFA = deterministic finite automaton.
+	 *
+	 * DFAs are only available if accept_only_deterministic_models is
+	 * "true" (because in this case, it is relatively cheap to construct
+	 * the DFAs). DFAs are a data structure which ensures that validation
+	 * can always be performed in linear time.
+	 *
+	 * I strongly recommend using DFAs; however, there are examples
+	 * for which validation by backtracking is faster.
 	 *)
 
       accept_only_deterministic_models : bool;
@@ -228,6 +306,7 @@ val from_file :
 val default_config : config
   (* - Warnings are thrown away
    * - Error messages will contain line numbers
+   * - Neither T_super_root nor T_pinstr nor T_comment nodes are generated
    * - The internal encoding is ISO-8859-1
    * - The standalone declaration is checked
    * - Element positions are stored
@@ -308,6 +387,13 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.7  2000/08/18 20:15:43  gerd
+ * 	Config options:
+ * - enable_super_root_nodes: new name for virtual_root
+ * - enable_pinstr_nodes: new name for processing_instructions_inline
+ * - enable_comment_nodes: new option
+ * 	Updated comments for various options.
+ *
  * Revision 1.6  2000/07/23 02:16:33  gerd
  * 	Support for DFAs.
  *
