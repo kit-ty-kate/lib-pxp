@@ -9,6 +9,7 @@ OBJ =   pxp_lexing.cmo \
 	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
 	pxp_dfa.cmo \
 	pxp_entity.cmo pxp_dtd.cmo pxp_document.cmo \
+	pxp_entity_manager.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
 

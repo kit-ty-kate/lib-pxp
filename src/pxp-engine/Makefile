@@ -19,6 +19,7 @@ pxp_lexing.ml: pxp_lexing.mlp
 	sed -e 's/LEX_BUFFER_LEN/$(LEX_BUFFER_LEN)/g' pxp_lexing.mlp \
 		>pxp_lexing.ml
 
+.PHONY: depend
 depend: 
 	$(OCAMLDEP) *.ml *.mli >depend
 

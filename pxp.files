@@ -114,6 +114,10 @@ f examples/xmlforms/styles/crazy
 f examples/xmlforms/styles/ds-object.dtd
 f examples/xmlforms/styles/ds-style.dtd
 
+d examples/eventparser
+f examples/eventparser/number.mll
+f examples/eventparser/sample.ml
+
 d src
 f src/Makefile
 
@@ -135,6 +139,7 @@ f src/pxp-engine/pxp_document.mli
 f src/pxp-engine/pxp_dtd.ml
 f src/pxp-engine/pxp_dtd.mli
 f src/pxp-engine/pxp_entity.ml
+f src/pxp-engine/pxp_entity_manager.ml
 f src/pxp-engine/pxp_lexer_types.ml
 f src/pxp-engine/pxp_lexer_types.mli
 f src/pxp-engine/pxp_lexers.ml

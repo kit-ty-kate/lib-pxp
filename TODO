@@ -1,7 +1,35 @@
-- Fix: pxp-1.1.4 enthält Datei src/pxp-wlex/pxp_wlex.ml die nicht
-  aktuell ist
-  (auch im release-Skript fixen: pxp_wlex.ml muss aktueller sein als
-  pxp_wlex.mlw)
+- Event-based parsers:
+
+  rec_curly_parse "<!DOCTYPE A [ <!ENTITY b '}'> ]> <A>{<B>xxx</B>&b;</A>";;
+
+  Idee: create_proxy muss selbst aufgerufen werden statt ~inside_entity.
+
+  * When calling the parser, pass the entity_manager, not the source
+    ( ==> parser can recursively call itself )
+
+  * Parse a single element, PI, comment, ... instead of misc* element misc*
+
+  * { and } inside attribute lists
+
+  * Check: standalone flag
+
+  * Signature for entity_manager
+
+  * Examples
+
+- Follow-Ups:
+
+  * Clean-Up of pxp_yacc.m2y: separate tree_parser and event_parser.
+    They have a common superclass where event methods are virtual.
+
+  * extend_dtd: export?
+
+    process_entity kann im wf-Modus oder im validating-Modus aufgerufen
+    werden. dies hat aber nur Einfluss auf die konstruktion der DTD.
+
+  * standalone
+
+------------------------------
 
 - Klasse wfdocument
 
