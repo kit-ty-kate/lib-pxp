@@ -105,6 +105,7 @@ object
                              (string*int*int) option ->
 			     string ->
 			     string ->
+			     entity_id ->
 			       unit
 
   method private virtual event_comment : 

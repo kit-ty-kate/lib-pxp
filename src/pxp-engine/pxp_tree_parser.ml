@@ -422,7 +422,7 @@ object (self)
     else
       current_data <- data :: current_data
 
-  method private event_pinstr position target value =
+  method private event_pinstr position target value ent_id =
     (* position: The position of the processing instruction
      * target: The name following <?
      * value: The string following the name

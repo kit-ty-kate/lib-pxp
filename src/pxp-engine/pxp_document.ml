@@ -4101,7 +4101,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  );
 	  pos := None
 
-      | Some (E_pinstr(target,value)) ->
+      | Some (E_pinstr(target,value,_)) ->
 	  (* A PI may occur everywhere between start_doc and end_doc.  *)
 	  if !doc_state = End_seen then unexpected "E_pinstr";
 	  if !doc_state = Null then doc_state := NA;
@@ -4122,7 +4122,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	    );
 	  pos := None
 
-      | Some (E_pinstr_member(target,value)) ->
+      | Some (E_pinstr_member(target,value,_)) ->
 	  if !doc_state = End_seen then unexpected "E_pinstr";
 	  if !doc_state = Null then doc_state := NA;
 	  let pi = new proc_instruction target value !eff_dtd#encoding in
@@ -4190,13 +4190,11 @@ type 'ext flux_state =
     ]
 
 
-class dummy = object end ;;
-
 
 let liquefy_node ?(omit_end = false) ?(omit_positions = false) 
                  (init_fstate : 'ext flux_state) =
   let fstate = ref init_fstate in
-  let eid = new dummy in
+  let eid = Pxp_dtd.Entity.create_entity_id() in
   let rec generate arg =
     match !fstate with
 	`Node_start n ->
@@ -4238,7 +4236,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 			 (fun target ->
 			    List.map
 			      (fun pi ->
-				  E_pinstr_member(target,pi#value)
+				  E_pinstr_member(target,pi#value,eid)
 			      )
 			      (n # pinstr target)
 			 )
@@ -4255,7 +4253,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 		  let (entity,line,colpos) = n # position in
 		  let pos = E_position(entity,line,colpos) in
 		  let value = (List.hd (n # pinstr target)) # value in
-		  let ev = E_pinstr(target,value) in
+		  let ev = E_pinstr(target,value,eid) in
 		  let out =
 		    if omit_positions then [ ev ] else [ pos; ev ] in
 		  fstate := `Output(out, !fstate);
@@ -4321,6 +4319,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 
 let liquefy_doc ?(omit_end = false) ?(omit_positions = false) 
                 (doc : 'ext document) =
+  let eid = Pxp_dtd.Entity.create_entity_id() in
   let fstate = ref `Start in
   let rec generate arg =
     match !fstate with
@@ -4331,7 +4330,7 @@ let liquefy_doc ?(omit_end = false) ?(omit_positions = false)
 		 (fun target ->
 		    List.map
 		    (fun pi ->
-		       E_pinstr_member(target,pi#value)
+		       E_pinstr_member(target,pi#value,eid)
 		    )
 		    (doc # pinstr target)
 		 )

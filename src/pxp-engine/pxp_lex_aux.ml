@@ -160,7 +160,7 @@
 	  let len_param = String.length pi - s_len in
 	  (* It is possible that len_param = -1 *)
 	  if len_param >= 1 then
-	    PI(s_name, String.sub pi s_len len_param)
+	    PI(s_name, String.sub pi s_len len_param, dummy_entity)
 	  else
-	    PI(s_name, "")
+	    PI(s_name, "", dummy_entity)
 

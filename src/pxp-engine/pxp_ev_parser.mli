@@ -137,7 +137,7 @@ val create_pull_parser :
       config -> 
       entry ->
       Pxp_entity_manager.entity_manager ->
-        ('a -> event option)
+        (unit -> event option)
   (* let next_event = create_pull_parser cfg entry mng in
    * let ev = next_event()
    *
@@ -151,46 +151,13 @@ val create_pull_parser :
    * error happens. Only the E_error event is generated (as last event).
    *
    * To create a stream of events, just do:
-   * let stream = Stream.from(create_pull_parser cfg entry mng)
+   * let next = create_pull_parser cfg entry mng in
+   * let stream = Stream.from(fun _ -> next())
    *)
 
-(**********************************************************************)
-(*                            Filters                                 *)
-(**********************************************************************)
 
-(* Filters are currently only available for the pull model (which is 
- * the more general one).
- *
- * Example:
- * let stream = Stream.from
- *                (norm_cdata_filter(create_pull_parser cfg entry mng))
+(* Filters have been moved to Pxp_event! *)
+
+(* For conversions from trees to event streams, and vice versa,
+ * see Pxp_document.
  *)
-
-type 'a filter = ('a -> event option) -> ('a -> event option)
-
-val norm_cdata_filter : 'a filter
-  (* This filter
-   *  - removes empty E_char_data events
-   *  - concatenates adjacent E_char_data events
-   * but does not touch any other parts of the event stream.
-   *)
-
-val drop_ignorable_whitespace_filter : 'a filter
-  (* This filter 
-   *  - checks whether character data between elements in a 
-   *    "regexp" or "non-PCDATA mixed" content model consists 
-   *    only of whitespace, and
-   *  - removes these whitespace characters from the event stream.
-   * If the check fails, a WF_Error will be raised.
-   *
-   * This filter works only if the DTD found in the event stream
-   * actually contains element declarations. This is usually enabled
-   * by including the `Extend_dtd_fully or `Val_mode_dtd options to 
-   * the [entry] passed to the [create_pull_parser] call. Furthermore, 
-   * there must be an E_start_doc event.
-   *
-   * This filter does not perform any other validation checks.
-   *)
-
-
-(* TODO: ID filter that creates an ID index *)

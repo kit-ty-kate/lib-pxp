@@ -953,7 +953,7 @@ let generate_event_generator
 	  let target_expr = generate_for_string_expr target in
 	  let value_expr = generate_for_string_expr value in
 	  let loc = mkloc p1 p2 in
-	  [ `Single, <:expr< Pxp_types.E_pinstr($target_expr$,$value_expr$) >> ]
+	  [ `Single, <:expr< Pxp_types.E_pinstr($target_expr$,$value_expr$,_eid) >> ]
       | (`Super subnodes,p1,p2) ->
 	  let subnodes_expr = generate_for_nodelist_expr nsmode subnodes in
 	  let loc = mkloc p1 p2 in

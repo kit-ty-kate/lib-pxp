@@ -48,7 +48,7 @@ let event_list ?(del_pinstr_member=true) ?(keep_positions = true) generator =
   let rec unroll() =
     match generator() with
 	None -> []
-      | Some (E_pinstr_member(_,_)) when del_pinstr_member -> unroll()
+      | Some (E_pinstr_member(_,_,_)) when del_pinstr_member -> unroll()
       | Some (E_position(e,l,c)) when not keep_positions -> unroll()
       | Some e -> e :: unroll()
   in
@@ -72,9 +72,9 @@ let print_event =
 	"E_end_tag name=" ^ name
     | E_char_data data ->
 	"E_char_data data=\"" ^ String.escaped data ^ "\""
-    | E_pinstr (target, value) ->
+    | E_pinstr (target, value, _) ->
 	"E_pinstr target=" ^ target ^ ",value=" ^ value
-    | E_pinstr_member (target, value) ->
+    | E_pinstr_member (target, value, _) ->
 	"E_pinstr_member target=" ^ target ^ ",value=" ^ value
     | E_comment data ->
 	"E_comment data=\"" ^ String.escaped data ^ "\""
@@ -127,11 +127,11 @@ let rec compare_event_lists l1 l2 =
 	    | E_char_data(data1),
 	      E_char_data(data2) ->
 		data1 = data2
-	    | E_pinstr(target1,value1),
-	      E_pinstr(target2,value2) ->
+	    | E_pinstr(target1,value1,_),
+	      E_pinstr(target2,value2,_) ->
 		target1 = target2 && value1 = value2
-	    | E_pinstr_member(target1,value1),
-	      E_pinstr_member(target2,value2) ->
+	    | E_pinstr_member(target1,value1,_),
+	      E_pinstr_member(target2,value2,_) ->
 		true
 		(* Don't compare; E_pinstr_member do not have a defined
 		 * order

@@ -159,7 +159,7 @@ object (self)
     event_handler(E_char_data(data))
 
 
-  method private event_pinstr position target value =
+  method private event_pinstr position target value ent_id =
     if config.enable_pinstr_nodes &&
        (n_tags_open > 0 || config.enable_super_root_node) then begin
       let ev_list = 
@@ -167,14 +167,14 @@ object (self)
 	     Some(e,l,c) -> [ E_position(e,l,c) ]
 	   | None -> []
 	)
-	@ [ E_pinstr(target,value) ] in
+	@ [ E_pinstr(target,value,ent_id) ] in
       if init_done then
 	List.iter event_handler ev_list
       else
 	ep_early_events <- ep_early_events @ ev_list
     end
     else begin
-      let ev = E_pinstr_member(target,value) in
+      let ev = E_pinstr_member(target,value,ent_id) in
       if init_done then
 	event_handler ev
       else
@@ -417,110 +417,3 @@ let create_pull_parser
 	record_error exn;
 	return_result
 ;;
-
-
-type 'a filter = ('a -> event option) -> ('a -> event option)
-
-let norm_cdata_filter get_ev =
-  let q = Queue.create () in
-  let rec get_ev' thing =
-    try
-      Queue.pop q
-    with
-	Queue.Empty ->
-	  let ev = get_ev thing in
-	  match ev with
-	      Some (E_char_data s) ->
-		if s = "" then
-		  get_ev' thing
-		else
-		  gather_string [s] thing
-	    | _ ->
-		ev
-  and gather_string sl thing =
-    let ev = get_ev thing in
-    match ev with
-	Some (E_char_data s) ->
-	  gather_string (s :: sl) thing
-      | _ ->
-	  Queue.add (Some(E_char_data(String.concat "" (List.rev sl)))) q;
-	  Queue.add ev q;
-	  get_ev' thing
-  in
-  get_ev'
-;;
-	
-
-let drop_ignorable_whitespace_filter get_ev =
-  let found_dtd = ref None in
-  let elements = Stack.create() in
-  let pos = ref("",0,0) in
-
-  let has_ignorable_ws elname =
-    match !found_dtd with
-	Some dtd ->
-	  ( try 
-	      let el = dtd # element elname in
-	      let cm = el # content_model  in
-	      ( match cm with
-		    Regexp _ -> true
-		  | Mixed ml -> not (List.mem MPCDATA ml)
-		  | _ -> false
-	      )
-	    with
-		Undeclared -> false
-	      | Validation_error _ -> false   (* element not found *)
-	  )
-      | None ->
-	  false
-  in
-
-  let pop() =
-    try
-      ignore(Stack.pop elements)
-    with
-	Stack.Empty ->
-	  failwith "Pxp_ev_parser.drop_ignorable_whitespace_filter: bad event stream"
-  in
-
-  let rec get_ev' thing =
-    let ev = get_ev thing in
-    match ev with
-	Some(E_start_doc(_,dtd)) ->
-	  if !found_dtd <> None then
-	    failwith "Pxp_ev_parser.drop_ignorable_whitespace_filter: More than one E_start_doc event";
-	  found_dtd := Some dtd;
-	  ev
-      | Some(E_position(e,line,col)) ->
-	  pos := (e,line,col);
-	  ev
-      |	Some(E_start_tag(name,_,_,_)) ->
-	  let ign_ws = has_ignorable_ws name in
-	  Stack.push ign_ws elements;
-	  ev
-      | Some(E_end_tag(name,_)) ->
-	  pop();
-	  ev
-      | Some(E_char_data s) ->
-	  let ign_ws = try Stack.top elements with Stack.Empty -> true in
-	  if ign_ws then (
-	    if not (Pxp_lib.only_whitespace s) then
-	      let (e,line,col) = !pos in
-	      let where = "In entity " ^ e ^ ", at line " ^ 
-			  string_of_int line ^ ", position " ^ 
-			  string_of_int col ^ ":\n" in
-	      raise(At(where,WF_error("Data not allowed here")))
-	    else
-	      (* drop this event, and continue with next: *)
-	      get_ev' thing
-	  ) 
-	  else ev
-	  
-      | _ ->
-	  ev
-  in
-
-  get_ev'
-;;
-
-

@@ -90,7 +90,7 @@ type token =
   | Tag_beg of (string*entity_id)     (* <name *)
   | Tag_end of (string*entity_id)     (* </name *)
 
-  | PI        of (string*string)      (* <?name ... ?> *)
+  | PI        of (string*string*entity_id)      (* <?name ... ?> *)
   | PI_xml    of (prolog_token list)  (* <?xml ...?> *)
   | Cdata     of string               (* <![CDATA[...]]> *)
   | CRef      of int                  (* &#digits; *)

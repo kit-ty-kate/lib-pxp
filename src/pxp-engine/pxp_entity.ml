@@ -219,7 +219,7 @@ let update_content_lines v tok =
       LineEnd _ -> 
 	v.line <- v.line + 1;
 	v.column <- 0;
-    | (PI(_,_)|PI_xml _|Cdata _) ->
+    | (PI(_,_,_)|PI_xml _|Cdata _) ->
 	count_lines v.linecount v.lexobj#lexeme;
 	update_lines v;
     | _ -> 
@@ -500,11 +500,13 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 		      cd
 
           (* If there are CRLF sequences in a PI value, normalize them, too *)
-		| PI(name,value) as pi ->
+		| PI(name,value,_) as pi ->
 		    if v.normalize_newline then
-		      PI(name, normalize_line_separators v.lfactory value)
+		      PI(name, 
+			 normalize_line_separators v.lfactory value,
+			 (self :> entity_id))
 		    else
-		      pi
+		      PI(name, value, (self :> entity_id))
          
           (* Attribute values: If they are already normalized, they are turned
 	   * into Attval_nl_normalized. This is detected by other code.

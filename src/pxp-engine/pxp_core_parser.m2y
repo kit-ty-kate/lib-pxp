@@ -367,6 +367,7 @@ class virtual core_parser
                              (string*int*int) option ->
 			     string ->
 			     string ->
+			     entity_id ->
 			       unit
 
     method private virtual event_comment : 
@@ -956,7 +957,7 @@ declaration():
 | notationdecl()
     {{ () }}
 | pi: PI
-    {{ let target, value = pi in
+    {{ let target, value, ent_id = pi in
        let pi = new proc_instruction target value config.encoding in
        dtd # add_pinstr pi
     }}
@@ -2077,13 +2078,13 @@ pi():
 	else
 	  None
       in
-      let target0,value = pi in
+      let target0,value,ent_id = pi in
       let target =
 	if config.enable_name_pool_for_pinstr_targets
 	then make_pool_string target0
 	else target0 in
 
-      self # event_pinstr position target value
+      self # event_pinstr position target value ent_id
     }}
 
 

@@ -643,8 +643,8 @@ type event =
 		    Pxp_lexer_types.entity_id)
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
-  | E_pinstr of (string * string)
-  | E_pinstr_member of (string * string)
+  | E_pinstr of (string * string * Pxp_lexer_types.entity_id)
+  | E_pinstr_member of (string * string * Pxp_lexer_types.entity_id)
   | E_comment of string
   | E_start_super
   | E_end_super
@@ -696,6 +696,14 @@ type event =
    * E_error(exn):
    *    this last event indicates that the parser has terminated with
    *    error
+   *
+   * Note Pxp_lexer_types.entity_id: currently, this is just < >, i.e.
+   * the class type without properties. It is planned, however, that
+   * one can at least query the base URI of the entity. The best
+   * way of dealing with this parameter for now:
+   * - When parsing events, ignore it
+   * - When creating events, use Pxp_dtd.Entity.create_entity_id to 
+   *   generate new IDs.
    *)
 
 
