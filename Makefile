@@ -29,7 +29,6 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f Makefile.conf
 	$(MAKE) -C tools CLEAN
 	$(MAKE) -C src CLEAN
 	$(MAKE) -C examples CLEAN
