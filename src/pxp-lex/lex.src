@@ -1,4 +1,4 @@
-(* $Id: lex.src,v 1.1 2002/08/28 23:53:10 gerd Exp $
+(* $Id: lex.src,v 1.2 2002/08/31 23:18:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -12,7 +12,44 @@
 
 (* These let-definitions work for all lexers. Note that we assume
  * that the character encoding is ASCII-compatible; WE DO THAT IN
- * THE WHOLE LEXER DEFINITION!
+ * THE WHOLE LEXER DEFINITION! This means we can simply write 'x'
+ * when we mean the letter 'x'.
+ * Non-ASCII characters must not be referred to directly, but only
+ * by a character class. The character classes are defined in the
+ * files char_classes_*.def:
+ *
+ * - character: The class of all valid characters that may occur in
+ *   XML files, including CR, LF, TAB, but excluding other control
+ *   characters
+ * - baseChar: This class is defined by the XML standard
+ * - ideographic: This class is defined by the XML standard
+ * - letter: baseChar | ideographic
+ * - combiningChar: This class is defined by the XML standard
+ * - digit: This class is defined by the XML standard
+ * - ascii_digit: The digits that are ASCII characters, i.e. '0'-'9'
+ * - ascii_hexdigit: ascii_digit | 'a'-'f' | 'A'-'F'
+ * - extender: This class is defined by the XML standard
+ *
+ * Furthermore, the following "ad hoc" definitions of character classes
+ * can be used:
+ * - char_but_qmark:             All characters but '?'
+ * - char_but_rangle:            All characters but '>'
+ * - char_but_minus:             All characters but '-'
+ * - char_but_quot:              All characters but '"'
+ * - char_but_apos:              All characters but "'"
+ * - char_but_rbracket:          All characters but ']'
+ * - char_but_rbracket_rangle:   All characters but ']' and '>'
+ * - char_ignore:                (Currently:) All characters but '<', ']', 
+ *                               '"', "'"
+ * - pchar_but_amp_lt:           All non-ctrl chars but '&', and '<'
+ * - pchar_but_amp_percent:      All non-ctrl chars but '&', and '%'
+ * - pchar_text:                 (Currently:) All non-ctrl chars but '&',
+ *                               '<', ']', '{', '}'
+ * - pchar_ebatt:                (Currently:) All non-ctrl chars but '&',
+ *                               '<', '"', "'", '{', '}'
+ *
+ * The definitions of char_ignore and pchar_text may change in the future
+ * if needed, but the other definition will remain intact.
  *)
 
 let ws = [ ' ' '\t' '\r' '\n' ]
@@ -23,20 +60,25 @@ let name = ( letter | '_' | ':' ) namechar*
 
 let nmtoken = namechar+
 
-let pi_string = character_except_question_mark* 
-                ( '?' character_except_right_angle_bracket 
-                      character_except_question_mark* )* 
+let pi_string = char_but_qmark* 
+                ( '?' char_but_rangle char_but_qmark* )* 
                 '?'?
+(* A pi_string is the string inside a processing instruction <?...?> *)
 
-let comment_string = character_except_minus* 
-                     ('-' character_except_minus+ )*
+
+let comment_string = char_but_minus* 
+                     ('-' char_but_minus+ )*
+
+(* A comment_string is the string inside comment delimiters <!-- ... --> *)
 
 let cdata_string = 
-  character_except_rbracket*
-  ( "]" character_except_rbracket+ |
-    "]]" ']'* character_except_rbracket_rangle character_except_rbracket*
+  char_but_rbracket*
+  ( "]" char_but_rbracket+ |
+    "]]" ']'* char_but_rbracket_rangle char_but_rbracket*
   )*
   ']'*
+
+(* A cdata_string is the string inside CDATA delimiters <![CDATA[...]]> *)
 
 
 (* ---------------------------------------------------------------------- *)
@@ -46,20 +88,38 @@ let cdata_string =
   open Pxp_types
   open Pxp_lexer_types
   open Pxp_lex_aux
+    (* Hint: All the tok_* values are declared here *)
 
   let lexerset = ref (Pxp_lexers.dummy_lexer_set) ;;
+    (* Every lexer module knows its lexerset, so it can call
+     * all other lexer modules by !lexerset.name_of_lexer 
+     *)
 }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
 
-(* This rule parses the string <?xml ...?> *)
+(* This rule detects an XML declaration *)
 
-scan_only_xml_decl = parse
-    "<?xml" ws+ pi_string "?>"
-      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi }
+detect_xml_pi = parse
+    "<?xml" ws+
+      { true }
   | ""
-      { Eof }
+      { false }
+
+(* ---------------------------------------------------------------------- *)
+(* [RULE] *)
+
+(* This rule returns the contents of a processing instruction *)
+
+scan_pi_string = parse
+    pi_string "?>"
+      { let len = 
+	  Pxp_lexing.lexeme_end lexbuf - Pxp_lexing.lexeme_start lexbuf in
+	Some (Pxp_lexing.sub_lexeme lexbuf 0 (len-2)) 
+      }
+  | ""
+      { None }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -74,7 +134,7 @@ scan_xml_pi = parse
       }
   | "=" ws*
       { Pro_eq }
-  | "'" character_except_apos* "'" ws+
+  | "'" char_but_apos* "'" ws+
       { let s = Lexing.lexeme lexbuf in
 	let j = String.index_from s 1 '\'' in
 	Pro_string (String.sub s 1 (j-1))
@@ -82,7 +142,7 @@ scan_xml_pi = parse
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
-  | '"' character_except_quot* '"' ws+
+  | '"' char_but_quot* '"' ws+
       { let s = Lexing.lexeme lexbuf in
 	let j = String.index_from s 1 '"' in
 	Pro_string (String.sub s 1 (j-1))
@@ -92,12 +152,14 @@ scan_xml_pi = parse
       }
   | eof
       { Pro_eof }
-  | character
-      { (* prerr_endline (Lexing.lexeme lexbuf); *)
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
 	raise (WF_error("Illegal token or character")) 
       }
-  | _ 
-      { raise Netconversion.Malformed_code }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -105,14 +167,18 @@ scan_xml_pi = parse
 (* scan_document: Lexer for the outermost structures *)
 
 scan_document = parse
-    "<?" pi_string "?>"
-      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Document }
-  | "<?"
-      { raise (WF_error ("Illegal processing instruction")) }
+    "<?" 
+      { (* Scan the rest of the processing instruction: *)
+	match !lexerset.scan_pi_string lexbuf with
+  	  None ->
+	    raise (WF_error ("Illegal processing instruction"))
+	| Some pi ->
+	    scan_pi pi !lexerset.scan_xml_pi, Document 
+      }
   | "<!DOCTYPE"
       { tok_Doctype__Document_type }
   | "<!--" 
-      { Comment_begin dummy_entity, Document_comment }
+      { Comment_begin dummy_entity, (Comment Document) }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -128,10 +194,14 @@ scan_document = parse
       { tok_Ignore__Document }
   | eof
       { tok_Eof__Document }
-  | character
-      { raise (WF_error ("Content not allowed here")) }
-  | _
-      { raise Netconversion.Malformed_code }
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
+ 	raise (WF_error ("Content not allowed here"))
+      }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -144,13 +214,13 @@ scan_document_type = parse
 	Name s, Document_type }
   | ws+
       { tok_Ignore__Document_type }
-  | '"' character_except_quot* '"'
+  | '"' char_but_quot* '"'
       { let s = Lexing.lexeme lexbuf in
 	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
-  | "'" character_except_apos* "'"
+  | "'" char_but_apos* "'"
       { let s = Lexing.lexeme lexbuf in
 	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
   | "'"
@@ -166,29 +236,37 @@ scan_document_type = parse
       { raise (WF_error("References to general entities not allowed here")) }
   | '%' 
       { raise (WF_error("References to parameter entities not allowed here")) }
-  | character
-      { raise (WF_error("Content not allowed here")) }
-  | _
-      { raise Netconversion.Malformed_code }
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
+ 	raise (WF_error ("Content not allowed here"))
+      }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
 
-(* Scans comments in document context *)
+(* Scans comments *)
 
-scan_document_comment = parse
+scan_comment = parse
     "-->"
-      { Comment_end dummy_entity, Document }
+      { fun lexid -> 
+          Comment_end dummy_entity, lexid }
   | "--"
-      { raise (WF_error "Double hyphens are illegal inside comments") }
+      { fun lexid ->
+          raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
-      { Comment_material "-", Document_comment }
-  | character_except_minus+
-      { Comment_material(Lexing.lexeme lexbuf), Document_comment }
+      { fun lexid ->
+          Comment_material "-", (Comment lexid) }
+  | char_but_minus+
+      { fun lexid ->
+	  Comment_material(Lexing.lexeme lexbuf), (Comment lexid) }
   | eof
-      { Eof, Document_comment }
+      { fun lexid -> Eof, (Comment lexid) }
   | _
-      { raise Netconversion.Malformed_code }
+      { fun lexid -> raise Netconversion.Malformed_code }
 
 
 (* ---------------------------------------------------------------------- *)
@@ -247,20 +325,21 @@ scan_declaration = parse
   | "<!NOTATION"
       { tok_Decl_notation__Declaration }
   | "<!--"
-      { Comment_begin dummy_entity, Decl_comment }
+      { Comment_begin dummy_entity, (Comment Declaration) }
   | "<!["
       { tok_Conditional_begin__Declaration }
   | "]]>"
       { tok_Conditional_end__Declaration }
   | "["
       { tok_Conditional_body__Declaration }
-
-  (* TODO: PIs modified *) 
-
-  | "<?" pi_string "?>"
-      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Declaration }
   | "<?"
-      { raise (WF_error ("Illegal processing instruction")) }
+      { (* Scan the rest of the processing instruction: *)
+	match !lexerset.scan_pi_string lexbuf with
+  	  None ->
+	    raise (WF_error ("Illegal processing instruction"))
+	| Some pi ->
+	    scan_pi pi !lexerset.scan_xml_pi, Declaration
+      }
   | '"' [^ '"']* '"'
       { let s = Lexing.lexeme lexbuf in
         (* Check that characters are well-formed: *)
@@ -286,10 +365,14 @@ scan_declaration = parse
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
-  | character
-      { raise (WF_error("Illegal token or character")) }
-  | _
-      { raise Netconversion.Malformed_code }
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
+ 	raise (WF_error("Illegal token or character"))
+      }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -309,21 +392,17 @@ scan_characters = parse
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
 
-(* Scans comments in declarations. *)
+(* This rule checks whether the next character is a valid character.
+ * Especially for the UTF8 encoding this is a non-trivial rule!
+ *)
 
-scan_decl_comment = parse
-    "-->"
-      { Comment_end dummy_entity, Declaration }
-  | "--"
-      { raise (WF_error "Double hyphens are illegal inside comments") }
-  | "-"
-      { Comment_material "", Decl_comment }
-  | character_except_minus+
-      { Comment_material "", Decl_comment }
-  | eof
-      { Eof, Decl_comment }
-  | _
-      { raise Netconversion.Malformed_code }
+scan_character = parse
+  character
+    { () }
+| eof 
+    { () }
+| _
+    { raise Netconversion.Malformed_code }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -356,8 +435,8 @@ scan_dtd_string = parse
   | '\010'
       { CRef(-3) }
   | '\009'
-      { CharData "\009" }
-  | printable_character_except_amp_percent+
+      { tok_CharDataTAB }
+  | pchar_but_amp_percent+
       { CharData (Lexing.lexeme lexbuf) }
   | eof
       { Eof }
@@ -370,12 +449,16 @@ scan_dtd_string = parse
 (* Scan in content context *)
 
 scan_content = parse
-    "<?" pi_string "?>"
-      { scan_pi (Lexing.lexeme lexbuf) !lexerset.scan_xml_pi, Content }
-  | "<?"
-      { raise (WF_error ("Illegal processing instruction")) }
+    "<?"
+      { (* Scan the rest of the processing instruction: *)
+	match !lexerset.scan_pi_string lexbuf with
+  	  None ->
+	    raise (WF_error ("Illegal processing instruction"))
+	| Some pi ->
+	    scan_pi pi !lexerset.scan_xml_pi, Content
+      }
   | "<!--"
-      { Comment_begin dummy_entity, Content_comment }
+      { Comment_begin dummy_entity, (Comment Content) }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
@@ -429,6 +512,8 @@ scan_content = parse
       { tok_LineEndCR__Content }
   | '\010'
       { tok_LineEndLF__Content }
+  | '\009'
+      { tok_CharDataTAB__Content }
   | eof
       { tok_Eof__Content }
   | "]]>" 
@@ -436,7 +521,7 @@ scan_content = parse
       }
   | "]"
       { tok_CharDataRBRACKET__Content }
-  | normal_character+
+  | pchar_text+
       { let s = Lexing.lexeme lexbuf in
 	CharData s, Content 
       }
@@ -461,14 +546,14 @@ scan_within_tag = parse
       { Name (Lexing.lexeme lexbuf ), Within_tag }
   | '='
       { tok_Eq__Within_tag }
-  | '"' character_except_quot* '"'
+  | '"' char_but_quot* '"'
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
-  | "'" character_except_apos* "'"
+  | "'" char_but_apos* "'"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
@@ -481,10 +566,14 @@ scan_within_tag = parse
       { tok_Rangle_empty__Content }
   | eof
       { tok_Eof__Within_tag }
-  | character
-      { raise (WF_error ("Illegal inside tags")) }
-  | _
-      { raise Netconversion.Malformed_code }
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
+ 	raise (WF_error ("Illegal inside tags"))
+      }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -517,10 +606,14 @@ scan_tag_eb = parse
       { tok_Rangle_empty__Content }
   | eof
       { tok_Eof__Tag_eb }
-  | character
-      { raise (WF_error ("Illegal inside tags")) }
-  | _
-      { raise Netconversion.Malformed_code }
+  | ""
+      { (* Nothing matches: If at least a valid character follows, raise
+         * the exception that this character is not allowed here. Otherwise,
+         * raise Malformed_code.
+         *)
+        !lexerset.scan_character lexbuf;
+ 	raise (WF_error ("Illegal inside tags"))
+      }
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -541,8 +634,8 @@ scan_content_string = parse
 	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
   | '&'
       { raise(WF_error("The character '&' must be written as '&amp;'")) }
-  | printable_character_except_amp_lt+
-      { CharData "" (* (Lexing.lexeme lexbuf) *) } 
+  | pchar_but_amp_lt+
+      { CharData ""  (* TODO *) (* (Lexing.lexeme lexbuf) *) } 
   | '\009'
       { CRef 32 }
   | '\013' '\010'
@@ -555,7 +648,7 @@ scan_content_string = parse
   | '<'
       { 
 	(* Depending on the situation, '<' may be legal or not: *)
-	CharData "<" 
+	tok_CharDataLT
       }
   | eof
       { Eof }
@@ -595,7 +688,7 @@ scan_tag_eb_att = parse
           raise(WF_error("The character '&' must be written as '&amp;'")) }
   | '\009'
       { fun d ->
-          CharData " ", Tag_eb_att d }
+          tok_CharDataSPACE, Tag_eb_att d }
   | '\013' '\010'
       { fun d ->
 	  LineEnd_att "  ", Tag_eb_att d }
@@ -608,16 +701,16 @@ scan_tag_eb_att = parse
   | '<'
       { fun d ->
 	  (* Depending on the situation, '<' may be legal or not: *)
-	  CharData "<", Tag_eb_att d
+	  tok_CharDataLT, Tag_eb_att d
       }
   | '"' 
       { function
           true  -> DQuote, Tag_eb
-        | false -> CharData "\"", Tag_eb_att false
+        | false -> tok_CharDataQUOT, Tag_eb_att false
       }
   | '\'' 
       { function
-          true  -> CharData "'", Tag_eb_att true
+          true  -> tok_CharDataAPOS, Tag_eb_att true
         | false -> SQuote, Tag_eb
       }
   | "{{"
@@ -628,7 +721,7 @@ scan_tag_eb_att = parse
       { fun d -> RRcurly, Tag_eb_att d }
   | "}"
       { fun d -> Rcurly, Tag_eb_att d }
-  | printable_character_except_amp_lt        (* TODO !!! *)
+  | pchar_ebatt+
       { fun d -> CharData (Lexing.lexeme lexbuf), Tag_eb_att d } 
   | eof
       { fun d -> Eof, Tag_eb_att d }
@@ -666,13 +759,13 @@ scan_ignored_section = parse
       { tok_Conditional_end__Ignored }
   | "<!--" comment_string "-->"
       { tok_Ignore__Ignored }
-  | '"' character_except_quot* '"'
+  | '"' char_but_quot* '"'
       { tok_Ignore__Ignored }
-  | "'" character_except_apos* "'"
+  | "'" char_but_apos* "'"
       { tok_Ignore__Ignored }
   | eof
       { tok_Eof__Ignored }
-  | character_except_special+
+  | char_ignore+
       { tok_Ignore__Ignored }
   | "<"
       { tok_Ignore__Ignored }
@@ -688,34 +781,15 @@ scan_ignored_section = parse
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
 
-(* Scans comments in contents *)
-
-scan_content_comment = parse
-    "-->"
-      { Comment_end dummy_entity, Content }
-  | "--"
-      { raise (WF_error "Double hyphens are illegal inside comments") }
-  | "-"
-      { Comment_material "-", Content_comment }
-  | character_except_minus+
-      { Comment_material(Lexing.lexeme lexbuf), Content_comment }
-  | eof
-      { Eof, Content_comment }
-  | _
-      { raise Netconversion.Malformed_code }
-
-(* ---------------------------------------------------------------------- *)
-(* [RULE] *)
-
 (* This rule locates CR, CRLF, and LF characters inside strings. *)
 
 scan_for_crlf = parse
   | '\013' '\010'
-      { CharData "\n" }
+      { tok_CharDataLF }
   | '\013'
-      { CharData "\n" }
+      { tok_CharDataLF }
   | '\010'
-      { CharData "\n" }
+      { tok_CharDataLF }
   | [^ '\010' '\013' ]+
       { CharData (Lexing.lexeme lexbuf) }
   | eof 
@@ -728,6 +802,9 @@ scan_for_crlf = parse
  * History:
  * 
  * $Log: lex.src,v $
+ * Revision 1.2  2002/08/31 23:18:44  gerd
+ * 	Fixes etc.
+ *
  * Revision 1.1  2002/08/28 23:53:10  gerd
  * 	Initial revision.
  *

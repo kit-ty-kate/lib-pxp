@@ -1,4 +1,4 @@
-(* $Id: link_wlex.src,v 1.1 2002/08/28 23:53:10 gerd Exp $
+(* $Id: link_wlex.src,v 1.2 2002/08/31 23:18:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -267,17 +267,17 @@ let lexer_set =
     scan_within_tag       = ${scan_within_tag}.scan_within_tag e;
     scan_document_type    = ${scan_document_type}.scan_document_type e;
     scan_declaration      = ${scan_declaration}.scan_declaration e;
-    scan_content_comment  = ${scan_content_comment}.scan_content_comment e;
-    scan_decl_comment     = ${scan_decl_comment}.scan_decl_comment e;
-    scan_document_comment = ${scan_document_comment}.scan_document_comment e;
+    scan_comment          = ${scan_comment}.scan_comment e;
     scan_ignored_section  = ${scan_ignored_section}.scan_ignored_section e;
+    detect_xml_pi         = ${detect_xml_pi}.detect_xml_pi e;
     scan_xml_pi           = ${scan_xml_pi}.scan_xml_pi e;
+    scan_pi_string        = ${scan_pi_string}.scan_pi_string e;
     scan_dtd_string       = ${scan_dtd_string}.scan_dtd_string e;
     scan_content_string   = ${scan_content_string}.scan_content_string e;
     scan_name_string      = ${scan_name_string}.scan_name_string e;
-    scan_only_xml_decl    = ${scan_only_xml_decl}.scan_only_xml_decl e;
     scan_for_crlf         = ${scan_for_crlf}.scan_for_crlf e;
     scan_characters       = ${scan_characters}.scan_characters e;
+    scan_character        = ${scan_character}.scan_character e;
     scan_tag_eb           = ${scan_tag_eb}.scan_tag_eb e;
     scan_tag_eb_att       = ${scan_tag_eb_att}.scan_tag_eb_att e;
   }
@@ -292,17 +292,17 @@ ${scan_content}.lexerset := lexer_set;;
 ${scan_within_tag}.lexerset := lexer_set;;
 ${scan_document_type}.lexerset := lexer_set;;
 ${scan_declaration}.lexerset := lexer_set;;
-${scan_content_comment}.lexerset := lexer_set;;
-${scan_decl_comment}.lexerset := lexer_set;;
-${scan_document_comment}.lexerset := lexer_set;;
+${scan_comment}.lexerset := lexer_set;;
 ${scan_ignored_section}.lexerset := lexer_set;;
+${detect_xml_pi}.lexerset := lexer_set;;
 ${scan_xml_pi}.lexerset := lexer_set;;
+${scan_pi_string}.lexerset := lexer_set;;
 ${scan_dtd_string}.lexerset := lexer_set;;
 ${scan_content_string}.lexerset := lexer_set;;
 ${scan_name_string}.lexerset := lexer_set;;
-${scan_only_xml_decl}.lexerset := lexer_set;;
 ${scan_for_crlf}.lexerset := lexer_set;;
 ${scan_characters}.lexerset := lexer_set;;
+${scan_character}.lexerset := lexer_set;;
 ${scan_tag_eb}.lexerset := lexer_set;;
 ${scan_tag_eb_att}.lexerset := lexer_set;;
 
@@ -312,6 +312,9 @@ ${scan_tag_eb_att}.lexerset := lexer_set;;
  * History:
  * 
  * $Log: link_wlex.src,v $
+ * Revision 1.2  2002/08/31 23:18:44  gerd
+ * 	Fixes etc.
+ *
  * Revision 1.1  2002/08/28 23:53:10  gerd
  * 	Initial revision.
  *

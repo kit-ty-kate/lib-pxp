@@ -1,4 +1,4 @@
-(* $Id: char_classes_generic.def,v 1.1 2002/08/28 23:53:10 gerd Exp $
+(* $Id: char_classes_generic.def,v 1.2 2002/08/31 23:18:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -35,7 +35,7 @@
 
 let character_nonascii =
    (* PRIVATE *)
-   [#x0080-#xD7FF] | [#xE000-#xFFFD] (* | [#x10000-#x10FFFF] *)
+   [#x0080-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
 ;;
 
 let character =
@@ -151,78 +151,97 @@ let extender =
 
 let ascii_digit = ['0'-'9']
 
-let ascii_hexdigit = ['0'-'9' 'a'-'h' 'A'-'H']
+let ascii_hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
 
-(* TODO: shorter and more systematic names.
- * char_but_c1_c2_c3, e.g.
- * char_but_qmark, char_but_rbracket_rangle
+(* Naming convention:
+ * 
+ * char_but_c1_c2_c3,  means: character but not c1, c2, c3, for example:
+ * char_but_qmark = character but not question mark
  *
  * pchar_XXX for printable chars (i.e. excluding control chars)
  *
- * maybe the following style is better:
+ * IDEA: maybe the following style is better:
  * let char_but_qmark =
  *   ctrl_char | [^ '\000'-'\031' '\128'-'\255' '?' ] | character_nonascii
  *)
 
-let character_except_question_mark =                    (* '?' = '\063' *)
+let char_but_qmark =                    
+  (* '?' = '\063' *)
   [ '\009' '\010' '\013' '\032'-'\062' '\064'-'\127' ]
 | character_nonascii
 
 
-let character_except_right_angle_bracket =              (* '>' = '\062' *)
+let char_but_rangle =
+  (* '>' = '\062' *)
   [ '\009' '\010' '\013' '\032'-'\061' '\063'-'\127' ]
 | character_nonascii
 
 
-let character_except_minus =                            (* '-' = '\045' *)
+let char_but_minus =
+  (* '-' = '\045' *)
   [ '\009' '\010' '\013' '\032'-'\044' '\046'-'\127' ]
 | character_nonascii
 
 
-let character_except_quot =                             (* '"' = '\034' *)
+let char_but_quot =
+  (* '"' = '\034' *)
   [ '\009' '\010' '\013' '\032'-'\033' '\035'-'\255' ]
 | character_nonascii
 
 
-let character_except_apos =                             (* '\'' = '\039' *)
+let char_but_apos =
+  (* '\'' = '\039' *)
   [ '\009' '\010' '\013' '\032'-'\038' '\040'-'\255' ]
 | character_nonascii
 
 
-let normal_character = 
+let pchar_text = 
   (* Character except '&' = '\038', '<' = '\060', ']' = '\093', 
-   * '{' = '\123', '}' = '\125', and CR LF 
+   * '{' = '\123', '}' = '\125', and TAB CR LF 
    *)
-  [ '\009' '\032'-'\037' '\039'-'\059' '\061'-'\092' '\094'-'\122'
+  [ '\032'-'\037' '\039'-'\059' '\061'-'\092' '\094'-'\122'
+    '\124' '\126' '\127'
+  ]
+| character_nonascii
+
+let pchar_ebatt = 
+  (* Character except '&' = '\038', '<' = '\060', '"' = '\034', "'" = '\039',
+   * '{' = '\123', '}' = '\125', and TAB CR LF 
+   *)
+  [ '\032' '\033' '\035'-'\037' '\040'-'\059' '\061'-'\092' '\094'-'\122'
     '\124' '\126' '\127'
   ]
 | character_nonascii
 
 
-let character_except_rbracket =                               (* ']' = '\093' *)  [ '\009' '\010' '\013' '\032'-'\092' '\094'-'\127' ]
+let char_but_rbracket =
+  (* ']' = '\093' *)  
+  [ '\009' '\010' '\013' '\032'-'\092' '\094'-'\127' ]
 | character_nonascii
 
 
-let character_except_rbracket_rangle =          (* ']' = '\093', '>' = '\062' *)  [ '\009' '\010' '\013' '\032'-'\061' '\063'-'\092' '\094'-'\127' ]
+let char_but_rbracket_rangle =
+  (* ']' = '\093', '>' = '\062' *)  
+  [ '\009' '\010' '\013' '\032'-'\061' '\063'-'\092' '\094'-'\127' ]
 | character_nonascii
 
 
-let printable_character_except_amp_lt =
+let pchar_but_amp_lt =
   (* '&' = '\038', '<' = '\060' *)
   [ '\032'-'\037' '\039'-'\059' '\061'-'\127']
 | character_nonascii
 
 
-let printable_character_except_amp_percent =
+let pchar_but_amp_percent =
   (* '%' = '\037', '&' = '\038' *)
   [ '\032'-'\036' '\039'-'\127']
 | character_nonascii
 
 
-let character_except_special =
+let char_ignore =
   (* '<'=060, ']'=093, '"'=034, '\''=039 *)
   [ '\009' '\010' '\013' '\032'-'\033' '\035'-'\038' '\040'-'\059' 
-                         '\061'-'\092' '\094'-'\127' ]
+    '\061'-'\092' '\094'-'\127' ]
 | character_nonascii
 
 
@@ -233,6 +252,9 @@ let character_except_special =
  * History:
  * 
  * $Log: char_classes_generic.def,v $
+ * Revision 1.2  2002/08/31 23:18:44  gerd
+ * 	Fixes etc.
+ *
  * Revision 1.1  2002/08/28 23:53:10  gerd
  * 	Initial revision.
  *
