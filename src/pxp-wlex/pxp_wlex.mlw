@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mlw,v 1.1 2001/07/04 23:26:57 gerd Exp $
+(* $Id: pxp_wlex.mlw,v 1.2 2002/04/04 20:48:48 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -23,6 +23,7 @@ classes
 {
   open Pxp_types
   open Pxp_lexer_types
+  open Pxp_lexing
 
   class dummy_entity = object end
 
@@ -663,6 +664,9 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mlw,v $
+ * Revision 1.2  2002/04/04 20:48:48  gerd
+ * 	Added missing "open"
+ *
  * Revision 1.1  2001/07/04 23:26:57  gerd
  * 	Initial revision
  *
