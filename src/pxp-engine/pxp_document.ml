@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.25 2001/06/28 22:42:07 gerd Exp $
+(* $Id: pxp_document.ml,v 1.26 2001/06/29 14:45:32 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -3174,17 +3174,16 @@ exception Skip;;
 
 let map_tree ~pre ?(post=(fun x -> x)) base =
   let rec map_rec n =
-    (try
-      let n' = pre n in
-      if n' # node_type <> T_data then begin
-	let children = n # sub_nodes in
-	let children' = map_children children in
-	n' # set_nodes children';
-      end;
-      post n'
-    with
-	Skip -> raise Not_found
-    )
+    let n' = pre n in
+    ( match n' # node_type with
+	  T_element _ 
+	| T_super_root ->
+	    let children = n # sub_nodes in
+	    let children' = map_children children in
+	    n' # set_nodes children';
+	| _ -> ()
+    );
+    post n'
   and map_children l =
     match l with
 	[] -> []
@@ -3193,28 +3192,27 @@ let map_tree ~pre ?(post=(fun x -> x)) base =
 	     let child' = map_rec child in
 	     child' :: map_children l'
 	   with
-	       Not_found ->
+	       Skip ->
 		 map_children l'
 	  )
   in
-  map_rec base
+  try map_rec base with Skip -> raise Not_found
 ;;
 
 
 let map_tree_sibl ~pre ?(post=(fun _ x _ -> x)) base =
   let rec map_rec l n r =
-    (try
-      let n' = pre l n r in
-      if n' # node_type <> T_data then begin
-	let children = n # sub_nodes in
-	let children' = map_children None children in
-	let children'' = postprocess_children None children' in
-	n' # set_nodes children'';
-      end;
-      n'
-    with
-	Skip -> raise Not_found
-    )
+    let n' = pre l n r in
+    ( match n' # node_type with
+	  T_element _ 
+	| T_super_root ->
+	    let children = n # sub_nodes in
+	    let children' = map_children None children in
+	    let children'' = postprocess_children None children' in
+	    n' # set_nodes children'';
+	| _ -> ()
+    );
+    n'
   and map_children predecessor l =
     (match l with
 	 [] -> []
@@ -3227,7 +3225,7 @@ let map_tree_sibl ~pre ?(post=(fun _ x _ -> x)) base =
 	      let child' = map_rec predecessor child successor in
 	      child' :: map_children (Some child) l'
 	    with
-		Not_found ->
+		Skip ->
 		  map_children (Some child) l'
 	   )
     )
@@ -3248,21 +3246,19 @@ let map_tree_sibl ~pre ?(post=(fun _ x _ -> x)) base =
 	   )
     )
   in
-  let base' = map_rec None base None in
-  try post None base' None with Skip -> raise Not_found
+  try 
+    let base' = map_rec None base None in
+    post None base' None
+  with Skip -> raise Not_found
 ;;
 
 
 let iter_tree ?(pre=(fun x -> ())) ?(post=(fun x -> ())) base =
   let rec iter_rec n =
-    (try
-      pre n;
-      let children = n # sub_nodes in
-      iter_children children;
-      post n
-    with
-	Skip -> raise Not_found
-    )
+    pre n;
+    let children = n # sub_nodes in
+    iter_children children;
+    post n
   and iter_children l =
     match l with
 	[] -> []
@@ -3271,24 +3267,23 @@ let iter_tree ?(pre=(fun x -> ())) ?(post=(fun x -> ())) base =
 	     iter_rec child;
 	     iter_children l'
 	   with
-	       Not_found ->
+	       Skip ->
 		 iter_children l'
 	  )
   in
-  iter_rec base
+  try
+    iter_rec base
+  with
+      Skip -> ()
 ;;
 
 
 let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
   let rec iter_rec l n r =
-    (try
-      pre l n r;
-      let children = n # sub_nodes in
-      iter_children None children;
-      post l n r
-    with
-	Skip -> raise Not_found
-    )
+    pre l n r;
+    let children = n # sub_nodes in
+    iter_children None children;
+    post l n r
   and iter_children predecessor l =
     (match l with
 	 [] -> []
@@ -3301,12 +3296,15 @@ let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
 	      iter_rec predecessor child successor;
 	      iter_children (Some child) l'
 	    with
-		Not_found ->
+		Skip ->
 		  iter_children (Some child) l'
 	   )
     )
   in
-  iter_rec None base None
+  try
+    iter_rec None base None
+  with
+      Skip -> ()
 ;;
 
 (**********************************************************************)
@@ -3740,6 +3738,10 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.26  2001/06/29 14:45:32  gerd
+ * 	Fixed: map_tree etc. do not catch a Not_found raised in the
+ * passed closure
+ *
  * Revision 1.25  2001/06/28 22:42:07  gerd
  * 	Fixed minor problems:
  * 	- Comments must be contained in one entity
