@@ -2,5 +2,6 @@
 
 set -e
 
+(cd recode && ./test_recode)
 (cd canonxml && ./run_canonxml)
 (cd negative && ./run_negative)
