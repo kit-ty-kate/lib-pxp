@@ -236,6 +236,11 @@ and solutions that are detected shortly before or after the release.</p>
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 1.1.2:</p> <p>Improved  write method
+for whole documents. It can now also output a reference to an external
+DTD.</p>
+	</li>
+	<li>
 	  <p>Changed in 1.1.1:</p> <p>Minor changes for O'Caml 3.03-alpha.
 The interfaces have not been modified.</p>
 	</li>
