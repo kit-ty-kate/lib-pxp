@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.2 2000/06/14 22:19:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -181,10 +181,11 @@ class dtd :
 
 (* ---------------------------------------------------------------------- *)
 
-and dtd_element : dtd -> string ->
+and dtd_element : dtd -> string -> 
   (* Creation:
    *   new dtd_element init_dtd init_name:
    * creates a new dtd_element object for init_dtd with init_name.
+   * The strings are represented in the same encoding as init_dtd.
    *)
   object
 
@@ -206,6 +207,9 @@ and dtd_element : dtd -> string ->
        * Furthermore, it is set whether the element occurs in an external
        * entity ('extdecl').
        *)
+
+    method encoding : Pxp_types.rep_encoding
+      (* Return the encoding of the strings *)
 
     method allow_arbitrary : unit
       (* After this method has been invoked, the object changes its behaviour:
@@ -282,15 +286,16 @@ and dtd_element : dtd -> string ->
 
 (* ---------------------------------------------------------------------- *)
 
-and dtd_notation : string -> Pxp_types.ext_id ->
+and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
   (* Creation:
-   *    new dtd_notation a_name an_external_ID
+   *    new dtd_notation a_name an_external_ID init_encoding
    * creates a new dtd_notation object with the given name and the given
    * external ID.
    *)
   object
     method name : string
     method ext_id : Pxp_types.ext_id
+    method encoding : Pxp_types.rep_encoding
 
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
       (* write_compact_as_latin1 os:
@@ -301,7 +306,7 @@ and dtd_notation : string -> Pxp_types.ext_id ->
 
 (* ---------------------------------------------------------------------- *)
 
-and proc_instruction : string -> string ->
+and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
   (* Creation:
    *   new proc_instruction a_target a_value
    * creates a new proc_instruction object with the given target string and
@@ -311,6 +316,7 @@ and proc_instruction : string -> string ->
   object
     method target : string
     method value : string
+    method encoding : Pxp_types.rep_encoding
 
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
       (* write_compact_as_latin1 os:
@@ -327,6 +333,9 @@ and proc_instruction : string -> string ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.2  2000/06/14 22:19:06  gerd
+ * 	Added checks such that it is impossible to mix encodings.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

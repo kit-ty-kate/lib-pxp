@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_document.mli,v 1.2 2000/06/14 22:19:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -266,8 +266,17 @@ class type [ 'ext ] node =
       (* Sets the attributes but does not check whether they match the DTD.
        *)
 
-     method dtd : dtd
-       (* Get the DTD *)
+    method dtd : dtd
+      (* Get the DTD. Fails if no DTD is specified (which is impossible if
+       * 'create_element' or 'create_data' have been used to create this
+       * object)
+       *)
+
+    method encoding : Pxp_types.rep_encoding
+      (* Get the encoding which is always the same as the encoding of the
+       * DTD. See also method 'dtd' (Note: This method fails, too, if
+       * no DTD is present.)
+       *)
 
     method create_element : dtd -> node_type -> (string * string) list -> 'ext node
       (* create an "empty copy" of this element:
@@ -281,7 +290,7 @@ class type [ 'ext ] node =
       (* create an "empty copy" of this data node: *)
 
     method local_validate : unit
-      (* Check that this element conforms to the DTD: *)
+      (* Check that this element conforms to the DTD. *)
 
     method keep_always_whitespace_mode : unit
       (* Normally, add_node does not accept data nodes when the DTD does not
@@ -325,17 +334,63 @@ class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
 class [ 'ext ] document :
   Pxp_types.collect_warnings -> 
   object
+    (* Documents: These are containers for root elements and for DTDs.
+     * 
+     * Important invariant: A document is either empty (no root element,
+     * no DTD), or it has both a root element and a DTD.
+     *
+     * A fresh document created by 'new' is empty.
+     *)
+
     method init_xml_version : string -> unit
+	(* Set the XML version string of the XML declaration. *)
+
     method init_root : 'ext node -> unit
+	(* Set the root element. It is expected that the root element has
+	 * a DTD.
+	 * Note that 'init_root' checks whether the passed root element
+	 * has the type expected by the DTD. The check takes into account
+	 * that the root element might be a virtual root node.
+	 *)
 
     method xml_version : string
+      (* Returns the XML version from the XML declaration. Returns "1.0"
+       * if the declaration is missing.
+       *)
+
     method xml_standalone : bool
+      (* Returns whether this document is declared as being standalone.
+       * This method returns the same value as 'standalone_declaration'
+       * of the DTD (if there is a DTD).
+       * Returns 'false' if there is no DTD.
+       *)
+
     method dtd : dtd
+      (* Returns the DTD of the root element. 
+       * Fails if there is no root element.
+       *)
+
+    method encoding : Pxp_types.rep_encoding
+      (* Returns the string encoding of the document = the encoding of
+       * the root element = the encoding of the element tree = the
+       * encoding of the DTD.
+       * Fails if there is no root element.
+       *)
+
     method root : 'ext node
+      (* Returns the root element, or fails if there is not any. *)
 
     method add_pinstr : proc_instruction -> unit
+      (* Adds a processing instruction to the document container.
+       * The parser does this for PIs occurring outside the DTD and outside
+       * the root element.
+       *)
+
     method pinstr : string -> proc_instruction list
+      (* Return all PIs for a passed target string. *)
+
     method pinstr_names : string list
+      (* Return all target strings of all PIs. *)
 
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
       (* Write the document to the passed
@@ -352,6 +407,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.2  2000/06/14 22:19:06  gerd
+ * 	Added checks such that it is impossible to mix encodings.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_yacc.m2y,v 1.2 2000/06/14 22:19:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -650,7 +650,7 @@ declaration():
     {{ () }}
 | pi: PI
     {{ let target, value = pi in
-       let pi = new proc_instruction target value in
+       let pi = new proc_instruction target value config.encoding in
        dtd # add_pinstr pi
     }}
 | Ignore
@@ -1288,7 +1288,7 @@ notationdecl():
 	  | _ -> raise(WF_error("One of PUBLIC or SYSTEM expected"))
       in
       if extend_dtd then begin
-	let no = new dtd_notation name xid in
+	let no = new dtd_notation name xid config.encoding in
 	dtd # add_notation no
       end
     }}
@@ -1559,7 +1559,7 @@ pi():
     {{ let target,value = pi in
       if n_tags_open = 0 & not config.virtual_root
       then
-	doc # add_pinstr (new proc_instruction target value)
+	doc # add_pinstr (new proc_instruction target value config.encoding)
       else begin
 	(* Special case: if processing instructions are processed inline,
 	 * they are wrapped into artificial "-pi" objects.
@@ -1578,7 +1578,8 @@ pi():
 	    exemplar # create_element dtd (T_element "-pi") [] in
 	  if not aa then dtd # disallow_arbitrary;   (* restore old state *)
 	  (* Put the PI into the 'wrapper' *)
-	  wrapper # add_pinstr (new proc_instruction target value);
+	  wrapper # add_pinstr 
+	              (new proc_instruction target value config.encoding);
 	  wrapper # local_validate;                  (* succeeds always   *)
 	  self # current # add_node wrapper;
 	  (* Note that a change in the function validate_content ensures
@@ -1588,7 +1589,8 @@ pi():
 	end
 	else
 	  (* Normal behaviour: Add the PI to the parent element. *)
-	  self # current # add_pinstr (new proc_instruction target value)
+	  self # current # add_pinstr 
+	                     (new proc_instruction target value config.encoding)
       end
     }}
 
@@ -1831,6 +1833,9 @@ let default_config =
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.2  2000/06/14 22:19:06  gerd
+ * 	Added checks such that it is impossible to mix encodings.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

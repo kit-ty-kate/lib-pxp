@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_document.ml,v 1.2 2000/06/14 22:19:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -59,6 +59,7 @@ class type [ 'ext ] node =
     method find : string -> 'ext node
     method reset_finder : unit
     method dtd : dtd
+    method encoding : rep_encoding
     method create_element :
       dtd -> node_type -> (string * string) list -> 'ext node
     method create_data : dtd -> string -> 'ext node
@@ -245,8 +246,13 @@ class virtual ['ext] node_impl an_ext =
 
     method dtd =
       match dtd with
-	  None -> raise Not_found
+	  None -> failwith "Pxp_document.node_impl#dtd: No DTD available"
 	| Some d -> d
+
+    method encoding =
+      match dtd with
+	  None -> failwith "Pxp_document.node_impl#encoding: No DTD available"
+	| Some d -> d # encoding
 
     method internal_adopt (new_parent : 'ext node option) =
       begin match parent with
@@ -499,6 +505,12 @@ class ['ext] element_impl an_ext : ['ext] node =
 	  ()
 
       method add_pinstr pi =
+	begin match dtd with
+	    None -> ()
+	  | Some d -> 
+	      if pi # encoding <> d # encoding then
+		failwith "Pxp_document.element_impl # add_pinstr: Inconsistent encodings";
+	end;
 	let name = pi # target in
 	Hashtbl.add (Lazy.force pinstr) name pi
 
@@ -942,15 +954,26 @@ class ['ext] document the_warner =
 
     method dtd =
       match dtd with
-	  None -> failwith "Document has no dtd"
+	  None -> failwith "Pxp_document.document#dtd: Document has no DTD"
 	| Some d -> d
+
+    method encoding =
+      match dtd with
+	  None -> failwith "Pxp_document.document#encoding: Document has no DTD"
+	| Some d -> d # encoding
 
     method root =
       match root with
-	  None -> failwith "Document has no root element"
+	  None -> failwith "Pxp_document.document#root: Document has no root element"
 	| Some r -> r
 
     method add_pinstr pi =
+      begin match dtd with
+	  None -> ()
+	| Some d -> 
+	    if pi # encoding <> d # encoding then
+	      failwith "Pxp_document.document # add_pinstr: Inconsistent encodings";
+      end;
       let name = pi # target in
       Hashtbl.add (Lazy.force pinstr) name pi
 
@@ -989,6 +1012,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.2  2000/06/14 22:19:06  gerd
+ * 	Added checks such that it is impossible to mix encodings.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.2 2000/06/14 22:19:06 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -90,6 +90,7 @@ class dtd  the_warner init_encoding =
 
     method add_element el =
       (* raises Not_found if 'el' has already been added *)
+      (* Note: 'el' is encoded in the same way as 'self'! *)
       let name = el # name in
       check_name warner name;
       if Hashtbl.mem elements name then
@@ -106,6 +107,8 @@ class dtd  the_warner init_encoding =
       (* raises Validation_error if the predefines entities 'lt', 'gt', 'amp',
        * 'quot', and 'apos' are redeclared with an improper value.
        *)
+      if en # encoding <> encoding then
+	failwith "Pxp_dtd.dtd # add_gen_entity: Inconsistent encodings";
       let name = en # name in
       check_name warner name;
       if Hashtbl.mem gen_entities name then begin
@@ -138,6 +141,8 @@ class dtd  the_warner init_encoding =
 
 
     method add_par_entity en =
+      if en # encoding <> encoding then
+	failwith "Pxp_dtd.dtd # add_par_entity: Inconsistent encodings";
       let name = en # name in
       check_name warner name;
       if not (Hashtbl.mem par_entities name) then
@@ -148,6 +153,8 @@ class dtd  the_warner init_encoding =
 
     method add_notation no =
       (* raises Validation_error if 'no' already added *)
+      if no # encoding <> encoding then
+	failwith "Pxp_dtd.dtd # add_notation: Inconsistent encodings";
       let name = no # name in
       check_name warner name;
       if Hashtbl.mem notations name then
@@ -157,6 +164,8 @@ class dtd  the_warner init_encoding =
 
 
     method add_pinstr pi =
+      if pi # encoding <> encoding then
+	failwith "Pxp_dtd.dtd # add_pinstr: Inconsistent encodings";
       let name = pi # target in
       check_name warner name;
       Hashtbl.add pinstr name pi;
@@ -325,6 +334,8 @@ and dtd_element the_dtd the_name =
     method content_model = content_model
 
     method externally_declared = externally_declared
+
+    method encoding = dtd # encoding
 
     method allow_arbitrary =
       allow_arbitrary <- true
@@ -676,12 +687,14 @@ and dtd_element the_dtd the_name =
 
   end
 
-and dtd_notation the_name the_xid =
+and dtd_notation the_name the_xid init_encoding =
   object
     val name = the_name
     val xid = (the_xid : ext_id)
+    val encoding = (init_encoding : Pxp_types.rep_encoding)
     method name = name
     method ext_id = xid
+    method encoding = encoding
 
     method write_compact_as_latin1 os = 
       let write_sysid s =
@@ -716,10 +729,11 @@ and dtd_notation the_name the_xid =
 
   end
 
-and proc_instruction the_target the_value =
+and proc_instruction the_target the_value init_encoding =
   object
     val target = the_target
     val value = (the_value : string)
+    val encoding = (init_encoding : Pxp_types.rep_encoding)
 
     initializer
       match target with
@@ -732,6 +746,7 @@ and proc_instruction the_target the_value =
 
     method target = target
     method value = value
+    method encoding = encoding
 
     method write_compact_as_latin1 os = 
       write os "<?" 0 2;
@@ -748,6 +763,9 @@ and proc_instruction the_target the_value =
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.2  2000/06/14 22:19:06  gerd
+ * 	Added checks such that it is impossible to mix encodings.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
