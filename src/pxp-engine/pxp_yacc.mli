@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.3 2000/07/08 16:26:21 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.4 2000/07/09 17:52:54 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -73,6 +73,12 @@ type config =
 	 *
 	 * Recognizing the "standalone" declaration means that the 
 	 * value of the declaration is scanned and passed to the DTD.
+	 *)
+
+      store_element_positions : bool;
+        (* Whether the file name, the line and the column of the
+	 * beginning of elements are stored in the element nodes.
+	 * This option may be useful to generate helpful error messages.
 	 *)
 
       (* The following options are not implemented, or only for internal
@@ -243,6 +249,9 @@ val parse_wfcontent_entity : config ->
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.4  2000/07/09 17:52:54  gerd
+ * 	New option store_element_positions.
+ *
  * Revision 1.3  2000/07/08 16:26:21  gerd
  * 	Added the signatures of the functions
  * 'extract_dtd_from_document_entity' and 'parse_wfcontent_entity'.
