@@ -45,6 +45,7 @@ distclean:
 	$(MAKE) -C src distclean
 	$(MAKE) -C examples distclean
 	$(MAKE) -C rtests distclean
+	$(MAKE) -C doc distclean
 
 .PHONY: RELEASE
 RELEASE:
