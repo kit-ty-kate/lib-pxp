@@ -1,19 +1,48 @@
+- QA: Large buffers (> 8MB)
+  DONE
+
+- Bug: strip_whitespace and xml:space
+  If xml:space="preserve" the sub elements are not visited at all. It is
+  possible, however, that an inner element resets xml:space="default".
+  DONE
+
+- Pxp_marshal: Wenn die mitgeschickte Encoding "Us-AScii" ist, kann der
+  String in jedem Fall eingelesen werden.
+  DONE
+
+- Lexing.ml-Probleme beheben
+  DONE
+
+- Problem with long DTDs: Forming the DFA for a long DTD takes too long.
+  Example: The XHTML-DTD is read in over 10 seconds.
+  DONE
+
+------------------------------
+
+- Pxp_lexing: fast_from_function programmieren, das direkt den lexbuf
+  benutzt.
+
+- Pxp_dtd.Entity: get_resolver
+
+- Pxp_entity: method copy (relocate)
+
+- Pxp_marshal.relocate_document: copy the entities, too
+
+- Resolvers: get_base_uri
+
+------------------------------
+
+- Separate well-formed documents from validated documents
+  + Generalize DTDs so that schemas can be implemented
+
 - PXP 1.2: Adapter to Nethtml: Parses HTML and converts it to a PXP object
   tree.
-
-- PXP 1.2: Pxp_marshal: also marshal DTDs. Make sure that _all_ attributes
-  are marshaled. (It seems that id, standalone_declaration are missing.)
-
-- PXP 1.2: Pxp_marshal.relocate
 
 - PXP 1.2: embedded XML (see below)
 
 - PXP 1.2: XPATH
 
 - PXP 1.2: Adapter to Netclient
-
-Problem with long DTDs: Forming the DFA for a long DTD takes too long.
-Example: The XHTML-DTD is read in over 10 seconds.
 
 Problems with Pxp_reader: there should be some notion of "relative URI"
 vs. "absolute URI". Currently, processing of relative URIs works only

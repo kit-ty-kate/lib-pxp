@@ -236,6 +236,28 @@ and solutions that are detected shortly before or after the release.</p>
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 1.1.4:</p> <p>This is a bigger bugfix release
+that addresses the following problems:</p>
+	  <p>The parser does no longer show very bad performance when
+large data nodes without linefeeds are parsed.</p>
+	  <p>Another performance problem with bigger DTDs has been solved,
+too. Especially, the XHTML DTD can now be parsed quite quickly.</p>
+	  <p>The interface Pxp_dtd.Entity has been extended, it is now possible
+to access more properties of entities than before.</p>
+	  <p>Pxp_marshal has been revised. It is now possible to recode the
+input or output stream on the fly in order to change the character encoding.
+Furthermore, the functions relocate_subtree and relocate_document allows one
+to marshal an XML tree or a document, and to read the marshaled data 
+immediately to create a copy of the original structure.</p>
+	  <p>Some errors have been fixed in from_file. Especially, this
+function will no longer raise the exception Malformed_URL if the current
+working directory happens to be "/".</p>
+	  <p>Pxp_document.strip_whitespace implements xml:space now correctly.
+In previous versions, xml:space='default' was ignored when it occurred 
+inside an element with xml:space='preserve'. Now the inner xml:space='default'
+overrides the outer xml:space='preserve' as defined in the XML standard.</p> 
+	</li>
+	<li>
 	  <p>Changed in 1.1.3:</p> <p>This release fixes a single
 problem ocurring when PXP is compiled with installed
 netstring-0.10. (There is not any problem with netstring-0.91.)
@@ -424,7 +446,6 @@ very quickly.</p>
 
 	<p>Several bug fixes (but no serious bugs have been found yet).</p>
       </li>
--->
 	<li>
 	  <p>Changed in 1.0:</p>
 	  <p>Support for document order.</p>
@@ -507,7 +528,6 @@ encoded files.</p>
 	  <p>Numerous other changes.</p>
 	</li>
 
-<!--
 	<li>
 	  <p>Changed in 0.2.10:</p>
 	  <p>Bugfix: in the "allow_undeclared_attributes" feature.</p>
