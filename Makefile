@@ -52,7 +52,7 @@ RELEASE:
 
 .PHONY: dist
 dist: RELEASE
-	version=`cat RELEASE`; cd ..; gtar czf $(NAME)-$$version.tar.gz --exclude='*/CVS*' --exclude="*/*~" --exclude="*/Makefile.conf" --exclude="*/META" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*/doc/readme.dtd" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
+	version=`cat RELEASE`; cd ..; gtar czf $(NAME)-$$version.tar.gz --exclude='*/CVS*' --exclude="*~" --exclude="*/*~" --exclude="*/Makefile.conf" --exclude="*/META" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*/doc/readme.dtd" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
 
 .PHONY: tag-release
 tag-release: RELEASE
