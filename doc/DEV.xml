@@ -48,6 +48,56 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.0.98.6:</em></p>
+	<p>This is a bigger change, including an initial implementation of
+namespaces and some cleanup in Pxp_document. In particular, the following
+modifications have been done:</p>
+	<p>In Pxp_document, there is now a separate class for every node
+type. You must now instantiate comment_impl in order to get a comment node
+(same applies to super_root_impl, pinstr_impl). It is no longer possible to
+instantiate element_impl in these cases (leads to error message that the 
+method internal_init_other is not available).</p>
+	<p>Namespaces: PXP implements namespaces by a technique called
+"prefix normalization". This technique simplifies namespaces a lot and makes
+them as compatible as possible with non-namespace processing. As defined 
+by W3C, namespaces are declared by a namespace URI (a unique identifier) but
+are accessed using a shorter namespace prefix. The problem is that the prefixes
+need not to be unique, even within a single document. To address this problem
+and to avoid complications, PXP _rewrites_ the prefixes while the document
+is being parsed such that the application using PXP only sees unique 
+prefixes. This means that every prefix corresponds to exactly one namespace
+URI once the document has been parsed by PXP. The mapping between the rewritten
+prefixes (called normprefixes) and the namespace URI is managed by a 
+namespace_manager (defined in Pxp_document). In order to control the names of
+the normprefixes it is possible to fill the namespace_manager with 
+(normprefix, uri) pairs before the parser is called. This results in a 
+programming style where it is still possible to identify element types by
+a single string (and not by an expanded_name as suggested in some W3C 
+standards). For example, in order to find out whether node x is a HTML anchor,
+it is sufficient to check whether x # node_type = T_element "html:a", and not
+necessary to perform the much more complicated operation
+x # localname = "a" &amp;&amp; x # namespace_uri = "http://www.w3c.org/TR/xhtml".</p>
+	<p>Namespace normalization has the advantage that DTDs can declare
+the XML objects using normalized prefixes.</p>
+	<p>In order to activate namespace processing, the following
+modifications to existing code are sufficient: (1) Create a namespace_manager
+(2) Set the Pxp_yacc.config label enable_namespace_processing to the
+namespace manager object (3) Use namespace_element_impl instead of
+element_impl. After these steps have been carried out, the application sees
+normalized element and attribute names (instead of unprocessed ones), and
+the additional namespace methods of namespace_element_impl are available
+(e.g. method namespace_uri to get the URI of the namespace).</p>
+	<p>The namespace support is currently very experimental; your comments
+are welcome. There are some known problems: (1) Pxp_marshal and Pxp_codewriter
+have not yet been updated for namespaces, they may or may not work for your
+application; (2) It is not checked whether element and attribute names contain
+only one colon; (3) If you do not set the namespace_manager manually, PXP
+simply chooses the first occurrence of a prefix as its normalized prefix.
+If you do not work with explit prefixes but only with default prefixes
+(using attribute xmlns="some uri"), PXP maps these to the normprefix
+"default" - this might not be what you want.</p>
+      </li>
+
       <li><p><em>1.0.98.5:</em></p>
 	<p>Bugfix in Pxp_reader.combine.</p>
 	<p>Some changes that could PXP make work under Cygwin.</p>
