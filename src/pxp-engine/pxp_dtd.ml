@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.3 2000/07/04 22:10:55 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.4 2000/07/09 00:13:37 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -21,12 +21,14 @@ class dtd  the_warner init_encoding =
     val lexerset     = Pxp_lexers.get_lexer_set init_encoding
 
     val elements     = (Hashtbl.create 100 : (string,dtd_element) Hashtbl.t)
-    val mutable element_names = []
     val gen_entities = (Hashtbl.create 100 : (string,entity * bool) Hashtbl.t)
     val par_entities = (Hashtbl.create 100 : (string,entity) Hashtbl.t)
     val notations    = (Hashtbl.create 100 : (string,dtd_notation) Hashtbl.t)
-    val mutable notation_names = []
     val pinstr       = (Hashtbl.create 100 : (string,proc_instruction) Hashtbl.t)
+    val mutable element_names = []
+    val mutable gen_entity_names = []
+    val mutable par_entity_names = []
+    val mutable notation_names = []
     val mutable pinstr_names = []
 
     val mutable allow_arbitrary = false
@@ -136,8 +138,10 @@ class dtd  the_warner init_encoding =
 	else
 	  warner # warn ("Entity `" ^ name ^ "' declared twice")
       end
-      else
-	Hashtbl.add gen_entities name (en, extdecl)
+      else begin
+	Hashtbl.add gen_entities name (en, extdecl);
+	gen_entity_names <- name :: gen_entity_names
+      end
 
 
     method add_par_entity en =
@@ -145,8 +149,10 @@ class dtd  the_warner init_encoding =
 	failwith "Pxp_dtd.dtd # add_par_entity: Inconsistent encodings";
       let name = en # name in
       check_name warner name;
-      if not (Hashtbl.mem par_entities name) then
-	Hashtbl.add par_entities name en
+      if not (Hashtbl.mem par_entities name) then begin
+	Hashtbl.add par_entities name en;
+	par_entity_names <- name :: par_entity_names
+      end
       else
 	warner # warn ("Entity `" ^ name ^ "' declared twice")
 
@@ -210,6 +216,9 @@ class dtd  the_warner init_encoding =
 	    raise(WF_error("Reference to undeclared general entity `" ^ name ^ "'"))
 
 
+    method gen_entity_names = gen_entity_names
+
+
     method par_entity name =
       (* returns the entity 'name' or raises Validation_error if not found *)
       try
@@ -217,6 +226,9 @@ class dtd  the_warner init_encoding =
       with
 	  Not_found ->
 	    raise(WF_error("Reference to undeclared parameter entity `" ^ name ^ "'"))
+
+
+    method par_entity_names = par_entity_names
 
 
     method notation name =
@@ -765,6 +777,9 @@ and proc_instruction the_target the_value init_encoding =
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.4  2000/07/09 00:13:37  gerd
+ * 	Added methods gen_entity_names, par_entity_names.
+ *
  * Revision 1.3  2000/07/04 22:10:55  gerd
  * 	Update: collect_warnings -> drop_warnings.
  * 	Update: Case ext_id = Anonymous.

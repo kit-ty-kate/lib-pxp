@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.2 2000/06/14 22:19:06 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.3 2000/07/09 00:13:37 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -128,10 +128,16 @@ class dtd :
        * external entity.
        *)
 
+    method gen_entity_names : string list
+      (* returns the list of all general entity names *)
+
     method par_entity : string -> Pxp_entity.entity
       (* looks up the parameter entity with the given name. Raises
        * Validation_error if the entity cannot be found.
        *)
+
+    method par_entity_names : string list
+      (* returns the list of all parameter entity names *)
 
     method notation : string -> dtd_notation
       (* looks up the notation declaration with the given name. Raises
@@ -333,6 +339,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.3  2000/07/09 00:13:37  gerd
+ * 	Added methods gen_entity_names, par_entity_names.
+ *
  * Revision 1.2  2000/06/14 22:19:06  gerd
  * 	Added checks such that it is impossible to mix encodings.
  *
