@@ -20,10 +20,13 @@
 <!ENTITY u1 SYSTEM "file-u1" NDATA n1>
 <!ENTITY u2 SYSTEM "file-u2" NDATA n2>
 
+<!-- comment 1 -->
 <?pi1 args ...?>
 ]>
 
+<!-- comment 2 -->
 <a u="1" w="q" x="n2">
+  <!-- comment 3 -->
   <b>
     <?pi2 args ...?>
     This is text!
@@ -32,6 +35,10 @@
       <d/>
     </a>
   </b>
+  <!-- comment 4 -->
 </a>
 
+<!-- comment 5 -->
 <?pi3 args ...?>
+<!-- comment 6 -->
+
