@@ -39,7 +39,7 @@
  * - char_but_apos:              All characters but "'"
  * - char_but_rbracket:          All characters but ']'
  * - char_but_rbracket_rangle:   All characters but ']' and '>'
- * - char_ignore:                (Currently:) All characters but '<', ']', 
+ * - char_ignore:                (Currently:) All characters but '<', ']',
  *                               '"', "'"
  * - pchar_but_amp_lt:           All non-ctrl chars but '&', and '<'
  * - pchar_but_amp_percent:      All non-ctrl chars but '&', and '%'
@@ -60,18 +60,18 @@ let name = ( letter | '_' | ':' ) namechar*
 
 let nmtoken = namechar+
 
-let pi_string = char_but_qmark* 
-                ( '?' char_but_rangle char_but_qmark* )* 
+let pi_string = char_but_qmark*
+                ( '?' char_but_rangle char_but_qmark* )*
                 '?'?
 (* A pi_string is the string inside a processing instruction <?...?> *)
 
 
-let comment_string = char_but_minus* 
+let comment_string = char_but_minus*
                      ('-' char_but_minus+ )*
 
 (* A comment_string is the string inside comment delimiters <!-- ... --> *)
 
-let cdata_string = 
+let cdata_string =
   char_but_rbracket*
   ( "]" char_but_rbracket+ |
     "]]" ']'* char_but_rbracket_rangle char_but_rbracket*
@@ -84,7 +84,8 @@ let cdata_string =
 (* ---------------------------------------------------------------------- *)
 (* [HEADER] *)
 
-{
+(* The common header for all output formats *)
+
   open Pxp_types
   open Pxp_lexer_types
   open Pxp_lex_aux
@@ -92,9 +93,53 @@ let cdata_string =
 
   let lexerset = ref (Pxp_lexers.dummy_lexer_set) ;;
     (* Every lexer module knows its lexerset, so it can call
-     * all other lexer modules by !lexerset.name_of_lexer 
+     * all other lexer modules by !lexerset.name_of_lexer
      *)
-}
+
+(* ---------------------------------------------------------------------- *)
+(* [HEADER_OCAMLLEX] *)
+
+(* The specific header for the "ocamllex" output format *)
+
+let lexeme_len = Pxp_lexing.lexeme_len
+  (* Length in _characters_ *)
+
+let sub_lexeme = Pxp_lexing.sub_lexeme
+  (* Index args given as character counts; returns properly encoded
+   * string
+   *)
+
+let lexeme = Lexing.lexeme
+  (* Returns lexeme as properly encoded string *)
+
+let lexeme_char lb k =
+  Char.code(Lexing.lexeme_char lb k)
+  (* Returns the code point of the character k of the lexeme.
+   * The code point must be correct for ASCII characters, and
+   * must return a non-ASCII number for non-ASCII characters.
+   *)
+
+
+(* ---------------------------------------------------------------------- *)
+(* [HEADER_WLEX] *)
+
+(* The specific header for the "wlex" output format *)
+
+(* The same as for OCAMLLEX: *)
+let lexeme_len = Pxp_lexing.lexeme_len
+let sub_lexeme = Pxp_lexing.sub_lexeme
+let lexeme = Lexing.lexeme
+let lexeme_char lb k = Char.code(Lexing.lexeme_char lb k)
+
+(* ---------------------------------------------------------------------- *)
+(* [HEADER_ULEX] *)
+
+(* The specific header for the "ulex" output format *)
+
+let lexeme_len = Ulexing.lexeme_length
+let sub_lexeme = Ulexing.utf8_sub_lexeme
+let lexeme = Ulexing.utf8_lexeme
+let lexeme_char = Ulexing.lexeme_char
 
 (* ---------------------------------------------------------------------- *)
 (* [RULE] *)
@@ -114,9 +159,9 @@ detect_xml_pi = parse
 
 scan_pi_string = parse
     pi_string "?>"
-      { let len = 
-	  Pxp_lexing.lexeme_len lexbuf in
-	Some (Pxp_lexing.sub_lexeme lexbuf 0 (len-2)) 
+      { let len =
+	  lexeme_len lexbuf in
+	Some (sub_lexeme lexbuf 0 (len-2))
       }
   | ""
       { None }
@@ -128,23 +173,23 @@ scan_pi_string = parse
 
 scan_xml_pi = parse
     name ws*
-      { let s = Lexing.lexeme lexbuf in
-	let j = get_name_end s 0 in
+      { let s = lexeme lexbuf in
+	let j = get_name_end s 0 in   (* Assumes ASCII-compatbility *)
 	Pro_name (String.sub s 0 j)
       }
   | "=" ws*
       { Pro_eq }
   | "'" char_but_apos* "'" ws+
-      { let s = Lexing.lexeme lexbuf in
-	let j = String.index_from s 1 '\'' in
+      { let s = lexeme lexbuf in
+	let j = String.index_from s 1 '\'' in  (* Assumes ASCII-compatbility *)
 	Pro_string (String.sub s 1 (j-1))
       }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | '"' char_but_quot* '"' ws+
-      { let s = Lexing.lexeme lexbuf in
-	let j = String.index_from s 1 '"' in
+      { let s = lexeme lexbuf in
+	let j = String.index_from s 1 '"' in   (* Assumes ASCII-compatbility *)
 	Pro_string (String.sub s 1 (j-1))
       }
   | '"'
@@ -158,7 +203,7 @@ scan_xml_pi = parse
          * raise Malformed_code.
          *)
         !lexerset.scan_character lexbuf;
-	raise (WF_error("Illegal token or character")) 
+	raise (WF_error("Illegal token or character"))
       }
 
 (* ---------------------------------------------------------------------- *)
@@ -167,24 +212,26 @@ scan_xml_pi = parse
 (* scan_document: Lexer for the outermost structures *)
 
 scan_document = parse
-    "<?" 
+    "<?"
       { (* Scan the rest of the processing instruction: *)
 	match !lexerset.scan_pi_string lexbuf with
   	  None ->
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
-	    scan_pi pi !lexerset.scan_xml_pi, Document 
+	    scan_pi pi !lexerset.scan_xml_pi, Document
+            (* scan_pi assumes ASCII-compatbility *)
       }
   | "<!DOCTYPE"
       { tok_Doctype__Document_type }
-  | "<!--" 
+  | "<!--"
       { Comment_begin dummy_entity, (Comment Document) }
   | "<!"
-      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      { raise (WF_error "Declaration either malformed or not allowed in this context")
       }
   | "<" name
-      { let s = Lexing.lexeme lexbuf in
-	( Tag_beg (String.sub s 1 (String.length s - 1), dummy_entity), 
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-1) in
+	( Tag_beg (s, dummy_entity),
 	  Within_tag_entry
         )
       }
@@ -210,19 +257,21 @@ scan_document = parse
 
 scan_document_type = parse
     name
-      { let s = Lexing.lexeme lexbuf in
+      { let s = lexeme lexbuf in
 	Name s, Document_type }
   | ws+
       { tok_Ignore__Document_type }
   | '"' char_but_quot* '"'
-      { let s = Lexing.lexeme lexbuf in
-	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	(Unparsed_string s), Document_type }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" char_but_apos* "'"
-      { let s = Lexing.lexeme lexbuf in
-	(Unparsed_string (String.sub s 1 (String.length s - 2))), Document_type }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	(Unparsed_string s), Document_type }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
@@ -232,9 +281,9 @@ scan_document_type = parse
       { tok_Doctype_rangle__Document }
   | eof
       { tok_Eof__Document_type }
-  | '&' 
+  | '&'
       { raise (WF_error("References to general entities not allowed here")) }
-  | '%' 
+  | '%'
       { raise (WF_error("References to parameter entities not allowed here")) }
   | ""
       { (* Nothing matches: If at least a valid character follows, raise
@@ -252,7 +301,7 @@ scan_document_type = parse
 
 scan_comment = parse
     "-->"
-      { fun lexid -> 
+      { fun lexid ->
           Comment_end dummy_entity, lexid }
   | "--"
       { fun lexid ->
@@ -262,7 +311,7 @@ scan_comment = parse
           Comment_material "-", (Comment lexid) }
   | char_but_minus+
       { fun lexid ->
-	  Comment_material(Lexing.lexeme lexbuf), (Comment lexid) }
+	  Comment_material(lexeme lexbuf), (Comment lexid) }
   | eof
       { fun lexid -> Eof, (Comment lexid) }
   | _
@@ -278,16 +327,17 @@ scan_declaration = parse
     ws+
       { tok_Ignore__Declaration }
   | '%' name ';'
-      { let s = Lexing.lexeme lexbuf in
-	(PERef (String.sub s 1 (String.length s - 2))), Declaration }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	(PERef s), Declaration }
   | '%'
       { tok_Percent__Declaration }
-  | '&' 
+  | '&'
       { raise(WF_error("References to general entities not allowed in DTDs")) }
   | name
-      { Name (Lexing.lexeme lexbuf), Declaration }
+      { Name (lexeme lexbuf), Declaration }
   | nmtoken
-      { Nametoken (Lexing.lexeme lexbuf), Declaration }
+      { Nametoken (lexeme lexbuf), Declaration }
   | '+'
       { tok_Plus__Declaration }
   | '*'
@@ -300,9 +350,9 @@ scan_declaration = parse
       { tok_Qmark__Declaration }
   | '('
       { tok_Lparen__Declaration }
-  | ")+" 
+  | ")+"
       { tok_RparenPlus__Declaration }
-  | ")*" 
+  | ")*"
       { tok_RparenStar__Declaration }
   | ")?"
       { tok_RparenQmark__Declaration }
@@ -339,20 +389,25 @@ scan_declaration = parse
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
 	    scan_pi pi !lexerset.scan_xml_pi, Declaration
+	    (* scan_pi assume ASCII-compatibility *)
       }
   | '"' [^ '"']* '"'
-      { let s = Lexing.lexeme lexbuf in
+      { let s = lexeme lexbuf in
         (* Check that characters are well-formed: *)
 	ignore(!lexerset.scan_characters (Lexing.from_string s));
-	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+	let l = lexeme_len lexbuf in
+        let u = sub_lexeme lexbuf 1 (l-2) in
+	(Unparsed_string u), Declaration }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" [^ '\'']* "'"
-      { let s = Lexing.lexeme lexbuf in
+      { let s = lexeme lexbuf in
         (* Check that characters are well-formed: *)
 	ignore(!lexerset.scan_characters (Lexing.from_string s));
-	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+	let l = lexeme_len lexbuf in
+        let u = sub_lexeme lexbuf 1 (l-2) in
+	(Unparsed_string u), Declaration }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
@@ -363,7 +418,7 @@ scan_declaration = parse
   | eof
       { tok_Eof__Declaration }
   | "<!"
-      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      { raise (WF_error "Declaration either malformed or not allowed in this context")
       }
   | ""
       { (* Nothing matches: If at least a valid character follows, raise
@@ -384,7 +439,7 @@ scan_declaration = parse
 scan_characters = parse
   character*
     { () }
-| eof 
+| eof
     { () }
 | _
     { raise Netconversion.Malformed_code }
@@ -399,7 +454,7 @@ scan_characters = parse
 scan_character = parse
   character
     { () }
-| eof 
+| eof
     { () }
 | _
     { raise Netconversion.Malformed_code }
@@ -413,19 +468,23 @@ scan_character = parse
 
 scan_dtd_string = parse
     '%' name ';'
-      { let s = Lexing.lexeme lexbuf in
-	PERef (String.sub s 1 (String.length s - 2)) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	PERef s }
   | '%'
       { raise(WF_error("The character '%' must be written as '&#37;'")) }
   | '&' name ';'
-      { let s = Lexing.lexeme lexbuf in
-	ERef (String.sub s 1 (String.length s - 2)) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	ERef s }
   | "&#" ascii_digit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string (String.sub s 2 (String.length s - 3))) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 2 (l-3) in
+	CRef (int_of_string s) }
   | "&#x" ascii_hexdigit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 3 (l-4) in
+	CRef (int_of_string ("0x" ^ s)) }
   | '&'
       { raise(WF_error("The character '&' must be written as '&amp;'")) }
   | '\013' '\010'
@@ -437,7 +496,7 @@ scan_dtd_string = parse
   | '\009'
       { tok_CharDataTAB }
   | pchar_but_amp_percent+
-      { CharData (Lexing.lexeme lexbuf) }
+      { CharData (lexeme lexbuf) }
   | eof
       { Eof }
   | _
@@ -456,38 +515,39 @@ scan_content = parse
 	    raise (WF_error ("Illegal processing instruction"))
 	| Some pi ->
 	    scan_pi pi !lexerset.scan_xml_pi, Content
+            (* scan_pi assumes ASCII-compatibility *)
       }
   | "<!--"
       { Comment_begin dummy_entity, (Comment Content) }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	if Lexing.lexeme_char lexbuf 1 = '/' then
-	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
+      { let l = lexeme_len lexbuf in
+	if lexeme_char lexbuf 1 = 47 then
+	  Tag_end (sub_lexeme lexbuf 2 (l-2), dummy_entity),
 	  Within_tag_entry
 	else
-	  Tag_beg (Pxp_lexing.sub_lexeme lexbuf 1 (l-1), dummy_entity), 
+	  Tag_beg (sub_lexeme lexbuf 1 (l-1), dummy_entity),
 	  Within_tag_entry
       }
   | "<![CDATA[" cdata_string "]]>"
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content }
+      { let l = lexeme_len lexbuf in
+	Cdata (sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
-      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      { raise (WF_error "Declaration either malformed or not allowed in this context")
       }
   | "<"
       { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
       }
   | "&#" ascii_digit+ ";"
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content }
+      { let l = lexeme_len lexbuf in
+	CRef (int_of_string (sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content }
+      { let l = lexeme_len lexbuf in
+	CRef (int_of_string ("0x" ^ sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content }
-  | "&" 
+      { let l = lexeme_len lexbuf in
+	ERef (sub_lexeme lexbuf 1 (l-2)), Content }
+  | "&"
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
       }
   | "{{"
@@ -516,14 +576,14 @@ scan_content = parse
       { tok_CharDataTAB__Content }
   | eof
       { tok_Eof__Content }
-  | "]]>" 
+  | "]]>"
       { raise (WF_error ("The sequence ']]>' must be written as ']]&gt;'"))
       }
   | "]"
       { tok_CharDataRBRACKET__Content }
   | pchar_text+
-      { let s = Lexing.lexeme lexbuf in
-	CharData s, Content 
+      { let s = lexeme lexbuf in
+	CharData s, Content
       }
   | _
       { raise Netconversion.Malformed_code }
@@ -543,19 +603,19 @@ scan_within_tag = parse
   | [' ' '\t']+
       { tok_Ignore__Within_tag }
   | name
-      { Name (Lexing.lexeme lexbuf ), Within_tag }
+      { Name (lexeme lexbuf ), Within_tag }
   | '='
       { tok_Eq__Within_tag }
   | '"' char_but_quot* '"'
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
+      { let l = lexeme_len lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" char_but_apos* "'"
-      { let l = Pxp_lexing.lexeme_len lexbuf in
-	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
+      { let l = lexeme_len lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
@@ -593,10 +653,10 @@ scan_tag_eb = parse
   | [' ' '\t']+
       { tok_Ignore__Tag_eb }
   | name
-      { Name (Lexing.lexeme lexbuf ), Tag_eb }
+      { Name (lexeme lexbuf ), Tag_eb }
   | '='
       { tok_Eq__Tag_eb }
-  | '"' 
+  | '"'
       { tok_DQuote__Tag_eb_att_true }
   | "'"
       { tok_SQuote__Tag_eb_att_false }
@@ -624,18 +684,21 @@ scan_tag_eb = parse
 
 scan_content_string = parse
     '&' name ';'
-      { let s = Lexing.lexeme lexbuf in
-	ERef (String.sub s 1 (String.length s - 2)) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 1 (l-2) in
+	ERef s }
   | "&#" ascii_digit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string (String.sub s 2 (String.length s - 3))) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 2 (l-3) in
+	CRef (int_of_string s) }
   | "&#x" ascii_hexdigit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
+      { let l = lexeme_len lexbuf in
+        let s = sub_lexeme lexbuf 3 (l-4) in
+	CRef (int_of_string ("0x" ^ s)) }
   | '&'
       { raise(WF_error("The character '&' must be written as '&amp;'")) }
   | pchar_but_amp_lt+
-      { CharData ""  (* TODO *) (* (Lexing.lexeme lexbuf) *) } 
+      { CharData ""  (* TODO *) (* (lexeme lexbuf) *) }
   | '\009'
       { CRef 32 }
   | '\013' '\010'
@@ -646,7 +709,7 @@ scan_content_string = parse
   | '\010'
       { CRef 32 }
   | '<'
-      { 
+      {
 	(* Depending on the situation, '<' may be legal or not: *)
 	tok_CharDataLT
       }
@@ -668,20 +731,21 @@ scan_content_string = parse
 scan_tag_eb_att = parse
     '&' name ';'
       { fun d ->
-	  let s = Lexing.lexeme lexbuf in
-	  (ERef_att (String.sub s 1 (String.length s - 2)), Tag_eb_att d) 
+          let l = lexeme_len lexbuf in
+	  let s = sub_lexeme lexbuf 1 (l-2) in
+	  (ERef_att s), Tag_eb_att d)
       }
   | "&#" ascii_digit+ ";"
       { fun d ->
-	  let s = Lexing.lexeme lexbuf in
-	  (CRef (int_of_string (String.sub s 2 (String.length s - 3))),
-	   Tag_eb_att d)
+          let l = lexeme_len lexbuf in
+	  let s = sub_lexeme lexbuf 2 (l-3) in
+	  (CRef (int_of_string s), Tag_eb_att d)
       }
   | "&#x" ascii_hexdigit+ ";"
       { fun d ->
-	  let s = Lexing.lexeme lexbuf in
-	  (CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))),
-	   Tag_eb_att d)
+          let l = lexeme_len lexbuf in
+	  let s = sub_lexeme lexbuf 3 (l-4) in
+	  (CRef (int_of_string ("0x" ^ s)), Tag_eb_att d)
       }
   | '&'
       { fun _ ->
@@ -703,12 +767,12 @@ scan_tag_eb_att = parse
 	  (* Depending on the situation, '<' may be legal or not: *)
 	  tok_CharDataLT, Tag_eb_att d
       }
-  | '"' 
+  | '"'
       { function
           true  -> DQuote, Tag_eb
         | false -> tok_CharDataQUOT, Tag_eb_att false
       }
-  | '\'' 
+  | '\''
       { function
           true  -> tok_CharDataAPOS, Tag_eb_att true
         | false -> SQuote, Tag_eb
@@ -722,7 +786,7 @@ scan_tag_eb_att = parse
   | "}"
       { fun d -> Rcurly, Tag_eb_att d }
   | pchar_ebatt+
-      { fun d -> CharData (Lexing.lexeme lexbuf), Tag_eb_att d } 
+      { fun d -> CharData (lexeme lexbuf), Tag_eb_att d }
   | eof
       { fun d -> Eof, Tag_eb_att d }
   | _
@@ -737,15 +801,15 @@ scan_tag_eb_att = parse
 
 scan_name_string = parse
     name
-      { Name (Lexing.lexeme lexbuf) }
+      { Name (lexeme lexbuf) }
   | ws+
       { Ignore }
   | nmtoken
-      { Nametoken (Lexing.lexeme lexbuf) }
+      { Nametoken (lexeme lexbuf) }
   | eof
       { Eof }
   | character
-      { CharData (Lexing.lexeme lexbuf) }
+      { CharData (lexeme lexbuf) }
   | _
       { raise Netconversion.Malformed_code }
 
@@ -793,8 +857,8 @@ scan_for_crlf = parse
   | '\010'
       { tok_CharDataLF }
   | [^ '\010' '\013' ]+
-      { CharData (Lexing.lexeme lexbuf) }
-  | eof 
+      { CharData (lexeme lexbuf) }
+  | eof
       { Eof }
 
 (* [END] *)

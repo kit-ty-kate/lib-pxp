@@ -345,11 +345,14 @@ let write_output_files cfg cc =
 	CC_generic(defs,let_str) ->
 	  ( match cfg.out_format with
 		`OCAMLLEX ->
+		  output_string out "{\n";
 		  if List.mem_assoc "HEADER" lex_src then (
-		    output_string out "{\n";
 		    output_string out (List.assoc "HEADER" lex_src);
-		    output_string out "}\n";
 		  );
+		  if List.mem_assoc "HEADER_OCAMLLEX" lex_src then (
+		    output_string out (List.assoc "HEADER_OCAMLLEX" lex_src);
+		  );
+		  output_string out "}\n";
 		  List.iter (Lexpp_file.print_definition out) defs;
 		  output_string out let_str;
 		  if List.mem_assoc "LET" lex_src then
@@ -357,6 +360,9 @@ let write_output_files cfg cc =
 	      | `ULEX ->
 		  if List.mem_assoc "HEADER" lex_src then (
 		    output_string out (List.assoc "HEADER" lex_src);
+		  );
+		  if List.mem_assoc "HEADER_ULEX" lex_src then (
+		    output_string out (List.assoc "HEADER_ULEX" lex_src);
 		  );
 		  List.iter (Lexpp_file.print_ulex_definition out) defs;
 		  output_string out (transform_let_to_ulex let_str);
@@ -370,11 +376,14 @@ let write_output_files cfg cc =
 	  if cfg.out_format <> `WLEX then
 	    failwith "This output format is incompatible with wlex char classes";
 	  output_string out classes_str;
+	  output_string out "{\n";
 	  if List.mem_assoc "HEADER" lex_src then (
-	    output_string out "{\n";
 	    output_string out (List.assoc "HEADER" lex_src);
-	    output_string out "}\n";
 	  );
+	  if List.mem_assoc "HEADER_WLEX" lex_src then (
+	    output_string out (List.assoc "HEADER_WLEX" lex_src);
+	  );
+	  output_string out "}\n";
 	  output_string out let_str;
 	  if List.mem_assoc "LET" lex_src then
 	    output_string out (List.assoc "LET" lex_src);
