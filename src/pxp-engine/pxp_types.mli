@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.15 2002/08/28 23:54:34 gerd Exp $
+(* $Id: pxp_types.mli,v 1.16 2003/01/21 00:18:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -32,6 +32,28 @@ and private_id
 
 val allocate_private_id : unit -> private_id
   (* Get a new unique private ID *)
+
+type resolver_id =
+    { rid_private: private_id option;
+      rid_public:  string option;
+      rid_system:  string option;
+      rid_system_base: string option;  (* when rid_system is relative *)
+    }
+  (* resolver IDs are used instead of ext_id in resolvers. The difference
+   * is that an entity can have three names at the same time: a private
+   * name, a PUBLIC name, and a SYSTEM name. Furthermore, the base URL
+   * of the system names is stored which is usually just the system name
+   * of the opener.
+   *)
+
+val resolver_id_of_ext_id : ext_id -> resolver_id
+  (* The standard method of converting an ext_id into a resolver ID.
+   * A System ID is turned into a resolver_id where only rid_system is
+   * set. A Public ID is turned into a resolver_id where both rid_public
+   * and rid_system are set. A Private ID is turned into a resolver_id
+   * where only rid_private is set. An Anonymous ID is turned into a
+   * resolver_id without any value (all components are None).
+   *)
 
 
 type dtd_id =
@@ -257,6 +279,10 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.16  2003/01/21 00:18:09  gerd
+ * 	New type resolver_id. It is related to ext_id but contains
+ * more information.
+ *
  * Revision 1.15  2002/08/28 23:54:34  gerd
  * 	Support for new lexer definition style.
  *

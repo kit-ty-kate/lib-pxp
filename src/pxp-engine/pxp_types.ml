@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.14 2002/08/28 23:54:34 gerd Exp $
+(* $Id: pxp_types.ml,v 1.15 2003/01/21 00:18:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -19,6 +19,33 @@ let allocate_private_id () = new private_id;;
    * Note that when you compare objects (=, < etc) you actually compare
    * the object IDs. Hence, private_id has the intended semantics.
    *)
+
+type resolver_id =
+    { rid_private: private_id option;
+      rid_public:  string option;
+      rid_system:  string option;
+      rid_system_base: string option;
+    }
+
+
+let anonymous =
+  { rid_private = None;
+    rid_public = None;
+    rid_system = None;
+    rid_system_base = None;
+  }
+
+let resolver_id_of_ext_id =
+  function
+      System sys_id -> 
+	{ anonymous with rid_system = Some sys_id }
+    | Public(pub_id, sys_id) ->
+	{ anonymous with rid_public = Some pub_id; rid_system = Some sys_id }
+    | Private p ->
+	{ anonymous with rid_private = Some p }
+    | Anonymous ->
+	anonymous
+;;
 
 
 type dtd_id =
@@ -328,6 +355,10 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.15  2003/01/21 00:18:09  gerd
+ * 	New type resolver_id. It is related to ext_id but contains
+ * more information.
+ *
  * Revision 1.14  2002/08/28 23:54:34  gerd
  * 	Support for new lexer definition style.
  *
