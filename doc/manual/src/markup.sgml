@@ -2249,19 +2249,99 @@ class type [ 'ext ] node =
 ;;
 ]]>
 </programlisting>
+</para>
 
+	<sect2>
+	  <title>The structure of document trees</title>
+
+<para>
 A node represents either an element or a character data section. There are two
 classes implementing the two aspects of nodes: <literal>element_impl</literal>
 and <literal>data_impl</literal>. The latter class does not implement all
 methods because some methods do not make sense for data nodes.
 </para>
 
+	<para>The following figure 
+(<link linkend="node-term" endterm="node-term"></link>) shows an example how
+a tree is constructed from element and data nodes. The circular areas 
+represent element nodes whereas the ovals denote data nodes. Only elements
+may have subnodes; data nodes are always leaves of the tree. The subnodes
+of an element can be either element or data nodes; in both cases the O'Caml
+objects storing the nodes have the class type <literal>node</literal>.</para>
+
+	<para>Attributes (the clouds in the picture) are not directly
+integrated into the tree; there is always an extra link to the attribute
+list. This is also true for processing instructions (not shown in the
+picture). This means that there are separated access methods for attributes and
+processing instructions.</para>
+
+<figure id="node-term" float="1">
+<title>A tree with element nodes, data nodes, and attributes</title>
+<graphic fileref="pic/node_term" format="GIF"></graphic>
+</figure>
+
+	<para>Only elements, data sections, attributes and processing
+instructions can, directly or indirectly, occur in the document tree. It is
+impossible to add entity references to the tree; if the parser finds such a
+reference, not the reference as such but the referenced text (i.e. the tree
+representing the structured text) is included in the tree.</para>
+
+<figure id="node-general" float="1">
+<title>Nodes are doubly linked trees</title>
+<graphic fileref="pic/node_general" format="GIF"></graphic>
+</figure>
+
 	<para>
-These classes implicitly define the semantics of the node tree. There are not
-only references from nodes to sub-nodes, but also references to parents. This
-means that a node cannot be member of two trees; if you try to insert a node
-into two trees the second operation will fail.
+The node tree has links in both directions: Every node has a link to its parent
+(if any), and it has links to the subnodes (see 
+figure <link linkend="node-general" endterm="node-general"></link>). Obviously,
+this doubly-linked structure simplifies the navigation in the tree; but has
+also some consequences for the possible operations on trees.</para>
+
+	<para>
+Because every node must have at most <emphasis>one</emphasis> parent node,
+operations are illegal if they violate this condition. The following figure
+(<link linkend="node-add" endterm="node-add"></link>) shows on the left side
+that node <literal>y</literal> is added to <literal>x</literal> as new subnode
+which is allowed because <literal>y</literal> does not have a parent yet. The
+right side of the picture illustrates what would happen if <literal>y</literal>
+had a parent node; this is illegal because <literal>y</literal> would have two
+parents after the operation.</para>
+
+<figure id="node-add" float="1">
+<title>A node can only be added if it is a root</title>
+<graphic fileref="pic/node_add" format="GIF">
+</graphic>
+</figure>
+
+	<para>
+The "delete" operation simply removes the links between two nodes. In the
+picture (<link linkend="node-delete" endterm="node-delete"></link>) the node
+<literal>x</literal> is deleted from the list of subnodes of
+<literal>y</literal>. After that, <literal>x</literal> becomes the root of the
+subtree starting at this node.</para>
+
+<figure id="node-delete" float="1">
+<title>A deleted node becomes the root of the subtree</title>
+<graphic fileref="pic/node_delete" format="GIF"></graphic>
+</figure>
+
+	<para>
+It is also possible to make a clone of a subtree; illustrated in 
+<link linkend="node-clone" endterm="node-clone"></link>. In this case, the
+clone is a copy of the original subtree except that it is no longer a
+subnode. Because cloning never keeps the connection to the parent, the clones
+are called <emphasis>orphaned</emphasis>.
 </para>
+
+<figure id="node-clone" float="1">
+<title>The clone of a subtree</title>
+<graphic fileref="pic/node_clone" format="GIF"></graphic>
+</figure>
+	</sect2>
+
+	<sect2>
+	  <title>The methods of the class type <literal>node</literal></title>
 
 	<formalpara>
 	  <title>Observers</title>
@@ -2275,7 +2355,7 @@ belongs to this node.</para>
 	      </listitem>
 	      <listitem>
 		<para>
-<literal>parent</literal>: Reference to the father node. Raises
+<literal>parent</literal>: Get the father node. Raises
 <literal>Not_found</literal> in the case the node does not have a
 parent.</para>
 	      </listitem>
@@ -2428,7 +2508,9 @@ specification of <literal>n</literal>.</para>
 		<para>
 <literal>add_node sn</literal>: Adds sub node <literal>sn</literal> to the list
 of children. It is required that <literal>sn</literal> must not have a
-parent.</para>
+parent. This operation is illustrated in the picture <link linkend="node-add"
+endterm="node-add"></link>.
+</para>
 	      </listitem>
 	      <listitem>
 		<para>
@@ -2441,13 +2523,15 @@ parent.</para>
 		<para>
 <literal>delete</literal>: Deletes this node from the tree. After this
 operation, this node is no longer the child of the former father node; and the
-node loses the connection to the father as well.</para>
+node loses the connection to the father as well. This operation is illustrated
+by the figure <link linkend="node-delete" endterm="node-delete"></link>.
+</para>
 	      </listitem>
 	      <listitem>
 		<para>
 <literal>set_nodes nl</literal>: Sets the list of children to
 <literal>nl</literal>. It is required that no member of <literal>nl</literal>
-has a parent.
+has a parent (i.e. all the nodes must be roots).
 </para>
 	      </listitem>
 	      <listitem>
@@ -2467,10 +2551,14 @@ element to atts. It is not checked whether atts matches the DTD or not.
 	      <listitem>
 		<para>
 <literal>orphaned_clone</literal>: Returns a clone of the node and the complete
-tree below this node (deep clone). The clone does not have a parent. It is
-allowed that strings are shared between the original nodes and the copy nodes.
-Whether extension objects are cloned as well depends on the implemention of the
-<literal>clone</literal> method of the extension objects.
+tree below this node (deep clone). The clone does not have a parent. While
+copying the subtree, strings are skipped; it is likely that the original tree
+and the copy tree share strings. Whether extension objects are cloned as well
+depends on the implemention of the <literal>clone</literal> method of the
+extension objects.
+</para>
+		<para>This operation is illustrated by the figure 
+<link linkend="node-clone" endterm="node-clone"></link>.
 </para>
 	      </listitem>
 	      <listitem>
@@ -2539,6 +2627,7 @@ themselves to the tree.)
 	    </itemizedlist>
 </para>
 	</formalpara>
+	</sect2>
 
 	<sect2>
 	  <title>The class <literal>element_impl</literal></title>
@@ -2633,6 +2722,34 @@ class type [ 'node ] extension =
 </programlisting>
 
 </para>
+      </sect1>
+
+
+
+      <sect1>
+	<title>Details of the mapping from XML text to the tree representation
+</title>
+
+	<sect2>
+	  <title>The representation of character-free elements</title>
+	  <para>...</para>
+	</sect2>
+
+	<sect2>
+	  <title>The representation of character data</title>
+	  <para>...</para>
+	</sect2>
+
+	<sect2>
+	  <title>The representation of attributes</title>
+	  <para>...</para>
+	</sect2>
+
+	<sect2>
+	  <title>The representation of processing instructions</title>
+	  <para>...</para>
+	</sect2>
+
       </sect1>
 
     </chapter>
