@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.5 2000/10/01 19:51:33 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.6 2001/06/14 14:25:56 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -7,8 +7,6 @@
 {
   open Pxp_types
   open Pxp_lexer_types
-
-#insert pxp_lex_aux.src
 
 #insert open_pxp_lex_aux_*.src
 #insert open_pxp_lex_misc_*.src
@@ -88,6 +86,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.6  2001/06/14 14:25:56  gerd
+ * 	Removed insertion of pxp_lex_aux.src
+ *
  * Revision 1.5  2000/10/01 19:51:33  gerd
  * 	Optimizations.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_declaration.src,v 1.4 2000/08/18 20:19:59 gerd Exp $
+(* $Id: pxp_lex_declaration.src,v 1.5 2001/06/14 14:25:56 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -7,8 +7,6 @@
 {
   open Pxp_types
   open Pxp_lexer_types
-
-#insert pxp_lex_aux.src
 
 #insert open_pxp_lex_aux_*.src
 #insert open_pxp_lex_misc_*.src
@@ -119,6 +117,9 @@ rule scan_declaration = parse
  * History:
  * 
  * $Log: pxp_lex_declaration.src,v $
+ * Revision 1.5  2001/06/14 14:25:56  gerd
+ * 	Removed insertion of pxp_lex_aux.src
+ *
  * Revision 1.4  2000/08/18 20:19:59  gerd
  * 	Comments return different comment tokens.
  *

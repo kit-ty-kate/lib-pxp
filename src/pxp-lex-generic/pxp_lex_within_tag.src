@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.5 2000/10/01 19:51:33 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.6 2001/06/14 14:25:56 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -9,8 +9,6 @@
   open Pxp_lexer_types
 
 #insert open_pxp_lex_aux_*.src
-#insert pxp_lex_aux.src
-
 }
 
 #insert pxp_lex_defs_*.def
@@ -59,6 +57,9 @@ rule scan_within_tag = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.6  2001/06/14 14:25:56  gerd
+ * 	Removed insertion of pxp_lex_aux.src
+ *
  * Revision 1.5  2000/10/01 19:51:33  gerd
  * 	Optimizations.
  *
