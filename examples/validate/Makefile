@@ -26,7 +26,7 @@ releasebyte:
 
 
 Makefile.config:
-	if ocamlfind query >/dev/null; then                     \
+	if ocamlfind query pxp-wlex-utf8 >/dev/null; then       \
 	    lexer="pxp-lex-iso88591 pxp-wlex-utf8";             \
 	else                                                    \
 	    lexer="pxp-lex-iso88591 pxp-lex-utf8";              \
