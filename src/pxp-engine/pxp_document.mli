@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.10 2000/08/30 15:47:37 gerd Exp $
+(* $Id: pxp_document.mli,v 1.11 2000/09/09 16:41:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -365,6 +365,7 @@ class type [ 'ext ] node =
        *)
 
     method create_element : 
+             ?name_pool_for_attribute_values:Pxp_types.pool ->
              ?position:(string * int * int) ->
              dtd -> node_type -> (string * string) list -> 'ext node
       (* create an "empty copy" of this element:
@@ -418,6 +419,7 @@ class type [ 'ext ] node =
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
+                           Pxp_types.pool option ->
                            dtd -> string -> (string * string) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
@@ -502,6 +504,7 @@ val make_spec_from_alist :
 val create_data_node : 
       'ext spec -> dtd -> string -> 'ext node
 val create_element_node : 
+      ?name_pool_for_attribute_values:Pxp_types.pool ->
       ?position:(string * int * int) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
 val create_super_root_node :
@@ -731,6 +734,11 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.11  2000/09/09 16:41:03  gerd
+ * 	Effort to reduce the amount of allocated memory: The number of
+ * instance variables in document nodes has been miminized; the class
+ * default_ext no longer stores anything; string pools have been implemented.
+ *
  * Revision 1.10  2000/08/30 15:47:37  gerd
  * 	New method node_path.
  * 	New function compare.

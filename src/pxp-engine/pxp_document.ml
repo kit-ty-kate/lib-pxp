@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.14 2000/08/30 15:47:52 gerd Exp $
+(* $Id: pxp_document.ml,v 1.15 2000/09/09 16:41:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -78,6 +78,7 @@ class type [ 'ext ] node =
     method dtd : dtd
     method encoding : rep_encoding
     method create_element :
+                   ?name_pool_for_attribute_values:pool ->
                    ?position:(string * int * int) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
     method create_data : dtd -> string -> 'ext node
@@ -89,6 +90,7 @@ class type [ 'ext ] node =
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
+                           pool option ->
                            dtd -> string -> (string * string) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
@@ -437,7 +439,8 @@ class virtual ['ext] node_impl an_ext =
     method virtual attributes_as_nodes : 'ext node list
     method virtual set_comment : string option -> unit
     method virtual comment : string option
-    method virtual create_element : 
+    method virtual create_element :
+                   ?name_pool_for_attribute_values:pool ->
                    ?position:(string * int * int) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
     method virtual create_data : dtd -> string -> 'ext node
@@ -447,7 +450,9 @@ class virtual ['ext] node_impl an_ext =
     method virtual local_validate : ?use_dfa:bool -> unit -> unit
     method virtual internal_delete : 'ext node -> unit
     method virtual internal_init : (string * int * int) ->
-                                dtd -> string -> (string * string) list -> unit
+                                   pool option ->
+                                   dtd -> string -> (string * string) list -> 
+                                       unit
     method virtual internal_init_other : (string * int * int) ->
                                          dtd -> node_type -> unit
   end
@@ -501,7 +506,7 @@ class ['ext] data_impl an_ext : ['ext] node =
       match c with
 	  None -> ()
 	| Some _ -> failwith "method 'set_comment' not applicable to data node"
-    method create_element ?position _ _ _ =
+    method create_element ?name_pool_for_attribute_values ?position _ _ _ =
       failwith "method 'create_element' not applicable to data node"
     method create_data new_dtd new_str =
       let x = extension # clone in
@@ -528,7 +533,7 @@ class ['ext] data_impl an_ext : ['ext] node =
 	
     method internal_delete _ =
       assert false
-    method internal_init _ _ _ _ =
+    method internal_init _ _ _ _ _ =
       assert false
     method internal_init_other _ _ _ =
       assert false
@@ -656,7 +661,7 @@ class ['ext] attribute_impl ~element ~name value dtd =
        failwith "Pxp_document.attribute_impl#internal_set_pos: not applicable"
      method internal_delete _ =
        failwith "Pxp_document.attribute_impl#internal_delete: not applicable"
-     method internal_init _ _ _ _ =
+     method internal_init _ _ _ _ _ =
        failwith "Pxp_document.attribute_impl#internal_init: not applicable"
      method internal_init_other _ _ _ =
        failwith "Pxp_document.attribute_impl#internal_init_other: not applicable"
@@ -673,7 +678,7 @@ class ['ext] attribute_impl ~element ~name value dtd =
      method set_comment c =
        if c <> None then
 	 failwith "Pxp_document.attribute_impl#set_comment: not applicable"
-     method create_element ?position _ _ _ =
+     method create_element ?name_pool_for_attribute_values ?position _ _ _ =
        failwith "Pxp_document.attribute_impl#create_element: not applicable"
      method create_data _ _ =
        failwith "Pxp_document.attribute_impl#create_data: not applicable"
@@ -695,37 +700,146 @@ class ['ext] attribute_impl ~element ~name value dtd =
 
 (**********************************************************************)
 
+let flag_ext_decl = 1;;
+    (* Whether the element is externally declared *)
+let flag_keep_always_whitespace = 2;;
+    (* Whether the "keep whitespace mode" is on *)
+
+
+let no_validation =
+  { content_model = Any;
+    content_dfa = lazy None;
+    id_att_name = None;
+    idref_att_names = [];
+  }
+;;
+
+
+type 'a list_or_array =
+    LA_not_available
+  | LA_list of 'a list
+  | LA_array of 'a array
+;;
+(* Perhaps we need also the hybrid LA_list_array storing both representations. 
+ *)
+
+
+type 'ext attlist =
+    No_atts
+  | Att of (string * att_value * 'ext attlist)
+  | Att_with_node of (string * att_value * 'ext node * 'ext attlist)
+;;
+  (* The most compact representation of attribute lists. 
+   * An attribute list should either consist only of Att cells or of
+   * Att_with_node cells, but not contain a mixture of both cell types.
+   *)
+
+
+let rec att_assoc n l =
+  match l with
+      No_atts -> raise Not_found
+    | Att (an,ax,l') -> 
+	if an = n then ax else att_assoc n l'
+    | Att_with_node (an,ax,_,l') -> 
+	if an = n then ax else att_assoc n l'
+;;
+
+
+let rec att_map f l =
+  match l with
+      No_atts -> []
+    | Att (an,ax,l') ->
+	f an ax :: att_map f l'
+    | Att_with_node (an,ax,_,l') ->
+	f an ax :: att_map f l'
+;;
+
+
+let rec att_iter f l =
+  match l with
+      No_atts -> ()
+    | Att (an,ax,l') ->
+	f an ax;
+	att_iter f l'
+    | Att_with_node (an,ax,_,l') ->
+	f an ax;
+	att_iter f l'
+;;
+
+
+let rec att_make l =
+  match l with
+      [] -> No_atts
+    | (n,v) :: l' -> Att (n,v, att_make l')
+;;
+
+
+let rec att_map_make f l =
+  match l with
+      [] -> No_atts
+    | (n,v) :: l' -> 
+	let v' = f v in
+	Att (n,v', att_map_make f l')
+;;
+
+
+let rec att_add_nodes f l =
+  match l with
+      No_atts      -> No_atts
+    | Att (n,v,l') -> Att_with_node(n, v, f n v, att_add_nodes f l')
+    | Att_with_node (_,_,_,_) -> assert false
+;;
+
+
+let rec att_return_nodes l =
+  match l with
+      No_atts      -> []
+    | Att (n,v,l') -> assert false
+    | Att_with_node (_,_,n,l') -> n :: att_return_nodes l'
+;;
+
+
 class ['ext] element_impl an_ext : ['ext] node =
     object (self:'self)
       inherit ['ext] node_impl an_ext as super
 
-      val mutable content_model = Any
-      val mutable content_dfa = lazy None
-      val mutable ext_decl = false
+      val mutable vr = no_validation
+      val mutable flags = 0
+          (* bit string of flags; see the values flag_* above *)
       val mutable ntype = T_none
-      val mutable id_att_name = None
-      val mutable idref_att_names = []
       val mutable rev_nodes = ([] : 'c list)
-      val mutable nodes = (None : 'c list option)
-      val mutable array = (None : 'c array option)
+      val mutable nodes = LA_not_available
       val mutable size = 0
-      val mutable attributes = []
-      val mutable att_nodes = []
-      val mutable comment = None
-      val pinstr = lazy (Hashtbl.create 10 : (string,proc_instruction) Hashtbl.t)
-      val mutable keep_always_whitespace = false
+      val mutable attributes = No_atts 
+      val mutable pinstr = (None : (string,proc_instruction) Hashtbl.t option)
 
       val mutable position = no_position
 
-      method comment = comment
+      method private set_flag which value =
+	flags <- (flags land (lnot which)) lor 
+	         (if value then which else 0)
+
+      method comment = 
+	match ntype with
+	    T_comment ->
+	      (	match attributes with
+		    No_atts -> None
+		  | Att (_,Value c,No_atts) -> Some c
+		  | _ -> assert false
+	      )
+	  | _ -> None
 
       method set_comment c =
-	if ntype = T_comment then
-	  comment <- c
+	if ntype = T_comment then begin
+	  match c with
+	      None   -> attributes <- No_atts
+	    | Some c -> attributes <- Att ("", Value c, No_atts)
+	end
 	else
 	  failwith "set_comment: not applicable to node types other than T_comment"
 
-      method attributes = attributes
+      method attributes = 
+	att_map (fun an ax -> (an,ax)) attributes
 
       method position = position
 
@@ -778,7 +892,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	try
 	  begin match n # node_type with
 	      T_data ->
-		begin match content_model with
+		begin match vr.content_model with
 		    Any         -> ()
 		  | Unspecified -> ()
 		  | Empty       -> 
@@ -800,7 +914,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 			   * element declaration is contained in an external
 			   * entity.
 			   *)
-			  if ext_decl then
+			  if flags land flag_ext_decl <> 0 then
 			    raise
 			      (Validation_error
 				 (self # error_name ^ 
@@ -808,7 +922,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 				  " because extra white space separates" ^ 
 				  " the sub elements"));
 			end;
-			if not keep_always_whitespace then raise Skip
+			if not (flags land flag_keep_always_whitespace <> 0) 
+			then raise Skip
 		      end
 		end
 	    | _ ->
@@ -817,8 +932,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	  (* all OK, so add this node: *)
 	  n # internal_adopt (Some (self : 'ext #node :> 'ext node)) size;
 	  rev_nodes <- n :: rev_nodes;
-	  nodes <- None;
-	  array <- None;
+	  nodes <- LA_not_available;
 	  size <- size + 1
 	with Skip ->
 	  ()
@@ -831,33 +945,59 @@ class ['ext] element_impl an_ext : ['ext] node =
 		failwith "Pxp_document.element_impl # add_pinstr: Inconsistent encodings";
 	end;
 	let name = pi # target in
-	Hashtbl.add (Lazy.force pinstr) name pi
+	let l =
+	  match pinstr with
+	      None -> 
+		let l0 = Hashtbl.create 1 in
+		pinstr <- Some l0;
+		l0
+	    | Some l' -> l' in
+	Hashtbl.add l name pi
 
       method pinstr name =
-	Hashtbl.find_all (Lazy.force pinstr) name
+	match pinstr with
+	    None   -> []
+	  | Some l -> Hashtbl.find_all l name
 
       method pinstr_names =
-	let l = ref [] in
-	Hashtbl.iter
-	  (fun n _ -> l := n :: !l)
-	  (Lazy.force pinstr);
-	!l
+	match pinstr with
+	    None   -> []
+	  | Some l ->
+	      let nl = ref [] in
+	      Hashtbl.iter
+		(fun n _ -> nl := n :: !nl)
+		l;
+	      !nl
 
       method sub_nodes =
 	match nodes with
-	    None ->
-	      let cl = List.rev rev_nodes in
-	      nodes <- Some cl;
+	    LA_not_available ->
+	      if rev_nodes = [] then 
+		[]
+	      else begin
+		let cl = List.rev rev_nodes in
+		nodes <- LA_list cl;
+		cl
+	      end
+	  | LA_list cl ->
 	      cl
-	  | Some cl ->
-	      cl
+	  | LA_array a ->
+	      Array.to_list a   (* does this lead to performance problems ? *)
 
       method iter_nodes f =
-	let cl = self # sub_nodes in
-	List.iter f cl
+	match nodes with
+	    LA_not_available ->
+	      if rev_nodes <> [] then begin
+		let cl = List.rev rev_nodes in
+		nodes <- LA_list cl;
+		List.iter f cl
+	      end
+	  | LA_list cl ->
+	      List.iter f cl
+	  | LA_array a ->
+	      Array.iter f a
 
       method iter_nodes_sibl f =
-	let cl = self # sub_nodes in
 	let rec next last_node l =
 	  match l with
 	      [] -> ()
@@ -867,15 +1007,45 @@ class ['ext] element_impl an_ext : ['ext] node =
 		f last_node x (Some y);
 		next (Some x) l'
 	in
-	next None cl
+	match nodes with
+	    LA_not_available ->
+	      if rev_nodes <> [] then begin
+		let cl = List.rev rev_nodes in
+		nodes <- LA_list cl;
+		next None cl
+	      end
+	  | LA_list cl ->
+	      next None cl
+	  | LA_array a ->
+	      ( match a with
+		    [| |] -> ()
+		  | [| a0 |] -> f None a0 None
+		  | _ ->
+		      let previous = ref None in
+		      for i = 0 to Array.length a - 2 do
+			let nextnode = Some (a.(i+1)) in
+			f !previous a.(i) nextnode;
+			previous := Some a.(i);
+		      done;
+		      f !previous a.(Array.length a - 1) None
+	      )
 
       method nth_node p =
 	if p < 0 or p >= size then raise Not_found;
-	if array = None then
-	  array <- Some (Array.of_list (self # sub_nodes));
-	match array with
-	    None -> assert false
-	  | Some a ->
+	match nodes with
+	    LA_not_available ->
+	      if rev_nodes = [] then
+		invalid_arg "Array.get"
+	      else begin
+		let a = Array.of_list (List.rev rev_nodes) in
+		nodes <- LA_array a;
+		a.(p)
+	      end
+	  | LA_list l ->
+	      let a = Array.of_list l in
+	      nodes <- LA_array a;
+	      a.(p)
+	  | LA_array a ->
 	      a.(p)
 
       method set_nodes nl =
@@ -910,8 +1080,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      raise e
 	end;
 	rev_nodes <- List.rev nl;
-	array <- None;
-	nodes <- None
+	nodes <- LA_not_available;
 
 
       method orphaned_clone : 'self =
@@ -928,8 +1097,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	     node_position = -1;
 	     extension = x;
 	     rev_nodes = sub_clones;
-	     nodes = None;
-	     array = None;
+	     nodes = LA_not_available;
 	  >} in	
 
 	let pos = ref (size - 1) in
@@ -951,9 +1119,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	     node_position = -1;
 	     extension = x;
 	     rev_nodes = [];
-	     nodes = None;
+	     nodes = LA_not_available;
 	     size = 0;
-	     array = None;
 	  >} in	
 
 	x # set_node (n : 'ext #node  :> 'ext node);
@@ -967,7 +1134,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	List.iter
 	  (fun n' -> n' # internal_set_pos !p; decr p)
 	  rev_nodes;
-	nodes <- None;
+	nodes <- LA_not_available;
 	n # internal_adopt None (-1);
 	
 
@@ -979,10 +1146,10 @@ class ['ext] element_impl an_ext : ['ext] node =
 
 
       method attribute n =
-	List.assoc n attributes
+	att_assoc n attributes
 
       method attribute_names =
-	List.map fst attributes
+	att_map (fun an _ -> an) attributes
 
       method attribute_type n =
 	match ntype with
@@ -1005,7 +1172,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method required_string_attribute n =
 	try
-	  match List.assoc n attributes with
+	  match att_assoc n attributes with
 	      Value s -> s
 	    | Valuelist l -> String.concat " " l
 	    | Implied_value -> raise Not_found
@@ -1015,7 +1182,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method optional_string_attribute n =
 	try
-	  match List.assoc n attributes with
+	  match att_assoc n attributes with
 	      Value s -> Some s
 	    | Valuelist l -> Some (String.concat " " l)
 	    | Implied_value -> None
@@ -1025,7 +1192,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method required_list_attribute n =
 	try
-	  match List.assoc n attributes with
+	  match att_assoc n attributes with
 	      Value s -> [ s ]
 	    | Valuelist l -> l
 	    | Implied_value -> raise Not_found
@@ -1035,7 +1202,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method optional_list_attribute n =
 	try
-	  match List.assoc n attributes with
+	  match att_assoc n attributes with
 	      Value s -> [ s ]
 	    | Valuelist l -> l
 	    | Implied_value -> []
@@ -1044,65 +1211,65 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      []
 
       method id_attribute_name =
-	match id_att_name with
+	match vr.id_att_name with
 	    None -> raise Not_found
 	  | Some name -> name
 
       method id_attribute_value =
-	match id_att_name with
+	match vr.id_att_name with
 	    None -> raise Not_found
 	  | Some name ->
-	      begin match List.assoc name attributes (* may raise Not_found *)
+	      begin match att_assoc name attributes (* may raise Not_found *)
 	      with
 		  Value s -> s
 		| _ -> raise Not_found
 	      end
 
 
-      method idref_attribute_names = idref_att_names
+      method idref_attribute_names = vr.idref_att_names
 
 
       method quick_set_attributes atts =
 	match ntype with
 	    T_element _ ->
-	      attributes <- atts;
-	      att_nodes <- []
+	      attributes <- att_make atts;
 	  | _ ->
 	      failwith "quick_set_attributes: not applicable for non-element node"
 
 
       method attributes_as_nodes =
-	match att_nodes with
-	    [] when attributes = [] ->
+	match attributes with
+	  | No_atts ->
 	      []
-	  | [] ->
+	  | Att (_,_,_) ->
 	      let dtd = self # dtd in
 	      let element_name =
 		match ntype with
 		    T_element n -> n
 		  | _ ->
 		      assert false in
-	      let l =
-		List.map
-		  (fun (n,v) ->
+	      let atts' =
+		att_add_nodes
+		  (fun n v ->
 		     new attribute_impl 
 		       ~element:element_name
 		       ~name:n
 		       v
 		       dtd)
 		  attributes in
-	      att_nodes <- l;
-	      l
+	      attributes <- atts';
+	      att_return_nodes attributes
 	  | _ ->
-	      att_nodes
+	      att_return_nodes attributes
 
 
       method create_element 
+	               ?name_pool_for_attribute_values
                        ?(position = no_position) new_dtd new_type new_attlist =
 	let x = extension # clone in
 	let obj = ( {< parent = None;
 		       extension = x;
-		       pinstr = lazy (Hashtbl.create 10)
+		       pinstr = None;
 		    >}
 	    	    : 'ext #node :> 'ext node
 		  ) in
@@ -1111,7 +1278,9 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    T_data ->
 	      failwith "create_element: Cannot create T_data node"
 	  | T_element name ->
-	      obj # internal_init position new_dtd name new_attlist;
+	      obj # internal_init 
+                      position name_pool_for_attribute_values 
+                      new_dtd name new_attlist;
 	      obj
 	  | (T_comment | T_pinstr _ | T_super_root | T_none) ->
 	      obj # internal_init_other position new_dtd new_type;
@@ -1124,33 +1293,39 @@ class ['ext] element_impl an_ext : ['ext] node =
 	(* resets the contents of the object *)
 	parent <- None;
 	rev_nodes <- [];
-	nodes <- None;
+	nodes <- LA_not_available;
 	ntype <- new_ntype;
 	position <- new_pos;
-	content_model <- Any;
-	content_dfa <- lazy None;
-	attributes <- [];
-	att_nodes <- [];
+	vr <- no_validation;
+	attributes <- No_atts;
 	dtd <- Some new_dtd;
-	ext_decl <- false;
-	id_att_name <- None;
-	idref_att_names <- [];
-	comment <- None;
+	self # set_flag flag_ext_decl false;
 
 
-      method internal_init new_pos new_dtd new_name new_attlist =
+      method internal_init new_pos attval_name_pool new_dtd new_name 
+                           new_attlist =
 	(* ONLY FOR T_Element NODES!!! *)
 	(* resets the contents of the object *)
 	parent <- None;
 	rev_nodes <- [];
-	nodes <- None;
+	nodes <- LA_not_available;
 	ntype <- T_element new_name;
 	position <- new_pos;
-	comment <- None;
-	att_nodes <- [];
 
 	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
 	let sadecl = new_dtd # standalone_declaration in
+
+	let mk_pool_value av0 =
+	  match attval_name_pool with
+	      None -> av0
+	    | Some pool ->
+		(match av0 with
+		     Implied_value -> Implied_value
+		   | Value s -> Value (pool_string pool s)
+		   | Valuelist l ->
+		       Valuelist (List.map (pool_string pool) l)
+		)
+	in
 
 	(* First validate the element name and the attributes: *)
 	(* Well-Formedness Constraint: Unique Att Spec *)
@@ -1165,12 +1340,9 @@ class ['ext] element_impl an_ext : ['ext] node =
 	check_uniqueness new_attlist;
 	(* Validity Constraint: Element Valid [element has been declared] *)
 	try
-	  let eltype = new_dtd # element new_name in
-	  content_model <- eltype # content_model;
-	  content_dfa   <- lazy(eltype # content_dfa);
-	  ext_decl <- eltype # externally_declared;
-	  id_att_name <- eltype # id_attribute_name;
-	  idref_att_names <- eltype # idref_attribute_names;
+	  let eltype = new_dtd # element new_name in (* may raise Undeclared *)
+	  vr <- eltype # internal_vr;
+	  self # set_flag flag_ext_decl (eltype # externally_declared);
 	  (* Validity Constraint: Attribute Value Type *)
 	  (* Validity Constraint: Fixed Attribute Default *)
 	  (* Validity Constraint: Standalone Document Declaration (partly) *)
@@ -1183,7 +1355,10 @@ class ['ext] element_impl an_ext : ['ext] node =
 		    * value 'av':
 		    *)
 		   let atype, adefault = eltype # attribute n in
-		   let av = value_of_attribute lexerset new_dtd n atype v in
+		                         (* may raise Undeclared *)
+		   let av0 = value_of_attribute lexerset new_dtd n atype v in
+		   let av = mk_pool_value av0 in
+
 		   (* If necessary, check whether normalization violates
 		    * the standalone declaration.
 		    *)
@@ -1212,8 +1387,11 @@ class ['ext] element_impl an_ext : ['ext] node =
 		 with
 		     Undeclared ->
 		       (* raised by method "# attribute" *)
+		       let av0 = value_of_attribute lexerset new_dtd n A_cdata v
+		       in
+		       let av = mk_pool_value av0 in
                        undeclared_attlist :=
-                         (n, value_of_attribute lexerset new_dtd n A_cdata v) ::
+                         (n, av) ::
                          !undeclared_attlist;
                        n, Implied_value        (* does not matter *)
 	      )
@@ -1252,23 +1430,20 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      (eltype # attribute_names)
 	  in
 	  dtd <- Some new_dtd;
-	  attributes <- new_attlist'' @ !undeclared_attlist;
+	  attributes <- att_make (new_attlist'' @ !undeclared_attlist);
 	with
 	    Undeclared ->
-	      (* The DTD allows arbitrary attributes/contents for this
-	       * element
-	       *)
+	      (* The DTD allows arbitrary contents for this element *)
 	      dtd <- Some new_dtd;
-	      attributes <- List.map (fun (n,v) -> n, Value v) new_attlist;
-	      content_model <- Any;
-	      content_dfa <- lazy None;
+	      attributes <- att_map_make (fun v -> Value v) new_attlist;
+	      vr <- no_validation;
 
       method local_validate ?(use_dfa=false) () =
 	(* validates that the content of this element matches the model *)
-	let dfa = if use_dfa then Lazy.force content_dfa else None in
+	let dfa = if use_dfa then Lazy.force vr.content_dfa else None in
 	if not (validate_content 
 		  ~use_dfa:dfa
-		  content_model 
+		  vr.content_model 
 		  (self : 'ext #node :> 'ext node)) then
 	  raise(Validation_error(self # error_name ^ 
 				 " does not match its content model"))
@@ -1278,7 +1453,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	failwith "method 'create_data' not applicable to element node"
 
       method keep_always_whitespace_mode =
-	keep_always_whitespace <- true
+	self # set_flag flag_keep_always_whitespace true
 
       method write os enc =
 	let encoding = self # encoding in
@@ -1288,8 +1463,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	begin match ntype with
 	    T_element name ->
 	      wms ("<" ^ name);
-	      List.iter
-		(fun (aname, avalue) ->
+	      att_iter
+		(fun aname avalue ->
 		   match avalue with
 		       Implied_value -> ()
 		     | Value v ->
@@ -1308,11 +1483,15 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      ()
 	end;
 
-	Hashtbl.iter
-	  (fun n pi ->
-	     pi # write os enc
-	  )
-	  (Lazy.force pinstr);
+	begin match pinstr with
+	    None   -> ()
+	  | Some l ->
+	      Hashtbl.iter
+		(fun n pi ->
+		   pi # write os enc
+		)
+		l;
+	end;
 	List.iter 
 	  (fun n -> n # write os enc)
 	  (self # sub_nodes);
@@ -1352,11 +1531,14 @@ let create_data_node spec dtd str =
 ;;
 
 
-let create_element_node ?position spec dtd eltype atts =
+let create_element_node ?name_pool_for_attribute_values ?position spec dtd eltype atts =
    match spec with
       Spec_table tab ->
 	let exemplar = spec_table_find_exemplar tab eltype in
-	exemplar # create_element ?position:position dtd (T_element eltype) atts
+	exemplar # create_element 
+	    ?name_pool_for_attribute_values:name_pool_for_attribute_values 
+            ?position:position 
+            dtd (T_element eltype) atts
 ;;
 
 
@@ -1416,6 +1598,11 @@ let create_pinstr_node ?position spec dtd pi =
   el # add_pinstr pi;
   el
 ;;
+
+
+(* TODO: try to avoid sub_nodes in the following; replace it with
+ * iter_nodes.
+ *)
 
 
 let find ?(deeply=false) f base =
@@ -1823,6 +2010,11 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.15  2000/09/09 16:41:03  gerd
+ * 	Effort to reduce the amount of allocated memory: The number of
+ * instance variables in document nodes has been miminized; the class
+ * default_ext no longer stores anything; string pools have been implemented.
+ *
  * Revision 1.14  2000/08/30 15:47:52  gerd
  * 	Implementation of pxp_document.mli rev 1.10.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.14 2000/08/26 23:23:14 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.15 2000/09/09 16:41:03 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -36,6 +36,12 @@ type config =
       idref_pass : bool;
       validate_by_dfa : bool;
       accept_only_deterministic_models : bool;
+      name_pool : pool;
+      enable_name_pool_for_element_types    : bool;
+      enable_name_pool_for_attribute_names  : bool;
+      enable_name_pool_for_attribute_values : bool;
+      (* enable_name_pool_for_notation_names   : bool; *)
+      enable_name_pool_for_pinstr_targets   : bool;
       debugging_mode : bool;
     }
 
@@ -458,6 +464,8 @@ class ['ext] parser_object
 	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
 	in
 
+
+	let make_pool_string = pool_string config.name_pool in
 	
 %%
 
@@ -1688,10 +1696,20 @@ start_tag():
       in
       check_attlist attlist;
 		
-      let name, tag_beg_entid = tag in
+      let name0, tag_beg_entid = tag in
+      let name =
+	if config.enable_name_pool_for_element_types 
+	then make_pool_string name0 
+	else name0 in
       let attlist' = List.map (fun (nv,_) -> nv) attlist in
       let d =
-	create_element_node ?position:position spec dtd name attlist' in
+	create_element_node 
+          ?name_pool_for_attribute_values:
+             (if config.enable_name_pool_for_attribute_values 
+	      then Some config.name_pool
+	      else None)
+          ?position:position 
+          spec dtd name attlist' in
 
       begin match id_index with
 	  None -> ()
@@ -1757,8 +1775,13 @@ start_tag():
 
 attribute():
   /* Parses name="value"  */
-  n:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
-    {{ (n,v), ws }}
+  n0:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
+    {{ let n =
+	 if config.enable_name_pool_for_attribute_names 
+	 then make_pool_string n0
+	 else n0 in
+       (n,v), ws 
+     }}
 
 
 attval():
@@ -1854,7 +1877,11 @@ pi():
 	else
 	  None
       in
-      let target,value = pi in
+      let target0,value = pi in
+      let target =
+	if config.enable_name_pool_for_pinstr_targets
+	then make_pool_string target0
+	else target0 in
 
       if n_tags_open = 0 & not config.enable_super_root_node
       then
@@ -1938,6 +1965,7 @@ end
 open Pxp_reader;;
 
 
+(*
 class default_ext =
   object(self)
     val mutable node = (None : ('a extension node as 'a) option)
@@ -1951,6 +1979,20 @@ class default_ext =
       node <- Some n
   end
 ;;
+*)
+
+
+class default_ext =
+  object(self : 'self)
+    method clone = self
+    method node =
+      (assert false : 'self node) 
+    method set_node (n : 'self node) =
+      ()
+  end
+;;
+
+
 
 
 let default_extension = new default_ext;;
@@ -2252,6 +2294,11 @@ let default_config =
     idref_pass = false;
     validate_by_dfa = true;
     accept_only_deterministic_models = true;
+    name_pool = make_probabilistic_pool 10;
+    enable_name_pool_for_element_types = false;
+    enable_name_pool_for_attribute_names = false;
+    enable_name_pool_for_pinstr_targets = false;
+    enable_name_pool_for_attribute_values = false;
     debugging_mode = false;
   }
 
@@ -2277,6 +2324,11 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.15  2000/09/09 16:41:03  gerd
+ * 	Effort to reduce the amount of allocated memory: The number of
+ * instance variables in document nodes has been miminized; the class
+ * default_ext no longer stores anything; string pools have been implemented.
+ *
  * Revision 1.14  2000/08/26 23:23:14  gerd
  * 	Bug: from_file must not interpret the file name as URL path.
  * 	Bug: When PI and comment nodes are generated, the collected data

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.7 2000/08/18 20:15:43 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.8 2000/09/09 16:41:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -209,6 +209,18 @@ type config =
       accept_only_deterministic_models : bool;
         (* Whether only deterministic content models are accepted in DTDs. *)
 
+      name_pool : Pxp_types.pool;
+      enable_name_pool_for_element_types    : bool;
+      enable_name_pool_for_attribute_names  : bool;
+      enable_name_pool_for_attribute_values : bool;
+      (* enable_name_pool_for_notation_names   : bool; *)
+      enable_name_pool_for_pinstr_targets   : bool;
+        (* The name pool maps strings to pool strings such that strings with
+	 * the same value share the same block of memory.
+	 * Enabling the name pool saves memory, but makes the parser
+	 * slower.
+	 *)
+
       (* The following options are not implemented, or only for internal
        * use.
        *)
@@ -387,6 +399,11 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.8  2000/09/09 16:41:03  gerd
+ * 	Effort to reduce the amount of allocated memory: The number of
+ * instance variables in document nodes has been miminized; the class
+ * default_ext no longer stores anything; string pools have been implemented.
+ *
  * Revision 1.7  2000/08/18 20:15:43  gerd
  * 	Config options:
  * - enable_super_root_nodes: new name for virtual_root
