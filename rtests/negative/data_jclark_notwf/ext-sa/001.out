@@ -1,0 +1,3 @@
+Called from entity [toplevel document] = SYSTEM "data_jclark_notwf/ext-sa/001.xml", line 4, column 8:
+In entity e = SYSTEM "001.ent", at line 1, column 3: 
+Markup_types.Validation_error("Recursive reference to entity `e'")

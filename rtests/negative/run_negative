@@ -1,0 +1,111 @@
+#! /bin/bash
+
+# $Id: run_negative,v 1.1 2000/05/01 15:58:50 gerd Exp $
+
+
+t=./test_negative
+
+init_test () {
+    # $1: Options for test_negative
+    # $2: Path to test record
+    options="$1"
+    input="$2"
+    output=`dirname $input`/`basename $input .xml`.out
+    if  [ -f "$output" ]; then
+	echo "Test $input already initialized; skipping"
+    else
+	$t $options "$input" >"$output"
+	echo Test $input initialized.
+    fi
+}
+
+
+check_test () {
+    # $1: Options for test_negative
+    # $2: Path to test record
+    options="$1"
+    input="$2"
+    output=`dirname $input`/`basename $input .xml`.out
+    $t $options "$input" >current.out
+    if [ -f "$output" ]; then
+	if cmp "$output" current.out; then
+	    echo Test $input OK
+	else
+	    echo Test $input FAILED!!!
+	fi
+    else
+	echo Test $input still uninitialized
+	echo - OUTPUT:
+	cat current.out
+    fi
+}
+
+
+for_directory () {
+    what="$1"
+    shift
+    options="$1"
+    shift
+    while [ $# -gt 0 ]; do
+	input="$1"
+	shift
+	if [ -f "$input" ]; then
+	    $what "$options" "$input"
+	else
+	    if [ -d "$input" ]; then
+		for ent in $input/*.xml; do
+		    for_directory $what "$options" $ent
+		done
+	    else
+		echo "Not found: $input" >&2
+	    fi
+	fi
+    done
+}
+
+
+usage () {
+    cat <<EOF >&2
+usage: $0 [ -init -wf ] file ... dir ...
+EOF
+    exit 1
+}
+
+
+action="check_test"
+options=""
+while true; do
+    case "x$1" in
+	x-init)
+	    action="init_test"
+	    shift
+	    ;;
+	x-wf)
+	    options="$options -wf"
+	    shift
+	    ;;
+	x-*)
+	    usage
+	    ;;
+	*)
+	    break
+	    ;;
+    esac
+done
+
+
+if [ $# -gt 0 ]; then
+    for_directory $action "$options" "$@"
+else
+    for_directory $action -wf \
+	data_jclark_notwf/ext-sa data_jclark_notwf/not-sa data_jclark_notwf/sa \
+	data_notwf/sa
+    for_directory $action "" \
+	data_jclark_invalid
+fi
+
+# ======================================================================
+# $Log: run_negative,v $
+# Revision 1.1  2000/05/01 15:58:50  gerd
+# 	Initial revision.
+#

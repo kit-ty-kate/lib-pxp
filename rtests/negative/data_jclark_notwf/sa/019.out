@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/019.xml", at line 1, column 5: 
+Markup_types.WF_error("The left angle bracket '<' must be written as '&lt;'")

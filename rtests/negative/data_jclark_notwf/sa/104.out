@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/104.xml", at line 4, column 14: 
+Markup_types.WF_error("End-tag not in the same entity as the start-tag")

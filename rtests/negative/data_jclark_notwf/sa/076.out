@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/076.xml", at line 1, column 15: 
+Markup_types.WF_error("Reference to undeclared general entity `foo'")

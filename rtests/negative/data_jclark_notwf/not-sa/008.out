@@ -1,0 +1,3 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/not-sa/008.xml", at line 1, column 31: 
+In entity [dtd] = SYSTEM "008.ent", at line 2, column 18: 
+Markup_types.WF_error("The character '%' must be written as '&#37;'")

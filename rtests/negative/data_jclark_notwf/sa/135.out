@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/135.xml", at line 2, column 17: 
+Markup_types.WF_error("References to general entities not allowed in DTDs")

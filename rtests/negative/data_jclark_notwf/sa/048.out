@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/048.xml", at line 3, column 12: 
+Markup_types.WF_error("CDATA section not allowed here")

@@ -1,0 +1,4 @@
+<!DOCTYPE doc [
+<!ENTITY e SYSTEM "null.ent">
+]>
+<doc a="&e;"></doc>

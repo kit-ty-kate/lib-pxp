@@ -1,0 +1,3 @@
+Called from entity [toplevel document] = SYSTEM "data_jclark_notwf/ext-sa/003.xml", line 5, column 8:
+In entity e = SYSTEM "003.ent", at line 1, column 21: 
+Markup_types.WF_error("Bad XML declaration")

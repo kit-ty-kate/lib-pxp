@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/032.xml", at line 1, column 5: 
+Markup_types.WF_error("Illegal comment; possible reasons are illegal control characters or double hyphens ('--') inside the comment, or missing '-->'")

@@ -1,0 +1,4 @@
+In entity [toplevel document] = SYSTEM "data_jclark_invalid/004.xml", at line 1, column 31: 
+Called from entity [dtd] = SYSTEM "004.ent", line 3, column 23:
+In entity e2, at line 1, column 1: 
+Markup_types.Validation_error("Entities not properly nested with ELEMENT declaration")

@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_notwf/sa/001.xml", at line 4, column 13: 
+Markup_types.Validation_error("Found reference to external entity in attribute value")
