@@ -1,0 +1,6 @@
+#! /bin/sh
+
+set -e
+
+(cd canonxml && ./run_canonxml)
+(cd negative && ./run_negative)

@@ -1,0 +1,25 @@
+----------------------------------------------------------------------
+Regression test "negative":
+----------------------------------------------------------------------
+
+- An errorneous XML file is parsed, and the error message is printed.
+
+- The output is compared with a reference file. The test is only
+  passed if the output and the reference are equal.
+
+- Test data "data_jclark_notwf":
+  Contains the samples by James Clark that are not well-formed. 
+  The subdirectories:
+  - sa:           standalone documents
+  - not-sa:       non-standalone document (with external DTD)
+  - ext-sa:       non-standalone document (with other external entity)
+
+- Test data "data_jclark_invalid":
+  Contains the samples by James Clark that are invalid.
+
+- Tests that are not passed have been moved into the *-problems directories.
+  The reason is typically that characters have been used not in the 
+  Latin 1 character set.
+
+- Test data "data_notwf":
+  Contains own tests with samples that are not well-formed.

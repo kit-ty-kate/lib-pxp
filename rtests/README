@@ -1,0 +1,16 @@
+----------------------------------------------------------------------
+(Anti) Regression tests
+----------------------------------------------------------------------
+
+- To build the tests, "markup" must already be compiled in ..
+  Do "make" to start the compilation.
+
+- To run the tests:
+  ./run
+
+- Program dumpfiles: Do "make dumpfiles" to create it.
+  It takes XML file names on the command line, and writes a Latex
+  document on stdout. The document shows the contents of all files.
+  EXAMPLE:
+  $ ./dumpfiles canonxml/data_jclark_valid/ext-sa/*.* >x.tex
+  $ latex x
