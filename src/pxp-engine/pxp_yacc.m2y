@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.24 2001/05/17 21:39:31 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.25 2001/05/17 22:39:10 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2172,9 +2172,9 @@ let default_extension = new default_ext;;
 
 let default_spec =
   make_spec_from_mapping
-    ~super_root_exemplar:      (new element_impl default_extension)
-    ~comment_exemplar:         (new element_impl default_extension)
-    ~default_pinstr_exemplar:  (new element_impl default_extension)
+    ~super_root_exemplar:      (new super_root_impl default_extension)
+    ~comment_exemplar:         (new comment_impl default_extension)
+    ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
     ~data_exemplar:            (new data_impl default_extension)
     ~default_element_exemplar: (new element_impl default_extension)
     ~element_mapping:          (Hashtbl.create 1)
@@ -2519,6 +2519,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.25  2001/05/17 22:39:10  gerd
+ * 	Fix: default_spec
+ *
  * Revision 1.24  2001/05/17 21:39:31  gerd
  * 	Initial implementation of namespace parsing.
  *
