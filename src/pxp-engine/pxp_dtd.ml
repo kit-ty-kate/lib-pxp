@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.9 2000/07/25 00:30:01 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.10 2000/08/18 21:18:45 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -262,7 +262,7 @@ class dtd  the_warner init_encoding =
 
 
     method gen_entity name =
-      (* returns the entity 'name' or raises Validation_error if not found *)
+      (* returns the entity 'name' or raises WF_error if not found *)
       try
 	Hashtbl.find gen_entities name
       with
@@ -274,7 +274,7 @@ class dtd  the_warner init_encoding =
 
 
     method par_entity name =
-      (* returns the entity 'name' or raises Validation_error if not found *)
+      (* returns the entity 'name' or raises WF_error if not found *)
       try
 	Hashtbl.find par_entities name
       with
@@ -971,6 +971,11 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.10  2000/08/18 21:18:45  gerd
+ * 	Updated wrong comments for methods par_entity and gen_entity.
+ * These can raise WF_error and not Validation_error, and this is the
+ * correct behaviour.
+ *
  * Revision 1.9  2000/07/25 00:30:01  gerd
  * 	Added support for pxp:dtd PI options.
  *

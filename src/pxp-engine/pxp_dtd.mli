@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.7 2000/07/25 00:30:01 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.8 2000/08/18 21:18:45 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -123,7 +123,7 @@ class dtd :
     method gen_entity : string -> (Pxp_entity.entity * bool)
       (* let e, extdecl = obj # gen_entity n:
        * looks up the general entity 'e' with the name 'n'. Raises
-       * Validation_error if the entity cannot be found.
+       * WF_error if the entity cannot be found.
        * 'extdecl': indicates whether the entity declaration occured in an 
        * external entity.
        *)
@@ -133,7 +133,7 @@ class dtd :
 
     method par_entity : string -> Pxp_entity.entity
       (* looks up the parameter entity with the given name. Raises
-       * Validation_error if the entity cannot be found.
+       * WF_error if the entity cannot be found.
        *)
 
     method par_entity_names : string list
@@ -384,6 +384,11 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.8  2000/08/18 21:18:45  gerd
+ * 	Updated wrong comments for methods par_entity and gen_entity.
+ * These can raise WF_error and not Validation_error, and this is the
+ * correct behaviour.
+ *
  * Revision 1.7  2000/07/25 00:30:01  gerd
  * 	Added support for pxp:dtd PI options.
  *
