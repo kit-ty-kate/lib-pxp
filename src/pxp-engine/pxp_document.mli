@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.3 2000/07/04 22:05:10 gerd Exp $
+(* $Id: pxp_document.mli,v 1.4 2000/07/09 17:51:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -236,6 +236,15 @@ class type [ 'ext ] node =
     method node_type : node_type
       (* Get the name of the element type. *)
 
+    method position : (string * int * int)
+      (* Return the name of the entity, the line number, and the column
+       * position (byte offset) of the beginning of the element.
+       * Only available if the element has been created with position
+       * information.
+       * Returns "?",0,0 if not available. (Note: Line number 0 is not
+       * possible otherwise.)
+       *)
+
     method attribute : string -> Pxp_types.att_value
     method attribute_names : string list
     method attribute_type : string -> Pxp_types.att_type
@@ -278,7 +287,9 @@ class type [ 'ext ] node =
        * no DTD is present.)
        *)
 
-    method create_element : dtd -> node_type -> (string * string) list -> 'ext node
+    method create_element : 
+             ?position:(string * int * int) ->
+             dtd -> node_type -> (string * string) list -> 'ext node
       (* create an "empty copy" of this element:
        * - new DTD
        * - new node type
@@ -309,7 +320,8 @@ class type [ 'ext ] node =
     (* internal methods: *)
     method internal_adopt : 'ext node option -> unit
     method internal_delete : 'ext node -> unit
-    method internal_init : dtd -> string -> (string * string) list -> unit
+    method internal_init : (string * int * int) ->
+                           dtd -> string -> (string * string) list -> unit
   end
 ;;
 
@@ -349,7 +361,9 @@ val make_spec_from_mapping :
      *)
 
 val create_data_node : 'ext spec -> dtd -> string -> 'ext node
-val create_element_node : 'ext spec -> dtd -> string -> (string * string) list -> 'ext node
+val create_element_node : 
+      ?position:(string * int * int) ->
+      'ext spec -> dtd -> string -> (string * string) list -> 'ext node
 
 
 class [ 'ext ] document :
@@ -428,6 +442,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.4  2000/07/09 17:51:14  gerd
+ * 	Element nodes can store positions.
+ *
  * Revision 1.3  2000/07/04 22:05:10  gerd
  * 	New functions make_spec_from_mapping, create_data_node,
  * create_element_node.

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.4 2000/07/08 23:04:06 gerd Exp $
+(* $Id: pxp_document.ml,v 1.5 2000/07/09 17:51:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -47,6 +47,7 @@ class type [ 'ext ] node =
     method set_nodes : 'ext node list -> unit
     method data : string
     method node_type : node_type
+    method position : (string * int * int)
     method attribute : string -> att_value
     method attribute_names : string list
     method attribute_type : string -> att_type
@@ -61,14 +62,16 @@ class type [ 'ext ] node =
     method dtd : dtd
     method encoding : rep_encoding
     method create_element :
-      dtd -> node_type -> (string * string) list -> 'ext node
+                   ?position:(string * int * int) ->
+                   dtd -> node_type -> (string * string) list -> 'ext node
     method create_data : dtd -> string -> 'ext node
     method local_validate : unit
     method keep_always_whitespace_mode : unit
     method write_compact_as_latin1 : output_stream -> unit
     method internal_adopt : 'ext node option -> unit
     method internal_delete : 'ext node -> unit
-    method internal_init : dtd -> string -> (string * string) list -> unit
+    method internal_init : (string * int * int) ->
+                           dtd -> string -> (string * string) list -> unit
   end
 ;;
 
@@ -295,6 +298,7 @@ class virtual ['ext] node_impl an_ext =
     method virtual set_nodes : 'ext node list -> unit
     method virtual data : string
     method virtual node_type : node_type
+    method virtual position : (string * int * int)
     method virtual attribute : string -> att_value
     method virtual attribute_names : string list
     method virtual attribute_type : string -> att_type
@@ -306,24 +310,31 @@ class virtual ['ext] node_impl an_ext =
     method virtual quick_set_attributes : (string * Pxp_types.att_value) list -> unit
     method virtual find : string -> 'ext node
     method virtual reset_finder : unit
-    method virtual create_element : dtd -> node_type -> (string * string) list -> 'ext node
+    method virtual create_element : 
+                   ?position:(string * int * int) ->
+                   dtd -> node_type -> (string * string) list -> 'ext node
     method virtual create_data : dtd -> string -> 'ext node
     method virtual keep_always_whitespace_mode : unit
     method virtual write_compact_as_latin1 : output_stream -> unit
     method virtual local_validate : unit
     method virtual internal_delete : 'ext node -> unit
-    method virtual internal_init : dtd -> string -> (string * string) list -> unit
+    method virtual internal_init : (string * int * int) ->
+                                dtd -> string -> (string * string) list -> unit
   end
 ;;
 
 
 (**********************************************************************)
 
+let no_position = ("?", 0, 0) ;;
+
 
 class ['ext] data_impl an_ext : ['ext] node =
   object (self)
     inherit ['ext] node_impl an_ext
     val mutable content = ("" : string)
+
+    method position = no_position
 
     method find id =
       if parent = None then
@@ -358,7 +369,7 @@ class ['ext] data_impl an_ext : ['ext] node =
     method optional_list_attribute _ = []
     method quick_set_attributes _ =
       failwith "method 'quick_set_attributes' not applicable to data node"
-    method create_element _ _ _ =
+    method create_element ?position _ _ _ =
       failwith "method 'create_element' not applicable to data node"
     method create_data new_dtd new_str =
       let x = extension # clone in
@@ -381,14 +392,13 @@ class ['ext] data_impl an_ext : ['ext] node =
 	
     method internal_delete _ =
       assert false
-    method internal_init _ _ _ =
+    method internal_init _ _ _ _ =
       assert false
   end
 ;;
 
 
 (**********************************************************************)
-
 
 class ['ext] element_impl an_ext : ['ext] node =
     object (self:'self)
@@ -404,7 +414,11 @@ class ['ext] element_impl an_ext : ['ext] node =
       val mutable id_table = None
       val mutable keep_always_whitespace = false
 
+      val mutable position = no_position
+
       method attributes = attributes
+
+      method position = position
 
       method internal_adopt new_parent =
 	super # internal_adopt new_parent;
@@ -708,7 +722,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	attributes <- atts
 
 
-      method create_element new_dtd new_type new_attlist =
+      method create_element 
+                       ?(position = no_position) new_dtd new_type new_attlist =
 	let x = extension # clone in
 	let obj = ( {< parent = None;
 		       extension = x;
@@ -721,15 +736,16 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    T_data ->
 	      failwith "Cannot create T_data node"
 	  | T_element name ->
-	      obj # internal_init new_dtd name new_attlist;
+	      obj # internal_init position new_dtd name new_attlist;
 	      obj
 
-      method internal_init new_dtd new_name new_attlist =
+      method internal_init new_pos new_dtd new_name new_attlist =
 	(* resets the contents of the object *)
 	parent <- None;
 	rev_nodes <- [];
 	nodes <- None;
 	name <- new_name;
+	position <- new_pos;
 	(* Hashtbl.clear pinstr; *)
 
 	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
@@ -914,11 +930,11 @@ let create_data_node spec dtd str =
 ;;
 
 
-let create_element_node spec dtd eltype atts =
+let create_element_node ?position spec dtd eltype atts =
    match spec with
       Spec_table tab ->
 	let exemplar = spec_table_find_exemplar tab eltype in
-	exemplar # create_element dtd (T_element eltype) atts
+	exemplar # create_element ?position:position dtd (T_element eltype) atts
 ;;
 
 
@@ -1061,6 +1077,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.5  2000/07/09 17:51:14  gerd
+ * 	Element nodes can store positions.
+ *
  * Revision 1.4  2000/07/08 23:04:06  gerd
  * 	[Merging 0.2.10:] Bugfix: allow_undeclared_attribute
  *
