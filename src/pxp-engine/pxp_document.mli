@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.4 2000/07/09 17:51:14 gerd Exp $
+(* $Id: pxp_document.mli,v 1.5 2000/07/14 13:56:11 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -211,16 +211,6 @@ class type [ 'ext ] node =
        * following node if present:
        *)
 
-    method find : string -> 'ext node
-      (* Get the node that has an ID attribute with this value, or raise
-       * Not_found.
-       * "find" may also cause a Validation_error if something is wrong
-       * with the IDs.
-       *)
-
-    method reset_finder : unit
-      (* makes that newly added nodes will also be found *)
-
     method set_nodes : 'ext node list -> unit
       (* Set the list of sub nodes. Elements that are no longer sub nodes gets
        * orphaned, and all new elements that previously were not sub nodes
@@ -271,6 +261,16 @@ class type [ 'ext ] node =
        * the second version always as list.
        *)
 
+    method id_attribute_name : string
+    method id_attribute_value : string
+      (* Return the name and value of the ID attribute. The methods may
+       * raise Not_found if there is no ID attribute in the DTD, or no
+       * ID attribute in the element, respectively.
+       *)
+
+    method idref_attribute_names : string list
+      (* Returns the list of attribute names of IDREF or IDREFS type. *)
+
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
       (* Sets the attributes but does not check whether they match the DTD.
        *)
@@ -315,6 +315,13 @@ class type [ 'ext ] node =
        * output stream; the character set ISO-8859-1 is used. The format
        * is compact (the opposite of "pretty printing").
        *)
+
+    (* ---------------------------------------- *)
+    (* The methods 'find' and 'reset_finder' are no longer supported.
+     * The functionality is provided by the configurable index object
+     * (see Pxp_yacc).
+     *)
+
 
     (* ---------------------------------------- *)
     (* internal methods: *)
@@ -442,6 +449,10 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.5  2000/07/14 13:56:11  gerd
+ * 	Added methods id_attribute_name, id_attribute_value,
+ * idref_attribute_names.
+ *
  * Revision 1.4  2000/07/09 17:51:14  gerd
  * 	Element nodes can store positions.
  *

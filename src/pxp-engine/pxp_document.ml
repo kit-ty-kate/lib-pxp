@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.5 2000/07/09 17:51:14 gerd Exp $
+(* $Id: pxp_document.ml,v 1.6 2000/07/14 13:56:11 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -56,9 +56,10 @@ class type [ 'ext ] node =
     method required_list_attribute : string -> string list
     method optional_string_attribute : string -> string option
     method optional_list_attribute : string -> string list
+    method id_attribute_name : string
+    method id_attribute_value : string
+    method idref_attribute_names : string list
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
-    method find : string -> 'ext node
-    method reset_finder : unit
     method dtd : dtd
     method encoding : rep_encoding
     method create_element :
@@ -308,8 +309,6 @@ class virtual ['ext] node_impl an_ext =
     method virtual optional_string_attribute : string -> string option
     method virtual optional_list_attribute : string -> string list
     method virtual quick_set_attributes : (string * Pxp_types.att_value) list -> unit
-    method virtual find : string -> 'ext node
-    method virtual reset_finder : unit
     method virtual create_element : 
                    ?position:(string * int * int) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
@@ -336,14 +335,6 @@ class ['ext] data_impl an_ext : ['ext] node =
 
     method position = no_position
 
-    method find id =
-      if parent = None then
-	raise Not_found
-      else
-	self # root # find id
-
-    method reset_finder =
-      self # root # reset_finder
     method add_node _ =
       failwith "method 'add_node' not applicable to data node"
     method add_pinstr _ =
@@ -367,6 +358,9 @@ class ['ext] data_impl an_ext : ['ext] node =
       failwith "Markup.document, method required_list_attribute: not found"
     method optional_string_attribute _ = None
     method optional_list_attribute _ = []
+    method id_attribute_name = raise Not_found
+    method id_attribute_value = raise Not_found
+    method idref_attribute_names = []
     method quick_set_attributes _ =
       failwith "method 'quick_set_attributes' not applicable to data node"
     method create_element ?position _ _ _ =
@@ -407,6 +401,8 @@ class ['ext] element_impl an_ext : ['ext] node =
       val mutable content_model = Any
       val mutable ext_decl = false
       val mutable name = "[unnamed]"
+      val mutable id_att_name = None
+      val mutable idref_att_names = []
       val mutable rev_nodes = ([] : 'c list)
       val mutable nodes = (None : 'c list option)
       val mutable attributes = []
@@ -423,48 +419,6 @@ class ['ext] element_impl an_ext : ['ext] node =
       method internal_adopt new_parent =
 	super # internal_adopt new_parent;
 	id_table <- None
-
-      method reset_finder =
-	if parent = None then
-	  id_table <- None
-	else
-	  self # root # reset_finder
-
-      method find id =
-	if parent = None then begin (* this is the root element *)
-	  let t =
-	    begin match id_table with
-		None   ->
-		  (* create the ID hash table *)
-		  let new_t = Hashtbl.create 100 in
-		  let rec enter n =
-		    let anames = n # attribute_names in
-		    List.iter
-		      (fun aname ->
-			 let atype = n # attribute_type aname in
-			 if atype = A_id then begin
-			   let aval  = n # attribute aname in
-			   match aval with
-			       Value aval_str ->
-				 if Hashtbl.mem new_t aval_str then
-				   raise
-				     (Validation_error("Element ID `" ^ aval_str ^ "' is not unique"));
-				 Hashtbl.add new_t aval_str n
-			     | Implied_value -> ()
-			     | _ -> ()
-			 end)
-		      anames;
-		    List.iter enter (n # sub_nodes);
-		  in
-		  enter (self : 'ext #node :> 'ext node);
-		  id_table <- Some new_t;
-		  new_t
-	      | Some t -> t
-	    end
-	  in
-	  Hashtbl.find t id
-	end
-	else self # root # find id
 
       method add_node n =
 	let only_whitespace s =
@@ -718,6 +672,25 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    Not_found ->
 	      []
 
+      method id_attribute_name =
+	match id_att_name with
+	    None -> raise Not_found
+	  | Some name -> name
+
+      method id_attribute_value =
+	match id_att_name with
+	    None -> raise Not_found
+	  | Some name ->
+	      begin match List.assoc name attributes (* may raise Not_found *)
+	      with
+		  Value s -> s
+		| _ -> raise Not_found
+	      end
+
+
+      method idref_attribute_names = idref_att_names
+
+
       method quick_set_attributes atts =
 	attributes <- atts
 
@@ -767,6 +740,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	  let eltype = new_dtd # element new_name in
 	  content_model <- eltype # content_model;
 	  ext_decl <- eltype # externally_declared;
+	  id_att_name <- eltype # id_attribute_name;
+	  idref_att_names <- eltype # idref_attribute_names;
 	  (* Validity Constraint: Attribute Value Type *)
 	  (* Validity Constraint: Fixed Attribute Default *)
 	  (* Validity Constraint: Standalone Document Declaration (partly) *)
@@ -1077,6 +1052,10 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.6  2000/07/14 13:56:11  gerd
+ * 	Added methods id_attribute_name, id_attribute_value,
+ * idref_attribute_names.
+ *
  * Revision 1.5  2000/07/09 17:51:14  gerd
  * 	Element nodes can store positions.
  *
