@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.5 2000/07/08 22:03:11 gerd Exp $
+(* $Id: ds_app.ml,v 1.6 2000/07/16 19:36:03 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -32,14 +32,16 @@ let run f arg1 arg2 =
 
 let edit filename cmd =
   (* read in style definition *)
+  let index = new hash_index in
   let style =
     parse_document_entity
+      ~id_index:(index :> 'ext index)
       default_config
       (from_file !style_sysid)
       tag_map
   in
   let root = style # root in
-  root # extension # prepare;
+  root # extension # prepare (index :> 'ext index);
 
   let obj_dtd =
     parse_dtd_entity
@@ -49,7 +51,7 @@ let edit filename cmd =
   obj_dtd # set_root object_dtd_root;
 
   let topframe = openTk() in
-  let context = new context filename obj_dtd root topframe in
+  let context = new context filename obj_dtd index root topframe in
 
   Toplevel.configure topframe [ Width (Centimeters 20.0);
                                 Height (Centimeters 12.0);
@@ -78,6 +80,9 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.6  2000/07/16 19:36:03  gerd
+ * 	Updated.
+ *
  * Revision 1.5  2000/07/08 22:03:11  gerd
  * 	Updates because of PXP interface changes.
  *

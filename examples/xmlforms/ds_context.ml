@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.4 2000/07/08 22:03:11 gerd Exp $
+(* $Id: ds_context.ml,v 1.5 2000/07/16 19:36:03 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -10,10 +10,11 @@ open Pxp_yacc
 let empty_record = new element_impl (Pxp_yacc.default_extension);;
 let empty_dnode = new data_impl Pxp_yacc.default_extension;;
 
-class context the_filename the_obj_dtd the_root the_topframe =
+class context the_filename the_obj_dtd the_index the_root the_topframe =
   object (self)
     val filename = the_filename
     val obj_dtd = the_obj_dtd
+    val node_index = the_index
     val mutable obj = empty_record # create_element
 			the_obj_dtd (T_element "record") []
     val root = the_root
@@ -40,7 +41,7 @@ class context the_filename the_obj_dtd the_root the_topframe =
     method private enter_node =
       let where = history.(index) in
       let n =
-	try root # find where with
+	try node_index # find where with
 	    Not_found -> failwith ("Mask not found: " ^ where) in
       let w = n # extension # create_widget topframe self in
       Tk.pack [w] (n # extension # pack_opts @ [ Tk.Expand true] );
@@ -89,13 +90,35 @@ class context the_filename the_obj_dtd the_root the_topframe =
 
     (* read, write the slots of object *)
 
+    method search_slot name =
+      let rec search n =
+	match n # node_type with
+	    T_element "string" ->
+	      if n # required_string_attribute "name" = name then
+		n
+	      else raise Not_found
+	  | T_element _ ->
+	      search_list (n # sub_nodes)
+	  | T_data ->
+	      raise Not_found
+	      
+       and search_list l =
+         match l with
+	     x :: l' ->
+	       (try search x with Not_found -> search_list l')
+ 	   | [] ->
+	       raise Not_found
+      in
+      search obj
+
     method get_slot name =
-      (obj # find name) # data
+      let d = (self # search_slot name) # data in
+      d
 
     method set_slot name value =
       let dtd = obj # dtd in
       begin try
-	let n = obj # find name in
+	let n = self # search_slot name in
 	n # delete
       with
 	  Not_found -> ()
@@ -106,7 +129,7 @@ class context the_filename the_obj_dtd the_root the_topframe =
       e_string # add_node dnode;
       e_string # local_validate;
       obj # add_node e_string;
-      obj # reset_finder;
+      assert(self # get_slot name = value)
 
     (* load, save object *)
 
@@ -183,6 +206,9 @@ class context the_filename the_obj_dtd the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.5  2000/07/16 19:36:03  gerd
+ * 	Updated.
+ *
  * Revision 1.4  2000/07/08 22:03:11  gerd
  * 	Updates because of PXP interface changes.
  *

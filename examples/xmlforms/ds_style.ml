@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.3 2000/07/08 22:03:11 gerd Exp $
+(* $Id: ds_style.ml,v 1.4 2000/07/16 19:36:03 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -99,7 +99,7 @@ class virtual shared =
 
     (* --- virtual --- *)
 
-    method virtual prepare : unit
+    method virtual prepare : shared Pxp_yacc.index -> unit
     method virtual create_widget : Widget.widget -> context -> Widget.widget
 
     method pack_opts = ( [] : Tk.options list )
@@ -149,7 +149,7 @@ class default =
   object (self)
     inherit shared
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font
 
     method create_widget w c =
@@ -166,7 +166,7 @@ class application =
 
     val mutable start_node = dummy_node
 
-    method prepare =
+    method prepare idx =
       (* prepare this node *)
       self # init_color_and_font;
       if fgcolor = None then fgcolor <- Some "black";
@@ -176,11 +176,11 @@ class application =
 	match self # node # attribute "start" with
 	    Value v -> v
 	  | _       -> assert false in
-      start_node <- (try self # node # find start with
+      start_node <- (try idx # find start with
 	  Not_found -> failwith "Start node not found");
       (* iterate over the subtree *)
       let rec iterate n =
-	n # extension # prepare;
+	n # extension # prepare idx;
 	List.iter iterate (n # sub_nodes)
       in
       List.iter iterate (self # node # sub_nodes)
@@ -204,7 +204,7 @@ class sequence =
   object (self)
     inherit shared
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
 
     method create_widget w c =
@@ -224,7 +224,7 @@ class vbox =
 
     val mutable att_halign = "left"
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       match self # node # attribute "halign" with
 	  Value v -> att_halign <- v
@@ -274,7 +274,7 @@ class mask =
 
     inherit vbox
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       att_halign <- "left"
   end
@@ -289,7 +289,7 @@ class hbox =
     val mutable att_halign = "left"
     val mutable att_valign = "top"
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       begin match self # node # attribute "halign" with
 	  Value v -> att_halign <- v
@@ -371,7 +371,7 @@ class vspace =
     val mutable att_height = Tk.Pixels 0
     val mutable att_fill  = false
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       begin match self # node # attribute "height" with
 	  Value v       -> att_height <- get_dimension v
@@ -414,7 +414,7 @@ class hspace =
     val mutable att_width = Tk.Pixels 0
     val mutable att_fill  = false
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       begin match self # node # attribute "width" with
 	  Value v       -> att_width <- get_dimension v
@@ -456,7 +456,7 @@ class label =
     val mutable att_textwidth = (-1)
     val mutable att_halign = "left"
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       att_textwidth <- (match self # node # attribute "textwidth" with
 			    Value v ->
@@ -499,7 +499,7 @@ class entry =
     val mutable att_textwidth = (-1)
     val mutable att_slot = ""
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       tv <- lazy (Textvariable.create());
       att_textwidth <- (match self # node # attribute "textwidth" with
@@ -544,7 +544,7 @@ class textbox =
     val mutable att_slot = ""
     val mutable last_widget = None
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       att_textwidth <- (match self # node # attribute "textwidth" with
 			    Value v ->
@@ -632,7 +632,7 @@ class button =
     val mutable att_action = ""
     val mutable att_goto = ""
 
-    method prepare =
+    method prepare idx =
       self # init_color_and_font;
       att_label <- (match self # node # attribute "label" with
 			Value v -> v
@@ -645,7 +645,7 @@ class button =
 		     | Implied_value -> ""
 		     | _ -> assert false);
       if att_action = "goto" then begin
-	try let _ = self # node # find att_goto in () with
+	try let _ = idx # find att_goto in () with
 	    Not_found -> failwith ("Target `" ^ att_goto ^ "' not found")
       end;
       if att_action = "list-prev" or att_action = "list-next" then begin
@@ -754,6 +754,9 @@ let tag_map =
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.4  2000/07/16 19:36:03  gerd
+ * 	Updated.
+ *
  * Revision 1.3  2000/07/08 22:03:11  gerd
  * 	Updates because of PXP interface changes.
  *

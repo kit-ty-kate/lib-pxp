@@ -9,7 +9,7 @@ NAME     = xmlforms
 REQUIRES = camltk str pxp
 
 xmlforms: $(ARCHIVE) ds_app.cmo
-	ocamlfind ocamlc -o xmlforms -custom -package "$(REQUIRES)" \
+	ocamlfind ocamlc -g -o xmlforms -custom -package "$(REQUIRES)" \
 		-linkpkg $(ARCHIVE) ds_app.cmo 
 
 xmlform.opt: $(XARCHIVE) ds_app.cmx
