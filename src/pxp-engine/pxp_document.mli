@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.14 2001/05/17 21:38:12 gerd Exp $
+(* $Id: pxp_document.mli,v 1.15 2001/05/17 21:40:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -149,9 +149,9 @@ type node_type =
   | T_comment
 
   (* The following types are fully virtual. This means that it is impossible
-   * to make the parser insert such nodes. However, these types might be
-   * practical when defining views on the tree.
-   * Note that the list of virtual node types will be extended if necessary.
+   * to make the parser insert such nodes into the regular tree. They are
+   * normally created by special methods to allow additional views on the
+   * document tree.
    *)
   | T_none
   | T_attribute of string          (* The string is the name of the attribute *)
@@ -1018,6 +1018,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.15  2001/05/17 21:40:55  gerd
+ * 	Changed comments.
+ *
  * Revision 1.14  2001/05/17 21:38:12  gerd
  * 	Updated signatures for namespace functionality:
  * 	- methods namespace_manager, set_namespace_manager
