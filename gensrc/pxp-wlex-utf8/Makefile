@@ -39,7 +39,10 @@ clean:
 
 CLEAN: clean
 
-distclean: clean
+# distclean is not clean, because the distribution contains the .ml files
+# and gen_done
+distclean: 
+	rm -f $(CLEAN_LIST)
 
 install:
 	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_wlex_link_*.cmo pxp_wlex_link_*.cmx META` && \
