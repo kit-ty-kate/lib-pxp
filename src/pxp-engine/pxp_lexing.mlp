@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mlp,v 1.7 2003/10/03 21:08:46 gerd Exp $
+(* $Id: pxp_lexing.mlp,v 1.8 2003/10/03 21:13:26 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -53,9 +53,9 @@ IFDEF LEXBUF_307
     pos_bol = 0;
     pos_cnum = 0;
   } in
-  lexbuf.lex_mem = [| |];
-  lexbuf.lex_start_p = zero_pos;
-  lexbuf.lex_curr_p = zero_pos
+  lexbuf.lex_mem <- [| |];
+  lexbuf.lex_start_p <- zero_pos;
+  lexbuf.lex_curr_p <- zero_pos
 ENDIF
 ;;
 
@@ -79,6 +79,9 @@ let sub_lexeme lexbuf k l =
  * History:
  * 
  * $Log: pxp_lexing.mlp,v $
+ * Revision 1.8  2003/10/03 21:13:26  gerd
+ * 	Another bugfix
+ *
  * Revision 1.7  2003/10/03 21:08:46  gerd
  * 	Bugfix
  *
