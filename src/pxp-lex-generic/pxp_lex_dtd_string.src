@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_dtd_string.src,v 1.4 2001/06/14 14:25:56 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -49,21 +49,3 @@ rule scan_dtd_string = parse
   | _
       { raise Netconversion.Malformed_code }
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_dtd_string.src,v $
- * Revision 1.4  2001/06/14 14:25:56  gerd
- * 	Removed insertion of pxp_lex_aux.src
- *
- * Revision 1.3  2000/08/14 22:18:34  gerd
- * 	Bad_character_stream -> Netconversion.Malformed_code
- *
- * Revision 1.2  2000/05/29 23:53:12  gerd
- * 	Updated because Markup_* modules have been renamed to Pxp_*.
- *
- * Revision 1.1  2000/05/20 20:33:25  gerd
- * 	Initial revision.
- *
- * 
- *)

@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.8 2001/06/28 21:27:13 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -107,34 +107,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: compile.ml,v $
- * Revision 1.8  2001/06/28 21:27:13  gerd
- * 	Again Out_channel
- *
- * Revision 1.7  2001/06/28 21:24:36  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.6  2001/06/08 00:02:59  gerd
- * 	Updated
- *
- * Revision 1.5  2001/05/17 22:38:27  gerd
- * 	Updated.
- *
- * Revision 1.4  2000/08/17 01:20:15  gerd
- * 	Update: Also tested whether super root nodes, pinstr nodes
- * and comment nodes work.
- * 	Note: comment nodes are not fully tested yet.
- *
- * Revision 1.3  2000/08/16 23:44:19  gerd
- * 	Updates because of changes of the PXP API.
- *
- * Revision 1.2  2000/07/16 17:54:15  gerd
- * 	Updated because of PXP interface changes.
- *
- * Revision 1.1  2000/07/09 00:33:32  gerd
- * 	Initial revision.
- *
- *)

@@ -1,4 +1,4 @@
-(* $Id: lexer.mll,v 1.3 2000/05/09 00:03:22 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -72,19 +72,3 @@ and scan_rest = parse
   | eof 
       { Eof }
 
-(* ======================================================================
- * History:
- * 
- * $Log: lexer.mll,v $
- * Revision 1.3  2000/05/09 00:03:22  gerd
- * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
- * OCaml identifier.
- *
- * Revision 1.2  2000/05/06 21:51:24  gerd
- * 	New symbol Dollar.
- *
- * Revision 1.1  2000/05/06 17:36:17  gerd
- * 	Initial revision.
- *
- * 
- *)

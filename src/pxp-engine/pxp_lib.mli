@@ -1,4 +1,4 @@
-(* $Id: pxp_lib.mli,v 1.1 2000/10/01 19:50:29 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -19,11 +19,3 @@ val only_whitespace : string -> bool
      * (space, tab, CR, LF)
      *)
 
-(* ======================================================================
- * History:
- *
- * $Log: pxp_lib.mli,v $
- * Revision 1.1  2000/10/01 19:50:29  gerd
- * 	Initial revision.
- *
- *)

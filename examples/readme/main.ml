@@ -1,4 +1,4 @@
-(* $Id: main.ml,v 1.5 2000/07/08 17:58:17 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -83,23 +83,3 @@ let main() =
 
 main();;
 
-(* ======================================================================
- * History:
- *
- * $Log: main.ml,v $
- * Revision 1.5  2000/07/08 17:58:17  gerd
- * 	Updated because of PXP API changes.
- *
- * Revision 1.4  2000/06/04 20:25:38  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.3  2000/05/01 16:46:40  gerd
- * 	Using the new error formatter.
- *
- * Revision 1.2  1999/08/23 16:54:19  gerd
- * 	Minor changes.
- *
- * Revision 1.1  1999/08/22 22:29:32  gerd
- * 	Initial revision.
- *
- *)

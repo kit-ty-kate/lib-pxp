@@ -1,4 +1,4 @@
-(* $Id: pxp_dfa.ml,v 1.4 2003/06/15 12:23:21 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -238,23 +238,3 @@ let dfa_of_regexp_content_model re =
       Graph.Edge_not_unique -> raise Not_found
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_dfa.ml,v $
- * Revision 1.4  2003/06/15 12:23:21  gerd
- * 	Moving core type definitions to Pxp_core_types
- *
- * Revision 1.3  2002/02/20 10:01:36  gerd
- * 	Simplified the representation of the DFA graphs, resulting
- * in performance improvements (but less protection against programming
- * errors)
- *
- * Revision 1.2  2001/06/27 23:34:35  gerd
- * 	Moved module StringMap to Pxp_aux.
- *
- * Revision 1.1  2000/07/23 02:16:08  gerd
- * 	Initial revision.
- *
- * 
- *)

@@ -1,4 +1,4 @@
-(* $Id: sample.ml,v 1.4 2002/08/17 23:09:47 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -284,21 +284,3 @@ let parse_expr s =
   ignore(m # current_entity # close_entity);
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: sample.ml,v $
- * Revision 1.4  2002/08/17 23:09:47  gerd
- * 	Updated.
- *
- * Revision 1.3  2002/08/05 22:36:06  gerd
- * 	escape_attributes has an additional position argument
- *
- * Revision 1.2  2002/08/03 17:40:19  gerd
- * 	Support for curly braces in attribute values.
- *
- * Revision 1.1  2002/07/14 23:02:51  gerd
- * 	Initial revision.
- *
- * 
- *)

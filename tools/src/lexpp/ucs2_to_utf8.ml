@@ -1,4 +1,4 @@
-(* $Id: ucs2_to_utf8.ml,v 1.1 2002/08/28 23:48:28 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -249,12 +249,3 @@ let ucs2_to_utf8 { Types.id = id ; Types.rel = rel } =
     Types.rel = multi_simplify_disjunction (List.fold_right aux rel []) }
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: ucs2_to_utf8.ml,v $
- * Revision 1.1  2002/08/28 23:48:28  gerd
- * 	Initial revision.
- *
- * 
- *)

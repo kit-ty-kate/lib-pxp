@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex_aux.ml,v 1.2 2000/10/01 19:51:50 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -79,21 +79,3 @@
 	    PI(s_name, "")
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_wlex_aux.ml,v $
- * Revision 1.2  2000/10/01 19:51:50  gerd
- * 	Optimizations.
- *
- * Revision 1.1  2000/09/17 00:14:06  gerd
- * 	Initial revision.
- *
- * Revision 1.2  2000/05/29 23:53:12  gerd
- * 	Updated because Markup_* modules have been renamed to Pxp_*.
- *
- * Revision 1.1  2000/05/20 20:33:25  gerd
- * 	Initial revision.
- *
- * 
- *)

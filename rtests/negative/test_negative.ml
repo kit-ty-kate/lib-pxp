@@ -1,4 +1,4 @@
-(* $Id: test_negative.ml,v 1.7 2003/06/21 12:15:21 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -75,30 +75,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: test_negative.ml,v $
- * Revision 1.7  2003/06/21 12:15:21  gerd
- * 	Updates because of changed API
- *
- * Revision 1.6  2000/07/14 14:57:12  gerd
- * 	Updated: warner
- *
- * Revision 1.5  2000/07/14 14:20:11  gerd
- * 	Updated because of PXP interface changes.
- *
- * Revision 1.4  2000/07/09 01:49:09  gerd
- * 	Updated because of PXP interface changes.
- *
- * Revision 1.3  2000/06/04 20:31:21  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.2  2000/05/28 17:23:22  gerd
- * 	Updated.
- *
- * Revision 1.1  2000/05/01 15:58:50  gerd
- * 	Initial revision.
- *
- * 
- *)

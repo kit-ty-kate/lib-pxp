@@ -1,4 +1,4 @@
-(* $Id: pxp_entity_manager.ml,v 1.2 2002/10/22 14:22:54 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -156,16 +156,3 @@ class entity_manager
 ;;
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_entity_manager.ml,v $
- * Revision 1.2  2002/10/22 14:22:54  gerd
- * 	Corrected comment: pop_entity_until does NOT close the topmost
- * entity.
- *
- * Revision 1.1  2002/07/14 23:05:15  gerd
- * 	Initial revision.
- *
- * 
- *)

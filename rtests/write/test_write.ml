@@ -1,4 +1,4 @@
-(* $Id: test_write.ml,v 1.4 2001/06/28 21:24:38 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -78,20 +78,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: test_write.ml,v $
- * Revision 1.4  2001/06/28 21:24:38  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.3  2001/05/17 22:35:46  gerd
- * 	Updated.
- *
- * Revision 1.2  2000/08/16 23:44:21  gerd
- * 	Updates because of changes of the PXP API.
- *
- * Revision 1.1  2000/07/16 17:50:39  gerd
- * 	Initial revision.
- *
- *)

@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.7 2001/12/15 18:27:40 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -790,30 +790,3 @@ let tag_map =
     ()
 ;;
 
-(* ======================================================================
- * History:
- *
- * $Log: ds_style.ml,v $
- * Revision 1.7  2001/12/15 18:27:40  gerd
- * 	Changes for O'Caml 3.04
- *
- * Revision 1.6  2001/07/02 22:50:43  gerd
- * 	Ported from camltk to labltk.
- *
- * Revision 1.5  2000/08/30 15:58:49  gerd
- * 	Updated.
- *
- * Revision 1.4  2000/07/16 19:36:03  gerd
- * 	Updated.
- *
- * Revision 1.3  2000/07/08 22:03:11  gerd
- * 	Updates because of PXP interface changes.
- *
- * Revision 1.2  2000/06/04 20:29:19  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.1  1999/08/21 19:11:05  gerd
- * 	Initial revision.
- *
- *
- *)

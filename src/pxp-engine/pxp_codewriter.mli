@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.mli,v 1.3 2001/06/07 22:37:51 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -52,35 +52,3 @@ val write_subtree : out_channel -> 'ext node -> unit
 
   
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_codewriter.mli,v $
- * Revision 1.3  2001/06/07 22:37:51  gerd
- * 	It is no longer possible to write a DTD.
- *
- * Revision 1.2  2000/07/09 00:30:14  gerd
- * 	Updated.
- *
- * Revision 1.1  2000/05/29 23:48:38  gerd
- * 	Changed module names:
- * 		Markup_aux          into Pxp_aux
- * 		Markup_codewriter   into Pxp_codewriter
- * 		Markup_document     into Pxp_document
- * 		Markup_dtd          into Pxp_dtd
- * 		Markup_entity       into Pxp_entity
- * 		Markup_lexer_types  into Pxp_lexer_types
- * 		Markup_reader       into Pxp_reader
- * 		Markup_types        into Pxp_types
- * 		Markup_yacc         into Pxp_yacc
- * See directory "compatibility" for (almost) compatible wrappers emulating
- * Markup_document, Markup_dtd, Markup_reader, Markup_types, and Markup_yacc.
- *
- * ======================================================================
- * Old logs from markup_codewriter.mli:
- *
- * Revision 1.1  2000/03/11 22:57:28  gerd
- * 	Initial revision.
- *
- * 
- *)

@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.6 2003/11/04 22:45:07 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -767,29 +767,3 @@ let extract_dtd_from_document_entity cfg src =
 
 === *)
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_tree_parser.ml,v $
- * Revision 1.6  2003/11/04 22:45:07  gerd
- * 	Problems with Lexing under 3.07 fixed
- *
- * Revision 1.5  2003/06/29 15:44:30  gerd
- * 	New entry flag: `Val_mode_dtd
- *
- * Revision 1.4  2003/06/20 21:00:33  gerd
- * 	Moved events to Pxp_types.
- * 	Implementation of namespaces in event-based parsers.
- *
- * Revision 1.3  2003/06/20 19:41:39  gerd
- * 	Added ~transform_dtd to parse_wfdocument_entity.
- *
- * Revision 1.2  2003/06/20 15:14:14  gerd
- * 	Introducing symbolic warnings, expressed as polymorphic
- * variants
- *
- * Revision 1.1  2003/06/15 18:18:34  gerd
- * 	Initial revision
- *
- * 
- *)

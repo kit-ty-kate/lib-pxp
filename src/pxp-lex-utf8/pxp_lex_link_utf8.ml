@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_link_utf8.ml,v 1.2 2002/08/03 17:56:30 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -35,15 +35,3 @@ let lexer_set_utf8 =
 Pxp_lexers.init lexer_set_utf8
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_link_utf8.ml,v $
- * Revision 1.2  2002/08/03 17:56:30  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.1  2001/06/14 16:09:27  gerd
- * 	Initial revision
- *
- * 
- *)

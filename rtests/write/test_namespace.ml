@@ -1,4 +1,4 @@
-(* $Id: test_namespace.ml,v 1.3 2001/06/28 21:24:38 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -82,19 +82,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: test_namespace.ml,v $
- * Revision 1.3  2001/06/28 21:24:38  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.2  2001/06/14 23:34:07  gerd
- * 	Updated
- *
- * Revision 1.1  2001/05/17 22:30:47  gerd
- * 	Initial revision.
- *
- *
- * Initially based on test_write.ml, rev 1.2
- *)

@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mlw,v 1.5 2002/08/05 22:35:08 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -787,40 +787,3 @@ and scan_ignored_section = parse
       { raise Netconversion.Malformed_code }
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_wlex.mlw,v $
- * Revision 1.5  2002/08/05 22:35:08  gerd
- * 	Fixed newline characters in attribute values for event-based
- * attribute parsing.
- *
- * Revision 1.4  2002/08/03 17:56:31  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.3  2002/07/14 23:06:06  gerd
- * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
- * contents context
- *
- * Revision 1.2  2002/04/04 20:48:48  gerd
- * 	Added missing "open"
- *
- * Revision 1.1  2001/07/04 23:26:57  gerd
- * 	Initial revision
- *
- * Revision 1.5  2001/06/28 22:42:41  gerd
- * 	Comment tokens have entity_id
- *
- * Revision 1.4  2001/06/14 16:40:14  gerd
- * 	Updated
- *
- * Revision 1.3  2000/10/01 19:51:50  gerd
- * 	Optimizations.
- *
- * Revision 1.2  2000/09/21 21:33:16  gerd
- * 	Bugfix: Line counting within tags
- *
- * Revision 1.1  2000/09/17 00:14:06  gerd
- * 	Initial revision.
- *
- *)

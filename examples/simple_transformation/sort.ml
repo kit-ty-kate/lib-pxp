@@ -1,4 +1,4 @@
-(* $Id: sort.ml,v 1.4 2001/06/29 11:13:44 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -63,21 +63,3 @@ let main() =
 
 main();;
 
-(* ======================================================================
- * History:
- * 
- * $Log: sort.ml,v $
- * Revision 1.4  2001/06/29 11:13:44  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.3  2000/08/30 16:05:44  gerd
- * 	Minor update
- *
- * Revision 1.2  2000/08/24 09:40:11  gerd
- * 	Allow that columns are missing.
- *
- * Revision 1.1  2000/08/22 21:57:44  gerd
- * 	Initial revision.
- *
- * 
- *)

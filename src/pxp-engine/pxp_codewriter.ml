@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.11 2003/06/15 12:23:21 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -99,69 +99,3 @@ let write_subtree out t =
   output_string out ";;\n"
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_codewriter.ml,v $
- * Revision 1.11  2003/06/15 12:23:21  gerd
- * 	Moving core type definitions to Pxp_core_types
- *
- * Revision 1.10  2001/06/08 01:15:46  gerd
- * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
- * makes it possible that the DTD can recognize the processing instructions
- * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
- * declaration to the manager.
- *
- * Revision 1.9  2001/06/07 22:39:20  gerd
- * 	Pxp_codewriter now uses Pxp_marshal to generate the code.
- * This simply reduces the complexity of the whole package a lot...
- * 	A consequence is that Pxp_codewriter works for namespaces,
- * because Pxp_marshal already does.
- *
- * Revision 1.8  2001/04/22 14:14:41  gerd
- * 	Updated to support private IDs.
- *
- * Revision 1.7  2000/08/30 15:48:07  gerd
- * 	Minor update.
- *
- * Revision 1.6  2000/08/18 20:16:59  gerd
- * 	Updates because of new node types T_comment, T_pinstr, T_super_root.
- *
- * Revision 1.5  2000/07/23 02:16:51  gerd
- * 	Changed signature of local_validate.
- *
- * Revision 1.4  2000/07/09 17:59:35  gerd
- * 	Updated: The position of element nodes is also written.
- *
- * Revision 1.3  2000/07/09 00:30:00  gerd
- * 	Notations are written before they are used.
- * 	Unparsed entities are included.
- * 	Further changes.
- *
- * Revision 1.2  2000/07/08 22:59:14  gerd
- * 	[Merging 0.2.10:] Improved: The resulting code can be compiled
- * faster, and the compiler is less hungry on memory.
- * 	Updated because of PXP interface changes.
- *
- * Revision 1.1  2000/05/29 23:48:38  gerd
- * 	Changed module names:
- * 		Markup_aux          into Pxp_aux
- * 		Markup_codewriter   into Pxp_codewriter
- * 		Markup_document     into Pxp_document
- * 		Markup_dtd          into Pxp_dtd
- * 		Markup_entity       into Pxp_entity
- * 		Markup_lexer_types  into Pxp_lexer_types
- * 		Markup_reader       into Pxp_reader
- * 		Markup_types        into Pxp_types
- * 		Markup_yacc         into Pxp_yacc
- * See directory "compatibility" for (almost) compatible wrappers emulating
- * Markup_document, Markup_dtd, Markup_reader, Markup_types, and Markup_yacc.
- *
- * ======================================================================
- * Old logs from markup_codewriter.ml:
- *
- * Revision 1.1  2000/03/11 22:57:28  gerd
- * 	Initial revision.
- *
- * 
- *)

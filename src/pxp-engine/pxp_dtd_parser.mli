@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd_parser.mli,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -18,12 +18,3 @@ val extract_dtd_from_document_entity : config -> source -> dtd
    *)
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_dtd_parser.mli,v $
- * Revision 1.1  2003/06/15 18:18:34  gerd
- * 	Initial revision
- *
- * 
- *)

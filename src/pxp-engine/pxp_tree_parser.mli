@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.mli,v 1.2 2003/06/20 19:41:39 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -105,15 +105,3 @@ val parse_wfcontent_entity :
    *)
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_tree_parser.mli,v $
- * Revision 1.2  2003/06/20 19:41:39  gerd
- * 	Added ~transform_dtd to parse_wfdocument_entity.
- *
- * Revision 1.1  2003/06/15 18:18:34  gerd
- * 	Initial revision
- *
- * 
- *)

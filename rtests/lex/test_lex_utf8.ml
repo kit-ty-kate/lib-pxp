@@ -1,4 +1,4 @@
-(* $Id: test_lex_utf8.ml,v 1.1 2002/08/31 21:50:08 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -282,12 +282,3 @@ dotest "t_illegal5" t_illegal5;;
 dotest "t_illegal6" t_illegal6;;
 dotest "t_illegal7" t_illegal7;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: test_lex_utf8.ml,v $
- * Revision 1.1  2002/08/31 21:50:08  gerd
- * 	Initial revision.
- *
- * 
- *)

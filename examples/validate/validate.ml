@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.12 2003/10/05 12:00:37 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -219,48 +219,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: validate.ml,v $
- * Revision 1.12  2003/10/05 12:00:37  gerd
- * 	Follow-up for typechecker problem
- *
- * Revision 1.11  2001/07/01 11:33:08  gerd
- * 	Added new features (PXP 1.1)
- *
- * Revision 1.10  2000/08/30 15:58:41  gerd
- * 	Updated.
- *
- * Revision 1.9  2000/07/14 14:57:30  gerd
- * 	Updated: warner
- *
- * Revision 1.8  2000/07/14 14:13:15  gerd
- * 	Cosmetic changes.
- *
- * Revision 1.7  2000/07/14 14:11:06  gerd
- * 	Updated because of changes of the PXP API.
- *
- * Revision 1.6  2000/07/08 21:53:00  gerd
- * 	Updated because of PXP interface changes.
- *
- * Revision 1.5  2000/06/04 20:21:55  gerd
- * 	Updated to new module names.
- *
- * Revision 1.4  2000/05/01 16:44:57  gerd
- * 	Added check for ID uniqueness.
- * 	Using new error formatter.
- *
- * Revision 1.3  1999/11/09 22:27:30  gerd
- * 	The programs returns now an exit code of 1 if one of the
- * XML files produces an error.
- *
- * Revision 1.2  1999/09/01 23:09:56  gerd
- * 	Added the option -wf that switches to well-formedness checking
- * instead of validation.
- *
- * Revision 1.1  1999/08/14 22:20:53  gerd
- * 	Initial revision.
- *
- * 
- *)

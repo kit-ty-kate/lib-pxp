@@ -1,4 +1,4 @@
-(* $Id: marshal_namespace.ml,v 1.3 2001/06/28 21:24:36 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -75,18 +75,3 @@ with
 ;;
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: marshal_namespace.ml,v $
- * Revision 1.3  2001/06/28 21:24:36  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.2  2001/06/08 01:16:55  gerd
- * 	Updated.
- *
- * Revision 1.1  2001/06/07 20:14:47  gerd
- * 	Added tests for marshalling and namespaces.
- *
- * 
- *)

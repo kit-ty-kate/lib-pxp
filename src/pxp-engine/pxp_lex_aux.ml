@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_aux.ml,v 1.3 2003/06/15 12:23:21 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -164,29 +164,3 @@
 	  else
 	    PI(s_name, "")
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_aux.ml,v $
- * Revision 1.3  2003/06/15 12:23:21  gerd
- * 	Moving core type definitions to Pxp_core_types
- *
- * Revision 1.2  2002/08/31 23:24:50  gerd
- * 	scan_pi: The function does no longer expect the pi delimiters
- * <? and ?> in the passed string
- *
- * Revision 1.1  2002/08/28 23:54:34  gerd
- * 	Support for new lexer definition style.
- *
- * Revision 1.3  2002/08/03 17:56:27  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.2  2002/07/14 23:06:01  gerd
- * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
- * contents context
- *
- * Revision 1.1  2001/06/14 14:15:20  gerd
- * 	Initial revision
- *
- * 
- *)

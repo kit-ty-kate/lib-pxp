@@ -1,4 +1,4 @@
-(* $Id: pxp_lib_ocamlc.ml,v 1.3 2001/12/19 21:05:10 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -27,18 +27,3 @@ let only_whitespace s =
       Not_found -> true
 ;;
 
-(* ======================================================================
- * History:
- *
- * $Log: pxp_lib_ocamlc.ml,v $
- * Revision 1.3  2001/12/19 21:05:10  gerd
- * 	Fix: Works now with both versions of netstring (0.10 and
- * 0.91).
- *
- * Revision 1.2  2001/12/15 17:34:09  gerd
- * 	Fixes for O'Caml 3.04
- *
- * Revision 1.1  2000/10/01 19:50:29  gerd
- * 	Initial revision.
- *
- *)

@@ -1,4 +1,4 @@
-(* $Id: to_text.ml,v 1.5 2000/08/22 14:34:25 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -573,24 +573,3 @@ let tag_map =
 
     
 
-(* ======================================================================
- * History:
- * 
- * $Log: to_text.ml,v $
- * Revision 1.5  2000/08/22 14:34:25  gerd
- * 	Using make_spec_from_alist instead of make_spec_from_mapping.
- *
- * Revision 1.4  2000/08/18 21:15:25  gerd
- * 	Minor updates because of PXP API changes.
- *
- * Revision 1.3  2000/07/08 17:58:17  gerd
- * 	Updated because of PXP API changes.
- *
- * Revision 1.2  2000/06/04 20:25:38  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.1  1999/08/22 22:29:32  gerd
- * 	Initial revision.
- *
- * 
- *)

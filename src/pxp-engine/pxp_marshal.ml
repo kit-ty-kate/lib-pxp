@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.11 2003/06/20 15:14:14 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -778,65 +778,3 @@ let relocate_document (doc : 'ext document) new_conf new_spec =
 ;;
 	  
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_marshal.ml,v $
- * Revision 1.11  2003/06/20 15:14:14  gerd
- * 	Introducing symbolic warnings, expressed as polymorphic
- * variants
- *
- * Revision 1.10  2003/06/15 12:23:21  gerd
- * 	Moving core type definitions to Pxp_core_types
- *
- * Revision 1.9  2002/03/10 23:40:30  gerd
- * 	It is now possible to change the character encoding when
- * marshalling.
- * 	New: relocate_subtree, relocate_document.
- *
- * Revision 1.8  2001/10/12 21:38:14  gerd
- * 	Changes for O'caml 3.03-alpha.
- *
- * Revision 1.7  2001/06/30 00:05:12  gerd
- * 	Fix: When checking the type of the root element, namespace
- * rewritings are taken into account.
- *
- * Revision 1.6  2001/06/28 22:42:07  gerd
- * 	Fixed minor problems:
- * 	- Comments must be contained in one entity
- * 	- Pxp_document.document is now initialized with encoding.
- *           the DTD encoding may be initialized too late.
- *
- * Revision 1.5  2001/06/27 23:33:53  gerd
- * 	Type output_stream is now a polymorphic variant
- *
- * Revision 1.4  2001/06/08 01:15:47  gerd
- * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
- * makes it possible that the DTD can recognize the processing instructions
- * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
- * declaration to the manager.
- *
- * Revision 1.3  2001/06/07 22:46:15  gerd
- * 	Revised set of reconstruction commands:
- *  - Head: Contains the encoding
- *  - Declare_attributes: there is a name pool for attributes now
- *  - Start_element_node: uses att_value to represent attributes
- *  - DTD_string: contains the name of the root element, the DTD ID
- *  - Root: a delimiter before the root element begins
- *  - Namespace_mapping: represents the namespace manager
- * 	As the Head command contains the encoding, it is checked whether
- * the marshalling functions are called with the same encoding. Otherwise
- * the functions fail.
- * 	Fixed: The name of the root element, and the DTD ID are represented.
- * 	Namespaces are supported.
- * 	QA: This revision passes some regression tests (codewriter dir)
- *
- * Revision 1.2  2000/09/21 21:30:23  gerd
- * 	Optimization: repeated elements are created from
- * shared exemplars.
- *
- * Revision 1.1  2000/09/17 00:10:31  gerd
- * 	Initial revision.
- *
- * 
- *)

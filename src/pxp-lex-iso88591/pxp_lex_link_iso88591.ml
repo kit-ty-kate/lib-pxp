@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_link_iso88591.ml,v 1.2 2002/08/03 17:56:29 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -36,15 +36,3 @@ let lexer_set_iso88591 =
 Pxp_lexers.init lexer_set_iso88591
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_link_iso88591.ml,v $
- * Revision 1.2  2002/08/03 17:56:29  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.1  2001/06/14 15:47:39  gerd
- * 	Initial revision.
- *
- * 
- *)

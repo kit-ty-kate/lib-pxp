@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: collect_files,v 1.1 2000/07/27 21:07:26 gerd Exp $
+# $Id$
 # ----------------------------------------------------------------------
 #
 # usage: collect_files file ...
@@ -13,10 +13,3 @@ for x in "$@"; do
 	echo "$x"
     fi
 done
-
-# ======================================================================
-#
-# $Log: collect_files,v $
-# Revision 1.1  2000/07/27 21:07:26  gerd
-# 	Initial revision.
-#

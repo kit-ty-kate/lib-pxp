@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types.mli,v 1.1 2003/06/15 12:22:41 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -14,12 +14,3 @@
 
 include Pxp_core_types_type.CORE_TYPES
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_core_types.mli,v $
- * Revision 1.1  2003/06/15 12:22:41  gerd
- * 	Initial revision
- *
- * 
- *)

@@ -1,4 +1,4 @@
-(* $Id: to_html.ml,v 1.8 2003/03/23 21:28:31 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -404,35 +404,3 @@ let tag_map =
 (*$-*)
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: to_html.ml,v $
- * Revision 1.8  2003/03/23 21:28:31  gerd
- * 	Anti-SPAM escaping
- *
- * Revision 1.7  2001/07/02 23:21:11  gerd
- * 	Using Pxp_dtd.Entity
- *
- * Revision 1.6  2000/08/22 14:34:25  gerd
- * 	Using make_spec_from_alist instead of make_spec_from_mapping.
- *
- * Revision 1.5  2000/08/18 21:15:14  gerd
- * 	Update because of PXP API change: par_entity raises WF_error
- * instead of Validation error if the entity is not defined.
- * 	Further minor updates.
- *
- * Revision 1.4  2000/07/08 17:58:17  gerd
- * 	Updated because of PXP API changes.
- *
- * Revision 1.3  2000/06/04 20:25:38  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.2  1999/09/12 20:09:32  gerd
- * 	Added section marks.
- *
- * Revision 1.1  1999/08/22 22:29:32  gerd
- * 	Initial revision.
- *
- * 
- *)

@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mli,v 1.2 2003/11/04 22:45:07 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -46,15 +46,3 @@ val sub_lexeme : Lexing.lexbuf -> int -> int -> string
    *)
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lexing.mli,v $
- * Revision 1.2  2003/11/04 22:45:07  gerd
- * 	Problems with Lexing under 3.07 fixed
- *
- * Revision 1.1  2002/03/13 22:25:51  gerd
- * 	Initial revision.
- *
- * 
- *)

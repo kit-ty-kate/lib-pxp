@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.8 2001/06/14 13:01:02 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -919,38 +919,3 @@ with
       exit 1
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: generator.ml,v $
- * Revision 1.8  2001/06/14 13:01:02  gerd
- * 	Parsing of arguments
- *
- * Revision 1.7  2000/08/17 00:33:02  gerd
- * 	Bugfix: tok* and tok? work now if tok is an untyped token
- * without label.
- *
- * Revision 1.6  2000/05/14 20:59:24  gerd
- * 	Added "phantasy line numbers" to help finding errorneous locations.
- *
- * Revision 1.5  2000/05/14 20:41:58  gerd
- * 	x: Token?   means: if Token is detected x=true else x=false.
- * 	x: Token*   means: x becomes the number of ocurrences of Token.
- *
- * Revision 1.4  2000/05/09 00:03:22  gerd
- * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
- * OCaml identifier.
- *
- * Revision 1.3  2000/05/08 22:03:01  gerd
- * 	It is now possible to have a $ {{ }} sequence right BEFORE
- * the first token. This code is executed just after the first token
- * has been recognized.
- *
- * Revision 1.2  2000/05/06 21:51:08  gerd
- * 	Numerous bugfixes.
- *
- * Revision 1.1  2000/05/06 17:36:17  gerd
- * 	Initial revision.
- *
- * 
- *)

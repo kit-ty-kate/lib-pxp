@@ -1,4 +1,4 @@
-(* $Id: ast.ml,v 1.3 2000/05/09 00:03:22 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -52,21 +52,3 @@ type text =
     }
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: ast.ml,v $
- * Revision 1.3  2000/05/09 00:03:22  gerd
- * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
- * OCaml identifier.
- *
- * Revision 1.2  2000/05/08 22:03:01  gerd
- * 	It is now possible to have a $ {{ }} sequence right BEFORE
- * the first token. This code is executed just after the first token
- * has been recognized.
- *
- * Revision 1.1  2000/05/06 17:36:17  gerd
- * 	Initial revision.
- *
- * 
- *)

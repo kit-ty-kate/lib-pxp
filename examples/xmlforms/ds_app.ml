@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.7 2001/07/02 22:50:43 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -77,32 +77,3 @@ let main() =
 
 main();;
 
-(* ======================================================================
- * History:
- *
- * $Log: ds_app.ml,v $
- * Revision 1.7  2001/07/02 22:50:43  gerd
- * 	Ported from camltk to labltk.
- *
- * Revision 1.6  2000/07/16 19:36:03  gerd
- * 	Updated.
- *
- * Revision 1.5  2000/07/08 22:03:11  gerd
- * 	Updates because of PXP interface changes.
- *
- * Revision 1.4  2000/06/04 20:29:19  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.3  2000/05/01 16:48:45  gerd
- * 	Using the new error formatter.
- *
- * Revision 1.2  1999/12/17 21:34:29  gerd
- * 	The name of the root element is set to "record" in the
- * object_dtd; otherwise the parser would not check that the root
- * element is the right element.
- *
- * Revision 1.1  1999/08/21 19:11:05  gerd
- * 	Initial revision.
- *
- *
- *)

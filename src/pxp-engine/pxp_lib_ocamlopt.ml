@@ -1,4 +1,4 @@
-(* $Id: pxp_lib_ocamlopt.ml,v 1.2 2001/01/13 22:48:15 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -63,14 +63,3 @@ let only_whitespace s =
       Found -> false
 ;;
 
-(* ======================================================================
- * History:
- *
- * $Log: pxp_lib_ocamlopt.ml,v $
- * Revision 1.2  2001/01/13 22:48:15  gerd
- * 	Fix: Avoid that array indexes get out of bounds
- *
- * Revision 1.1  2000/10/01 19:50:29  gerd
- * 	Initial revision.
- *
- *)

@@ -1,4 +1,4 @@
-(* $Id: file.ml,v 1.1 2002/08/28 23:48:28 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -103,12 +103,3 @@ let print_definition out { Types.id = id ; Types.rel = rel } =
  output_string out "\n\n"
 ;;
 
-(* ======================================================================
- * History:
- * 
- * $Log: file.ml,v $
- * Revision 1.1  2002/08/28 23:48:28  gerd
- * 	Initial revision.
- *
- * 
- *)

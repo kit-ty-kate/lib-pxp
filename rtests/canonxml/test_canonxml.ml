@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.12 2003/06/21 12:15:19 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -205,56 +205,3 @@ List of options:";
 main();
 if !error_happened then exit(1);;
 
-(* ======================================================================
- * History:
- * 
- * $Log: test_canonxml.ml,v $
- * Revision 1.12  2003/06/21 12:15:19  gerd
- * 	Updates because of changed API
- *
- * Revision 1.11  2002/08/05 22:35:44  gerd
- * 	Testing escape_attributes option.
- *
- * Revision 1.10  2001/06/13 18:42:00  gerd
- * 	Updated
- *
- * Revision 1.9  2001/05/17 22:31:03  gerd
- * 	Updated
- *
- * Revision 1.8  2000/08/17 00:51:57  gerd
- * 	Added -comments option to test enable_comment_nodes.
- *
- * Revision 1.7  2000/08/16 23:44:17  gerd
- * 	Updates because of changes of the PXP API.
- *
- * Revision 1.6  2000/07/14 14:56:55  gerd
- * 	Updated: warner.
- *
- * Revision 1.5  2000/07/14 14:17:58  gerd
- * 	Updated because of iterface changes.
- *
- * Revision 1.4  2000/07/09 01:06:20  gerd
- * 	Updated.
- *
- * Revision 1.3  2000/06/04 20:31:03  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.2  2000/05/20 20:34:28  gerd
- * 	Changed for UTF-8 support.
- *
- * Revision 1.1  2000/04/30 20:13:01  gerd
- * 	Initial revision.
- *
- * Revision 1.3  1999/11/09 22:27:30  gerd
- * 	The programs returns now an exit code of 1 if one of the
- * XML files produces an error.
- *
- * Revision 1.2  1999/09/01 23:09:56  gerd
- * 	Added the option -wf that switches to well-formedness checking
- * instead of validation.
- *
- * Revision 1.1  1999/08/14 22:20:53  gerd
- * 	Initial revision.
- *
- * 
- *)

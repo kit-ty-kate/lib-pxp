@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.8 2001/07/02 22:50:43 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -168,33 +168,3 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
 ;;
 
 
-(* ======================================================================
- * History:
- *
- * $Log: ds_context.ml,v $
- * Revision 1.8  2001/07/02 22:50:43  gerd
- * 	Ported from camltk to labltk.
- *
- * Revision 1.7  2000/08/30 15:58:49  gerd
- * 	Updated.
- *
- * Revision 1.6  2000/07/23 20:25:05  gerd
- * 	Update because of API change: local_validate.
- *
- * Revision 1.5  2000/07/16 19:36:03  gerd
- * 	Updated.
- *
- * Revision 1.4  2000/07/08 22:03:11  gerd
- * 	Updates because of PXP interface changes.
- *
- * Revision 1.3  2000/06/04 20:29:19  gerd
- * 	Updates because of renamed PXP modules.
- *
- * Revision 1.2  2000/05/30 00:09:08  gerd
- * 	Minor fix.
- *
- * Revision 1.1  1999/08/21 19:11:05  gerd
- * 	Initial revision.
- *
- *
- *)

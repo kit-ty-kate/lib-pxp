@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types_type.mli,v 1.4 2003/06/20 15:14:13 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -303,22 +303,3 @@ module type CORE_TYPES = sig
 
 end (* of CORE_TYPES *)
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_core_types_type.mli,v $
- * Revision 1.4  2003/06/20 15:14:13  gerd
- * 	Introducing symbolic warnings, expressed as polymorphic
- * variants
- *
- * Revision 1.3  2003/06/19 22:07:19  gerd
- * 	New: `Out_netchannel
- *
- * Revision 1.2  2003/06/15 18:19:56  gerd
- * 	Pxp_yacc has been split up
- *
- * Revision 1.1  2003/06/15 12:22:41  gerd
- * 	Initial revision
- *
- * 
- *)

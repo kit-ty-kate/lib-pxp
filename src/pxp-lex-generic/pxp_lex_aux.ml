@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_aux.ml,v 1.3 2002/08/03 17:56:27 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -152,19 +152,3 @@
 	  else
 	    PI(s_name, "")
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_aux.ml,v $
- * Revision 1.3  2002/08/03 17:56:27  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.2  2002/07/14 23:06:01  gerd
- * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
- * contents context
- *
- * Revision 1.1  2001/06/14 14:15:20  gerd
- * 	Initial revision
- *
- * 
- *)

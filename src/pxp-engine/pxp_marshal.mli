@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.mli,v 1.4 2002/03/10 23:40:30 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -156,27 +156,3 @@ val relocate_document :
    *)
 
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_marshal.mli,v $
- * Revision 1.4  2002/03/10 23:40:30  gerd
- * 	It is now possible to change the character encoding when
- * marshalling.
- * 	New: relocate_subtree, relocate_document.
- *
- * Revision 1.3  2001/06/08 01:15:47  gerd
- * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
- * makes it possible that the DTD can recognize the processing instructions
- * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
- * declaration to the manager.
- *
- * Revision 1.2  2001/06/07 22:47:31  gerd
- * 	The new support for namespaces is reflected in the signature:
- * New option enable_namespace_processing.
- *
- * Revision 1.1  2000/09/17 00:10:32  gerd
- * 	Initial revision.
- *
- * 
- *)

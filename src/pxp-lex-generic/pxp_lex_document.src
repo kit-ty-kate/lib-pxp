@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_document.src,v 1.7 2002/08/03 17:56:27 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -47,30 +47,3 @@ rule scan_document = parse
   | _
       { raise Netconversion.Malformed_code }
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_lex_document.src,v $
- * Revision 1.7  2002/08/03 17:56:27  gerd
- * 	Support for event-based parsing of attribute values.
- *
- * Revision 1.6  2001/06/28 22:42:32  gerd
- * 	Comment tokens have entity_id
- *
- * Revision 1.5  2001/06/14 14:25:56  gerd
- * 	Removed insertion of pxp_lex_aux.src
- *
- * Revision 1.4  2000/08/18 20:19:59  gerd
- * 	Comments return different comment tokens.
- *
- * Revision 1.3  2000/08/14 22:18:34  gerd
- * 	Bad_character_stream -> Netconversion.Malformed_code
- *
- * Revision 1.2  2000/05/29 23:53:12  gerd
- * 	Updated because Markup_* modules have been renamed to Pxp_*.
- *
- * Revision 1.1  2000/05/20 20:33:25  gerd
- * 	Initial revision.
- *
- * 
- *)

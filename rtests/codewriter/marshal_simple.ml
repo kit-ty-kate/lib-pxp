@@ -1,4 +1,4 @@
-(* $Id: marshal_simple.ml,v 1.2 2001/06/28 21:24:36 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -65,15 +65,3 @@ let main() =
 
 main();;
 
-(* ======================================================================
- * History:
- * 
- * $Log: marshal_simple.ml,v $
- * Revision 1.2  2001/06/28 21:24:36  gerd
- * 	Out_channel -> `Out_channel
- *
- * Revision 1.1  2001/06/07 20:14:47  gerd
- * 	Added tests for marshalling and namespaces.
- *
- * 
- *)

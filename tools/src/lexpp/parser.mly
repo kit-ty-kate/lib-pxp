@@ -1,4 +1,4 @@
-/* $Id: parser.mly,v 1.1 2002/08/28 23:48:28 gerd Exp $
+/* $Id$
  * ----------------------------------------------------------------------
  *
  */
@@ -43,13 +43,3 @@ regexptoken:
  | LBRACKET CHAR RANGE CHAR RBRACKET  { Types.Interval ($2,$4) }
  | IDENT                              { Types.Identifier $1 }
 ;
-
-/* ======================================================================
- * History:
- * 
- * $Log: parser.mly,v $
- * Revision 1.1  2002/08/28 23:48:28  gerd
- * 	Initial revision.
- *
- * 
- */

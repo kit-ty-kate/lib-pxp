@@ -1,4 +1,4 @@
-(* $Id: pxp_type_anchor.mli,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -84,12 +84,3 @@ val make_probabilistic_pool : ?fraction:float -> int -> pool
 
 val pool_string : pool -> string -> string
 
-(* ======================================================================
- * History:
- * 
- * $Log: pxp_type_anchor.mli,v $
- * Revision 1.1  2003/06/15 18:18:34  gerd
- * 	Initial revision
- *
- * 
- *)
