@@ -1,10 +1,10 @@
-(* $Id: pxp_document.ml,v 1.31 2003/03/23 21:43:37 gerd Exp $
+(* $Id: pxp_document.ml,v 1.32 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_aux
@@ -91,7 +91,7 @@ class type [ 'ext ] node =
     method attribute : string -> att_value
     method attribute_names : string list
     method attribute_type : string -> att_type
-    method attributes : (string * Pxp_types.att_value) list
+    method attributes : (string * att_value) list
     method required_string_attribute : string -> string
     method required_list_attribute : string -> string list
     method optional_string_attribute : string -> string option
@@ -99,9 +99,9 @@ class type [ 'ext ] node =
     method id_attribute_name : string
     method id_attribute_value : string
     method idref_attribute_names : string list
-    method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
-    method set_attributes : (string * Pxp_types.att_value) list -> unit
-    method set_attribute : ?force:bool -> string -> Pxp_types.att_value -> unit
+    method quick_set_attributes : (string * att_value) list -> unit
+    method set_attributes : (string * att_value) list -> unit
+    method set_attribute : ?force:bool -> string -> att_value -> unit
     method reset_attribute : string -> unit
     method attributes_as_nodes : 'ext node list
     method set_comment : string option -> unit
@@ -3755,6 +3755,9 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.32  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.31  2003/03/23 21:43:37  gerd
  * 	Preserving the correct order of processing instructions
  * (Blair Zajac)

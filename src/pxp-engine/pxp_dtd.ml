@@ -1,10 +1,10 @@
-(* $Id: pxp_dtd.ml,v 1.23 2003/03/23 21:43:37 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.24 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 open Pxp_lexers
 open Pxp_entity
@@ -1064,7 +1064,7 @@ and dtd_notation the_name the_xid init_encoding =
 object (self)
     val name = the_name
     val xid = (the_xid : ext_id)
-    val encoding = (init_encoding : Pxp_types.rep_encoding)
+    val encoding = (init_encoding : Pxp_core_types.rep_encoding)
     method name = name
     method ext_id = xid
     method encoding = encoding
@@ -1105,7 +1105,7 @@ and proc_instruction the_target the_value init_encoding =
 object (self)
     val target = the_target
     val value = (the_value : string)
-    val encoding = (init_encoding : Pxp_types.rep_encoding)
+    val encoding = (init_encoding : Pxp_core_types.rep_encoding)
 
     initializer
       match target with
@@ -1197,6 +1197,9 @@ end
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.24  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.23  2003/03/23 21:43:37  gerd
  * 	Preserving the correct order of processing instructions
  * (Blair Zajac)

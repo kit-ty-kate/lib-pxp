@@ -1,9 +1,9 @@
-(* $Id: pxp_marshal.ml,v 1.9 2002/03/10 23:40:30 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.10 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_document
 open Pxp_dtd
 open Pxp_aux
@@ -779,6 +779,9 @@ let relocate_document (doc : 'ext document) new_conf new_spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.10  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.9  2002/03/10 23:40:30  gerd
  * 	It is now possible to change the character encoding when
  * marshalling.

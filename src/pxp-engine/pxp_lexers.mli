@@ -1,11 +1,11 @@
-(* $Id: pxp_lexers.mli,v 1.6 2002/08/28 23:54:34 gerd Exp $
+(* $Id: pxp_lexers.mli,v 1.7 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
  *)
 
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 
 val get_lexer_set : rep_encoding -> lexer_set
@@ -23,6 +23,9 @@ val init : lexer_set -> unit
  * History:
  * 
  * $Log: pxp_lexers.mli,v $
+ * Revision 1.7  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.6  2002/08/28 23:54:34  gerd
  * 	Support for new lexer definition style.
  *

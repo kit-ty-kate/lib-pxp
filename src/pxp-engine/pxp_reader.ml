@@ -1,10 +1,10 @@
-(* $Id: pxp_reader.ml,v 1.22 2003/02/01 15:02:09 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.23 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_types;;
+open Pxp_core_types;;
 open Netchannels;;
 
 exception Not_competent;;
@@ -1337,6 +1337,9 @@ let lookup_system_id_as_string ?fixenc catalog =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.23  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.22  2003/02/01 15:02:09  gerd
  * 	New: norm_system_id, rewrite_system_id.
  * 	Fixed: The empty system name is regarded as "NIL" value. It

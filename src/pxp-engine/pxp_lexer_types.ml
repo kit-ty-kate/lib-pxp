@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.11 2002/08/31 23:26:20 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.12 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -183,7 +183,7 @@ let string_of_tok tok =
 
 
 type lexer_set =
-    { lex_encoding         : Pxp_types.rep_encoding;
+    { lex_encoding         : Pxp_core_types.rep_encoding;
       scan_document        : Lexing.lexbuf -> (token * lexers);
       scan_content         : Lexing.lexbuf -> (token * lexers);
       scan_within_tag      : Lexing.lexbuf -> (token * lexers);
@@ -208,6 +208,9 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.12  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.11  2002/08/31 23:26:20  gerd
  * 	Instead of three comment lexers for content, decl and document,
  * there is now only one unified comment lexer.

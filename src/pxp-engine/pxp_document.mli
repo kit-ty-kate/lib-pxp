@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.23 2001/12/03 23:46:29 gerd Exp $
+(* $Id: pxp_document.mli,v 1.24 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -802,7 +802,7 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method attribute : string -> Pxp_types.att_value
+    method attribute : string -> Pxp_core_types.att_value
       (* <ID:type-node-attribute>
        * <CALL>   obj # [attribute] name
        * <SIG>    AUTO
@@ -873,7 +873,7 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method attribute_type : string -> Pxp_types.att_type
+    method attribute_type : string -> Pxp_core_types.att_type
       (* <ID:type-node-attribute-type>
        * <CALL>   obj # [attribute_type] name
        * <SIG>    AUTO
@@ -887,7 +887,7 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method attributes : (string * Pxp_types.att_value) list
+    method attributes : (string * Pxp_core_types.att_value) list
       (* <ID:type-node-attributes>
        * <CALL>   obj # [attributes]
        * <SIG>    AUTO
@@ -996,10 +996,11 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method quick_set_attributes : 
+             (string * Pxp_core_types.att_value) list -> unit
       (* DEPRECATED METHOD! set_attributes does exactly the same. *)
 
-    method set_attributes : (string * Pxp_types.att_value) list -> unit
+    method set_attributes : (string * Pxp_core_types.att_value) list -> unit
       (* <ID:type-node-set-attributes>
        * <CALL>   obj # [set_attributes] al
        * <SIG>    AUTO
@@ -1015,7 +1016,7 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method set_attribute : ?force:bool -> string -> Pxp_types.att_value -> unit
+    method set_attribute : ?force:bool -> string -> Pxp_core_types.att_value -> unit
       (* <ID:type-node-set-attribute>
        * <CALL>   obj # [set_attribute] ~force n v
        * <SIG>    AUTO
@@ -1226,7 +1227,7 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method encoding : Pxp_types.rep_encoding
+    method encoding : Pxp_core_types.rep_encoding
       (* <ID:type-node-encoding>
        * <CALL>   obj # [encoding]
        * <SIG>    AUTO
@@ -1239,10 +1240,10 @@ class type [ 'ext ] node =
        *)
 
     method create_element :
-             ?name_pool_for_attribute_values:Pxp_types.pool ->
+             ?name_pool_for_attribute_values:Pxp_core_types.pool ->
              ?position:(string * int * int) ->
 	     ?valcheck:bool ->      (* default: true *)
-	     ?att_values:((string * Pxp_types.att_value) list) ->
+	     ?att_values:((string * Pxp_core_types.att_value) list) ->
              dtd -> node_type -> (string * string) list -> 'ext node
       (* <ID:type-node-create-element>
        * <CALL>   obj # [create_element] ~name_pool_for_attribute_values ~position ~valcheck ~att_values 
@@ -1425,7 +1426,7 @@ class type [ 'ext ] node =
     method write : 
              ?prefixes:string list ->
 	     ?default:string ->
-             Pxp_types.output_stream -> Pxp_types.encoding -> unit
+             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
       (* <ID:type-node-write>
        * <CALL>   obj # [write] ~prefixes stream enc
        * <SIG>    AUTO
@@ -1456,10 +1457,10 @@ class type [ 'ext ] node =
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
-                           Pxp_types.pool option ->
+                           Pxp_core_types.pool option ->
 			   bool -> 
                            dtd -> string -> (string * string) list -> 
-			   (string * Pxp_types.att_value) list -> unit
+			   (string * Pxp_core_types.att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
 
@@ -1609,7 +1610,11 @@ val pinstr : 'ext node -> proc_instruction
    *)
 
 class [ 'ext ] attribute_impl :
-  element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
+  element:string -> 
+  name:string -> 
+  Pxp_core_types.att_value -> 
+  dtd -> 
+    [ 'ext ] node
 ;;
     (* Creation:
      *   new attribute_impl element_name attribute_name attribute_value dtd
@@ -1645,7 +1650,7 @@ val attribute_name  : 'ext node -> string
    * </ID>
    *)
 
-val attribute_value : 'ext node -> Pxp_types.att_value
+val attribute_value : 'ext node -> Pxp_core_types.att_value
   (* <ID:val-attribute-value>
    * <TYPE:fun>
    * <CALL>   [attribute_value] n
@@ -1711,7 +1716,11 @@ class [ 'ext ] namespace_element_impl : 'ext -> [ 'ext ] node
 
 
 class [ 'ext ] namespace_attribute_impl :
-  element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
+  element:string -> 
+  name:string -> 
+  Pxp_core_types.att_value -> 
+  dtd -> 
+    [ 'ext ] node
 ;;
 
   (* namespace_attribute_impl: the namespace-aware implementation of
@@ -1837,10 +1846,10 @@ val create_data_node :
    *)
 
 val create_element_node :
-      ?name_pool_for_attribute_values:Pxp_types.pool ->
+      ?name_pool_for_attribute_values:Pxp_core_types.pool ->
       ?position:(string * int * int) ->
       ?valcheck:bool ->
-      ?att_values:((string * Pxp_types.att_value) list) ->
+      ?att_values:((string * Pxp_core_types.att_value) list) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
   (* <ID:val-create-element-node>
    * <CALL>    [create_element_node] ~name_pool_for_attribute_values
@@ -2366,7 +2375,7 @@ val validate : 'ext node -> unit
 (******************************* document ********************************)
 
 class [ 'ext ] document :
-  Pxp_types.collect_warnings -> Pxp_types.rep_encoding ->
+  Pxp_core_types.collect_warnings -> Pxp_core_types.rep_encoding ->
   object
     (* Documents: These are containers for root elements and for DTDs.
      *
@@ -2406,7 +2415,7 @@ class [ 'ext ] document :
        * Fails if there is no root element.
        *)
 
-    method encoding : Pxp_types.rep_encoding
+    method encoding : Pxp_core_types.rep_encoding
       (* Returns the string encoding of the document = the encoding of
        * the root element = the encoding of the element tree = the
        * encoding of the DTD.
@@ -2430,7 +2439,9 @@ class [ 'ext ] document :
 
     method write : ?default : string ->
                    ?prefer_dtd_reference : bool ->
-                   Pxp_types.output_stream -> Pxp_types.encoding -> unit
+                   Pxp_core_types.output_stream -> 
+                   Pxp_core_types.encoding -> 
+                     unit
       (* Write the document to the passed
        * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
@@ -2466,6 +2477,9 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.24  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.23  2001/12/03 23:46:29  gerd
  * 	New option ~prefer_dtd_reference for [write].
  *

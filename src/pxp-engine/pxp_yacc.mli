@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.23 2003/01/21 00:19:40 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.24 2003/06/15 12:23:22 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -7,7 +7,7 @@
 
 (*$ markup-yacc.mli *)
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_dtd
 open Pxp_document
 
@@ -251,7 +251,7 @@ type config =
 	 * expensive).
 	 *)
 
-      name_pool : Pxp_types.pool;
+      name_pool : Pxp_core_types.pool;
       enable_name_pool_for_element_types    : bool;
       enable_name_pool_for_attribute_names  : bool;
       enable_name_pool_for_attribute_values : bool;
@@ -755,6 +755,9 @@ val create_pull_parser :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.24  2003/06/15 12:23:22  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.23  2003/01/21 00:19:40  gerd
  * 	Support for the new resolvers.
  *

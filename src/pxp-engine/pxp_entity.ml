@@ -1,11 +1,11 @@
-(* $Id: pxp_entity.ml,v 1.21 2003/01/21 00:19:05 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.22 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 open Pxp_aux
 open Pxp_reader
@@ -1307,6 +1307,9 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.22  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.21  2003/01/21 00:19:05  gerd
  * 	Support for resolver_id.
  *

@@ -1,9 +1,9 @@
-(* $Id: pxp_lex_aux.ml,v 1.2 2002/08/31 23:24:50 gerd Exp $
+(* $Id: pxp_lex_aux.ml,v 1.3 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-  open Pxp_types
+  open Pxp_core_types
   open Pxp_lexer_types
 
   class dummy_entity = object end
@@ -168,6 +168,9 @@
  * History:
  * 
  * $Log: pxp_lex_aux.ml,v $
+ * Revision 1.3  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.2  2002/08/31 23:24:50  gerd
  * 	scan_pi: The function does no longer expect the pi delimiters
  * <? and ?> in the passed string

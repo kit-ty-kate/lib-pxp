@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.17 2003/01/21 00:19:18 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.18 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -30,13 +30,13 @@
 
 
 type validation_record =
-    { content_model   : Pxp_types.content_model_type;
+    { content_model   : Pxp_core_types.content_model_type;
       content_dfa     : Pxp_dfa.dfa_definition option Lazy.t;
       id_att_name     : string option;
       idref_att_names : string list;
       att_lookup      : int Pxp_aux.Str_hashtbl.t;
-      init_att_vals   : (string * Pxp_types.att_value) array;
-      att_info        : (Pxp_types.att_type * bool) array;
+      init_att_vals   : (string * Pxp_core_types.att_value) array;
+      att_info        : (Pxp_core_types.att_type * bool) array;
       att_required    : int list;
       accept_undeclared_atts : bool;
     }
@@ -131,8 +131,8 @@ class dtd :
    * creates a new, empty DTD object without any declaration, without a root
    * element, without an ID.
    *)
-  Pxp_types.collect_warnings -> 
-  Pxp_types.rep_encoding ->
+  Pxp_core_types.collect_warnings -> 
+  Pxp_core_types.rep_encoding ->
   object
     method root : string option
       (* get the name of the root element if present *)
@@ -142,13 +142,13 @@ class dtd :
        * only once
        *)
 
-    method id : Pxp_types.dtd_id option
+    method id : Pxp_core_types.dtd_id option
       (* get the identifier for this DTD *)
 
-    method set_id : Pxp_types.dtd_id -> unit
+    method set_id : Pxp_core_types.dtd_id -> unit
       (* set the identifier. This method can be invoked only once *)
 
-    method encoding : Pxp_types.rep_encoding
+    method encoding : Pxp_core_types.rep_encoding
       (* returns the encoding used for character representation *)
 
 
@@ -276,7 +276,11 @@ class dtd :
        * Otherwise Validation_error.
        *)
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> bool -> unit
+    method write : 
+             Pxp_core_types.output_stream -> 
+	     Pxp_core_types.encoding -> 
+	     bool -> 
+	       unit
       (* write os enc doctype:
        * Writes the DTD as 'enc'-encoded string to 'os'. If 'doctype', a 
        * DTD like <!DOCTYPE root [ ... ]> is written. If 'not doctype',
@@ -288,7 +292,10 @@ class dtd :
        * generic way of writing references to external entities.
        *)
 
-    method write_ref : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write_ref : 
+             Pxp_core_types.output_stream -> 
+	     Pxp_core_types.encoding -> 
+	       unit
      (* write_ref os enc:
       * Writes a reference to the DTD as 'enc'-encoded string to 'os'.
       * The reference looks as follows:
@@ -304,7 +311,7 @@ class dtd :
     (*----------------------------------------*)
     method invalidate : unit
       (* INTERNAL METHOD *)
-    method warner : Pxp_types.collect_warnings
+    method warner : Pxp_core_types.collect_warnings
       (* INTERNAL METHOD *)
   end
 
@@ -330,7 +337,7 @@ and dtd_element : dtd -> string ->
        * entity.
        *)
 
-    method content_model : Pxp_types.content_model_type
+    method content_model : Pxp_core_types.content_model_type
       (* get the content model of this element declaration, or Unspecified *)
 
     method content_dfa : Pxp_dfa.dfa_definition option
@@ -339,7 +346,8 @@ and dtd_element : dtd -> string ->
        * deterministic.
        *)
 
-    method set_cm_and_extdecl : Pxp_types.content_model_type -> bool -> unit
+    method set_cm_and_extdecl : 
+             Pxp_core_types.content_model_type -> bool -> unit
       (* set_cm_and_extdecl cm extdecl:
        * set the content model to 'cm'. Once the content model is not 
        * Unspecified, it cannot be set to a different value again.
@@ -347,7 +355,7 @@ and dtd_element : dtd -> string ->
        * entity ('extdecl').
        *)
 
-    method encoding : Pxp_types.rep_encoding
+    method encoding : Pxp_core_types.rep_encoding
       (* Return the encoding of the strings *)
 
     method allow_arbitrary : unit
@@ -363,7 +371,7 @@ and dtd_element : dtd -> string ->
       (* Returns whether arbitrary attributes are allowed or not. *)
 
     method attribute : string -> 
-                         Pxp_types.att_type * Pxp_types.att_default
+                         Pxp_core_types.att_type * Pxp_core_types.att_default
       (* get the type and default value of a declared attribute, or raise
        * Validation_error if the attribute does not exist.
        * If 'arbitrary_allowed', the exception Undeclared is raised instead
@@ -403,8 +411,8 @@ and dtd_element : dtd -> string ->
       (* Returns the names of the attributes with type IDREF or IDREFS. *)
 
     method add_attribute : string -> 
-                           Pxp_types.att_type -> 
-			   Pxp_types.att_default -> 
+                           Pxp_core_types.att_type -> 
+			   Pxp_core_types.att_default -> 
 			   bool ->
 			     unit
       (* add_attribute name type default extdecl:
@@ -422,7 +430,8 @@ and dtd_element : dtd -> string ->
        * Raises mostly Validation_error if the validation fails.
        *)
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write : 
+             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
       (* write os enc:
        * Writes the <!ELEMENT ... > declaration to 'os' as 'enc'-encoded string.
        *)
@@ -434,7 +443,8 @@ and dtd_element : dtd -> string ->
 
 (* ---------------------------------------------------------------------- *)
 
-and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
+and dtd_notation : 
+       string -> Pxp_core_types.ext_id -> Pxp_core_types.rep_encoding ->
   (* Creation:
    *    new dtd_notation a_name an_external_ID init_encoding
    * creates a new dtd_notation object with the given name and the given
@@ -442,10 +452,11 @@ and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
    *)
   object
     method name : string
-    method ext_id : Pxp_types.ext_id
-    method encoding : Pxp_types.rep_encoding
+    method ext_id : Pxp_core_types.ext_id
+    method encoding : Pxp_core_types.rep_encoding
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write : 
+             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
       (* write_compact_as_latin1 os enc:
        * Writes the <!NOTATION ... > declaration to 'os' as 'enc'-encoded 
        * string.
@@ -455,7 +466,7 @@ and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
 
 (* ---------------------------------------------------------------------- *)
 
-and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
+and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
   (* Creation:
    *   new proc_instruction a_target a_value
    * creates a new proc_instruction object with the given target string and
@@ -465,9 +476,10 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
   object
     method target : string
     method value : string
-    method encoding : Pxp_types.rep_encoding
+    method encoding : Pxp_core_types.rep_encoding
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write : 
+             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
       (* write os enc:
        * Writes the <?...?> PI to 'os' as 'enc'-encoded string.
        *)
@@ -490,8 +502,8 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
 
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | ExtID of (Pxp_types.ext_id * Pxp_reader.resolver)
-  | XExtID of (Pxp_types.ext_id * string option * Pxp_reader.resolver)
+  | ExtID of (Pxp_core_types.ext_id * Pxp_reader.resolver)
+  | XExtID of (Pxp_core_types.ext_id * string option * Pxp_reader.resolver)
   (* Sources are pairs of (1) names of entities to open, and (2) methods
    * of opening entities. See Pxp_yacc for more documentation.
    *)
@@ -510,7 +522,7 @@ module Entity : sig
   val get_full_name : Pxp_entity.entity -> string
       (* The full name includes the ID, too (for diagnostics messages) *)
  
-  val get_encoding : Pxp_entity.entity -> Pxp_types.rep_encoding
+  val get_encoding : Pxp_entity.entity -> Pxp_core_types.rep_encoding
       (* Return the encoding of the internal representation of the entity *)
 
   val get_type : Pxp_entity.entity -> 
@@ -522,7 +534,7 @@ module Entity : sig
        * internal and external entities.
        *)
 
-  val get_xid : Pxp_entity.entity -> Pxp_types.ext_id option
+  val get_xid : Pxp_entity.entity -> Pxp_core_types.ext_id option
       (* Returns the external ID for external and NDATA entities, and None
        * for internal entities
        * TRAP: The external ID may be a relative SYSTEM ID, and it is not
@@ -530,7 +542,7 @@ module Entity : sig
        * external ID may be meaningless.
        *)
 
-  val get_resolver_id : Pxp_entity.entity -> Pxp_types.resolver_id option
+  val get_resolver_id : Pxp_entity.entity -> Pxp_core_types.resolver_id option
       (* Returns the resolver ID for external entities, and None for other
        * entities. This is the version as returned by the [active_id] method
        * by the resolver.
@@ -556,7 +568,7 @@ module Entity : sig
        *)
 
   val create_ndata_entity :
-      name:string -> xid:Pxp_types.ext_id -> notation:string -> dtd -> 
+      name:string -> xid:Pxp_core_types.ext_id -> notation:string -> dtd -> 
 	Pxp_entity.entity
       (* Creates an NDATA entity. The name and the notation must be encoded
        * in the same encoding as the DTD. The external ID must be encoded
@@ -566,9 +578,11 @@ module Entity : sig
   val create_external_entity :
       ?doc_entity:bool ->
       ?system_base:string ->
-      name:string -> xid:Pxp_types.ext_id -> resolver:Pxp_reader.resolver ->
-	dtd ->
-	  Pxp_entity.entity
+      name:string -> 
+      xid:Pxp_core_types.ext_id -> 
+      resolver:Pxp_reader.resolver ->
+      dtd ->
+	Pxp_entity.entity
       (* Creates a reference to an external entity. The name must be encoded
        * in the same encoding as the DTD. The external ID must be encoded
        * as UTF-8 string (like all external IDs).
@@ -582,7 +596,9 @@ module Entity : sig
 
   val from_external_source :
       ?doc_entity:bool ->
-      name:string -> dtd -> source -> 
+      name:string -> 
+      dtd -> 
+      source -> 
 	Pxp_entity.entity
       (* Creates an external entity that reads from the passed source *)
 
@@ -595,6 +611,9 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.18  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.17  2003/01/21 00:19:18  gerd
  * 	Support for resolver_id.
  *

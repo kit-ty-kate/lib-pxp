@@ -1,4 +1,4 @@
-(* $Id: pxp_dfa.ml,v 1.3 2002/02/20 10:01:36 gerd Exp $
+(* $Id: pxp_dfa.ml,v 1.4 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -90,7 +90,7 @@ type dfa_definition =
  * algorithm that transforms regexps to DFAs.
  *)
 
-open Pxp_types
+open Pxp_core_types
 
 let dfa_of_regexp_content_model re =
   let rec get_dfa re =
@@ -242,6 +242,9 @@ let dfa_of_regexp_content_model re =
  * History:
  * 
  * $Log: pxp_dfa.ml,v $
+ * Revision 1.4  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.3  2002/02/20 10:01:36  gerd
  * 	Simplified the representation of the DFA graphs, resulting
  * in performance improvements (but less protection against programming

@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.15 2002/03/13 22:45:42 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.16 2003/06/15 12:23:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -9,7 +9,7 @@
 (* Lexing *)
 
 
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 open Pxp_lexers
 open Pxp_lib
@@ -789,6 +789,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.16  2003/06/15 12:23:21  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.15  2002/03/13 22:45:42  gerd
  * 	Improved Pxp_lexing.
  *

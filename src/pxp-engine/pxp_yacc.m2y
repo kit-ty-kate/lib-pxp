@@ -1,11 +1,11 @@
-(* $Id: pxp_yacc.m2y,v 1.45 2003/01/21 00:19:40 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.46 2003/06/15 12:23:22 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
 open Parsing
-open Pxp_types
+open Pxp_core_types
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_entity
@@ -945,7 +945,7 @@ let make_pool_string = pool_string init_config.name_pool in
  * README file.
  */
 
-/* See Pxp_types.ml for comments to the various tokens */
+/* See Pxp_core_types.ml for comments to the various tokens */
 
 %token Begin_entity
 %token End_entity
@@ -3315,6 +3315,9 @@ let create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.46  2003/06/15 12:23:22  gerd
+ * 	Moving core type definitions to Pxp_core_types
+ *
  * Revision 1.45  2003/01/21 00:19:40  gerd
  * 	Support for the new resolvers.
  *
