@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.19 2001/04/03 20:22:44 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.20 2001/04/22 14:17:35 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -11,6 +11,7 @@ open Pxp_dtd
 open Pxp_entity
 open Pxp_document
 open Pxp_aux
+open Pxp_reader
 
 (* Some types from the interface definition: *)
 
@@ -88,115 +89,69 @@ let make_context entity_manager =
 
 
 let from_channel ?system_encoding ?id:init_id ?fixenc ch =
-
-  (* Reading from a channel works by modifying the algorithm of
-   * resolve_as_file.
-   *)
-
-  let url_syntax =      (* A syntax suitable for "file" URLs *)
-    { Neturl.null_url_syntax with
-	Neturl.url_enable_scheme = Neturl.Url_part_allowed;
-	Neturl.url_enable_host   = Neturl.Url_part_allowed;
-	Neturl.url_enable_path   = Neturl.Url_part_required;
-	Neturl.url_accepts_8bits = true;
-    } 
-  in
-
-  let an_url =
-    Neturl.make_url
-      ~scheme: "file"
-      ~host:   ""
-      ~path:   [ "" ]
-      url_syntax
-  in
-
-  let init_channel_done = ref false in
-    (* Whether the first access to this source has already happened. *)
-
-  (* The task of url_of_id is:
-   * - When it is called the first time, and no init_id is present,
-   *   the URL file:/// is passed back (an_url). This forces that
-   *   absolute path names /path/dir/... will be interpreted as 
-   *   file path names. (But relative path names will not work.)
-   * - If an init_id has been passed, we can assume that the opened URL
-   *   is exactly this init_id. By raising Not_competent it is indicated
-   *   that the standard method is to be used for the interpretation of
-   *   the URL.
-   * - Otherwise, the channel is already being read, and thus cannot again
-   *   opened. (This case is handled in channel_of_url.)
-   *)
-
-  let url_of_id xid =
-    if !init_channel_done then begin
-      (* Use the normal way of determining the URL of the ID: *)
-      raise Pxp_reader.Not_competent
-    end
-    else begin
-      match init_id with
-	  None -> 
-	    an_url
-	      (* If the channel is not associated with any URL: Simply pass 
-	       * the URL file:/// back. 
-	       *)
-	| Some the_init_id ->
-	    assert (the_init_id = xid);
-	    raise Pxp_reader.Not_competent
-	      (* If the channel is associated with a URL, the corresponding
-	       * ID must be passed when the first invocation happens.
-	       *)
-    end
-  in
-
-  (* The task of channel_of_url:
-   * - If it is called the first time ("else"), the channel is returned
-   * - Otherwise, the channel is already being read, and thus cannot again
-   *   opened. By raising Not_competent it is signaled that the 
-   *   resolve_as_file object must not continue to open the URL.
-   *)
-
-  let channel_of_url url =
-    if !init_channel_done then
-      raise Pxp_reader.Not_competent
-    else begin
-      init_channel_done := true;
-      ch, fixenc
-    end
-  in
-
-  let r =
-    new Pxp_reader.resolve_as_file 
-      ?system_encoding:system_encoding
-      ~url_of_id:url_of_id
-      ~channel_of_url:channel_of_url
-      ()
-  in
-
-  let init_xid =
-    match init_id with
-	None   -> Anonymous
-      | Some id -> 
-	  (* Note: 'id' may be illegal (malformed); in this case, the first
-	   * invocation of url_of_id will raise Not_competent, and the 'open_in'
-	   * method will fail.
-	   *)
-	  id
-  in
-
-  ExtID(init_xid, r)
+  let channel_id = allocate_private_id() in
+  match init_id with
+      None ->
+	(* The simple case: already implemented by resolve_read_this_channel *)
+	let r = new resolve_read_this_channel 
+		  ~id: (Private channel_id)
+		  ?fixenc
+		  ch
+	in
+	ExtID(Private channel_id, r)
+    | Some (System sysname) ->
+	(* Here we use a specially configured resolve_as_file. The private
+	 * ID channel_id is mapped to the URL sysid and to the channel
+	 * ch
+	 *)
+	let url_syntax =
+	  { Neturl.null_url_syntax with
+	      Neturl.url_enable_scheme = Neturl.Url_part_allowed;
+	      Neturl.url_enable_host   = Neturl.Url_part_allowed;
+	      Neturl.url_enable_path   = Neturl.Url_part_required;
+	      Neturl.url_accepts_8bits = true;
+	  }
+	in
+	let url = 
+	  try
+	    Neturl.url_of_string url_syntax sysname
+              (* may raise Malformed_URL *)
+	  with
+	      Neturl.Malformed_URL -> 
+		failwith "Pxp_yacc.from_channel: Bad ~id option (malformed URL)"
+	in
+	let r =
+	  new resolve_as_file 
+	    ?system_encoding 
+	    ~map_private_id: (fun pid -> 
+				if pid = channel_id then 
+				  url 
+				else raise Not_competent)
+  	    ~open_private_id: (fun pid ->
+				 if pid = channel_id then
+				   ch, fixenc
+				 else
+				   raise Not_competent
+			      )
+	    ()
+	in
+	ExtID(Private channel_id, r)
+    | Some _ ->
+	failwith "Pxp_yacc.from_channel: Bad ~id option (must be System)"
 ;;
 
 
 let from_file ?system_encoding ?enc utf8_filename =
   let r =
-    new Pxp_reader.resolve_as_file
+    new resolve_as_file
     ?system_encoding:system_encoding
       ()
   in
   
-  let url = Pxp_reader.make_file_url
-	    ?system_encoding
-	    ?enc
-	    utf8_filename in
+  let url = make_file_url
+	      ?system_encoding
+	      ?enc
+	      utf8_filename in
   
   let xid = System (Neturl.string_of_url url) in
   
@@ -206,7 +161,7 @@ let from_file ?system_encoding ?enc utf8_filename =
 
 let from_string ?fixenc s =
   let r =
-    new Pxp_reader.resolve_read_this_string ?fixenc:fixenc s in
+    new resolve_read_this_string ?fixenc:fixenc s in
   ExtID(Anonymous, r)
 ;;
 
@@ -2021,9 +1976,6 @@ end
 
 (**********************************************************************)
 
-open Pxp_reader;;
-
-
 (*
 class default_ext =
   object(self)
@@ -2403,6 +2355,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.20  2001/04/22 14:17:35  gerd
+ * 	from_channel uses now standard features of Pxp_reader, and
+ * is no longer a hack.
+ *
  * Revision 1.19  2001/04/03 20:22:44  gerd
  * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
  * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
