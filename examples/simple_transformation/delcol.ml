@@ -1,9 +1,9 @@
-(* $Id: delcol.ml,v 1.1 2000/08/24 09:39:59 gerd Exp $
+(* $Id: delcol.ml,v 1.2 2000/08/24 09:42:52 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-(* Read a record-list, sort it, and print it as XML *)
+(* Read a record-list, delete a column, and print it as XML *)
 open Pxp_types;;
 open Pxp_document;;
 open Pxp_yacc;;
@@ -56,6 +56,9 @@ main();;
  * History:
  * 
  * $Log: delcol.ml,v $
+ * Revision 1.2  2000/08/24 09:42:52  gerd
+ * 	Updated a comment.
+ *
  * Revision 1.1  2000/08/24 09:39:59  gerd
  * 	Initial revision.
  *
