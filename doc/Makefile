@@ -18,7 +18,7 @@ EXTENSIONS: EXTENSIONS.xml common.xml config.xml
 
 .PHONY: dev
 dev: DEV.xml
-	readme -html DEV.xml >$$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.hzml
+	readme -html DEV.xml >$$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.html
 
 config.xml:
 	touch config.xml

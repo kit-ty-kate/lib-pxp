@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd" [
+
+<!--
+<!ENTITY url.ocaml           "http://caml.inria.fr/">
+<!ENTITY url.xml-spec        "http://www.w3.org/TR/1998/REC-xml-19980210.html">
+<!ENTITY url.jclark-xmltdata "ftp://ftp.jclark.com/pub/xml/xmltest.zip">
+<!ENTITY url.gps-ocaml-download "http://people.darmstadt.netsurf.de/ocaml">
+<!ENTITY url.markup-download    "&url.gps-ocaml-download;/markup-0.1.tar.gz">
+<!ENTITY person.gps             '<a
+  href="mailto:Gerd.Stolpmann@darmstadt.netsurf.de">Gerd Stolpmann</a>'>
+-->
+
+<!ENTITY % common SYSTEM "common.xml">
+%common;
+
+<!-- Special HTML config: -->
+<!ENTITY % readme:html:up '<a href="../..">up</a>'>
+
+<!ENTITY % config SYSTEM "config.xml">
+%config;
+
+]>
+
+<readme title="Development of PXP">
+  <sect1>
+    <title>PXP</title>
+    <p>
+<em>PXP</em> is a validating parser for XML-1.0 which has been written
+entirely in Objective Caml. <em>This page contains development information
+for PXP; if you are looking for the stable distribution, please go
+<a href="&url.pxp-project;">here</a>.</em>
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Download</title>
+    <ul>
+      <li><p><em>Current stable release:</em> 
+<a href="&url.pxp-download;">&release.pxp;</a></p>
+      </li>
+      <li><p><em>Current development version:</em> 
+<a href="&url.pxp-download-dev;">&release.pxp-dev;</a></p>
+      </li>
+    </ul>
+  </sect1>
+
+  <sect1>
+    <title>Version History</title>
+    <ul>
+      <li><p><em>1.0.98.2:</em></p>
+	<p>Corrects a bug with incorrect line numbering that was in
+1.0.98.1.</p>
+	<p>This version contains numerous optimizations, making the 
+parser clearly faster. I had some gprof sessions, and it was possible
+to reduce the amount of temporarily allocated memory. One important result is
+that the option errors_with_line_numbers could be removed; line counting
+is now very cheap.
+</p>
+      </li>
+
+      <li><p><em>1.0.98.1:</em></p>
+	<p>The memory consumption of the node objects has been reduced.</p>
+	<p>There is now a string pool option in type Pxp_yacc.config which
+makes it likely that equal strings share the same memory block.
+This option is experimental.</p>
+
+	<p>There is now support for Alains lexer generator wlex. This is
+currently very experimental. To enable wlex you must change the variable
+LEX_IMPL in Makefile.conf and recompile everything.  wlex is available here:
+http://www.eleves.ens.fr:8080/home/frisch/soft</p>
+
+	<p>Pxp_marshal contains functions to (un)serialize node trees and
+documents.  Loading the binary format is faster than parsing the XML source;
+applications are inter-process communication, and loading constant XML texts
+very quickly.</p>
+
+	<p>Several bug fixes (but no serious bugs have been found yet).</p>
+      </li>
+    </ul>
+  </sect1>
+</readme>
+
+	
