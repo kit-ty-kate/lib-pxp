@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.3 2000/07/04 22:15:18 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.4 2000/07/06 22:11:01 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -294,24 +294,20 @@ class ['ext] parser_object
 
 	(* --- Initialize 'elstack': Push the VR on the stack. *)
 	(* If we are NOT in virtual_root mode, any element serves as VR,
-	 * because no method is ever called on this element. We simply
-	 * take the default exemplar.
+	 * because no method is ever called on this element. 
 	 * IF we are in virtual_root mode, the VR is created (almost)
 	 * normally.
 	 *)
+      let vr_name = if config.virtual_root then "-vr" else "-no-vr" in
       let vr =
-	if config.virtual_root then begin
-	  (* A trick: while the 'vr' is being created, the DTD is
-	   * changed such that this is allowed.
-	   *)
-	  let aa = dtd # arbitrary_allowed in        (* save old state    *)
-	  dtd # allow_arbitrary;
-	  let vroot = create_element_node spec dtd "-vr" [] in
-	  if not aa then dtd # disallow_arbitrary;   (* restore old state *)
-	  vroot
-	end
-	else
-	  create_element_node spec dtd "-no-vr" []
+	(* A trick: while the 'vr' is being created, the DTD is
+	 * changed such that this is allowed.
+	 *)
+	let aa = dtd # arbitrary_allowed in        (* save old state    *)
+	dtd # allow_arbitrary;
+	let vroot = create_element_node spec dtd vr_name [] in
+	if not aa then dtd # disallow_arbitrary;   (* restore old state *)
+	vroot
       in
       (* Move it to the stack: *)
       Stack.push (vr, (self :> entity_id)) elstack;
@@ -375,6 +371,16 @@ class ['ext] parser_object
 	      dtd # set_standalone_declaration v
 	  end
 	in
+
+	let recode_utf8 s =
+	  (* Recode 's' to UTF-8 *)
+	  if config.encoding = `Enc_utf8 then
+	    s   (* No recoding necessary *)
+	  else
+	    Pxp_encoding.recode_string 
+	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
+	in
+
 	
 %%
 
@@ -646,8 +652,8 @@ doctypedecl_material(doctype_entid):
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
 	    let mgr = new entity_manager en in
+	    en # open_entity true Declaration;
 	    try
-	      en # open_entity true Declaration;
 	      let context = make_context mgr in
 	      pobj # parse context Ext_declarations;
 	      ignore(en # close_entity);
@@ -661,9 +667,7 @@ doctypedecl_material(doctype_entid):
     }}
 
 /* Note that there are no keywords for SYSTEM or PUBLIC, because these would
- * be difficult to recognize in the lexical contexts. We are lucky because
- * SYSTEM is followed by exectly one string while PUBLIC is followed by two
- * strings, so we can distinguish between them.
+ * be difficult to recognize in the lexical contexts. 
  */
 
 
@@ -685,7 +689,7 @@ external_id():
 
 system_id():
   str:Unparsed_string 
-    {{ System str }}
+    {{ System (recode_utf8 str) }}
 
 
 public_id():
@@ -693,7 +697,7 @@ public_id():
         Ignore Ignore*
   str2: Unparsed_string
     {{ check_public_id str1;
-       Public(str1,str2)
+       Public(recode_utf8 str1, recode_utf8 str2)
     }}
 
 
@@ -1360,17 +1364,17 @@ notationdecl():
 	match sys_or_public with
 	    "SYSTEM" ->
 	      if str2 <> None then raise(WF_error("SYSTEM must be followed only by one argument"));
-	      System str1
+	      System (recode_utf8 str1)
 	  | "PUBLIC" ->
 	      begin match str2 with
 		  None ->
 		    check_public_id str1;
-		    Public(str1,"")
+		    Public(recode_utf8 str1,"")
 		| Some p ->
 		    if not ws then
 		      raise(WF_error("Missing whitespace between the string literals of the `PUBLIC' id"));
 		    check_public_id str1;
-		    Public(str1,p)
+		    Public(recode_utf8 str1, recode_utf8 p)
 	      end
 	  | _ -> raise(WF_error("One of PUBLIC or SYSTEM expected"))
       in
@@ -1891,6 +1895,10 @@ let parse_document_entity_with_dtd _ _ _ _ = failwith "xxx"
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.4  2000/07/06 22:11:01  gerd
+ * 	Fix: The creation of the non-virtual root element is protected
+ * in the same way as the virtual root element.
+ *
  * Revision 1.3  2000/07/04 22:15:18  gerd
  * 	Change: Using the new resolver capabilities.
  * 	Still incomplete: the new extraction and parsing functions.
