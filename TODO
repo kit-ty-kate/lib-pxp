@@ -1,0 +1,79 @@
+----------------------------------------------------------------------
+WEITER
+----------------------------------------------------------------------
+
+dynamic/att_nodes
+dynamic/namespace_nodes
+
+
+Tests für
+
+node:
+    method validate_contents : 
+              ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+
+val pinstr : 'ext node -> proc_instruction
+
+val attribute_name  : 'ext node -> string
+val attribute_value : `ext node -> att_value
+val attribute_string_value : `ext node -> string
+
+val namespace_normprefix : 'ext node -> string
+val namespace_srcprefix : 'ext node -> string
+val namespace_uri : 'ext node -> string
+
+----------------------------------------------------------------------
+
+- Namespaces:
+  rtest namespaces
+
+- from_channel: simple_transformations do not work
+
+- xmlforms: change from camltk to labltk
+
+- PXP 1.2: Adapter to Nethtml: Parses HTML and converts it to a PXP object
+  tree.
+
+- PXP 1.2: Pxp_marshal: also marshal DTDs. Make sure that _all_ attributes
+  are marshaled. (It seems that id, standalone_declaration are missing.)
+
+- PXP 1.2: Pxp_document aufräumen: Vererbung geschickter einsetzen
+
+- PXP 1.2: Pxp_marshal.relocate
+
+- PXP 1.2: embedded XML (see below)
+
+- PXP 1.2: XPATH
+
+- PXP 1.2: Adapter to Netclient
+
+----------------------------------------------------------------------
+
+- E-XML:
+ 
+  <dtd< dtd material >>
+
+  <element< xml material >>  --> transformiert in eine FUNKTION, die mit
+	create_xxx den Term zusammenbaut. Mittels $-Notation läßt sich angeben, 
+        welche (benannten) Argumente die Funktion hat.
+
+  <data< text material >>
+
+  spec, dtd: aus dem Environment
+
+  ${name:string}: Ein String wird in das Attribut/Textknoten eingefügt
+
+  ${name:att_value}: Das Attribut wird auf den att_value gesetzt.
+    NUR so: attribut="${name:att_value}"
+
+  ${name:node}: Ein einzelner Knoten
+
+  ${name:nodelist}: Eine liste von Knoten
+
+  Beispiel:
+
+  let m = <element< <a href="abc">The hyperlink to ${dest:string}</a> >>
+ 
+  Ergibt: m : string -> 'ext node
+
+  Die Leerzeichen vor <a> und nach </a> werden ignoriert

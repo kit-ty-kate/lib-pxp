@@ -1,0 +1,26 @@
+TOP_DIR = ../..
+include $(TOP_DIR)/Makefile.rules
+
+PACKAGES = netstring
+
+OBJ =   pxp_types.cmo pxp_lexer_types.cmo \
+	pxp_lexers.cmo \
+	pxp_dfa.cmo \
+	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
+	pxp_entity.cmo pxp_dtd.cmo pxp_document.cmo \
+	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
+
+
+XOBJ = $(OBJ:.cmo=.cmx)
+
+all: pxp_engine.cma pxp_top.cmo
+
+opt: pxp_engine.cmxa
+
+pxp_engine.cma: $(OBJ)
+	$(OCAMLC) -o pxp_engine.cma -a $(OBJ)
+
+pxp_engine.cmxa: $(XOBJ)
+	$(OCAMLOPT) -o pxp_engine.cmxa -a $(XOBJ)
+
+include depend
