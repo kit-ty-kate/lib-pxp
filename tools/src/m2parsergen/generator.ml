@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.5 2000/05/14 20:41:58 gerd Exp $
+(* $Id: generator.ml,v 1.6 2000/05/14 20:59:24 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -249,10 +249,14 @@ let output_code_location b file_name (_, line, column) =
 ;;
 
 
+let phantasy_line = ref 100000;;
+
 let output_code b file_name ((code, line, column) as triple) = 
   if code <> "" then begin
     output_code_location b file_name triple;
-    Buffer.add_string b code
+    Buffer.add_string b code;
+    Buffer.add_string b ("\n# " ^ string_of_int !phantasy_line ^ " \"<Generated Code>\"\n");
+    phantasy_line := !phantasy_line + 10000;
   end
 ;;
 
@@ -883,6 +887,9 @@ exit 0;;
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.6  2000/05/14 20:59:24  gerd
+ * 	Added "phantasy line numbers" to help finding errorneous locations.
+ *
  * Revision 1.5  2000/05/14 20:41:58  gerd
  * 	x: Token?   means: if Token is detected x=true else x=false.
  * 	x: Token*   means: x becomes the number of ocurrences of Token.
