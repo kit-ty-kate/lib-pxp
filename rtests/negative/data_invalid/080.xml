@@ -1,0 +1,4 @@
+<!DOCTYPE a [
+<!ELEMENT a ANY>
+<!ELEMENT b ((a,b)|a+)>]>
+<a/>

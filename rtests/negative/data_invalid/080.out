@@ -1,0 +1,2 @@
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/080.xml", at line 4, position 0:
+ERROR (Validity constraint): The content model of element `b' is not deterministic
