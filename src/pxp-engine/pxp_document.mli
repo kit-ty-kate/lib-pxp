@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.13 2001/04/26 23:59:36 gerd Exp $
+(* $Id: pxp_document.mli,v 1.14 2001/05/17 21:38:12 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -155,8 +155,36 @@ type node_type =
    *)
   | T_none
   | T_attribute of string          (* The string is the name of the attribute *)
-  | T_namespace of string           (* The string is the namespace normprefix *)
+  | T_namespace of string            (* The string is the namespace srcprefix *)
 ;;
+
+
+(* Very experimental namespace support: *)
+
+class namespace_manager :
+  object
+    method add : string -> string -> string
+      (* let normprefix = mng # add prefix uri
+       * Normalizes prefix and adds the pair (normprefix, uri) to the
+       * managed set of namespaces.
+       * "Normalizing" means that the prefix is changed such that it becomes
+       * unique.
+       *)
+    method get_uri : string -> string
+      (* Return the URI for a normprefix, or raises Not_found.
+       * get_uri "" raises always Not_found.
+       *)
+    method get_normprefix : string -> string
+      (* Return the normprefix for a URI, or raises Not_found *)
+
+    (* Encodings: prefixes and URIs are always encoded in the default
+     * encoding of the document
+     *)
+  end
+;;
+
+
+(* Regular definition: *)
 
 
 class type [ 'node ] extension =
@@ -395,9 +423,28 @@ class type [ 'ext ] node =
     method namespace_uri : string
       (* For namespace-aware implementations of the node class, this method
        * returns the namespace URI of the element, attribute or namespace.
+       * It is required that a namespace manager is available.
        *
        * If the object does not have a namespace prefix, and there is no
        * default namespace, this method returns "".
+       *
+       * This method is only supported by the implementations
+       * namespace_element_impl, namespace_attribute_impl, namespace_impl.
+       * When invoked for other classes, it will fail.
+       *)
+
+    method namespace_manager : namespace_manager
+      (* For namespace-aware implementations of the node class, this method
+       * returns the namespace manager. If the namespace manager has not been
+       * set, the exception Not_found is raised.
+       *
+       * This method is only supported by the implementations
+       * namespace_element_impl, namespace_attribute_impl, namespace_impl.
+       * When invoked for other classes, it will fail.
+       *)
+
+    method set_namespace_manager : namespace_manager -> unit
+      (* Sets the namespace manager as returned by namespace_manager.
        *
        * This method is only supported by the implementations
        * namespace_element_impl, namespace_attribute_impl, namespace_impl.
@@ -468,10 +515,19 @@ class type [ 'ext ] node =
        * to be included into the document.
        *)
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write : 
+             ?prefixes:string list ->
+             Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (* Write the contents of this node and the subtrees to the passed
        * output stream; the passed encoding is used. The format
        * is compact (the opposite of "pretty printing").
+       *
+       * Option ~prefixes: The class namespace_element_impl interprets this
+       *   option and passes it recursively to subordinate invocations of
+       *   'write'. The meaning is that the normprefixes enumerated by this list
+       *   have already been declared by surrounding elements. The option
+       *   defaults to [] forcing the method to output all necessary prefix
+       *   declarations.
        *)
 
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
@@ -553,47 +609,78 @@ class [ 'ext ] attribute_impl :
     (* Creation:
      *   new attribute_impl element_name attribute_name attribute_value dtd
      * Note that attribute nodes do intentionally not have extensions.
+     *
+     * Attribute nodes are created on demand by the first invocation of
+     * attributes_as_nodes of the element node. Attribute nodes are
+     * created directly and not by copying exemplar nodes, so you never
+     * need to create them yourself.
+     *
+     * Attribute nodes have the following properties:
+     * - The node type is T_attribute name.
+     * - The parent node is the element node.
+     * - The method "attributes" returns [ name, value ], i.e. such nodes
+     *   have a single attribute "name". To get the value, call
+     *   n # attribute name.
+     * - The method "data" returns the string representation of the 
+     *   attribute value.
+     * - Attribute nodes are leaves of the tree.
+     *
+     * Attribute nodes are designed to be members of XPath node sets, and
+     * are only useful if you need such sets.
      *)
 
 (* Very experimental namespace support: *)
 
-class namespace_manager :
-  object
-    method add : string -> string -> string
-      (* let normprefix = mng # add prefix uri
-       * Normalizes prefix and adds the pair (normprefix, uri) to the
-       * managed set of namespaces.
-       * "Normalizing" means that the prefix is changed such that it becomes
-       * unique.
-       *)
-    method get_uri : string -> string
-      (* Return the URI for a normprefix *)
-    method get_normprefix : string -> string
-      (* Return the normprefix for a URI *)
-
-    (* Encodings: prefixes and URIs are always encoded in the default
-     * encoding of the document
-     *)
-  end
-;;
-
 class [ 'ext ] namespace_element_impl :
-  namespace_manager -> 'ext -> [ 'ext ] node
+  'ext -> [ 'ext ] node
 ;;
+
+  (* namespace_element_impl: the namespace-aware implementation of element
+   * nodes. 
+   *
+   * This class has an extended definition of the create_element method.
+   * It accepts element names of the form "normprefix:localname" where
+   * normprefix must be a prefix managed by the namespace_manager. Note
+   * that create_element does not itself normalize prefixes; it is expected
+   * that the prefixes are already normalized.
+   *
+   * Such nodes have a node type T_element "normprefix:localname".
+   *
+   * Furthermore, this class implements the methods:
+   * - normprefix
+   * - localname
+   * - namespace_uri
+   * - namespace_info
+   * - set_namespace_info
+   * - namespace_manager
+   * - set_namespace_manager
+   *)
+
 
 class [ 'ext ] namespace_attribute_impl :
-  namespace_manager ->
   element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
 ;;
 
+  (* namespace_attribute_impl: the namespace-aware implementation of
+   * attribute nodes.
+   *)
+
+
 class [ 'ext ] namespace_impl :
-  namespace_manager ->
-  (* normprefix: *) string -> dtd -> [ 'ext ] node
+  (* srcprefix: *) string -> (* normprefix: *) string -> dtd -> [ 'ext ] node
 ;;
   (* Namespace objects are only used to represent the namespace declarations
    * occurring in the attribute lists of elements.
    * They are stored in the namespace_info object if that is requested.
    *)
+
+
+class [ 'ext ] namespace_info_impl :
+  (* srcprefix: *) string -> 
+  (* element: *)   'ext node -> 
+  (* src_norm_mapping: *) (string * string) list ->
+     [ 'ext ] namespace_info
+;;
 
 
 (********************************** spec *********************************)
@@ -688,8 +775,26 @@ val get_pinstr_exemplar :
 
 (*********************** Ordering of nodes ******************************)
 
-(* CHECK: whether the document order is correct for attribute and namespace
- * nodes
+(* The functions compare and ord_compare implement the so-called
+ * "document order". The basic principle is that the nodes are linearly
+ * ordered by their occurence in the textual XML representation of the
+ * tree. While this is clear for element nodes, data nodes, comments, and
+ * processing instructions, a more detailed definition is necessary for the
+ * other node types. In particular, attribute nodes of an element node
+ * occur before any regular subnode of the element, and namespace nodes
+ * of that element occur even before the attribute nodes. So the order
+ * of nodes of
+ *   <sample a1="5" a2="6"><subnode/></sample> 
+ * is
+ *   1. element "sample"
+ *   2. attribute "a1"
+ *   3. attribute "a2"
+ *   4. element "subnode"
+ * Note that the order of the attributes of the same element is unspecified,
+ * so "a2" may alternatively be ordered before "a1". If there were namespace
+ * nodes, they would occur between 1 and 2.
+ *   If there is a super root node, it will be handled as the very first
+ * node.
  *)
 
 val compare : 'ext node -> 'ext node -> int
@@ -697,7 +802,8 @@ val compare : 'ext node -> 'ext node -> int
    * first node is after the second node, or 0 if both nodes are identical.
    * If the nodes are unrelated (do not have a common ancestor), the result
    * is undefined.
-   * This test is rather slow.
+   * This test is rather slow, but it works even if the XML tree changes
+   * dynamically (in contrast to ord_compare below).
    *)
 
 type 'ext ord_index
@@ -721,6 +827,8 @@ val ord_number : 'ext ord_index -> 'ext node -> int
    * have the _same_ ordinal index.
    * (So ord_number x = ord_number y does not imply x == y for these
    * nodes. However, this is true for the other node types.)
+   * It is not recommended to work with the ordinal number directly but
+   * to call ord_compare which already handles the special cases.
    *)
 
 val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
@@ -728,7 +836,8 @@ val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
    * Returns -1 if the first node is before the second node, or +1 if the
    * first node is after the second node, or 0 if both nodes are identical.
    * If one of the nodes does not occur in the ordinal index, Not_found
-   * is raised.
+   * is raised. (Note that this is a different behaviour than what 'compare'
+   * would do.)
    * This test is much faster than 'compare'.
    *)
 
@@ -909,6 +1018,13 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.14  2001/05/17 21:38:12  gerd
+ * 	Updated signatures for namespace functionality:
+ * 	- methods namespace_manager, set_namespace_manager
+ * 	- classes namespace_element_impl, namespace_impl, namespace_info_impl
+ *
+ * 	Added comments for attribute_impl, document order
+ *
  * Revision 1.13  2001/04/26 23:59:36  gerd
  * 	Experimental support for namespaces: classes namespace_impl,
  * namespace_element_impl, namespace_attribute_impl.
