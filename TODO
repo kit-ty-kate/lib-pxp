@@ -1,3 +1,34 @@
+- Extended names für resolver:
+  type extended_ext_id =
+    { xid_private: private_id option;
+      xid_public:  string option;
+      xid_system:  url option;
+      xid_system_base: url option;  (* when xid_system is relative *)
+    }
+
+  method open_in_extended xxid = ...
+  
+  open_in wird auf open_in_extended abgebildet.
+
+  ExtID -> benutzt open_in
+  XExtId -> benutzt open_in_extended direkt
+
+  method active_id = ... gibt extended ID zurück, wobei nicht
+  genutzte Namen auf None gesetzt werden können. Das entity
+  holt sich die active_id nach dem Öffnen.
+
+  Jeder Resolver kann sich unter den drei angebotenen (private, public,
+  system) den passenden aussuchen. relative URLs werden nicht mehr
+  vom resolver aufgelöst, sondern vom Entity.
+
+  combine benutzt keine preferred resolvers mehr, sondern sucht stets
+  von vorne.
+
+  neue Klasse fake_system. Wenn der untergeordnete resolver
+  funktioniert, wird xid_system auf eine bestimmte URL gesetzt.
+
+  TODO: lookup_id unterstützt noch nicht close_all
+
 - Check:
   Pxp_lexers: Thread-safe? Reentrant?
 
@@ -7,6 +38,46 @@
 - Lexers:
   einchecken,  DONE
   wlex-Support DONE
+
+- Ausgabe von XML verbessern:
+  * derived DTDs richtig ausgeben können
+
+    schwierig, man muss ein extdecl vergleichbares Flag hinzunehmen,
+    dass true ist, wenn per SYSTEM/PUBLIC in ein external entity
+    verzweigt wird
+
+    Optionale ?domain-Attribute. Gültige domains:
+    - Ext_subset:       im SYSTEM/PUBLIC-Entity oder in einem
+                        von dort angesteuerten Entity
+    - Int_subset:       Direkt im internal subset definiert
+    - Ext_ent_of_int_subset:  In einem externen Entity, das
+                        in das internal subset inkludiert wird.
+    
+    Default ist Int_subset.
+
+    Frage: (1) Zählt nur der Ort der Deklaration, oder auch, wo
+               das deklarierende Entity angezogen wird?
+           (2) Kann man extdecl-Flags auf domains reduzieren?
+
+  * Optionen: Elemente ausgegeben ja/nein usw.
+
+  * event-based parser: Entities NICHT auflösen
+
+- Auch bei parse_wfdocument_entity die DTD transformieren können
+ 
+- resolver: externe entities nicht parsen (durch "" ersetzen)
+
+- from_string ~alt
+
+- Wirkung von `Extend_dtd_fully auch bei parse_wfdocument_entity ???
+    Geht wohl nicht.
+
+- ocamlnet-channels unterstützen, sowohl bei input-channels als
+    auch output
+
+- Doku:
+    - Wann ist dtd#root gesetzt?
+    - Wann ist dtd#id gesetzt?
 
 - Event-based parsers:
 
@@ -68,6 +139,8 @@
 
   * parse_wfdocument_entity: argument ~share_dtd
 
+  * pxp_reader uses netchannels instead of channels
+
 - Packen:
 
   * pxp.files aktualisieren
@@ -75,7 +148,13 @@
 
 ------------------------------
 
-- Klasse wfdocument
+- Klasse wfdocument???
+
+  Problemlage:
+   - Bei Wf-dokumenten keine Deklarationen ausgeben (ausser entities)
+     ==> Könnten auch write-Optionen leisten
+   - keine allow_arbitrary-PI ausgeben
+   - Überprüfung des root-Elements separieren
 
 ------------------------------
 
