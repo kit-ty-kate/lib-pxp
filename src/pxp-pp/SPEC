@@ -8,7 +8,7 @@ Declaration of charsets
 
 <:pxp_charset< source="ENC1" representation="ENC2" >> ;;
 
-This is a dummy expression evaluation to (). It has an important side-effect,
+This is a dummy expression evaluating to (). It has an important side-effect,
 however: The character encodings of the preprocessor are set.
 
 source="ENC1": Sets the encoding of the source code. Default is
@@ -22,8 +22,6 @@ Example:
 <:pxp_charset< representation="UTF-8" >>
   --> Changes the representation encoding to UTF-8.
 
-TODO: Reset the charsets at the beginning of source files.
-
 **********************************************************************
 XML expressions
 **********************************************************************
@@ -31,8 +29,17 @@ XML expressions
 The following kinds of XML expressions can be built:
 
 <:pxp_text< TEXT >>
-    NOT YET IMPLEMENTED!
-    Just another notation for string literals.    
+    Just another notation for string literals. This is useful to
+    include constant XML text into your program sources, e.g.
+
+    let t = <:pxp_text< <!ENTITY sample "A sample entity"> >> in
+    let dtd = Pxp_dtd_parser.parse_dtd_entity config (from_string t)
+
+    This is the same as 
+
+    let t = " <!ENTITY sample \"A sample entity\"> " in ...
+
+    but you need not to quote the double quotes.
 
 <:pxp_tree< EXPR >>
     Builds a well-formed PXP tree. The variables "spec" and "dtd" are
@@ -55,27 +62,9 @@ The following kinds of XML expressions can be built:
     - E_comment
     - CHECK: Super root node?
 
-<:pxp_nsevlist< EXPR >>
-    NOT YET IMPLEMENTED!
-    Build a list of PXP events in namespace-aware mode. The list may contain:
-    - E_ns_start_tag
-    - E_ns_end_tag
-    - E_char_data
-    - E_pinstr
-    - E_comment
-    - CHECK: Super root node?
-    The variable "dtd" is assumed to contain the DTD object, which is
-    additionally required in namespace-aware mode. XXX
-
-    CHECK: Which prefixes? How to declare namespace scopes?
-
 <:pxp_evpull< EXPR >>
     NOT YET IMPLEMENTED!
     Builds a pull-type generator for PXP events. (Type 'a -> event option)
-
-<:pxp_nsevpull< EXPR >>
-    NOT YET IMPLEMENTED!
-    Builds a pull-type generator for PXP events in namespace-aware mode.
 
 SYNTAX OF EXPR:
 
@@ -187,6 +176,58 @@ SYNTAX OF EXPR:
 
   In this case, a type of (string*string) list is assumed.
 
+- Namespace control:
+
+  In order to create trees or events with namespace properties,
+  it is required to set the namespace scope. E.g.
+
+  let dtd = new Pxp_dtd.dtd ... in
+  let spec = default_namespace_spec in
+  let mng = new Pxp_dtd.namespace_manager in
+  dtd # set_namespace_manager mng;
+  mng # add_namespace "p" "http://a_namespace";
+  <:pxp_tree< <:autoscope> <p:element/> >>
+
+  Of course, you need a namespace manager, and it must know all namespaces
+  that are used (add_namespace). Furthermore, the notation
+  "<:autoscope> EXPR" creates a scope object, and enables namespace
+  mode within EXPR. There are three ways of creating or modifying
+  scopes:
+
+  <:autoscope> EXPR:
+     Creates a namespace scope containing all namespaces of the namespace
+     manager (usually enough if detailed control of namespace scoping
+     is not necessary)
+
+  <:emptyscope> EXPR:
+     Creates an empty namespace scope
+
+  <:scope prefix="URI" ...> EXPR:
+     Modifies the current scope, and adds the pairs (prefix,URI) as
+     found in the attribute list. More precisely, a new scope is
+     created as child of the current scope.
+
+     To set the default namespace, use "<:scope ("")="URI"> EXPR"
+     (i.e. empty prefix name).
+
+  The O'Caml variable "scope" contains the current namespace scope
+  object. <:autoscope> and <:emptyscope> define "scope" for the
+  code generated for EXPR, and <:scope> redefines "scope".
+
+  Note that the prefixes set by <:scope> become only visible when
+  the "display" method is called to print an XML tree. The "write"
+  method ignores the scopes.
+
+  In order to create XML nodes that all have the same namespace
+  scope, it is possible to define the "scope" variable manually, e.g.
+
+  let scope = new Pxp_dtd.namespace_scope_impl ... in
+  let x1 = <:pxp_tree< <:scope> ... >> in
+  let x2 = <:pxp_tree< <:scope> ... >>
+
+  Here, <:scope> without attributes simply enables the namespace
+  mode without changing the namespace scope found in "scope".
+
 - Comments:
 
   The normal O'Caml comments (* ... *) are also allowed in PXP
@@ -198,3 +239,89 @@ Traps
 
 - It is not checked whether the representation charset is the
   actually used charset (e.g. as found in dtd#encoding).
+
+- It is possible to create namespace-aware nodes that are not fully
+  initialised. This is the case when "spec" is a namespace-aware
+  specification, but <:scope> is missing. These nodes work only
+  partially.
+
+**********************************************************************
+Examples
+**********************************************************************
+
+- Constant HTML page:
+
+<:pxp_tree< 
+  <html>[ <head>[ <title>"My page" ] 
+          <body>[ <h1>"Headline" "Paragraph" ] 
+        ] >>
+
+- HTML page with placeholder:
+
+let title = "My page" in
+<:pxp_tree< 
+  <html>[ <head>[ <title><*>title ] 
+          <body>[ <h1><*>title "Paragraph" ] 
+        ] >>
+
+Note that we use "<*>title". Without "<*>", the variable "title"
+would have type Pxp_document.node and not string.
+
+- Placeholder in attribute:
+
+let style = "font-weight:bold" in
+<:pxp_tree< 
+  <html>[ <head>[ <title>"My page" ] 
+          <body>[ <h1 style=style>"My page" "Paragraph" ] 
+        ] >>
+
+- Iteration:
+
+let data = [ "Text1"; "Text2"; "Text3" ] in
+let make_item s = <:pxp_tree< <li><*>s >> in
+<:pxp_tree<
+  <ul>
+    (: List.map make_item data :) >>
+
+- A complete example with namespaces:
+
+  let dtd = parse_dtd_entity default_namespace_config (from_string "") in
+  let spec = default_namespace_spec in
+  let mng = new namespace_manager in
+  dtd # set_namespace_manager mng;
+  mng # add_namespace "html" "http://www.w3.org/1999/xhtml";
+  let scope = 
+    new namespace_scope_impl dtd#namespace_manager None mng#as_declaration in
+  let data = [ "Text1"; "Text2"; "Text3" ] in
+  let make_item s = <:pxp_tree< <:scope><html:li><*>s >> in
+  let ul_node =
+    <:pxp_tree<
+      <:scope>
+	<html:ul>
+	  (: List.map make_item data :) >> in
+  <:pxp_tree< 
+    <:scope> 
+      <html:html>[ <html:head>[ <html:title>"My page" ] 
+                   <html:body>[ ul_node ] ] >>
+
+  When printed with "display", the XML text will use the prefix "html",
+  e.g. "html:body". To enforce the usage of a default prefix, modify
+  the line defining "scope" as follows:
+
+  let scope = 
+    new namespace_scope_impl dtd#namespace_manager None 
+    [ "", "http://www.w3.org/1999/xhtml"]
+
+  At least when generating trees, it is possible to omit
+  <:scope>, and to set the scope afterwards:
+
+  iter_tree ~pre:(fun n -> n#set_namespace_scope scope) tree
+
+- How to include linefeeds in strings:
+
+  <:pxp_tree< <*>"A line!&#10;" >>
+
+  Or define a variable lf:
+
+  let lf = "\n" in
+  <:pxp_tree< <*>("A line!"^lf) >>

@@ -1,4 +1,8 @@
-(* $Id$ *)
+(* $Id$
+ * ----------------------------------------------------------------------
+ * PXP: The polymorphic XML parser for Objective Caml.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
+ *)
 
 (* Syntax extension to construct XML trees *)
 
@@ -34,7 +38,7 @@ type token =
     [ `Langle | `Rangle | `Rangle_empty | `Lbracket | `Rbracket
     | `Equal | `Lparen | `Rparen | `List_concat | `String_concat
     | `Comment | `PI | `Super | `End_ocaml_comment | `Other | `EOF
-    | `Data
+    | `Data | `Langle_colon
     | `Literal of string | `Name of string | `Anti of string ]
 
   (* Tokens are always encoded in UTF-8! *)
@@ -55,6 +59,7 @@ let rec scan line line_start =
     (!line, !line_start, lexeme_end lexbuf) in
   lexer
     "<"    -> `Langle, (pos1 lexbuf), (pos2 lexbuf)
+  | "<:"   -> `Langle_colon, (pos1 lexbuf), (pos2 lexbuf)
   | ">"    -> `Rangle, (pos1 lexbuf), (pos2 lexbuf)
   | "/>"   -> `Rangle_empty, (pos1 lexbuf), (pos2 lexbuf)
   | "["    -> `Lbracket, (pos1 lexbuf), (pos2 lexbuf)
@@ -132,10 +137,24 @@ type charset_decl =
 ;;
 
 
-let current_decl =
-  ref { source_enc = `Enc_iso88591;
-	rep_enc = `Enc_iso88591
-      }
+let default_decl =
+  { source_enc = `Enc_iso88591;
+    rep_enc = `Enc_iso88591
+  } ;;
+
+let current_decl = ref default_decl ;;
+
+let reset_decl() =
+  current_decl := default_decl ;;
+
+
+let current_file = ref "" ;;
+
+let check_file() =
+  if !Pcaml.input_file <> !current_file then (
+    reset_decl();
+    current_file := !Pcaml.input_file
+  )
 ;;
 
 
@@ -233,6 +252,7 @@ type ast_node0 =
     | `Comment of ast_string
     | `PI of (ast_string * ast_string)
     | `Super of ast_node_list
+    | `Meta of (string * ast_attr list * ast_node)
     | `Ident of string
     | `Anti of string
        (* The following are the same as ast_string0. They are interpreted
@@ -307,6 +327,18 @@ let last_pos s =
 ;;
   
 
+let check_meta name atts =
+  match name with
+      "scope" ->
+	()
+    | "autoscope" ->
+	if atts <> [] then raise Stream.Failure;
+    | "emptyscope" ->
+	if atts <> [] then raise Stream.Failure;
+    | _ ->
+	raise Stream.Failure
+;;
+
 
 let rec parse_any_expr (s : (token * pos * pos) Stream.t) : ast_any_node =
   match Stream.peek s with
@@ -355,6 +387,13 @@ and parse_factor string_restr : (token * pos * pos) Stream.t -> ast_node =
 	     parse_nodelist_expr;
       >] ->
 	( `Element(name, attrs, subnodes), p1, p2'  )
+    | [< '(`Langle_colon, p1, p2) when not string_restr; 
+	 '(`Name name, _, _);
+	 attrs, flag, p' = parse_attrs;
+	 (subnode0, p1', p2') as subnode = parse_expr string_restr;
+      >] ->
+	( check_meta name attrs;
+	  `Meta(name, attrs, subnode), p1, p2'  )
     | [< '(`Comment, p1, p2) when not string_restr;
 	 (contents0, p1', p2') as contents = parse_string_expr
       >] ->
@@ -566,6 +605,8 @@ and check_node_expr : ast_node -> ast_node =
 	(`Data(`Literal s,p1,p2),p1,p2)
     | (`Concat l,p1,p2) ->
 	(`Data(`Concat(List.map check_node_expr_as_string l),p1,p2),p1,p2)
+    | (`Meta(n,a,child),p1,p2) ->
+	(`Meta(n,a,check_node_expr child),p1,p2)
 
 and check_node_expr_as_string : ast_node -> ast_string =
   function
@@ -575,6 +616,8 @@ and check_node_expr_as_string : ast_node -> ast_string =
 	n
     | (`Concat l,p1,p2) ->
 	(`Concat(List.map check_node_expr_as_string l),p1,p2)
+    | (`Meta(n,a,child),p1,p2) ->
+	raise(Typing_error("Meta node not allowed in string context", p1, p2))
 ;;
 
 (**********************************************************************)
@@ -647,6 +690,9 @@ let generate_ident loc name =
 
 let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
   (* valcheck: Whether to do DTD validation *)
+
+  check_file();
+
   let valcheck_expr =
     let loc = mkloc (0,0,0) (0,0,0) in
     if valcheck then <:expr< True >> else <:expr< False >> in
@@ -661,17 +707,18 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
 
   let rec generate_for_any_expr : ast_any_node -> MLast.expr =
     function
-	`Node n -> generate_for_node_expr n
-      | `Nodelist nl -> generate_for_nodelist_expr nl
+	`Node n -> generate_for_node_expr false n
+      | `Nodelist nl -> generate_for_nodelist_expr false nl
 
-  and generate_for_node_expr : ast_node -> MLast.expr = (
+  and generate_for_node_expr nsmode : ast_node -> MLast.expr = (
+    (* nsmode: Whether there is a variable [scope] in the environment *)
     function
 	(`Element(name,attrs,subnodes),p1,p2) ->
 	  let loc = mkloc p1 p2 in
 	  let name_expr = generate_for_string_expr name in
 	  let attrs_expr_l = List.map generate_for_attr_expr attrs in
 	  let attrs_expr = generate_ann_list loc attrs_expr_l in
-	  let subnodes_expr = generate_for_nodelist_expr subnodes in
+	  let subnodes_expr = generate_for_nodelist_expr nsmode subnodes in
 	  let el_only_expr =
 	    <:expr< Pxp_document.create_element_node
 	              ~valcheck:$valcheck_expr$
@@ -681,9 +728,15 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
 	      <:expr< node#validate_contents() >>
 	    else
 	      <:expr< () >> in
+	  let do_set_scope =
+	    if nsmode then
+	      <:expr< node#set_namespace_scope scope >>
+	    else
+	      <:expr< () >> in
 	  <:expr< let node = $el_only_expr$ in
-                  do { $do_validation$;
-                       node # set_nodes $subnodes_expr$;
+                  do { node # set_nodes $subnodes_expr$;
+		       $do_set_scope$;
+		       $do_validation$;
                        node } >>
       | (`Data text,p1,p2) ->
 	  let text_expr = generate_for_string_expr text in
@@ -702,11 +755,19 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
                          $target_expr$ $value_expr$ dtd#encoding)
 	        >>
       | (`Super subnodes,p1,p2) ->
-	  let subnodes_expr = generate_for_nodelist_expr subnodes in
+	  let subnodes_expr = generate_for_nodelist_expr nsmode subnodes in
 	  let loc = mkloc p1 p2 in
 	  <:expr< let node = Pxp_document.create_super_root_node spec dtd in
                   do { node # set_nodes $subnodes_expr$;
 	               node } >>
+      | (`Meta(name,attrs,subnode),p1,p2) ->
+	  let loc = mkloc p1 p2 in
+	  ( match name with
+		"scope"      -> generate_scope loc attrs subnode
+	      | "autoscope"  -> generate_autoscope loc subnode
+	      | "emptyscope" -> generate_emptyscope loc subnode
+	      | _            -> assert false (* already caught above *)
+	  )
       | (`Ident name,p1,p2) ->
 	  let loc = mkloc p1 p2 in
 	  generate_ident loc (to_src name)
@@ -716,15 +777,15 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
 	  (* `Literal and `Concat are impossible after type check *)
 	  assert false )
 
-  and generate_for_nodelist_expr : ast_node_list -> MLast.expr = (
+  and generate_for_nodelist_expr nsmode : ast_node_list -> MLast.expr = (
     function
 	(`Nodes l, p1, p2) ->
 	  let loc = mkloc p1 p2 in
-	  let l' = List.map generate_for_node_expr l in
+	  let l' = List.map (generate_for_node_expr nsmode) l in
 	  generate_list loc l'
       | (`Concat l, p1, p2) ->
 	  let loc = mkloc p1 p2 in
-	  let l' = List.map generate_for_nodelist_expr l in
+	  let l' = List.map (generate_for_nodelist_expr nsmode) l in
 	  let l'' = generate_list loc l' in
 	  <:expr< List.concat $l''$ >>
       | (`Ident name, p1, p2) ->
@@ -744,6 +805,36 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
       | (`Anti text, p1, p2) ->
 	  `List, 
 	  Grammar.Entry.parse Pcaml.expr_eoi (Stream.of_string (to_src text))
+  )
+
+  and generate_scope loc attrs subnode : MLast.expr = (
+    let subexpr = generate_for_node_expr true subnode in
+    if attrs = [] then
+      subexpr
+    else
+      let decl_expr_l = List.map generate_for_attr_expr attrs in
+      let decl_expr = generate_ann_list loc decl_expr_l in
+      <:expr< let scope = 
+                new Pxp_dtd.namespace_scope_impl 
+		  (dtd # namespace_manager)
+		  (Some scope)
+		  $decl_expr$ in $subexpr$>>
+  )
+
+  and generate_autoscope loc subnode : MLast.expr = (
+    let subexpr = generate_for_node_expr true subnode in
+    <:expr< let scope =
+            ( let mng = dtd # namespace_manager in
+	      new Pxp_dtd.namespace_scope_impl 
+		mng None mng#as_declaration ) in $subexpr$ >>
+  )
+
+  and generate_emptyscope loc subnode : MLast.expr = (
+    let subexpr = generate_for_node_expr true subnode in
+    <:expr< let scope =
+            ( let mng = dtd # namespace_manager in
+	      new Pxp_dtd.namespace_scope_impl 
+		mng None [] ) in $subexpr$ >>
   )
 
   and generate_for_string_expr : ast_string -> MLast.expr = (
@@ -779,6 +870,7 @@ let expand_tree_expr (valcheck:bool) (s:string) : MLast.expr =
 
 
 let expand_charset_expr s =
+  check_file();
   catch_errors
     (fun () ->
        let stream = scan_string s in
@@ -787,6 +879,13 @@ let expand_charset_expr s =
        let loc = mkloc (1,0,0) (last_pos stream) in
        <:expr< () >>
     )
+;;
+
+
+let expand_text_expr s =
+  check_file();
+  let loc = mkloc (1,0,0) (1,0,String.length s) in
+  <:expr< $str:s$ >>
 ;;
 
 
@@ -800,3 +899,5 @@ Quotation.add
   "pxp_tree" (Quotation.ExAst(expand_tree_expr false, na_pat)) ;;
 Quotation.add 
   "pxp_vtree" (Quotation.ExAst(expand_tree_expr true, na_pat)) ;;
+Quotation.add
+  "pxp_text" (Quotation.ExAst(expand_text_expr, na_pat)) ;;
