@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.6 2000/07/16 16:34:41 gerd Exp $
+(* $Id: pxp_document.mli,v 1.7 2000/07/23 02:16:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -300,8 +300,14 @@ class type [ 'ext ] node =
     method create_data : dtd -> string -> 'ext node
       (* create an "empty copy" of this data node: *)
 
-    method local_validate : unit
-      (* Check that this element conforms to the DTD. *)
+    method local_validate : 
+             ?use_dfa:bool ->
+             unit -> unit
+      (* Check that this element conforms to the DTD. 
+       * Option ~use_dfa: If true, the deterministic finite automaton of
+       *   regexp content models is used for validation, if available.
+       *   Defaults to false.
+       *)
 
     method keep_always_whitespace_mode : unit
       (* Normally, add_node does not accept data nodes when the DTD does not
@@ -459,6 +465,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.7  2000/07/23 02:16:34  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.6  2000/07/16 16:34:41  gerd
  * 	New method 'write', the successor of 'write_compact_as_latin1'.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.9 2000/07/14 13:57:29 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.10 2000/07/23 02:16:33 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -33,6 +33,8 @@ type config =
       recognize_standalone_declaration : bool;
       store_element_positions : bool;
       idref_pass : bool;
+      validate_by_dfa : bool;
+      accept_only_deterministic_models : bool;
       debugging_mode : bool;
     }
 
@@ -1610,7 +1612,7 @@ start_tag():
 
       if emptiness then
 	(* An empty tag like <a/>. *)
-	d # local_validate
+	d # local_validate ~use_dfa:config.validate_by_dfa ()
       else begin
 	(* A non-empty tag. *)
 	Stack.push (d, tag_beg_entid) elstack;
@@ -1669,7 +1671,7 @@ end_tag():
 	 raise(WF_error("End-tag does not match start-tag"));
        if tag_beg_entid != tag_end_entid then
 	 raise(WF_error("End-tag not in the same entity as the start-tag"));
-       x # local_validate;
+       x # local_validate ~use_dfa:config.validate_by_dfa ();
        
        n_tags_open <- n_tags_open - 1;
        
@@ -1735,7 +1737,7 @@ pi():
 	  (* Put the PI into the 'wrapper' *)
 	  wrapper # add_pinstr 
 	              (new proc_instruction target value config.encoding);
-	  wrapper # local_validate;                  (* succeeds always   *)
+	  wrapper # local_validate();                (* succeeds always   *)
 	  self # current # add_node wrapper;
 	  (* Note that a change in the function validate_content ensures
 	   * that the parser does not complain about the additional elements
@@ -1943,6 +1945,7 @@ let parse_dtd_entity cfg src =
       ~init_lexer:Declaration      (* The initially used lexer *)
   in
   dtd # validate;
+  if cfg.accept_only_deterministic_models then dtd # only_deterministic_models;
   dtd
 ;;
 
@@ -1950,6 +1953,7 @@ let parse_dtd_entity cfg src =
 let parse_content_entity ?id_index cfg src dtd spec =
   (* Parse an element given as separate entity *)
   dtd # validate;            (* ensure that the DTD is valid *)
+  if cfg.accept_only_deterministic_models then dtd # only_deterministic_models;
   let doc = new document cfg.warner in
   let pobj =
     call_parser
@@ -2026,7 +2030,12 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
       ~specification:spec 
       ~process_xmldecl:true        (* The XML declaration is processed *)
                                    (* TODO: change to 'not p_wf' ? *)
-      ~transform_dtd:transform_dtd
+      ~transform_dtd:(fun dtd -> 
+			let dtd' = transform_dtd dtd in
+			if cfg.accept_only_deterministic_models then 
+			  dtd' # only_deterministic_models;
+			dtd')
+
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:true
       ~entry:Ext_document          (* Entry point of the grammar *)
@@ -2074,6 +2083,8 @@ let default_config =
     recognize_standalone_declaration = true;
     store_element_positions = true;
     idref_pass = false;
+    validate_by_dfa = true;
+    accept_only_deterministic_models = true;
     debugging_mode = false;
   }
 
@@ -2099,6 +2110,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.10  2000/07/23 02:16:33  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.9  2000/07/14 13:57:29  gerd
  * 	Added the id_index feature.
  *

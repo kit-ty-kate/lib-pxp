@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.5 2000/07/16 16:34:41 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.6 2000/07/23 02:16:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -165,6 +165,11 @@ class dtd :
        * but other exceptions are possible, too.
        *)
 
+    method only_deterministic_models : unit
+      (* Succeeds if all regexp content models are deterministic. 
+       * Otherwise Validation_error.
+       *)
+
     method write : Pxp_types.output_stream -> Pxp_types.encoding -> bool -> unit
       (* write_compact_as_latin1 os enc doctype:
        * Writes the DTD as 'enc'-encoded string to 'os'. If 'doctype', a 
@@ -210,6 +215,12 @@ and dtd_element : dtd -> string ->
 
     method content_model : Pxp_types.content_model_type
       (* get the content model of this element declaration, or Unspecified *)
+
+    method content_dfa : Pxp_dfa.dfa_definition option
+      (* return the DFA of the content model if there is a DFA, or None.
+       * A DFA exists only for regexp style content models which are
+       * deterministic.
+       *)
 
     method set_cm_and_extdecl : Pxp_types.content_model_type -> bool -> unit
       (* set_cm_and_extdecl cm extdecl:
@@ -365,6 +376,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.6  2000/07/23 02:16:33  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.5  2000/07/16 16:34:41  gerd
  * 	New method 'write', the successor of 'write_compact_as_latin1'.
  *

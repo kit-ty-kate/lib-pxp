@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.5 2000/07/14 13:57:29 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.6 2000/07/23 02:16:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -120,6 +120,17 @@ type config =
 	 * This option works only if an ID index is available.
 	 *)
 
+      validate_by_dfa : bool;
+        (* If true, and if DFAs are available for validation, the DFAs will
+	 * actually be used for validation.
+	 * If false, or if no DFAs are available, the standard backtracking
+	 * algorithm will be used.
+	 * DFA = deterministic finite automaton.
+	 *)
+
+      accept_only_deterministic_models : bool;
+        (* Whether only deterministic content models are accepted in DTDs. *)
+
       (* The following options are not implemented, or only for internal
        * use.
        *)
@@ -221,6 +232,8 @@ val default_config : config
    * - The standalone declaration is checked
    * - Element positions are stored
    * - The IDREF pass is left out
+   * - If available, DFAs are used for validation
+   * - Only deterministic content models are accepted
    *) 
 
 val default_extension : ('a node extension) as 'a
@@ -295,6 +308,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.6  2000/07/23 02:16:33  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.5  2000/07/14 13:57:29  gerd
  * 	Added the id_index feature.
  *

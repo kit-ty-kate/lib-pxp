@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.7 2000/07/16 17:50:01 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.8 2000/07/23 02:16:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -8,6 +8,7 @@ open Pxp_types
 open Pxp_lexer_types
 open Pxp_entity
 open Pxp_aux
+open Pxp_dfa
 
 (**********************************************************************)
 
@@ -340,6 +341,21 @@ class dtd  the_warner init_encoding =
     (*                    VALIDATION                            *)
     (************************************************************)
 
+    method only_deterministic_models =
+      Hashtbl.iter
+	(fun n el ->
+	   let cm = el # content_model in
+	   match cm with
+	       Regexp _ ->
+		 if el # content_dfa = None then
+		   raise(Validation_error("The content model of element `" ^
+					  n ^ "' is not deterministic"))
+	     | _ ->
+		 ()
+	)
+	elements;
+      
+
     method validate =
       if validated or allow_arbitrary then
 	()
@@ -378,6 +394,7 @@ and dtd_element the_dtd the_name =
     val lexerset = Pxp_lexers.get_lexer_set (the_dtd # encoding)
     val mutable content_model = Unspecified
     val mutable content_model_validated = false
+    val mutable content_dfa = lazy None
 
     val mutable externally_declared = false
 
@@ -396,6 +413,7 @@ and dtd_element the_dtd the_name =
       if content_model = Unspecified then begin
 	content_model <- m;
 	content_model_validated <- false;
+	content_dfa <- lazy (self # compute_content_dfa);
 	externally_declared <- extdecl;
 	dtd # invalidate
       end
@@ -403,6 +421,17 @@ and dtd_element the_dtd the_name =
 	raise(Validation_error("Element `" ^ name ^ "' has already a content model"))
 
     method content_model = content_model
+
+    method content_dfa = Lazy.force content_dfa
+      
+    method private compute_content_dfa =
+      match content_model with
+	  Regexp re ->
+	    ( try Some (dfa_of_regexp_content_model re)
+	      with Not_found -> None
+	    )
+	| _ ->
+	    None
 
     method externally_declared = externally_declared
 
@@ -850,6 +879,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.8  2000/07/23 02:16:34  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.7  2000/07/16 17:50:01  gerd
  * 	Fixes in 'write'
  *

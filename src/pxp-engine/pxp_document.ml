@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.9 2000/07/16 19:37:09 gerd Exp $
+(* $Id: pxp_document.ml,v 1.10 2000/07/23 02:16:34 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -8,6 +8,7 @@ open Pxp_types
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_aux
+open Pxp_dfa
 
 
 exception Skip
@@ -66,7 +67,7 @@ class type [ 'ext ] node =
                    ?position:(string * int * int) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
     method create_data : dtd -> string -> 'ext node
-    method local_validate : unit
+    method local_validate : ?use_dfa:bool -> unit -> unit
     method keep_always_whitespace_mode : unit
     method write : output_stream -> encoding -> unit
     method write_compact_as_latin1 : output_stream -> unit
@@ -102,7 +103,7 @@ let make_spec_from_mapping
 
 exception Found;;
 
-let validate_content model (el : 'a node) =
+let validate_content ?(use_dfa=None) model (el : 'a node) =
   (* checks that the nodes of 'el' matches the DTD. Returns 'true'
    * on success and 'false' on failure.
    *)
@@ -124,7 +125,11 @@ let validate_content model (el : 'a node) =
   in
 
   let rec run_regexp cl ml =
-    (* cl:   the list of children that will have to be matched
+    (* Validates regexp content models ml against instances cl. This
+     * function works for deterministic and non-determninistic models.
+     * The implementation uses backtracking and may sometimes be slow.
+     *
+     * cl:   the list of children that will have to be matched
      * ml:   the list of regexps that will have to match (to be read as
      *       sequence)
      * returns () meaning that no match has been found, or raises Found.
@@ -180,6 +185,37 @@ let validate_content model (el : 'a node) =
 		end
   in
 
+  let run_dfa cl dfa =
+    (* Validates regexp content models ml against instances cl. This
+     * function works ONLY for deterministic models.
+     * The implementation executes the automaton.
+     *)
+    let current_vertex = ref dfa.dfa_start in
+    let rec next_step cl =
+      match cl with
+	  el :: cl' ->
+	    begin match el # node_type with
+		T_data ->                       (* Ignore data *)
+		  next_step cl'
+		    (* Note: It can happen that we find a data node here
+		     * if the 'keep_always_whitespace' mode is turned on.
+		     *)
+	      | T_element "-pi" ->              (* Ignore this element *)
+		  next_step cl'
+	      | T_element nt ->
+		  begin try
+		    current_vertex := Graph.follow_edge !current_vertex nt;
+		    next_step cl'
+		  with
+		      Not_found -> false
+		  end
+	    end
+	| [] ->
+	    VertexSet.mem !current_vertex dfa.dfa_stops
+    in
+    next_step cl
+  in	
+
   match model with
       Unspecified -> true
     | Any -> true
@@ -211,12 +247,19 @@ let validate_content model (el : 'a node) =
 	end
     | Regexp re ->
 	let cl = el # sub_nodes in
-	begin try
-	  run_regexp cl [re];
-	  false
-	with
-	    Found -> true
+	begin match use_dfa with
+	    None ->
+	      (* General backtracking implementation: *)
+	      begin try
+		run_regexp cl [re];
+		false
+	      with
+		  Found -> true
+	      end
+	  | Some dfa ->
+	      run_dfa cl dfa
 	end
+
     | _ -> assert false
 ;;
 
@@ -317,7 +360,7 @@ class virtual ['ext] node_impl an_ext =
     method virtual keep_always_whitespace_mode : unit
     method virtual write : output_stream -> encoding -> unit
     method virtual write_compact_as_latin1 : output_stream -> unit
-    method virtual local_validate : unit
+    method virtual local_validate : ?use_dfa:bool -> unit -> unit
     method virtual internal_delete : 'ext node -> unit
     method virtual internal_init : (string * int * int) ->
                                 dtd -> string -> (string * string) list -> unit
@@ -378,7 +421,7 @@ class ['ext] data_impl an_ext : ['ext] node =
 	: 'ext #node :> 'ext node) in
       x # set_node n;
       n
-    method local_validate = ()
+    method local_validate ?use_dfa () = ()
     method keep_always_whitespace_mode = ()
 
 
@@ -405,6 +448,7 @@ class ['ext] element_impl an_ext : ['ext] node =
       inherit ['ext] node_impl an_ext as super
 
       val mutable content_model = Any
+      val mutable content_dfa = lazy None
       val mutable ext_decl = false
       val mutable name = "[unnamed]"
       val mutable id_att_name = None
@@ -740,6 +784,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	try
 	  let eltype = new_dtd # element new_name in
 	  content_model <- eltype # content_model;
+	  content_dfa   <- lazy(eltype # content_dfa);
 	  ext_decl <- eltype # externally_declared;
 	  id_att_name <- eltype # id_attribute_name;
 	  idref_att_names <- eltype # idref_attribute_names;
@@ -833,10 +878,15 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      dtd <- Some new_dtd;
 	      attributes <- List.map (fun (n,v) -> n, Value v) new_attlist;
 	      content_model <- Any;
+	      content_dfa <- lazy None;
 
-      method local_validate =
+      method local_validate ?(use_dfa=false) () =
 	(* validates that the content of this element matches the model *)
-	if not (validate_content content_model (self : 'ext #node :> 'ext node)) then
+	let dfa = if use_dfa then Lazy.force content_dfa else None in
+	if not (validate_content 
+		  ~use_dfa:dfa
+		  content_model 
+		  (self : 'ext #node :> 'ext node)) then
 	  raise(Validation_error("Element `" ^ name ^ "' does not match its content model"))
 
 
@@ -1061,6 +1111,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.10  2000/07/23 02:16:34  gerd
+ * 	Support for DFAs.
+ *
  * Revision 1.9  2000/07/16 19:37:09  gerd
  * 	Simplification.
  *
