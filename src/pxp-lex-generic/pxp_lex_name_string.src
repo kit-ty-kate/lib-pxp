@@ -1,0 +1,68 @@
+(* $Id: pxp_lex_name_string.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+
+{
+  open Markup_types
+  open Markup_lexer_types
+
+#insert open_pxp_lex_aux_*.src
+#insert pxp_lex_aux.src
+
+}
+
+#insert pxp_lex_defs_*.def
+
+rule scan_name_string = parse
+    name
+      { Name (Lexing.lexeme lexbuf) }
+  | ws+
+      { Ignore }
+  | nmtoken
+      { Nametoken (Lexing.lexeme lexbuf) }
+  | eof
+      { Eof }
+  | character
+      { CharData (Lexing.lexeme lexbuf) }
+  | _
+      { raise Bad_character_stream }
+
+
+and scan_ignored_section = parse
+  | "<!["
+      { tok_Conditional_begin__Ignored }
+  | "]]>"
+      { tok_Conditional_end__Ignored }
+  | "<!--" comment_string "-->"
+      { tok_Ignore__Ignored }
+  | '"' character_except_quot* '"'
+      { tok_Ignore__Ignored }
+  | "'" character_except_apos* "'"
+      { tok_Ignore__Ignored }
+  | eof
+      { tok_Eof__Ignored }
+  | character_except_special+
+      { tok_Ignore__Ignored }
+  | "<"
+      { tok_Ignore__Ignored }
+  | "]"
+      { tok_Ignore__Ignored }
+  | "'"
+      { tok_Ignore__Ignored }
+  | "\""
+      { tok_Ignore__Ignored }
+  | _
+      { raise Bad_character_stream }
+
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lex_name_string.src,v $
+ * Revision 1.1  2000/05/20 20:33:25  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

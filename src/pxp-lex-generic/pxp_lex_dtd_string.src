@@ -1,0 +1,61 @@
+(* $Id: pxp_lex_dtd_string.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+
+{
+  open Markup_types
+  open Markup_lexer_types
+
+#insert open_pxp_lex_aux_*.src
+#insert pxp_lex_aux.src
+
+}
+
+#insert pxp_lex_defs_*.def
+(* The following scanner is used to determine the replacement text of
+ * internal entities:
+ *)
+
+rule scan_dtd_string = parse
+    '%' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	PERef (String.sub s 1 (String.length s - 2)) }
+  | '%'
+      { raise(WF_error("The character '%' must be written as '&#37;'")) }
+  | '&' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	ERef (String.sub s 1 (String.length s - 2)) }
+  | "&#" ascii_digit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string (String.sub s 2 (String.length s - 3))) }
+  | "&#x" ascii_hexdigit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))) }
+  | '&'
+      { raise(WF_error("The character '&' must be written as '&amp;'")) }
+  | '\013' '\010'
+      { CRef(-1) }
+  | '\013'
+      { CRef(-2) }
+  | '\010'
+      { CRef(-3) }
+  | '\009'
+      { CharData "\009" }
+  | printable_character_except_amp_percent+
+      { CharData (Lexing.lexeme lexbuf) }
+  | eof
+      { Eof }
+  | _
+      { raise Bad_character_stream }
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lex_dtd_string.src,v $
+ * Revision 1.1  2000/05/20 20:33:25  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

@@ -1,0 +1,95 @@
+(* $Id: pxp_lex_content.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+
+{
+  open Markup_types
+  open Markup_lexer_types
+
+#insert pxp_lex_aux.src
+
+#insert open_pxp_lex_aux_*.src
+#insert open_pxp_lex_misc_*.src
+
+}
+
+#insert pxp_lex_defs_*.def
+
+rule scan_content = parse
+    "<?" pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) scan_xml_pi, Content }
+  | "<?"
+      { raise (WF_error ("Illegal processing instruction")) }
+  | "<!--"
+      { tok_Comment__Content_comment }
+  | '<' '/'? name
+      (* One rule for Tag_beg and Tag_end saves transitions. *)
+      { let s = Lexing.lexeme lexbuf in
+	if s.[1] = '/' then
+	  Tag_end (String.sub s 2 (String.length s - 2), dummy_entity), 
+	  Within_tag 
+	else
+	  Tag_beg (String.sub s 1 (String.length s - 1), dummy_entity), 
+	  Within_tag 
+      }
+  | "<![CDATA[" cdata_string "]]>"
+      { let s = Lexing.lexeme lexbuf in
+	Cdata (String.sub s 9 (String.length s - 12)), Content }
+  | "<!"
+      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      }
+  | "<"
+      { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
+      }
+  | "&#" ascii_digit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string (String.sub s 2 (String.length s - 3))), Content }
+  | "&#x" ascii_hexdigit+ ";"
+      { let s = Lexing.lexeme lexbuf in
+	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))), Content }
+  | "&" name ";"
+      { let s = Lexing.lexeme lexbuf in
+	ERef (String.sub s 1 (String.length s - 2)), Content }
+  | "&" 
+      { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
+      }
+
+  (* LineEnd: Depending on whether we are reading from a primary source
+   * (file) or from the replacement text of an internal entity, line endings
+   * must be normalized (converted to \n) or not.
+   * The entity classes do that. The yacc parser will never see LineEnd;
+   * this token is always converted to the appropriate CharData token.
+   *)
+
+  | '\013' '\010'
+      { tok_LineEndCRLF__Content }
+  | '\013'
+      { tok_LineEndCR__Content }
+  | '\010'
+      { tok_LineEndLF__Content }
+  | eof
+      { tok_Eof__Content }
+  | "]]>" 
+      { raise (WF_error ("The sequence ']]>' must be written as ']]&gt;'"))
+      }
+  | "]"
+      { tok_CharDataRBRACKET__Content }
+  | normal_character+
+      { let s = Lexing.lexeme lexbuf in
+	CharData s, Content 
+      }
+  | _
+      { raise Bad_character_stream }
+
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lex_content.src,v $
+ * Revision 1.1  2000/05/20 20:33:25  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

@@ -1,0 +1,135 @@
+(* $Id: pxp_lex_misc.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+
+{
+  open Markup_types
+  open Markup_lexer_types
+
+#insert open_pxp_lex_aux_*.src
+#insert pxp_lex_aux.src
+
+}
+
+#insert pxp_lex_defs_*.def
+
+(* The remaining, smaller lexers *)
+
+rule scan_characters = parse
+  character*
+    { () }
+| eof 
+    { () }
+| _
+    { raise Bad_character_stream }
+
+
+and scan_xml_pi = parse
+    name ws*
+      { let s = Lexing.lexeme lexbuf in
+	let j = get_name_end s 0 in
+	Pro_name (String.sub s 0 j)
+      }
+  | "=" ws*
+      { Pro_eq }
+  | "'" character_except_apos* "'" ws+
+      { let s = Lexing.lexeme lexbuf in
+	let j = String.index_from s 1 '\'' in
+	Pro_string (String.sub s 1 (j-1))
+      }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '"' character_except_quot* '"' ws+
+      { let s = Lexing.lexeme lexbuf in
+	let j = String.index_from s 1 '"' in
+	Pro_string (String.sub s 1 (j-1))
+      }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | eof
+      { Pro_eof }
+  | character
+      { (* prerr_endline (Lexing.lexeme lexbuf); *)
+	raise (WF_error("Illegal token or character")) 
+      }
+  | _ 
+      { raise Bad_character_stream }
+
+and scan_only_xml_decl = parse
+    "<?xml" ws+ pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) scan_xml_pi }
+  | ""
+      { Eof }
+
+and scan_for_crlf = parse
+  | '\013' '\010'
+      { CharData "\n" }
+  | '\013'
+      { CharData "\n" }
+  | '\010'
+      { CharData "\n" }
+  | [^ '\010' '\013' ]+
+      { CharData (Lexing.lexeme lexbuf) }
+  | eof 
+      { Eof }
+
+and scan_content_comment = parse
+    "-->"
+      { tok_Comment__Content }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { tok_Comment__Content_comment }
+  | character_except_minus+
+      (* TODO: We allocate memory for comments here. Try to avoid this. *)
+      { tok_Comment__Content_comment }
+  | eof
+      { Eof, Content_comment }
+  | _
+      { raise Bad_character_stream }
+
+
+and scan_decl_comment = parse
+    "-->"
+      { tok_Comment__Declaration }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { tok_Comment__Decl_comment }
+  | character_except_minus+
+      (* TODO: We allocate memory for comments here. Try to avoid this. *)
+      { tok_Comment__Decl_comment }
+  | eof
+      { Eof, Decl_comment }
+  | _
+      { raise Bad_character_stream }
+
+
+and scan_document_comment = parse
+    "-->"
+      { tok_Comment__Document }
+  | "--"
+      { raise (WF_error "Double hyphens are illegal inside comments") }
+  | "-"
+      { tok_Comment__Document_comment }
+  | character_except_minus+
+      (* TODO: We allocate memory for comments here. Try to avoid this. *)
+      { tok_Comment__Document_comment }
+  | eof
+      { Eof, Document_comment }
+  | _
+      { raise Bad_character_stream }
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lex_misc.src,v $
+ * Revision 1.1  2000/05/20 20:33:25  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)

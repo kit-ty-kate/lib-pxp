@@ -1,0 +1,126 @@
+(* $Id: pxp_lex_declaration.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+
+{
+  open Markup_types
+  open Markup_lexer_types
+
+#insert pxp_lex_aux.src
+
+#insert open_pxp_lex_aux_*.src
+#insert open_pxp_lex_misc_*.src
+
+}
+
+#insert pxp_lex_defs_*.def
+
+(* scan_declaration: after "[" in DTD until matching "]" *)
+
+rule scan_declaration = parse
+    ws+
+      { tok_Ignore__Declaration }
+  | '%' name ';'
+      { let s = Lexing.lexeme lexbuf in
+	(PERef (String.sub s 1 (String.length s - 2))), Declaration }
+  | '%'
+      { tok_Percent__Declaration }
+  | '&' 
+      { raise(WF_error("References to general entities not allowed in DTDs")) }
+  | name
+      { Name (Lexing.lexeme lexbuf), Declaration }
+  | nmtoken
+      { Nametoken (Lexing.lexeme lexbuf), Declaration }
+  | '+'
+      { tok_Plus__Declaration }
+  | '*'
+      { tok_Star__Declaration }
+  | '|'
+      { tok_Bar__Declaration }
+  | ','
+      { tok_Comma__Declaration }
+  | '?'
+      { tok_Qmark__Declaration }
+  | '('
+      { tok_Lparen__Declaration }
+  | ")+" 
+      { tok_RparenPlus__Declaration }
+  | ")*" 
+      { tok_RparenStar__Declaration }
+  | ")?"
+      { tok_RparenQmark__Declaration }
+  | ')'
+      { tok_Rparen__Declaration }
+  | "#REQUIRED"
+      { tok_Required__Declaration }
+  | "#IMPLIED"
+      { tok_Implied__Declaration }
+  | "#FIXED"
+      { tok_Fixed__Declaration }
+  | "#PCDATA"
+      { tok_Pcdata__Declaration }
+  | "<!ELEMENT"
+      { tok_Decl_element__Declaration }
+  | "<!ATTLIST"
+      { tok_Decl_attlist__Declaration }
+  | "<!ENTITY"
+      { tok_Decl_entity__Declaration }
+  | "<!NOTATION"
+      { tok_Decl_notation__Declaration }
+  | "<!--"
+      { tok_Comment__Decl_comment }
+  | "<!["
+      { tok_Conditional_begin__Declaration }
+  | "]]>"
+      { tok_Conditional_end__Declaration }
+  | "["
+      { tok_Conditional_body__Declaration }
+
+  (* TODO: PIs modified *) 
+
+  | "<?" pi_string "?>"
+      { scan_pi (Lexing.lexeme lexbuf) scan_xml_pi, Declaration }
+  | "<?"
+      { raise (WF_error ("Illegal processing instruction")) }
+  | '"' [^ '"']* '"'
+      { let s = Lexing.lexeme lexbuf in
+        (* Check that characters are well-formed: *)
+	ignore(scan_characters (Lexing.from_string s));
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+  | '"'
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | "'" [^ '\'']* "'"
+      { let s = Lexing.lexeme lexbuf in
+        (* Check that characters are well-formed: *)
+	ignore(scan_characters (Lexing.from_string s));
+	(Unparsed_string (String.sub s 1 (String.length s - 2))), Declaration }
+  | "'"
+      { raise (WF_error ("Cannot find the second quotation mark"))
+      }
+  | '>'
+      { tok_Decl_rangle__Declaration }
+  | ']'
+      { tok_Dtd_end__Document_type }
+  | eof
+      { tok_Eof__Declaration }
+  | "<!"
+      { raise (WF_error "Declaration either malformed or not allowed in this context") 
+      }
+  | character
+      { raise (WF_error("Illegal token or character")) }
+  | _
+      { raise Bad_character_stream }
+
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_lex_declaration.src,v $
+ * Revision 1.1  2000/05/20 20:33:25  gerd
+ * 	Initial revision.
+ *
+ * 
+ *)
