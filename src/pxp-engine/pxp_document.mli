@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.19 2001/06/25 21:04:18 gerd Exp $
+(* $Id: pxp_document.mli,v 1.20 2001/06/27 23:35:43 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1254,13 +1254,16 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
-    method create_other : dtd -> -> node_type -> 'ext node
+    method create_other : 
+             ?position:(string * int * int) ->
+             dtd -> node_type -> 'ext node
       (* <ID:type-node-create-other>
-       * <CALL>   obj # [create_other] dtd ntype
+       * <CALL>   obj # [create_other] ~position dtd ntype
        * <SIG>    AUTO
        * <DESCR>  Returns a flat copy of this node with the following
        *   modification:
        *     - The DTD is set to [dtd]
+       *     - The position triple is set to [position]
        *       --
        *   Note that the extension object is copied, too.
        *
@@ -2380,7 +2383,8 @@ class [ 'ext ] document :
     method pinstr_names : string list
       (* Return all target strings of all PIs. *)
 
-    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+    method write : ?default : string ->
+                   Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (* Write the document to the passed
        * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
@@ -2406,6 +2410,9 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.20  2001/06/27 23:35:43  gerd
+ * 	Minor fixes: create_other, write.
+ *
  * Revision 1.19  2001/06/25 21:04:18  gerd
  * 	Updated documentation. Most docs are now structured comments
  * that can be extracted and included into the docbook manual.
