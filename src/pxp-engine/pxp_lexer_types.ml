@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.7 2002/07/14 23:04:17 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.8 2002/08/03 17:54:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -9,12 +9,33 @@ type lexers =
   | Document_type
   | Content
   | Within_tag
+  | Within_tag_entry
   | Declaration
   | Content_comment
   | Decl_comment
   | Document_comment
   | Ignored_section
   | Closed
+  | Tag_eb
+  | Tag_eb_att of bool
+
+
+let string_of_lexers =
+  function
+      Document          -> "Document"
+    | Document_type     -> "Document_type"
+    | Content           -> "Content"
+    | Within_tag        -> "Within_tag"
+    | Within_tag_entry  -> "Within_tag_entry"
+    | Declaration       -> "Declaration"
+    | Content_comment   -> "Content_comment"
+    | Decl_comment      -> "Decl_comment"
+    | Document_comment  -> "Document_comment"
+    | Ignored_section   -> "Ignored_section"
+    | Closed            -> "Closed"
+    | Tag_eb            -> "Tag_eb"
+    | Tag_eb_att b      -> "Tag_eb_att " ^ string_of_bool b
+;;
 
 
 type prolog_token =
@@ -90,7 +111,10 @@ type token =
   | Attval    of string           (* attribute value; may contain entity refs *)
   | Attval_nl_normalized of string
   | Unparsed_string      of string    (* "data" or 'data' *)
-      
+  | SQuote                            (* Single quote *)
+  | DQuote                            (* Double quote *)
+  | ERef_att of string                (* &name; in attribute values *)
+
 
 (**********************************************************************)
 (* debugging *)
@@ -155,7 +179,9 @@ let string_of_tok tok =
   | LLcurly -> "LLcurly"
   | Rcurly -> "Rcurly"
   | RRcurly -> "RRcurly"
-
+  | SQuote -> "SQuote"
+  | DQuote -> "DQuote"
+  | ERef_att _ -> "ERef_att"
 
 
 type lexer_set =
@@ -175,12 +201,20 @@ type lexer_set =
       scan_name_string     : Lexing.lexbuf -> token;
       scan_only_xml_decl   : Lexing.lexbuf -> token;
       scan_for_crlf        : Lexing.lexbuf -> token;
+      scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
+      scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
     }
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.8  2002/08/03 17:54:47  gerd
+ * 	Support for event-based parsing of attribute values: New
+ * lexers Tag_eb, Tag_eb_att, and the new pseudo lexer Within_tag_entry
+ * (which immediately changes the lexer to either Within_tag or Tag_eb).
+ * New tokens SQuote, DQuote, ERef_att.
+ *
  * Revision 1.7  2002/07/14 23:04:17  gerd
  * 	New lexer "Closed", used after an entity is closed.
  * 	New tokens Lcurly, LLcurly, Rcurly, RRcurly.

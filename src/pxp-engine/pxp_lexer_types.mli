@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.mli,v 1.7 2002/07/14 23:04:17 gerd Exp $
+(* $Id: pxp_lexer_types.mli,v 1.8 2002/08/03 17:54:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -9,12 +9,18 @@ type lexers =
   | Document_type
   | Content
   | Within_tag
+  | Within_tag_entry
   | Declaration
   | Content_comment
   | Decl_comment
   | Document_comment
   | Ignored_section
   | Closed
+  (* alternate version of Within_tag for event-based attribute parsing: *)
+  | Tag_eb             (* Recognizes SQuote and DQuote *)
+  | Tag_eb_att of bool (* The attribute value. bool: whether DQuote 
+			* (true) or SQuote (false) delimit the value
+			*)
 
 
 type prolog_token =
@@ -89,7 +95,12 @@ type token =
   | Attval    of string           (* attribute value; may contain entity refs *)
   | Attval_nl_normalized of string
   | Unparsed_string      of string    (* "data" or 'data' *)
+  | SQuote                            (* Single quote *)
+  | DQuote                            (* Double quote *)
+  | ERef_att of string                (* &name; in attribute values *)
       
+
+val string_of_lexers : lexers -> string
 
 val string_of_tok : token -> string
 
@@ -111,6 +122,9 @@ type lexer_set =
       scan_name_string     : Lexing.lexbuf -> token;
       scan_only_xml_decl   : Lexing.lexbuf -> token;
       scan_for_crlf        : Lexing.lexbuf -> token;
+      (* New: *)
+      scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
+      scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
     }
 
 (* lexer_set: Every internal encoding has its own set of lexer functions *)
@@ -119,6 +133,12 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.mli,v $
+ * Revision 1.8  2002/08/03 17:54:47  gerd
+ * 	Support for event-based parsing of attribute values: New
+ * lexers Tag_eb, Tag_eb_att, and the new pseudo lexer Within_tag_entry
+ * (which immediately changes the lexer to either Within_tag or Tag_eb).
+ * New tokens SQuote, DQuote, ERef_att.
+ *
  * Revision 1.7  2002/07/14 23:04:17  gerd
  * 	New lexer "Closed", used after an entity is closed.
  * 	New tokens Lcurly, LLcurly, Rcurly, RRcurly.
