@@ -1,0 +1,6 @@
+description = "Polymorphic XML parser - Universal lexical analyzer"
+requires = "pxp-engine wlexing"
+version = "@VERSION@"
+
+archive(byte) = "pxp_wlex.cma pxp_lex_link.cmo"
+archive(native) = "pxp_wlex.cmxa pxp_lex_link.cmx"

@@ -1,0 +1,24 @@
+TOP_DIR = ../..
+include $(TOP_DIR)/Makefile.rules
+
+PACKAGES = netstring wlexing
+
+OBJ = pxp_wlex_aux.cmo pxp_wlex.cmo
+XOBJ = $(OBJ:.cmo=.cmx)
+
+OCAMLC_OPTIONS   = -I ../pxp-engine
+OCAMLOPT_OPTIONS = -I ../pxp-engine
+
+all: pxp_wlex.cma
+
+opt: pxp_wlex.cmxa
+
+pxp_wlex.cma: $(OBJ) pxp_wlex_link.cmo
+	$(OCAMLC) -o pxp_wlex.cma -a $(OBJ)
+
+pxp_wlex.cmxa: $(XOBJ) pxp_wlex_link.cmx
+	$(OCAMLOPT) -o pxp_wlex.cmxa -a $(XOBJ)
+
+include depend
+
+*.ml: ../pxp-engine/pxp_types.cmi ../pxp-engine/pxp_lexer_types.cmi
