@@ -1,0 +1,248 @@
+(* $Id$
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+(* This file is divided up into sections, marked by (* [SECTION] *).
+ * Sections are processed by lexpp.
+ *)
+
+(* ---------------------------------------------------------------------- *)
+(* [LINK] *)
+
+(* This section contains code going into the link module. The patterns
+ * $ {name} (w/o space) are substituted by generated strings:
+ * - $ {encoding} is replaced by the name of the character encoding
+ * - all other names must be names of lexical rules, and $ {name} is
+ *   replaced by Module.name, i.e. the correct module prefix is prepended
+ *   to the rule name.
+ *)
+
+open Pxp_types
+open Pxp_lexer_types
+open Pxp_reader
+
+let _ =
+  assert("${encoding}" = "utf8");;
+(* The rest of this module assumes that the internal encoding is UTF-8 *)
+
+
+let from_function ulb ulb_pos ulb_copy lexbuf_ref ubuf upos ulen =
+  (* ulb_pos: Absolute position of the first char in ulb
+   * ulb_copy: Relative position of the next char to copy
+   *)
+  let lexbuf =
+    match !lexbuf_ref with
+	None -> assert false
+      | Some b -> b in
+  try
+    (* Delete all characters in ulexbuf before the current lexeme: *)
+    let d = Ulexing.lexeme_start lexbuf - !ulb_pos in
+    if d>0 then (
+      ULB.delete d ulb;
+      ulb_pos := !ulb_pos + d;
+      ulb_copy := !ulb_copy - d;
+      assert(!ulb_copy >= 0);
+    );
+    (* Extend ulb if necessary: *)
+    if !ulb_copy >= ulb.ULB.ulb_chars_len then
+      ULB.refill ulb;
+      (* raises either End_of_file, or ensures there is one char in ulexbuf *)
+    let n = min ulen (ulb.ULB.ulb_chars_len - !ulb_copy) in
+    assert(n>0);
+    Array.blit ulb.ULB.ulb_chars !ulb_copy ubuf upos n;
+
+(*
+    for i = !ulb_copy to !ulb_copy+n-1 do
+      let x = ulb.ULB.ulb_chars.(i) in
+      if x >= 32 && x <= 126 then
+	prerr_endline ("NEXT: '" ^ String.make 1 (Char.chr x) ^ "'")
+      else
+	prerr_endline ("NEXT: " ^ string_of_int x)
+    done;
+*)
+
+    ulb_copy := !ulb_copy + n;
+    n
+  with
+      End_of_file -> 
+	0
+;;
+
+
+class lfactory : lexer_factory =
+object(self)
+  method encoding = `Enc_utf8
+
+  method open_source src = 
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (Lazy.force src.lsrc_unicode_lexbuf)
+
+  method open_string s =
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (ULB.from_string `Enc_utf8 s)
+
+  method open_string_inplace s =
+    new lobj 
+      (self : #lexer_factory :> lexer_factory) 
+      (ULB.from_string_inplace `Enc_utf8 s)
+end
+
+and lobj factory (_ulb : ULB.unicode_lexbuf) : lexer_obj =
+  let ulb_pos = ref 0 
+  and ulb_copy = ref 0 
+  and lexbuf_ref = ref None in
+object(self)
+  val mutable ulb = _ulb
+  val mutable lexbuf = Ulexing.create 
+			 (from_function _ulb ulb_pos ulb_copy lexbuf_ref)
+
+  initializer
+    lexbuf_ref := Some lexbuf
+
+  method factory = factory
+
+  method encoding = `Enc_utf8
+
+  method open_source src =
+    lexbuf_ref := None;
+    ulb <- Lazy.force src.lsrc_unicode_lexbuf;
+    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
+    lexbuf_ref := Some lexbuf;
+    ulb_pos := 0;
+    ulb_copy := 0;
+
+  method open_string s =
+    lexbuf_ref := None;
+    ulb <- ULB.from_string `Enc_utf8 s;
+    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
+    lexbuf_ref := Some lexbuf;
+    ulb_pos := 0;
+    ulb_copy := 0;
+
+  method open_string_inplace s =
+    lexbuf_ref := None;
+    ulb <- ULB.from_string_inplace `Enc_utf8 s;
+    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
+    lexbuf_ref := Some lexbuf;
+    ulb_pos := 0;
+    ulb_copy := 0;
+
+  method lexeme_length =
+    Ulexing.lexeme_length lexbuf
+
+  method lexeme_char pos =
+    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
+    ulb.ULB.ulb_chars.( ls + pos )
+
+  method lexeme =
+    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
+    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
+    assert(ls >= 0);
+    ULB.utf8_sub_string ls (le-ls) ulb
+    (* Ulexing.utf8_lexeme lexbuf *)
+
+  method lexeme_strlen =
+    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
+    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
+    assert(ls >= 0);
+    ULB.utf8_sub_string_length ls (le-ls) ulb
+    (* String.length (Ulexing.utf8_lexeme lexbuf) *)
+
+  method sub_lexeme pos len =
+    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
+    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
+    assert(ls >= 0);
+    ULB.utf8_sub_string (ls+pos) len ulb
+    (* Ulexing.utf8_sub_lexeme lexbuf pos len *)
+ 
+  method scan_document =
+    fun () -> 
+      ${scan_document}.scan_document (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_content =
+    fun () -> 
+      ${scan_content}.scan_content (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_within_tag = 
+    fun () -> 
+      ${scan_within_tag}.scan_within_tag
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_document_type = 
+    fun () -> 
+      ${scan_document_type}.scan_document_type
+        (self : #lexer_obj :> lexer_obj) lexbuf
+    
+  method scan_declaration = 
+    fun () -> 
+      ${scan_declaration}.scan_declaration 
+        (self : #lexer_obj :> lexer_obj) lexbuf
+    
+  method scan_comment = 
+    fun () -> 
+      ${scan_comment}.scan_comment (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_ignored_section = 
+    fun () -> 
+      ${scan_ignored_section}.scan_ignored_section
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method detect_xml_pi = 
+    fun () -> 
+      ${detect_xml_pi}.detect_xml_pi (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_xml_pi = 
+    fun () -> 
+      ${scan_xml_pi}.scan_xml_pi (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_pi_string = 
+    fun () -> 
+      ${scan_pi_string}.scan_pi_string (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_dtd_string = 
+    fun () -> 
+      ${scan_dtd_string}.scan_dtd_string (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_content_string = 
+    fun () -> 
+      ${scan_content_string}.scan_content_string
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_name_string =
+    fun () -> 
+      ${scan_name_string}.scan_name_string
+        (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_for_crlf = 
+    fun () -> 
+      ${scan_for_crlf}.scan_for_crlf (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_characters = 
+    fun () -> 
+      ${scan_characters}.scan_characters (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_character = 
+    fun () -> 
+      ${scan_character}.scan_character (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_tag_eb = 
+    fun () -> 
+      ${scan_tag_eb}.scan_tag_eb (self : #lexer_obj :> lexer_obj) lexbuf
+
+  method scan_tag_eb_att = 
+    fun () -> 
+      ${scan_tag_eb_att}.scan_tag_eb_att (self : #lexer_obj :> lexer_obj) lexbuf
+
+end
+;;
+
+
+Pxp_lexers.init (new lfactory)
+;;
+
+
+(* [END] *)
+
