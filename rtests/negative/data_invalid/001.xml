@@ -1,0 +1,5 @@
+<!DOCTYPE a [
+<!ELEMENT a ANY>
+<!ELEMENT b ANY>
+]>
+<b>x</b>

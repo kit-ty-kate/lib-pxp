@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/001.xml", at line 5, column 3: 
+Markup_types.Validation_error("The root element is `b' but is declared as `a")
