@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.31 2001/06/30 00:05:12 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.32 2001/07/04 21:55:52 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -18,7 +18,7 @@ open Pxp_reader
 exception ID_not_unique
 
 class type [ 'ext ] index =
-object 
+object
   constraint 'ext = 'ext node #extension
   method add : string -> 'ext node -> unit
   method find : string -> 'ext node
@@ -96,7 +96,7 @@ let from_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
   match init_id with
       None ->
 	(* The simple case: already implemented by resolve_read_this_channel *)
-	let r = new resolve_read_this_channel 
+	let r = new resolve_read_this_channel
 		  ~id: (Private channel_id)
 		  ?fixenc
 		  ch
@@ -115,20 +115,20 @@ let from_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
 	      Neturl.url_accepts_8bits = true;
 	  }
 	in
-	let url = 
+	let url =
 	  try
 	    Neturl.url_of_string url_syntax sysname
               (* may raise Malformed_URL *)
 	  with
-	      Neturl.Malformed_URL -> 
+	      Neturl.Malformed_URL ->
 		failwith "Pxp_yacc.from_channel: Bad ~id option (malformed URL)"
 	in
 	let r =
-	  new resolve_as_file 
-	    ?system_encoding 
-	    ~map_private_id: (fun pid -> 
-				if pid = channel_id then 
-				  url 
+	  new resolve_as_file
+	    ?system_encoding
+	    ~map_private_id: (fun pid ->
+				if pid = channel_id then
+				  url
 				else raise Not_competent)
   	    ~open_private_id: (fun pid ->
 				 if pid = channel_id then
@@ -150,14 +150,14 @@ let from_file ?(alt = []) ?system_encoding ?enc utf8_filename =
     ?system_encoding:system_encoding
       ()
   in
-  
+
   let url = make_file_url
 	      ?system_encoding
 	      ?enc
 	      utf8_filename in
-  
+
   let xid = System (Neturl.string_of_url url) in
-  
+
   ExtID(xid, new combine (r :: alt))
 ;;
 
@@ -169,7 +169,7 @@ let from_string ?fixenc s =
 ;;
 
 
-(* An array based stack implementation. Advantage: Constant memory 
+(* An array based stack implementation. Advantage: Constant memory
  * consumption.
  *)
 
@@ -193,7 +193,7 @@ let stack_create null =
 let stack_push x st =
   let top = st.stack_top + 1 in
   if top >= Array.length st.stack_array then
-    st.stack_array <- Array.append 
+    st.stack_array <- Array.append
                         st.stack_array (Array.create 100 st.stack_null);
   st.stack_array.(top) <- x;
   st.stack_top <- top
@@ -224,7 +224,7 @@ let stack_pop st =
 (**********************************************************************)
 
 class ['ext] parser_object
-  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_resolver init_spec 
+  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_resolver init_spec
   init_process_xmldecl transform_dtd id_index
   =
   object (self)
@@ -266,7 +266,7 @@ class ['ext] parser_object
     val config = init_config
         (* The current configuration *)
 
-    val elstack = 
+    val elstack =
       let null_node = get_data_exemplar init_spec in
       let null_id = (null_node :> entity_id) in
       let null = (null_node, "", null_id) in
@@ -283,14 +283,14 @@ class ['ext] parser_object
 	* element of the stack, and serves as a guard.
 	* [See "initializer" below.]
 	*)
-		    
+
     method current =
         (* Get the top element of the element stack *)
         try
 	  let (x,_,_) = stack_top elstack in x
 	with
 	    Stack.Empty -> assert false
-		(* Not possible, because the super root is always the element 
+		(* Not possible, because the super root is always the element
 		 * at the bottom of the stack.
 		 *)
 
@@ -326,7 +326,7 @@ class ['ext] parser_object
 
     method collect_data s =
         (* Collects the character material 's' *)
-      if String.length current_string = 0 then 
+      if String.length current_string = 0 then
 	current_string <- s
       else
         current_data <- s :: current_data
@@ -355,7 +355,7 @@ class ['ext] parser_object
 	      add_node (create_data_node spec dtd current_string);
 	    current_string <- "";
 	| [ str ] ->
-	    add_node (create_data_node spec dtd 
+	    add_node (create_data_node spec dtd
 			(current_string ^ str));
 	    current_string <- "";
 	    current_data <- []
@@ -385,7 +385,6 @@ class ['ext] parser_object
 	    add_node (create_data_node spec dtd str);
 	    current_string <- "";
 	    current_data <- []
-	      
 
     method only_whitespace data =
 	(* Checks that the string "data" contains only whitespace. On failure,
@@ -407,12 +406,12 @@ class ['ext] parser_object
     method pop_src_norm_mapping () =
       let rec pop m =
 	match m with
-	    [] -> 
+	    [] ->
 	      assert false
-	  | ("!",d)::m' -> 
+	  | ("!",d)::m' ->
 	      default_normprefix <- d;
 	      src_norm_mapping <- m'
-	  | (_,_)::m' -> 
+	  | (_,_)::m' ->
 	      pop m'
       in
       pop src_norm_mapping
@@ -437,6 +436,61 @@ class ['ext] parser_object
 		raise(Namespace_error ("Namespace prefix not declared: " ^ prefix))
 	in
 	normprefix ^ ":" ^ localname
+      end
+
+
+    val mutable init_done = false       (* element stack initialized? *)
+
+    val mutable early_material = []     (* saved material before init_done *)
+
+    (* Call the following methods for comments and processing instructions
+     * that occur before the element stack is initialized
+     *)
+
+    method private add_early_comment position c =
+      assert(not init_done);
+      early_material <- early_material @ [ position, `Comment c ]
+
+    method private add_early_pinstr position pi =
+      assert(not init_done);
+      early_material <- early_material @ [ position, `PI pi ]
+
+    method private add_early_pinstr_node position pi =
+      assert(not init_done);
+      early_material <- early_material @ [ position, `PI_node pi ]
+
+
+    method private init_for_xml_body() =
+      if not init_done then begin
+       	dtd <- transform_dtd dtd;
+
+        (* Initialize the element stack: *)
+       	let super_root =
+	  if config.enable_super_root_node then begin
+	    let sr = create_super_root_node spec dtd in
+	    (* Add early_material to the super root node: *)
+	    List.iter
+	      (function
+		   (p, `Comment c) ->
+		     let node = create_comment_node ?position:p spec dtd c in
+		     sr # append_node node
+		 | (p, `PI pi) ->
+		     sr # add_pinstr pi
+		 | (p, `PI_node pi) ->
+		     let node = create_pinstr_node ?position:p spec dtd pi in
+		     sr # append_node node
+	      )
+	      early_material;
+	    sr
+	  end
+	  else
+	    (* because spec may not contain an exemplar for the super root: *)
+	    create_no_node spec dtd
+       	in
+	early_material <- [];
+       	(* Move the super root or the emulation to the stack: *)
+       	stack_push (super_root, "", (self :> entity_id)) elstack;
+	init_done <- true;
       end
 
 
@@ -491,7 +545,7 @@ class ['ext] parser_object
 	      | _ ->
 		  ()
 	  done;
-	  
+
 	in
 
 
@@ -506,7 +560,7 @@ class ['ext] parser_object
 	      | Some "no" -> false
 	      | _ -> raise (WF_error("Illegal 'standalone' declaration"))
 	    in
-	    if config.recognize_standalone_declaration then 
+	    if config.recognize_standalone_declaration then
 	      dtd # set_standalone_declaration v
 	  end
 	in
@@ -516,13 +570,13 @@ class ['ext] parser_object
 	  if config.encoding = `Enc_utf8 then
 	    s   (* No recoding necessary *)
 	  else
-	    Netconversion.recode_string 
+	    Netconversion.recode_string
 	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
 	in
 
 
 	let make_pool_string = pool_string config.name_pool in
-(*	
+(*
 	let rec start_tag_check_attlist al =
 	  match al with
 	      (nv1, num1) :: al' ->
@@ -541,21 +595,21 @@ class ['ext] parser_object
 	let reused_lexbuf = Lexing.from_string "" in
 %%
 
-/* The following grammar looks similar to ocamlyacc grammars, but 
- * ocamlyacc is actually not used to transform the grammar into a parser. 
+/* The following grammar looks similar to ocamlyacc grammars, but
+ * ocamlyacc is actually not used to transform the grammar into a parser.
  * Instead, the parser generator m2parsergen is applied.
  *
- * The format of the grammar is different (see m2parsergen/README), 
- * but I hope that you can understand most features immediately. 
+ * The format of the grammar is different (see m2parsergen/README),
+ * but I hope that you can understand most features immediately.
  *
  * The type of the parser is different: m2parsergen creates a top-down
  * parser while ocamlyacc generates a LALR-1 parser.
  *
  * The way the generated code is called is different: ocamlyacc produces
- * lots of top-level definitions whereas m2parsergen generates only 
+ * lots of top-level definitions whereas m2parsergen generates only
  * a local let-in-phrase. This is explained in the already mentioned
  * README file.
- */ 
+ */
 
 /* See Pxp_types.ml for comments to the various tokens */
 
@@ -646,7 +700,7 @@ class ['ext] parser_object
 
 
 ext_document():
-  Begin_entity 
+  Begin_entity
   doc_xmldecl_then_misc_then_prolog_then_rest() End_entity
     {{
       if n_tags_open <> 0 then
@@ -655,7 +709,7 @@ ext_document():
 
 
 /* In the following rule, we must find out whether there is an XML declaration
- * or not, and directly after that either "process_xmldecl" or 
+ * or not, and directly after that either "process_xmldecl" or
  * "process_missing_xmldecl" of the current entity must be called.
  * AND IT MUST BE DIRECTLY! Because of this, the invocation is carried out
  * in the "$" clause immediately following the first token.
@@ -666,8 +720,8 @@ ext_document():
  */
 
 doc_xmldecl_then_misc_then_prolog_then_rest():
-  pl:PI_xml 
-  $ {{ context.manager # current_entity # process_xmldecl pl; 
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl;
        check_and_parse_xmldecl pl;
     }}
   misc()* doc_prolog_then_rest()
@@ -689,9 +743,9 @@ doc_xmldecl_then_misc_then_prolog_then_rest():
 doc_prolog_then_rest():
   doctypedecl() misc()* contents_start()
     {{ () }}
-| contents_start() 
+| contents_start()
     {{ () }}
- 
+
 
 ext_element():
   Begin_entity el_xmldecl_then_misc_then_rest() End_entity
@@ -706,11 +760,11 @@ ext_element():
 el_xmldecl_then_misc_then_rest():
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl; }}
-  misc()* contents_start() 
+  misc()* contents_start()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  misc() misc()* contents_start() 
+  misc() misc()* contents_start()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
@@ -722,7 +776,7 @@ ext_declarations():
   /* Parses a sequence of declarations given by an entity. As side-effect,
    * the parsed declarations are put into the dtd object.
    */
-  Begin_entity decl_xmldecl_then_rest() 
+  Begin_entity decl_xmldecl_then_rest()
    {{ () }}
 | Eof
    {{ () }}
@@ -731,7 +785,7 @@ ext_declarations():
 decl_xmldecl_then_rest():
   /* Note: This rule is also called from declaration()! */
   pl:PI_xml
-  $ {{ context.manager # current_entity # process_xmldecl pl; 
+  $ {{ context.manager # current_entity # process_xmldecl pl;
     }}
   declaration()* End_entity
    {{ () }}
@@ -749,7 +803,7 @@ misc():
   pi()
     {{ () }}
 | data: CharData
-    /* In this context, the lexers sometimes do not recognize white space; 
+    /* In this context, the lexers sometimes do not recognize white space;
      * instead CharData tokens containing white space are delivered.
      */
     {{ self # only_whitespace data }}
@@ -766,7 +820,7 @@ doctypedecl():
    * the internal DTD (if any) are put into !!on_dtd, then the declarations
    * of the external DTD (if any) are put into this DTD object.
    */
-  doctype_entid:  Doctype 
+  doctype_entid:  Doctype
              ws:  Ignore Ignore*
                   doctypedecl_material (doctype_entid)
     {{ () }}
@@ -776,11 +830,11 @@ doctypedecl():
      }}
 
 
-/* TRICK: 
- *   ws: Ignore? Ignore* 
+/* TRICK:
+ *   ws: Ignore? Ignore*
  * is meant seriously. The effect is that ws becomes a boolean variable
  * which is true if there is an Ignore token and false otherwise.
- * This construct is faster than just 
+ * This construct is faster than just
  *   ws: Ignore*
  * in which case ws becomes an integer variable containing the number of
  * Ignore tokens. Counting the number of tokens is slower than only checking
@@ -788,19 +842,19 @@ doctypedecl():
  *
  * We need the information whether there is an Ignore token (representing
  * white space), because white space is only obligatory if also an identifier
- * for the external subset is parsed; this conditional syntax constraint is 
+ * for the external subset is parsed; this conditional syntax constraint is
  * simply programmed in the body of the grammar rule.
  */
 
 doctypedecl_material(doctype_entid):
   root_name:             Name
   ws:                    Ignore? Ignore*
-  external_subset:       external_id()? 
+  external_subset:       external_id()?
                          Ignore*
-  internal_subset:       internal_dtd()? 
+  internal_subset:       internal_dtd()?
                          Ignore*
   doctype_rangle_entid:  Doctype_rangle
-    {{ 
+    {{
       if doctype_entid != doctype_rangle_entid then
 	raise (Validation_error("Entities not properly nested with DOCTYPE declaration"));
       dtd # set_root root_name;
@@ -817,7 +871,7 @@ doctypedecl_material(doctype_entid):
 	  None -> ()
 	| Some id ->
 	    if not ws then
-	      raise(WF_error("Whitespace is missing after `DOCTYPE " ^ 
+	      raise(WF_error("Whitespace is missing after `DOCTYPE " ^
 			     root_name ^ "'"));
 	    let r' = resolver # clone in
 	    let pobj =
@@ -833,7 +887,7 @@ doctypedecl_material(doctype_entid):
 		None
 	    in
 	    let en = new external_entity r' dtd "[dtd]"
-		         config.warner id false 
+		         config.warner id false
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
@@ -859,23 +913,23 @@ doctypedecl_material(doctype_entid):
     }}
 
 /* Note that there are no keywords for SYSTEM or PUBLIC, as these would
- * be difficult to recognize in the lexical contexts. Because of this, 
+ * be difficult to recognize in the lexical contexts. Because of this,
  * SYSTEM/PUBLIC is parsed as name, and the rule for everything after
  * SYSTEM/PUBLIC is computed dynamically.
  */
 
 external_id():
-  tok:Name 
-  $ {{ 
-       let followup = 
+  tok:Name
+  $ {{
+       let followup =
 	 match tok with
 	     "SYSTEM" -> parse_system_id
                            (* Apply the rule system_id (below) to parse the
-			    * rest of the ID 
+			    * rest of the ID
 			    *)
 	   | "PUBLIC" -> parse_public_id
                            (* Apply the rule public_id (below) to parse the
-			    * rest of the ID 
+			    * rest of the ID
 			    *)
 	   | _        -> raise(WF_error("SYSTEM or PUBLIC expected"))
        in
@@ -890,12 +944,12 @@ external_id():
 
 
 system_id():
-  str:Unparsed_string 
+  str:Unparsed_string
     {{ System (recode_utf8 str) }}
 
 
 public_id():
-  str1: Unparsed_string 
+  str1: Unparsed_string
     ws: Ignore Ignore*
   str2: Unparsed_string
     {{ check_public_id str1;
@@ -914,10 +968,10 @@ public_id():
  */
 
 internal_dtd():
-  dtd_begin_entid:    internal_dtd_begin() 
-                      declaration()* 
+  dtd_begin_entid:    internal_dtd_begin()
+                      declaration()*
   dtd_end_entid:      internal_dtd_end()
-    {{ 
+    {{
       if dtd_begin_entid != dtd_end_entid then
 	raise(Validation_error("Entities not properly nested with internal DTD subset"))
     }}
@@ -950,7 +1004,7 @@ declaration():
 | entid:Decl_entity ws:Ignore Ignore* e:entitydecl(entid)
     {{ () }}
   ? {{ match !yy_position with
-	   "ws" -> raise(WF_error("Whitespace is missing after ENTITY")) 
+	   "ws" -> raise(WF_error("Whitespace is missing after ENTITY"))
 	 | "e"  -> raise(WF_error("Name or `%' expected"))
 	 | _    -> raise(WF_error("Bad entity declaration"))
     }}
@@ -964,7 +1018,7 @@ declaration():
 | Ignore
     {{ () }}
 | begin_entid:Comment_begin Comment_material* end_entid:Comment_end
-    {{ 
+    {{
        if begin_entid != end_entid then
 	 raise(Validation_error("The first and the last token of comments must be in the same entity"));
     }}
@@ -987,7 +1041,7 @@ declaration():
     }}
 | begin_entid:Conditional_begin
   $ {{ (* Check whether conditional sections are allowed at this position. *)
-       if p_internal_subset then 
+       if p_internal_subset then
 	 raise(WF_error("Restriction of the internal subset: Conditional sections not allowed"));
      }}
   Ignore*
@@ -1021,14 +1075,14 @@ conditional_section():
 	   | _          -> raise(WF_error("INCLUDE or IGNORE expected"))
        in
     }}
-  [ parsing_function ] ()  
+  [ parsing_function ] ()
     {{ () }}
   ? {{ raise(WF_error("Bad conditional section")) }}
 
 included_section():
-  Conditional_body declaration()*  
+  Conditional_body declaration()*
     {{ () }}
-| Ignore Ignore* Conditional_body declaration()*  
+| Ignore Ignore* Conditional_body declaration()*
     {{ () }}
 
 
@@ -1038,13 +1092,13 @@ elementdecl():
   /* parses <!ELEMENT ... >. Puts the parsed element type as side-effect into
    * dtd.
    */
-  decl_element_entid:      Decl_element 
+  decl_element_entid:      Decl_element
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
      }}
   ws1:                     Ignore Ignore*
-  name:                    Name 
+  name:                    Name
   ws2:                     Ignore Ignore*
-  content_model:           contentspec() 
+  content_model:           contentspec()
                            Ignore*
   decl_rangle_entid:       Decl_rangle
     {{
@@ -1112,10 +1166,10 @@ multiplier():
 
 
 mixed (lparen_entid) :
-                   Pcdata 
+                   Pcdata
                    Ignore*
   material:        mixed_alternatives_top()
-    {{ 
+    {{
       let rest, rparen_entid = material in
       if lparen_entid != rparen_entid then
 	raise (Validation_error "Entities not properly nested with parentheses");
@@ -1130,7 +1184,7 @@ mixed_alternatives_top():
 | entid: RparenStar
     {{ [], entid }}
 | Bar Ignore* name:Name Ignore* names:mixed_alternative()* entid:RparenStar
-    {{ 
+    {{
        (MChild name :: names), entid
     }}
   ? {{ match !yy_position with
@@ -1157,7 +1211,7 @@ choice_or_seq (lparen_entid):
    * after the first subexpression has been parsed; the other subexpressions
    * must be of the same kind.
    */
-  re:     cp() 
+  re:     cp()
           Ignore*
   factor: choice_or_seq_factor()
     {{
@@ -1203,7 +1257,7 @@ choice_or_seq_factor():
 | entid:RparenQmark
     {{ (Qmark, Alt []), entid }}
 | Bar Ignore* re:cp() Ignore* factor:choice_or_seq_factor()
-    {{ 
+    {{
       let (finalmark, subexpr), rparen_entid = factor in
       begin match subexpr with
 	  Alt []  -> (finalmark, (Alt [re])), rparen_entid
@@ -1245,14 +1299,14 @@ attlistdecl():
   /* parses <!ATTLIST ... >. Enters the attribute list in dtd as side-
    * effect.
    */
-  decl_attlist_entid: Decl_attlist 
+  decl_attlist_entid: Decl_attlist
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
   ws1:                Ignore Ignore*
-  el_name:            Name 
+  el_name:            Name
   ws:                 Ignore? Ignore*
   factor:             attdef_factor()
-    {{ 
+    {{
       let at_list, decl_rangle_entid = factor in
 
       if decl_attlist_entid != decl_rangle_entid then
@@ -1261,7 +1315,7 @@ attlistdecl():
       if not ws && at_list <> [] then begin
 	match at_list with
 	    (name,_,_) :: _ ->
-	      (* This is normally impossible, because the lexer demands 
+	      (* This is normally impossible, because the lexer demands
 	       * some other token between two names.
 	       *)
 	      raise(WF_error("Whitespace is missing before `" ^ name ^ "'"));
@@ -1305,7 +1359,7 @@ attdef_factor():
    * list as (string * att_type * att_default) list.
    */
   attdef:attdef()   ws:Ignore?   Ignore*   factor:attdef_factor()
-    {{ 
+    {{
       let attdef_rest, decl_rangle_entid = factor in
       if not ws && attdef_rest <> [] then begin
 	match attdef_rest with
@@ -1324,9 +1378,9 @@ attdef_factor():
 
 attdef():
   /* Parses a single triple */
-  name:     Name 
+  name:     Name
   ws1:      Ignore Ignore*
-  tp:       atttype() 
+  tp:       atttype()
   ws2:      Ignore Ignore*
   default:  defaultdecl()
     {{ (name,tp,default) }}
@@ -1339,16 +1393,16 @@ attdef():
 
 atttype():
   /* Parses an attribute type and returns it as att_type. */
-  name:      Name 
-  $ {{ let followup = 
-	 if name = "NOTATION" then 
+  name:      Name
+  $ {{ let followup =
+	 if name = "NOTATION" then
 	   parse_notation
 	 else
 	   parse_never
        in
      }}
   nota:      [followup]()?
-    {{ 
+    {{
        match name with
 	  "CDATA"    -> A_cdata
 	| "ID"       -> A_id
@@ -1367,11 +1421,11 @@ atttype():
     }}
   ? {{ raise(WF_error("Bad attribute declaration (perhaps missing whitespace after NOTATION)")) }}
 
-|         Lparen 
-          Ignore* 
-  name:   name_or_nametoken() 
-          Ignore* 
-  names:  nmtoken_factor()* 
+|         Lparen
+          Ignore*
+  name:   name_or_nametoken()
+          Ignore*
+  names:  nmtoken_factor()*
   rp:     Rparen
     /* Enumeration */
     {{ A_enum(name :: names) }}
@@ -1393,11 +1447,11 @@ never():
 
 notation():
          Ignore Ignore*
-  lp:    Lparen 
+  lp:    Lparen
          Ignore*
-  name:  Name 
-         Ignore* 
-  names: notation_factor()* 
+  name:  Name
+         Ignore*
+  names: notation_factor()*
   rp:    Rparen
     {{ A_notation(name :: names) }}
   ? {{ match !yy_position with
@@ -1445,7 +1499,7 @@ defaultdecl():
 | Implied
     {{ D_implied }}
 | Fixed ws:Ignore Ignore* str:Unparsed_string
-    {{ D_fixed 
+    {{ D_fixed
 	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
   ? {{ match !yy_position with
 	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
@@ -1453,23 +1507,23 @@ defaultdecl():
 	 | _     -> raise(WF_error("Bad #FIXED default value"))
     }}
 | str:Unparsed_string
-    {{ D_default 
+    {{ D_default
 	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
 
 
 /**************************** ENTITY DECLARATION ***********************/
 
 entitydecl(decl_entity_entid):
-  /* parses everything _after_ <!ENTITY until the matching >. The parsed 
+  /* parses everything _after_ <!ENTITY until the matching >. The parsed
    * entity declaration is entered into the dtd object as side-effect.
    */
-  name:               Name 
+  name:               Name
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
-  ws:                 Ignore Ignore* 
-  material:           entitydef() 
+  ws:                 Ignore Ignore*
+  material:           entitydef()
                       Ignore*
-  decl_rangle_entid:  Decl_rangle     
+  decl_rangle_entid:  Decl_rangle
     /* A general entity */
     {{
        if decl_entity_entid != decl_rangle_entid then
@@ -1486,7 +1540,7 @@ entitydecl(decl_entity_entid):
 		  false config.encoding
 	  | (None,   Some xid, None)   ->
 	      new external_entity (resolver # clone) dtd name config.warner
-                                  xid false 
+                                  xid false
 		                  config.encoding
 
 	  | (None,   Some xid, Some n) ->
@@ -1502,17 +1556,17 @@ entitydecl(decl_entity_entid):
 	 | _                   -> raise(WF_error("Bad entity declaration"))
     }}
 
-|                     Percent 
+|                     Percent
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
-  ws1:                Ignore Ignore* 
-  name:               Name 
-  ws2:                Ignore Ignore* 
-  material:           pedef() 
-                      Ignore* 
+  ws1:                Ignore Ignore*
+  name:               Name
+  ws2:                Ignore Ignore*
+  material:           pedef()
+                      Ignore*
   decl_rangle_entid:  Decl_rangle
     /* A parameter entity */
-    {{ 
+    {{
       if decl_entity_entid != decl_rangle_entid then
 	 raise (Validation_error "Entities not properly nested with ENTITY declaration");
       let en =
@@ -1523,13 +1577,13 @@ entitydecl(decl_entity_entid):
   		  true config.encoding
 	  | (None,   Some xid)   ->
 	      new external_entity (resolver # clone) dtd name config.warner
-                                  xid true 
+                                  xid true
 		                  config.encoding
 	  | _ -> assert false
       in
 
       (* The following two lines force that even internal entities count
-       * as external (for the standalone check) if the declaration of 
+       * as external (for the standalone check) if the declaration of
        * the internal entity occurs in an external entity.
        *)
       if extdecl then
@@ -1559,7 +1613,7 @@ entitydef():
 | id:external_id()   ws:Ignore?  Ignore*  decl:ndatadecl()?
     {{  if not ws  && decl <> None then
 	  raise(WF_error("Whitespace missing before `NDATA'"));
-	None, Some id, decl 
+	None, Some id, decl
     }}
 
 
@@ -1597,18 +1651,18 @@ notationdecl():
   /* parses <!NOTATION ... > and enters the notation declaration into the
    * dtd object as side-effect
    */
-  decl_notation_entid: Decl_notation 
+  decl_notation_entid: Decl_notation
   ws1:                 Ignore Ignore*
-  name:                Name 
+  name:                Name
   ws2:                 Ignore Ignore*
-  sys_or_public:       Name /* SYSTEM or PUBLIC */ 
+  sys_or_public:       Name /* SYSTEM or PUBLIC */
   ws3:                 Ignore Ignore*
-  str1:                Unparsed_string 
+  str1:                Unparsed_string
   ws:                  Ignore? Ignore*
-  str2:                Unparsed_string? 
+  str2:                Unparsed_string?
                        Ignore*
   decl_rangle_entid:   Decl_rangle
-    {{ 
+    {{
       if decl_notation_entid != decl_rangle_entid then
 	raise (Validation_error "Entities not properly nested with NOTATION declaration");
       let xid =
@@ -1677,19 +1731,7 @@ contents_start():
    * object only back via a global variable). The only solution is to
    * modify the object that has been passed to the parsing function directly.
    */
-  $ {{ dtd <- transform_dtd dtd; 
-       
-       (* Initialize the element stack: *)
-       let super_root = 
-	 if config.enable_super_root_node then
-	   create_super_root_node spec dtd 
-	 else
-	   (* because spec may not contain an exemplar for the super root: *)
-	   create_no_node spec dtd
-       in
-       (* Move the super root or the emulation to the stack: *)
-       stack_push (super_root, "", (self :> entity_id)) elstack;
-     }}
+  $ {{ self # init_for_xml_body(); }}
   start_tag() content()*
     {{ () }}
 
@@ -1728,7 +1770,7 @@ entity_ref():
 
 eref_xmldecl_then_rest():
   pl:PI_xml
-  $ {{ context.manager # current_entity # process_xmldecl pl; 
+  $ {{ context.manager # current_entity # process_xmldecl pl;
     }}
   content()* End_entity
     {{ () }}
@@ -1779,38 +1821,38 @@ start_tag():
 	 let attspace = ref true in
        }}
   ws:         Ignore? Ignore*
-              attribute(attlist,attspace)* 
+              attribute(attlist,attspace)*
   emptiness:  start_tag_rangle()
   /* Note: it is guaranteed that there is whitespace between Tag_beg and
    * the name of the first attribute, because there must be some separator.
    * So we need not to check ws!
    */
-    {{ 
+    {{
       let name0, tag_beg_entid = tag in
 
-      let d = 
+      let d =
 	(* The following "match" returns the new element node: *)
 	match config.enable_namespace_processing with
 	    None ->
 	      (* Simple case: no namespaces *)
 	      let name =
-		if config.enable_name_pool_for_element_types 
-		then make_pool_string name0 
+		if config.enable_name_pool_for_element_types
+		then make_pool_string name0
 		else name0 in
-	      
-	      create_element_node 
+
+	      create_element_node
                  ?name_pool_for_attribute_values:
-		   (if config.enable_name_pool_for_attribute_values 
+		   (if config.enable_name_pool_for_attribute_values
 		    then Some config.name_pool
 		    else None)
-                 ?position:position 
+                 ?position:position
 		 spec dtd name !attlist
 	  | Some mng ->
 	      (* If namespace processing is enabled, preprocess the attribute
 	       * list:
 	       *)
-	      let splitted_attlist = 
-		List.map 
+	      let splitted_attlist =
+		List.map
 		  (fun (name, value) -> namespace_split name, value)
 		  !attlist
 		  (* TODO: Check that localname matches NCName *)
@@ -1826,16 +1868,16 @@ start_tag():
 		     if prefix = "xmlns" then
 		       xmlns_attlist := (localname, value) :: !xmlns_attlist
 		     else
-		       regular_attlist := (prefix, localname, value) :: 
+		       regular_attlist := (prefix, localname, value) ::
 			 !regular_attlist
 		)
 		splitted_attlist;
 	      (* Apply xmlns_attlist: *)
-	      src_norm_mapping <- ( "!", default_normprefix ) :: 
+	      src_norm_mapping <- ( "!", default_normprefix ) ::
                                   src_norm_mapping;               (* guard *)
 	      List.iter
 		(fun (srcprefix, uri) ->
-		   let normprefix = 
+		   let normprefix =
 		     mng # lookup_or_add_namespace srcprefix uri in
 		   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
 		)
@@ -1847,18 +1889,18 @@ start_tag():
 		      (* Delete default namespace: *)
 		      default_normprefix <- "";
 		  | Some uri ->
-		      let normprefix = 
+		      let normprefix =
 			try mng # get_normprefix uri
-			with Not_found -> 
+			with Not_found ->
 			  mng # lookup_or_add_namespace "default" uri
 		      in
 		      default_normprefix <- normprefix
 	      );
 	      (* Normalize the regular_attlist: *)
-	      let norm_attlist = 
-		List.map 
+	      let norm_attlist =
+		List.map
 		  (fun (prefix, localname, value) ->
-		     (self # normalize_namespace_prefix prefix localname, 
+		     (self # normalize_namespace_prefix prefix localname,
 		      value
 		     )
 		  )
@@ -1867,29 +1909,29 @@ start_tag():
 	      (* Normalize the element name: *)
 	      let prefix, localname = namespace_split name0 in
 	          (* TODO: Check that localname matches NCName *)
-	      let norm_name0 = 
-		self # normalize_namespace_prefix 
+	      let norm_name0 =
+		self # normalize_namespace_prefix
 		         ~apply_default:true prefix localname in
 	      let norm_name =
-		if config.enable_name_pool_for_element_types 
-		then make_pool_string norm_name0 
+		if config.enable_name_pool_for_element_types
+		then make_pool_string norm_name0
 		else norm_name0 in
-	      
+
 	      let element =
-		create_element_node 
+		create_element_node
                   ?name_pool_for_attribute_values:
-		    (if config.enable_name_pool_for_attribute_values 
+		    (if config.enable_name_pool_for_attribute_values
 		     then Some config.name_pool
 		     else None)
-                  ?position:position 
-		  spec dtd norm_name norm_attlist 
+                  ?position:position
+		  spec dtd norm_name norm_attlist
 	      in
 
 	      if config.enable_namespace_info then begin
-		let info = 
-		  new namespace_info_impl 
-		    prefix 
-		    element 
+		let info =
+		  new namespace_info_impl
+		    prefix
+		    element
 		    ( ("!", default_normprefix) :: src_norm_mapping) in
 		element # set_namespace_info (Some info);
 	      end;
@@ -1903,7 +1945,7 @@ start_tag():
 	  None -> ()
 	| Some idx ->
 	    (* Put the ID attribute into the index, if present *)
-	    begin try 
+	    begin try
 	      let v = d # id_attribute_value in  (* may raise Not_found *)
 	      idx # add v d                      (* may raise ID_not_unique *)
 	    with
@@ -1971,7 +2013,7 @@ attribute(attlist,attspace):
 	 raise(WF_error("Whitespace is missing before attribute `" ^
 			n0 ^ "'"));
        let n =
-	 if config.enable_name_pool_for_attribute_names 
+	 if config.enable_name_pool_for_attribute_names
 	 then make_pool_string n0
 	 else n0 in
        attlist := (n,v) :: !attlist;
@@ -2009,21 +2051,21 @@ end_tag():
 	 self # pop_src_norm_mapping();
        if name <> x_name then begin
 	 let x_entname, x_line, x_col = x # position in
-	 raise(WF_error("End tag `" ^ name ^ 
+	 raise(WF_error("End tag `" ^ name ^
 			"' does not match start tag `" ^ x_name ^ "'" ^
 			(if x_line = 0 then "" else
-			   " (was at line " ^ string_of_int x_line ^ 
+			   " (was at line " ^ string_of_int x_line ^
 			   ", position " ^ string_of_int x_col ^ ")" )));
        end;
        if tag_beg_entid != tag_end_entid then
-	 raise(WF_error("End tag `" ^ name ^ 
+	 raise(WF_error("End tag `" ^ name ^
 			"' not in the same entity as the start tag `" ^
 		       x_name ^ "'"));
-       if not config.disable_content_validation then 
+       if not config.disable_content_validation then
 	 x # validate_contents ~use_dfa:config.validate_by_dfa ~check_data_nodes:false ();
-       
+
        n_tags_open <- n_tags_open - 1;
-       
+
        assert (n_tags_open >= 0);
 
     }}
@@ -2035,7 +2077,7 @@ char_data():
    * element, and any non-white space character is forbidden.
    */
   data:CharData
-    {{ 
+    {{
       if n_tags_open = 0 then
 	(* only white space is allowed *)
 	self # only_whitespace data
@@ -2048,7 +2090,7 @@ char_data():
 	   *)
     }}
 | data:Cdata
-    {{ 
+    {{
       if n_tags_open = 0 then
 	raise (WF_error("CDATA section not allowed here"));
       self # collect_data data
@@ -2058,7 +2100,7 @@ char_data():
 cref():
   /* Parses &#...; and adds the character to the top element of elstack. */
   code:CRef
-    {{ 
+    {{
        if n_tags_open = 0 then
 	 (* No surrounding element: character references are not allowed *)
 	 raise(WF_error("Character reference not allowed here"));
@@ -2072,7 +2114,7 @@ pi():
    * to this element.
    */
   pi: PI
-    {{ 
+    {{
       let position =
 	if config.store_element_positions then
 	  Some(context.manager # position)
@@ -2085,24 +2127,29 @@ pi():
 	then make_pool_string target0
 	else target0 in
 
-      if n_tags_open = 0 & not config.enable_super_root_node
+      let pinstr = new proc_instruction target value config.encoding in
+      if n_tags_open = 0 && not config.enable_super_root_node
       then
-	doc # add_pinstr (new proc_instruction target value config.encoding)
+	doc # add_pinstr pinstr
       else begin
 	(* Special case: if processing instructions are processed inline,
 	 * they are wrapped into T_pinstr nodes.
 	 *)
 	if config.enable_pinstr_nodes then begin
-	  self # save_data;        (* Save outstanding data material first *)
-	  let pinstr = new proc_instruction target value config.encoding in
-	  let wrapper = create_pinstr_node 
-			  ?position:position spec dtd pinstr in
-	  self # current # append_node wrapper;
+	  if init_done then begin
+	    self # save_data;        (* Save outstanding data material first *)
+	    let wrapper = create_pinstr_node
+			    ?position:position spec dtd pinstr in
+	    self # current # append_node wrapper;
+	  end
+	  else self # add_early_pinstr_node position pinstr
 	end
 	else
 	  (* Normal behaviour: Add the PI to the parent element. *)
-	  self # current # add_pinstr 
-	                     (new proc_instruction target value config.encoding)
+	  if init_done then
+	    self # current # add_pinstr pinstr
+	  else
+	    self # add_early_pinstr position pinstr
       end
     }}
 
@@ -2111,8 +2158,8 @@ comment():
   /* Parses <!-- ... -->
    */
   begin_entid:Comment_begin
-  $ {{ 
-      let position =
+  $ {{
+       let position =
 	if config.enable_comment_nodes && config.store_element_positions then
 	  Some(context.manager # position)
 	else
@@ -2125,11 +2172,15 @@ comment():
       if begin_entid != end_entid then
 	raise(Validation_error("The first and the last token of comments must be in the same entity"));
       if config.enable_comment_nodes then begin
-	self # save_data;        (* Save outstanding data material first *)
 	let comment_text = String.concat "" mat in
-	let wrapper = create_comment_node 
-		        ?position:position spec dtd comment_text in
-	self # current # append_node wrapper;
+	if init_done then begin
+	  self # save_data;        (* Save outstanding data material first *)
+	  let wrapper = create_comment_node
+		          ?position:position spec dtd comment_text in
+	  self # current # append_node wrapper;
+	end
+	else
+	  self # add_early_comment position comment_text
       end
     }}
   ? {{ match !yy_position with
@@ -2144,9 +2195,9 @@ comment():
    try
      match start_symbol with
 	 Ext_document ->
-	   parse_ext_document context.current context.get_next 
+	   parse_ext_document context.current context.get_next
        | Ext_declarations ->
-	   parse_ext_declarations context.current context.get_next 
+	   parse_ext_declarations context.current context.get_next
        | Ext_element ->
 	   parse_ext_element context.current context.get_next
    with
@@ -2185,7 +2236,7 @@ class default_ext =
   object(self : 'self)
     method clone = self
     method node =
-      (assert false : 'self node) 
+      (assert false : 'self node)
     method set_node (n : 'self node) =
       ()
   end
@@ -2228,7 +2279,7 @@ let idref_pass id_index root =
 	| _ -> assert false
     in
     let text =
-      "Attribute `" ^ att ^ "' of element `" ^ name ^ 
+      "Attribute `" ^ att ^ "' of element `" ^ name ^
       "' refers to unknown ID `" ^ value ^ "'" in
     let pos_ent, pos_line, pos_col = t # position in
     if pos_line = 0 then
@@ -2239,7 +2290,7 @@ let idref_pass id_index root =
 	       ":\n",
 	       Validation_error text))
   in
-    
+
   let rec check_tree t =
     let idref_atts = t # idref_attribute_names in
     List.iter
@@ -2271,29 +2322,29 @@ exception Return_DTD of dtd;;
   (* Used by extract_dtd_from_document_entity to jump out of the parser *)
 
 
-let call_parser ~configuration:cfg 
-                ~source:src 
-		~dtd 
-		~extensible_dtd 
-		~document:doc 
-		~specification:spec 
-		~process_xmldecl 
+let call_parser ~configuration:cfg
+                ~source:src
+		~dtd
+		~extensible_dtd
+		~document:doc
+		~specification:spec
+		~process_xmldecl
 		~transform_dtd
                 ~(id_index : 'ext #index option)
 		~use_document_entity
-                ~entry 
+                ~entry
 		~init_lexer =
   let w = cfg.warner in
   let r, en =
     match src with
 	Entity(m,r')  -> r', m dtd
-      | ExtID(xid,r') -> r', 
+      | ExtID(xid,r') -> r',
 	                 if use_document_entity then
-                           new document_entity 
+                           new document_entity
 			     r' dtd "[toplevel]" w xid
                              cfg.encoding
 			 else
-                           new external_entity 
+                           new external_entity
 			     r' dtd "[toplevel]" w xid false
                              cfg.encoding
   in
@@ -2356,15 +2407,15 @@ let parse_dtd_entity cfg src =
   );
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser 
-      ~configuration:cfg 
-      ~source:src 
-      ~dtd:dtd 
+    call_parser
+      ~configuration:cfg
+      ~source:src
+      ~dtd:dtd
       ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
-      ~document:doc 
-      ~specification:default_spec 
-      ~process_xmldecl:false       (* The XML declaration is ignored 
-				    * (except 'encoding') 
+      ~document:doc
+      ~specification:default_spec
+      ~process_xmldecl:false       (* The XML declaration is ignored
+				    * (except 'encoding')
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index: None
@@ -2385,14 +2436,14 @@ let parse_content_entity ?id_index cfg src dtd spec =
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser
-      ~configuration:cfg 
-      ~source:src 
-      ~dtd:dtd 
+      ~configuration:cfg
+      ~source:src
+      ~dtd:dtd
       ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
-      ~document:doc 
-      ~specification:spec 
-      ~process_xmldecl:false       (* The XML declaration is ignored 
-				    * (except 'encoding') 
+      ~document:doc
+      ~specification:spec
+      ~process_xmldecl:false       (* The XML declaration is ignored
+				    * (except 'encoding')
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:(id_index :> 'ext index option)
@@ -2412,7 +2463,7 @@ let parse_wfcontent_entity cfg src spec =
    * survives marshalling:
    *)
   dtd # add_pinstr
-    (new proc_instruction 
+    (new proc_instruction
        "pxp:dtd"
        "optional-element-and-notation-declarations"
        cfg.encoding);
@@ -2423,14 +2474,14 @@ let parse_wfcontent_entity cfg src spec =
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser
-      ~configuration:cfg 
-      ~source:src 
-      ~dtd:dtd 
+      ~configuration:cfg
+      ~source:src
+      ~dtd:dtd
       ~extensible_dtd:false        (* Do not extend the DTD *)
-      ~document:doc 
-      ~specification:spec 
-      ~process_xmldecl:false       (* The XML declaration is ignored 
-				    * (except 'encoding') 
+      ~document:doc
+      ~specification:spec
+      ~process_xmldecl:false       (* The XML declaration is ignored
+				    * (except 'encoding')
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:None
@@ -2444,14 +2495,14 @@ let parse_wfcontent_entity cfg src spec =
 ;;
 
 
-let iparse_document_entity ?(transform_dtd = (fun x -> x)) 
+let iparse_document_entity ?(transform_dtd = (fun x -> x))
                            ?id_index
                            cfg0 src spec p_wf =
   (* Parse an element given as separate entity *)
   (* p_wf: 'true' if in well-formedness mode, 'false' if in validating mode *)
   let cfg = { cfg0 with
-		recognize_standalone_declaration = 
-                   cfg0.recognize_standalone_declaration && (not p_wf) 
+		recognize_standalone_declaration =
+                   cfg0.recognize_standalone_declaration && (not p_wf)
             } in
   let dtd = new dtd cfg.warner cfg.encoding in
   if p_wf then begin
@@ -2459,7 +2510,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
      * survives marshalling:
      *)
     dtd # add_pinstr
-      (new proc_instruction 
+      (new proc_instruction
 	 "pxp:dtd"
 	 "optional-element-and-notation-declarations"
 	 cfg.encoding);
@@ -2470,20 +2521,20 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
   );
   let doc = new document cfg.warner cfg.encoding in
   let pobj =
-    call_parser 
-      ~configuration:cfg 
-      ~source:src 
-      ~dtd:dtd 
+    call_parser
+      ~configuration:cfg
+      ~source:src
+      ~dtd:dtd
       ~extensible_dtd:(not p_wf)   (* Extend the DTD by parsed declarations
 				    * only if in validating mode
 				    *)
-      ~document:doc 
-      ~specification:spec 
+      ~document:doc
+      ~specification:spec
       ~process_xmldecl:true        (* The XML declaration is processed *)
                                    (* TODO: change to 'not p_wf' ? *)
-      ~transform_dtd:(fun dtd -> 
+      ~transform_dtd:(fun dtd ->
 			let dtd' = transform_dtd dtd in
-			if cfg.accept_only_deterministic_models then 
+			if cfg.accept_only_deterministic_models then
 			  dtd' # only_deterministic_models;
 			dtd')
 
@@ -2496,11 +2547,11 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 ;;
 
 
-let parse_document_entity ?(transform_dtd = (fun x -> x)) 
+let parse_document_entity ?(transform_dtd = (fun x -> x))
                           ?id_index
                           cfg src spec =
-  iparse_document_entity 
-    ~transform_dtd:transform_dtd 
+  iparse_document_entity
+    ~transform_dtd:transform_dtd
     ?id_index:(id_index : 'ext #index option :> 'ext index option)
     cfg src spec false;;
 
@@ -2510,7 +2561,7 @@ let parse_wfdocument_entity cfg src spec =
 let extract_dtd_from_document_entity cfg src =
   let transform_dtd dtd = raise (Return_DTD dtd) in
   try
-    let doc = parse_document_entity 
+    let doc = parse_document_entity
 		~transform_dtd:transform_dtd
 		cfg
 		src
@@ -2555,7 +2606,7 @@ let default_namespace_config =
 
 
 class  [ 'ext ] hash_index =
-object 
+object
   constraint 'ext = 'ext node #extension
   val ht = (Hashtbl.create 100 : (string, 'ext node) Hashtbl.t)
   method add s n =
@@ -2575,6 +2626,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.32  2001/07/04 21:55:52  gerd
+ * 	Bugfix: Early comments and processing instructions (i.e.
+ * if they occur before the first element) are now handled correctly.
+ *
  * Revision 1.31  2001/06/30 00:05:12  gerd
  * 	Fix: When checking the type of the root element, namespace
  * rewritings are taken into account.
@@ -2757,7 +2812,7 @@ end
  * Revision 1.1  2000/05/06 23:21:49  gerd
  * 	Initial revision.
  *
- *	
+ *
  * ======================================================================
  *
  * COPIED FROM REVISION 1.19 OF markup_yacc.mly
