@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.10 2001/02/01 20:37:38 gerd Exp $
+(* $Id: pxp_types.mli,v 1.11 2001/04/22 14:14:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -9,17 +9,29 @@ type ext_id =
     System of string
   | Public of (string * string)
   | Anonymous
+  | Private of private_id
 
-  (* external identifiers are either "system identifiers" (filenames or URLs),
+and private_id
+
+  (* External identifiers are either "system identifiers" (filenames or URLs),
    * or "public identifiers" Public(id,sysid) where "id" is the representation
    * of the public ID, and "sysid" a fallback system ID, or the empty string.
    *
-   * New in PXP: Sometimes the external ID is not known. This case can be
-   * referred to as Anonymous ID.
+   * New in PXP 1.0: Sometimes the external ID is not known. This case can be
+   * referred to as Anonymous ID (e.g. to initialize a fresh variable).
+   *
+   * New in PXP 1.1: Sometimes the external ID needs some special encoding.
+   * Private IDs can be used in these cases. Private IDs can be allocated
+   * using allocate_private_id (below), and the IDs will be unique and
+   * different from all other IDs. This makes it simpler to add hooks
+   * recognizing the special IDs they are competent for.
    *
    * Encoding: The identifiers are _always_ encoded as UTF8 strings,
    * regardless of whether another encoding is configured for the parser.
    *)
+
+val allocate_private_id : unit -> private_id
+  (* Get a new unique private ID *)
 
 
 type dtd_id =
@@ -171,6 +183,9 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.11  2001/04/22 14:14:41  gerd
+ * 	Updated to support private IDs.
+ *
  * Revision 1.10  2001/02/01 20:37:38  gerd
  * 	Changed comment.
  *

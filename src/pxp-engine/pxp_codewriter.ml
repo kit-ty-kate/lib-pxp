@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.7 2000/08/30 15:48:07 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.8 2001/04/22 14:14:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -19,6 +19,8 @@ let write_expr_ext_id out extid =
 			   String.escaped t ^ "\"))")
     | Anonymous ->
 	output_string out "Pxp_types.Anonymous"
+    | Private _ ->
+	failwith "Pxp_codewriter.write_expr_ext_id: Cannot represent a `Private' external ID"
 ;;
 
 
@@ -469,6 +471,9 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.8  2001/04/22 14:14:41  gerd
+ * 	Updated to support private IDs.
+ *
  * Revision 1.7  2000/08/30 15:48:07  gerd
  * 	Minor update.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.12 2001/04/22 12:04:55 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.13 2001/04/22 14:14:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -739,7 +739,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	  System s    -> " = SYSTEM \"" ^ s ^ "\""
 	| Public(p,s) -> " = PUBLIC \"" ^ p ^ "\" \"" ^ s ^ "\""
 	| Anonymous   -> " = ANONYMOUS"
-
+	| Private _   -> " = PRIVATE"
 
     method open_entity force_parsing init_lex_id =
       (* Note that external entities are always parsed, i.e. Begin_entity
@@ -1167,6 +1167,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.13  2001/04/22 14:14:41  gerd
+ * 	Updated to support private IDs.
+ *
  * Revision 1.12  2001/04/22 12:04:55  gerd
  * 	external_entity, method replacement_text: catches errors
  * from pxp_reader and transforms them

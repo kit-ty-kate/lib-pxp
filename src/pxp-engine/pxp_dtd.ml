@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.14 2000/10/01 19:47:19 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.15 2001/04/22 14:14:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -374,7 +374,9 @@ class dtd  the_warner init_encoding =
 		       write_sysid s;
 		     end;
 		 | Anonymous ->
-		     failwith "#write: External ID Anonymous cannot be represented"
+		     failwith "#write: External ID `Anonymous' cannot be represented"
+		 | Private _ ->
+		     failwith "#write: External ID `Private' cannot be represented"
 	     );
 	     wms (" NDATA " ^ notation ^ ">\n");
 	   end
@@ -982,7 +984,9 @@ object (self)
 		write_sysid s;
 	      end;
 	  | Anonymous ->
-	      failwith "#write: External ID Anonymous cannot be represented"
+	      failwith "#write: External ID `Anonymous' cannot be represented"
+	  | Private _ ->
+	      failwith "#write: External ID `Private' cannot be represented"
       );
       wms ">\n";
 
@@ -1046,6 +1050,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.15  2001/04/22 14:14:41  gerd
+ * 	Updated to support private IDs.
+ *
  * Revision 1.14  2000/10/01 19:47:19  gerd
  * 	Using Str_hashtbl instead of Hashtbl.
  *

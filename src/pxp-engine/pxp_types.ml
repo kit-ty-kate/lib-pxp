@@ -1,13 +1,24 @@
-(* $Id: pxp_types.ml,v 1.9 2000/09/17 00:12:19 gerd Exp $
+(* $Id: pxp_types.ml,v 1.10 2001/04/22 14:14:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
  *)
 
+class private_id = object end;;
+
 type ext_id =
     System of string
   | Public of (string * string)
   | Anonymous
+  | Private of private_id
+
+
+let allocate_private_id () = new private_id;;
+  (* private_id is a class because allocate_private_id becomes thread-safe in
+   * this case (without needing to lock a global variable).
+   * Note that when you can compare objects (=, < etc) you actually compare
+   * the object IDs. So private_id will have the indented semantics.
+   *)
 
 
 type dtd_id =
@@ -267,6 +278,9 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.10  2001/04/22 14:14:41  gerd
+ * 	Updated to support private IDs.
+ *
  * Revision 1.9  2000/09/17 00:12:19  gerd
  * 	Bugfix in the pool implementation.
  *
