@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.11 2001/07/01 11:33:08 gerd Exp $
+(* $Id: validate.ml,v 1.12 2003/10/05 12:00:37 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -106,7 +106,7 @@ let parse debug wf namespaces iso88591 helpers filename =
   try 
     (* Parse the document: *)
     let parse_fn =
-      if wf then parse_wfdocument_entity 
+      if wf then parse_wfdocument_entity ?transform_dtd:None
       else 
 	let index = new hash_index in
 	parse_document_entity 
@@ -223,6 +223,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.12  2003/10/05 12:00:37  gerd
+ * 	Follow-up for typechecker problem
+ *
  * Revision 1.11  2001/07/01 11:33:08  gerd
  * 	Added new features (PXP 1.1)
  *
