@@ -312,7 +312,7 @@ object (self)
 
   method private local_node_path =
     (* to be overridden *)
-    [self # node_position]
+    try [self # node_position] with Not_found -> []
 
   method internal_adopt (new_parent : 'ext node option) pos =
     begin match parent with
