@@ -120,6 +120,10 @@ f examples/eventparser/expr.mly
 f examples/eventparser/exprlex.mll
 f examples/eventparser/sample.ml
 
+d examples/pullparser
+f examples/pullparser/Makefile
+f examples/pullparser/pull.ml
+
 d src
 f src/Makefile
 

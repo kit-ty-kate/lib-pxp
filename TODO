@@ -1,17 +1,24 @@
 - Event-based parsers:
 
   * Parse a single element, PI, comment, ... instead of misc* element misc*
+    DONE
 
-  * process_entity: erstes Token kann übergeben werden
+  * process_entity: erstes Token kann übergeben werden DONE
+    Letztes Token? DONE
 
-    Letztes Token?
+    Problem: m2parsergen erzwingt, dass immer ein Token zuviel gelesen
+    wird. Mögliche Lösung: Eine Grammatikregel wird mit ! markiert;
+    diese liest dann nicht ein weiteres Token. Nur erlaubt bei Regeln,
+    die auf ein Token enden. Dies erfordert auch eine Änderung des
+    Aufrufs.
+
+    Problem: Um process_expr zu benutzen, muss man low-level entity
+    Methoden aufrufen. Eine bessere API finden.
 
   * { and } inside attribute lists DONE
     
     TODO: Don't forget: pxp_lex_content_string.src: more efficient way of
     handling character sequences
-
-  * Check: standalone flag
 
   * Signature for entity_manager
 
@@ -23,25 +30,27 @@
 
 - Follow-Ups:
 
+  * Clean-up of lexer definitions
+
   * Clean-Up of pxp_yacc.m2y: separate tree_parser and event_parser.
     They have a common superclass where event methods are virtual.
 
-  * extend_dtd: export?
+    Pxp_grammar: Contains grammar and state classes
+    Pxp_parse_tree: Only entry points for tree parser
+    Pxp_parse_events: Only entry points for event-based parser
+    Pxp_yacc: compatibility interface
 
-    process_entity kann im wf-Modus oder im validating-Modus aufgerufen
-    werden. dies hat aber nur Einfluss auf die konstruktion der DTD.
+  * extend_dtd: export? DONE
 
-  * standalone
+  * standalone DONE
 
   * Clean-Up of Pxp_entity. At least define class type entity (in .ml).
-
-  * Entry point document: hat einen Parameter, der definiert, wie mit
-    DTDs umgegangen werden soll.
-    type dtd_mode = [ `Only_entities | `Full ]
 
   * Pxp_light: XML-Baum als rekursiver Typ
     Pxp_light_trans: Light-Darstellung von/nach Heavy-Darstellung konvertieren
     Pxp_light_docemu: Light-Darstellung als Document-kompatible Klasse
+
+  * Undo pxp_lexing.mlp
 
 - Improvements:
 

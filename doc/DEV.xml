@@ -51,6 +51,23 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>1.1.91:</em> The curly braces can now even be used
+inside attributes, and escape from normal XML parsing.</p>
+
+	<p>There is a new entry point Entry_expr for event-based
+parsing that expects either a single element, a single processing
+instruction, or a single comment, or whitespace. This allows more
+fine-grained control of what is parsed.</p>
+
+	<p>There is now a "pull parser". In contrast to the "push
+parser" introduced in 1.1.90, the calling order of parser and parser user
+have been inverted, i.e. the user calls the parser to get ("pull") the next
+event instead of letting the parser call back a user function ("push").
+An interesting application is that O'Caml's lazy streams can be used
+to analyze events. An example can be found in examles/pullparser.</p>
+	<p>Pull parsing is not yet well-tested!</p>
+      </li>
+
       <li><p><em>1.1.90:</em> This version introduces a new event-based
 interface in Pxp_yacc. For start tags, end tags, data strings, and several
 other things that are found in the XML source so-called events are generated,
