@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.5 2000/07/23 02:16:51 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.6 2000/08/18 20:16:59 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -151,9 +151,14 @@ let write_expr_new_pi out pi =
 
 let write_expr_node_type out nt =
   match nt with
-      T_data      -> output_string out "Pxp_document.T_data"
-    | T_element s -> output_string out ("(Pxp_document.T_element \"" ^
-					String.escaped s ^ "\")")
+      T_data       -> output_string out "Pxp_document.T_data"
+    | T_element s  -> output_string out ("(Pxp_document.T_element \"" ^
+					 String.escaped s ^ "\")")
+    | T_super_root -> output_string out "Pxp_document.T_super_root"
+    | T_pinstr s   -> output_string out ("(Pxp_document.T_pinstr \"" ^
+					 String.escaped s ^ "\")")
+    | T_comment    -> output_string out "Pxp_document.T_comment"
+    | _            -> assert false
 ;;
 
 
@@ -324,22 +329,62 @@ let rec write_local_subtree out n =
 	  )
 	  (n # attributes);
 	output_string out " ] in\n";
+    | T_super_root ->
+	let loc, line, col = n # position in
+	output_string out
+	  ("let pos = \"" ^ String.escaped loc ^ "\", " ^ 
+	   string_of_int line ^ ", " ^ 
+	   string_of_int col ^ " in\n");
+	output_string out 
+          ("let t = Pxp_document.create_super_root_node ~position:pos spec dtd in\n")
+    | T_pinstr piname ->
+	let loc, line, col = n # position in
+	output_string out
+	  ("let pos = \"" ^ String.escaped loc ^ "\", " ^ 
+	   string_of_int line ^ ", " ^ 
+	   string_of_int col ^ " in\n");
+	output_string out "let pi = ";
+	write_expr_new_pi out (List.hd (n # pinstr piname));
+	output_string out " in\n";
+	output_string out 
+          ("let t = Pxp_document.create_pinstr_node ~position:pos spec dtd pi in\n")
+    | T_comment ->
+	let loc, line, col = n # position in
+	output_string out
+	  ("let pos = \"" ^ String.escaped loc ^ "\", " ^ 
+	   string_of_int line ^ ", " ^ 
+	   string_of_int col ^ " in\n");
+	output_string out "let comment = ";
+	( match n # comment with
+	      None   -> assert false
+	    | Some c -> output_string out ("\"" ^ String.escaped c ^ "\"")
+	);
+	output_string out " in\n";
+	output_string out 
+          ("let t = Pxp_document.create_comment_node ~position:pos spec dtd comment in\n")
+    | _ ->
+	assert false
   end;
 
   (* Add processing instructions: *)
-  List.iter
-    (fun target ->
-       let pilist = n # pinstr target in
-       List.iter
-	 (fun pi ->
-	    output_string out "let pi = ";
-	    write_expr_new_pi out pi;
-	    output_string out " in\n";
-	    output_string out "add_pinstr t pi;\n";
-	 )
-	 pilist;
-    )
-    (List.sort compare (n # pinstr_names));
+  begin match n # node_type with
+      T_pinstr _ ->
+	()
+    | _ ->
+	List.iter
+	  (fun target ->
+	     let pilist = n # pinstr target in
+	     List.iter
+	       (fun pi ->
+		  output_string out "let pi = ";
+		  write_expr_new_pi out pi;
+		  output_string out " in\n";
+		  output_string out "add_pinstr t pi;\n";
+	       )
+	       pilist;
+	  )
+	  (List.sort compare (n # pinstr_names));
+  end;
        
   (* Add the sub nodes: *)
   n # iter_nodes
@@ -424,6 +469,9 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.6  2000/08/18 20:16:59  gerd
+ * 	Updates because of new node types T_comment, T_pinstr, T_super_root.
+ *
  * Revision 1.5  2000/07/23 02:16:51  gerd
  * 	Changed signature of local_validate.
  *
