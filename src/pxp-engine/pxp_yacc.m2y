@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.27 2001/06/08 01:15:47 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.28 2001/06/09 22:32:24 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1882,7 +1882,10 @@ start_tag():
 
 	      if config.enable_namespace_info then begin
 		let info = 
-		  new namespace_info_impl prefix element src_norm_mapping in
+		  new namespace_info_impl 
+		    prefix 
+		    element 
+		    ( ("!", default_normprefix) :: src_norm_mapping) in
 		element # set_namespace_info (Some info);
 	      end;
 
@@ -2565,6 +2568,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.28  2001/06/09 22:32:24  gerd
+ * 	Fixed the way set_namespace_info is called.
+ *
  * Revision 1.27  2001/06/08 01:15:47  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions
