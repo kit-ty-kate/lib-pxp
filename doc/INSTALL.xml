@@ -20,7 +20,7 @@ procedure defined in the Makefile requires <a
 href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
 package manager, see the file ABOUT-FINDLIB.</footnote>. &m; may
 now be optionally compiled with support for Alain Frischs patch of
-ocamllex called "wlex".
+ocamllex called <a href="&url.ocaml.frisch;">"wlex"</a>.
 </p>
     </sect2>
 
@@ -36,9 +36,34 @@ to do
 ./configure
 </code>
 in the top level directory of the distribution. It is possible to turn
-some options on or off using the -with-xxx and -without-xxx arguments
-(do ./configure -help for a list).
+some options on or off using the -with-xxx and -without-xxx arguments.
+You can get a list by invoking ./configure -help:
 </p>
+
+      <ul>
+	<li>
+	  <p>-with-lex-iso88591</p>
+	  <p>Enables the lexical analyzer that works if the internal
+representation of the strings is ISO-8859-1.</p>
+	</li>
+	<li>
+	  <p>-with-lex-utf8</p>
+	  <p>Enables the lexical analyzer that works if the internal
+representation of the strings is UTF-8. Note that this analyzer is very big,
+and that it takes some time to build it.</p>
+	</li>
+	<li>
+	  <p>-with-wlex</p>
+	  <p>Enables the lexical analyzer that works for both ISO-8859-1 and
+UTF-8 as internal encodings, and that is based on Alain Frisch's wlex tool. It
+is relatively small and almost as fast as the two other two analyzers. I
+recommend it if it is ok to install another library. Note that you only need
+the runtime part of wlex, and not the "wlex" command itself.</p>
+	</li>
+      </ul>
+
+      <p>Note that you need at least one lexical analyzer to use PXP as
+parser.</p>
 
     </sect2>
 

@@ -24,7 +24,7 @@ default: html ps
 
 html: html/book1.htm html/pic/done
 
-ps: ps/markup.ps ps/pic/done
+ps: ps/pxp.ps ps/pic/done
 
 
 src/readme.ent: ../../examples/readme/to_html.ml
@@ -74,9 +74,9 @@ ps/markup.dvi: ps/markup.tex ps/pic/done
 	jadetex markup.tex; \
 	jadetex markup.tex
 
-ps/markup.ps: ps/markup.dvi
+ps/pxp.ps: ps/markup.dvi
 	cd ps; \
-	dvips -f <markup.dvi >markup.ps
+	dvips -f <markup.dvi >pxp.ps
 
 ps/pic/done: src/pic/*.fig
 	mkdir -p ps/pic
