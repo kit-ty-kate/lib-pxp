@@ -3507,7 +3507,144 @@ interface definition of Markup_yacc outlines what could go here.
 
       <sect1>
 	<title>Overview</title>
-	<para><emphasis>Sorry, not yet written.</emphasis></para>
+	<para>
+There are the following main modes of invoking the parser:
+
+          <itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>You want to parse a complete and closed document consisting
+of a DTD and the document body; the body is validated against the DTD. This
+mode is interesting if you have a file
+
+<programlisting><![CDATA[
+<!DOCTYPE root ... [ ... ] > <root> ... </root>
+]]></programlisting>
+
+and you can accept any DTD that is included in the file.
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>You want to parse a complete and closed document consisting
+of a DTD and the document body; but the body is not validated, only checked
+for well-formedness. This mode is preferred if validation costs too much time.
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>You want only to parse an entity (file) containing the
+whole DTD or only a part of it. Sometimes it is interesting to read a DTD
+without document, for example to compare it with the DTD included in a 
+document, or to apply the next mode:
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>You want only to parse an entity (file) containing a
+fragment of a document body; this fragment is validated against the DTD you
+pass to the parser. Especially, the fragment must not have a <literal>
+&lt;!DOCTYPE&gt;</literal> clause, and must directly begin with an element.
+The element is validated against the DTD (note that it is possible to 
+create a "DTD" that matches everything, i.e. you can turn off validation).
+This mode is interesting if you want to check documents against a fixed,
+immutable DTD.
+</para>
+	    </listitem>
+	  </itemizedlist>
+</para>
+
+<para>
+There are a number of variations of these modes. One important application
+of a parser is to check documents of an untrusted source against a fixed
+DTD. One solution is to not allow the <literal>&lt;!DOCTYPE&gt;</literal>
+clause in these documents, and treat the document like a fragment (mode
+4). This is very simple, but inflexible; users of such a system cannot even
+define additional entities to abbreviate frequent phrases of their text.
+</para>
+
+<para>
+It may be necessary to have a more intelligent checker. For example, it is
+also possible to parse the document to check fully, i.e. with DTD, and to
+compare this DTD with the prescribed one. In order to fully parse the document,
+mode 1 is applied, and to get the DTD to compare with mode 3 can be used.
+</para>
+
+<para>
+There is another very important configurable aspect of the parser: the
+so-called resolver. The task of the resolver is to locate the contents of an
+(external) entity for a given entity name, and to make the contents accessible
+as a character stream. (Furthermore, it also normalizes the character set;
+but this is a detail we can ignore here.) Consider you have a file called
+<literal>"main.xml"</literal> containing 
+
+<programlisting><![CDATA[
+<!ENITITY % sub SYSTEM "sub/sub.xml">
+%sub;
+]]></programlisting>
+
+and a file stored in the subdirectory <literal>"sub"</literal> with name
+<literal>"sub.xml"</literal> containing
+
+<programlisting><![CDATA[
+<!ENITITY % subsub SYSTEM "subsub/subsub.xml">
+%subsub;
+]]></programlisting>
+
+and a file stored in the subdirectory <literal>"subsub"</literal> of
+<literal>"sub"</literal> with name <literal>"subsub.xml"</literal> (the
+contents of this file do not matter). Here, the resolver must track that
+the second entity <literal>subsub</literal> is located in the directory
+<literal>"sub/subsub"</literal>, i.e. the difficulty is to interpret the
+system (file) names of entities relative to the entities containing them,
+even if the entities are deeply nested.
+</para>
+
+<para>
+There is not a fixed resolver already doing everything right - resolving entity
+names is a task that highly depends on the environment. The XML specification
+only demands that <literal>SYSTEM</literal> entities are interpreted like URLs
+(which is not very precise, as there are lots of URL schemes in use), hoping
+that this helps overcoming the local peculiarities of the environment; the idea
+is that if you do not know your environment you can refer to other entities by
+giving the URLs of them. I think that this interpretation of
+<literal>SYSTEM</literal> names may have some applications in the internet, but
+it is not the first choice in general. Because of this, the resolver is a
+separate module of the parser that can be exchanged by another one if
+necessary; more precisely, the parser already defines several resolvers.
+</para>
+
+<para>
+The following resolvers do already exist:
+
+          <itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>A resolver for file names. The <literal>SYSTEM</literal>
+name is simply interpreted as file name with the slash "/" as separator for
+directories.</para>
+	    </listitem>
+	    <listitem>
+	      <para>A resolver that reads always from a given O'Caml
+string. This resolver is not able to resolve further names because the string
+is not associated with any name, i.e. if the document contained in the string
+refers to an external entity, this reference cannot be followed.</para>
+	    </listitem>
+	    <listitem>
+	      <para>A resolver that reads from an arbitrary input
+channel. This resolver cannot resolve inner names, too.</para>
+	    </listitem>
+	  </itemizedlist>
+
+The interface a resolver must have is documented, so it is possible to write
+your own resolver. For example, you could connect the parser with an HTTP
+client, and resolve URLs of the HTTP namespace.</para>
+
+<para>
+Note that the existing resolvers only interpret <literal>SYSTEM</literal>
+names, not <literal>PUBLIC</literal> names. If it helps you, it is possible to
+define resolvers for <literal>PUBLIC</literal> names, too; for example, such a
+resolver could look up the public name in a hash table, and map it to a system
+name which is passed over to the existing resolver for system names. It is
+relatively simple to provide such a resolver.
+</para>
+
+
       </sect1>
 
       <sect1>
