@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.27 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.28 2003/06/20 19:41:39 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -130,6 +130,7 @@ val parse_document_entity :
   (* now defined in Pxp_tree_parser *)
 
 val parse_wfdocument_entity : 
+  ?transform_dtd:(dtd -> dtd) ->
   config -> source -> 'ext spec -> 'ext document
   (* now defined in Pxp_tree_parser *)
 
@@ -201,6 +202,9 @@ val create_pull_parser :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.28  2003/06/20 19:41:39  gerd
+ * 	Added ~transform_dtd to parse_wfdocument_entity.
+ *
  * Revision 1.27  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.mli,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_tree_parser.mli,v 1.2 2003/06/20 19:41:39 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -72,9 +72,15 @@ val parse_document_entity :
    *)
 
 val parse_wfdocument_entity : 
+  ?transform_dtd:(dtd -> dtd) ->
   config -> source -> 'ext spec -> 'ext document
   (* Parse a closed document (see parse_document_entity), but do not
    * validate it. Only checks on well-formedness are performed.
+   *
+   * The option ~transform_dtd works as for parse_document_entity,
+   * but the resulting DTD is not used for validation. It is just
+   * included into the returned document (e.g. useful to get entity 
+   * declarations).
    *)
 
 val parse_content_entity  : 
@@ -103,6 +109,9 @@ val parse_wfcontent_entity :
  * History:
  * 
  * $Log: pxp_tree_parser.mli,v $
+ * Revision 1.2  2003/06/20 19:41:39  gerd
+ * 	Added ~transform_dtd to parse_wfdocument_entity.
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_tree_parser.ml,v 1.3 2003/06/20 19:41:39 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -741,8 +741,9 @@ let parse_document_entity ?(transform_dtd = (fun x -> x))
     ?id_index:(id_index : 'ext #index option :> 'ext index option)
     cfg src spec false;;
 
-let parse_wfdocument_entity cfg src spec =
-  iparse_document_entity cfg src spec true;;
+let parse_wfdocument_entity ?(transform_dtd = (fun x -> x))
+                            cfg src spec =
+  iparse_document_entity ~transform_dtd cfg src spec true;;
 
 
 
@@ -772,6 +773,9 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_tree_parser.ml,v $
+ * Revision 1.3  2003/06/20 19:41:39  gerd
+ * 	Added ~transform_dtd to parse_wfdocument_entity.
+ *
  * Revision 1.2  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants
