@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.4 2000/07/09 17:59:35 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.5 2000/07/23 02:16:51 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -394,7 +394,7 @@ let write_local_document out (d : 'ext document) =
 let write_helpers out =
   output_string out "let add_node t n = (t : 'ext Pxp_document.node) # add_node (n : 'ext Pxp_document.node) in\n";
   output_string out "let add_pinstr t pi = (t : 'ext Pxp_document.node) # add_pinstr (pi : Pxp_dtd.proc_instruction) in\n";
-  output_string out "let local_validate t = (t : 'ext Pxp_document.node) # local_validate in\n"
+  output_string out "let local_validate t = (t : 'ext Pxp_document.node) # local_validate ()in\n"
 ;;
 
 
@@ -424,6 +424,9 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.5  2000/07/23 02:16:51  gerd
+ * 	Changed signature of local_validate.
+ *
  * Revision 1.4  2000/07/09 17:59:35  gerd
  * 	Updated: The position of element nodes is also written.
  *
