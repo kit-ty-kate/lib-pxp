@@ -25,7 +25,7 @@ clean:
 CLEAN: clean
 
 distclean: clean
-	rm -f META
+	rm -f META depend
 
 install:
 	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_top.cmo META` && \
