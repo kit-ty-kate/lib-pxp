@@ -59,4 +59,70 @@ interpreted (implicitly merged).</p>
       </li>
     </ul>
   </sect1>
+
+  <sect1>
+    <title>Normalized namespace prefixes</title>
+    <p>
+The XML standard refers to names within namespaces as <em>expanded
+names</em>. This is simply the pair (namespace_uri, localname); the namespace
+prefix is not included in the expanded name.</p>
+    <p>
+PXP does not support expanded names, but it does support namespaces. However,
+it uses a model that is slightly different from the usual representation of
+names in namespaces: Instead of removing the namespace prefixes and converting
+the names into expanded names, PXP prefers it to normalize the namespace
+prefixes used in a document, i.e. the prefixes are transformed such that they
+refer uniquely to namespaces.</p>
+    <p>
+The following text is valid XML:
+
+<code><![CDATA[
+<x:a xmlns:x="namespace1">
+  <x:a xmlns:x="namespace2">
+  </x:a>
+</x:a>
+]]></code>
+
+The first element has the expanded name (namespace1,a) while the second element
+has the expanded name (namespace2,a); so the elements have different types. As
+already pointed out, PXP does not support the expanded names directly (there is
+some support for them in elements, but not in attributes). Alternatively, the
+XML text is transformed while it is being parsed such that the prefixes become
+unique. In this example, the transformed text would read:
+
+<code><![CDATA[
+<x:a xmlns:x="namespace1">
+  <x1:a xmlns:x1="namespace2">
+  </x1:a>
+</x:a>
+]]></code>
+
+From a programmers point of view, this transformation has the advantage that
+you need not to deal with pairs when comparing names, as all names are still
+simple strings: here, "x:a", and "x1:a". However, the transformation seems to
+be a bit random. Why not "y:a" instead of "x1:a"? The answer is that PXP allows
+the programmer to control the transformation: You can simply demand that
+namespace1 must use the normalized prefix "x", and namespace2 must use "y". The
+declaration which normalized prefix to use can be programmed (by setting the
+namespace_manager object), and it can be included into the DTD:
+
+<code><![CDATA[
+<?pxp:dtd namespace prefix="x" uri="namespace1"?>
+<?pxp:dtd namespace prefix="y" uri="namespace2"?>
+]]></code>
+
+There is another advantage of using normalized prefixes: You can safely refer
+to them in DTDs. For example, you could declare the two elements as
+
+<code><![CDATA[
+<!ELEMENT x:a (y:a)>
+<!ELEMENT y:a ANY>
+]]></code>
+
+These declarations are applicable even if the XML text uses different prefixes,
+because PXP normalizes any prefixes for namespace1 or namespace2 to the
+preferred prefixes "x" and "y".
+</p>
+</sect1>
+
 </readme>
