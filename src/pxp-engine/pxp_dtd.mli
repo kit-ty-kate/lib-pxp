@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.6 2000/07/23 02:16:33 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.7 2000/07/25 00:30:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -357,13 +357,21 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
     method encoding : Pxp_types.rep_encoding
 
     method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
-      (* write_compact_as_latin1 os enc:
+      (* write os enc:
        * Writes the <?...?> PI to 'os' as 'enc'-encoded string.
        *)
 
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
       (* DEPRECATED METHOD; included only to keep compatibility with
        * older versions of the parser
+       *)
+
+    method parse_pxp_option : (string * string * (string * string) list)
+      (* Parses a PI containing a PXP option. Such PIs are formed like:
+       *   <?target option-name option-att="value" option-att="value" ... ?>
+       * The method returns a triple
+       *   (target, option-name, [option-att, value; ...])
+       * or raises Error.
        *)
 
   end
@@ -376,6 +384,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.7  2000/07/25 00:30:01  gerd
+ * 	Added support for pxp:dtd PI options.
+ *
  * Revision 1.6  2000/07/23 02:16:33  gerd
  * 	Support for DFAs.
  *

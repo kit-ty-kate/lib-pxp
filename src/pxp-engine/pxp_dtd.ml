@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.8 2000/07/23 02:16:34 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.9 2000/07/25 00:30:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -6,6 +6,7 @@
 
 open Pxp_types
 open Pxp_lexer_types
+open Pxp_lexers
 open Pxp_entity
 open Pxp_aux
 open Pxp_dfa
@@ -175,21 +176,73 @@ class dtd  the_warner init_encoding =
 	failwith "Pxp_dtd.dtd # add_pinstr: Inconsistent encodings";
       let name = pi # target in
       check_name warner name;
+
+      if String.length name >= 4 && String.sub name 0 4 = "pxp:" then begin
+	match name with
+	    "pxp:dtd" -> 
+	      let _, optname, atts = pi # parse_pxp_option in
+	      begin match optname with
+		  "optional-element-and-notation-declarations" ->
+		    self # allow_arbitrary
+		| "optional-attribute-declarations" ->
+		    let lexers = Pxp_lexers.get_lexer_set encoding in
+		    let el_string = 
+		      try List.assoc "elements" atts
+		      with Not_found ->
+			raise(Error("Missing `elements' attribute for pxp:dtd"))
+		    in
+		    let el = split_attribute_value lexers el_string in
+		    List.iter
+		      (fun e_name ->
+			 let e =
+			   try Hashtbl.find elements e_name
+			   with
+			       Not_found ->
+				 raise(Error("Reference to unknown element `" ^
+					     e_name ^ "'"))
+			 in
+			 e # allow_arbitrary
+		      )
+		      el
+		| _ ->
+		    raise(Error("Unknown PXP option `" ^ 
+				optname ^ "'"))
+	      end
+	  | _ ->
+	      raise(Error("The processing instruction target `" ^ 
+			  name ^ "' is not defined by this PXP version"))
+      end
+      else begin
+	(*----------------------------------------------------------------------
+	 * SUPPORT FOR DEPRECATED PI OPTIONS:
+	 * - <?xml:allow_undeclared_elements_and_notations?>
+	 *   is now <?pxp:dtd optional-element-and-notation-declarations?>
+	 * - <?xml:allow_undeclared_attributes <elementname>?>
+	 *   is now <?pxp:dtd optional-attribute-declarations 
+	 *            elements='<elementname> ...'?>
+	 * Please update your DTDs! Alternatively, you may uncommment the
+	 * following piece of code.
+	 *)
+(*  	    if name = "xml:allow_undeclared_elements_and_notations" then *)
+(*  	      self # allow_arbitrary; *)
+(*  	    if name = "xml:allow_undeclared_attributes" then begin *)
+(*  	      let v = pi # value in *)
+(*  	      let e =  *)
+(*  		try *)
+(*  		  Hashtbl.find elements v *)
+(*  		with *)
+(*  		    Not_found -> *)
+(*  		      raise(Validation_error("Reference to undeclared element `"*)
+(*		      ^ v ^ "'")) *)
+(*  	      in *)
+(*  	      e # allow_arbitrary; *)
+(*  	    end; *)
+	(*----------------------------------------------------------------------
+	 *)
+	()
+      end;
       Hashtbl.add pinstr name pi;
       pinstr_names <- name :: pinstr_names;
-      if name = "xml:allow_undeclared_elements_and_notations" then
-	self # allow_arbitrary;
-      if name = "xml:allow_undeclared_attributes" then begin
-	let v = pi # value in
-	let e = 
-	  try
-	    Hashtbl.find elements v
-	  with
-	      Not_found ->
-		raise(Validation_error("Reference to undeclared element `" ^ v ^ "'"))
-	in
-	e # allow_arbitrary;
-      end;
 
 
     method element name =
@@ -360,10 +413,34 @@ class dtd  the_warner init_encoding =
       if validated or allow_arbitrary then
 	()
       else begin
+	(* Validity constraint: Notations in NDATA entity declarations must
+	 * be declared
+	 *)
+	List.iter
+	  (fun name ->
+	     let ent,_ = 
+	       try Hashtbl.find gen_entities name with Not_found -> assert false 
+	     in
+	     if ent # is_ndata then begin
+	       let xid = ent # ext_id in
+	       let notation = ent # notation in
+	       try
+		 ignore(self # notation notation)
+		   (* Raises Validation_error if the constraint is violated *)
+	       with
+		   Undeclared -> ()
+	     end
+	  )
+	  gen_entity_names;
+
+	(* Validate the elements: *)
 	Hashtbl.iter
 	  (fun n el ->
 	     el # validate)
 	  elements;
+
+	(* Check the root element: *)
+	(* TODO: Check if this piece of code is executed at all! *)
 	begin match root with
 	    None -> ()
 	  | Some r ->
@@ -486,7 +563,7 @@ and dtd_element the_dtd the_name =
 	      raise Undeclared
 	    else
 	      raise(Validation_error("Attribute `" ^ attname ^ "' of element `"
-				     ^ name ^ "' not found"))
+				     ^ name ^ "' not declared"))
 
     method attribute_violates_standalone_declaration attname v =
       try
@@ -506,7 +583,7 @@ and dtd_element the_dtd the_name =
 	      raise Undeclared
 	    else
 	      raise(Validation_error("Attribute `" ^ attname ^ "' of element `"
-				     ^ name ^ "' not found"))
+				     ^ name ^ "' not declared"))
 
 
     method attribute_names =
@@ -871,6 +948,21 @@ object (self)
     method write_compact_as_latin1 os = 
       self # write os `Enc_iso88591
 
+    method parse_pxp_option =
+      let lexers = get_lexer_set encoding in
+      try
+	let toks = tokens_of_xml_pi lexers value in   (* may raise WF_error *)
+	begin match toks with
+	    (Pro_name option_name) :: toks' ->
+	      let atts = decode_xml_pi toks' in       (* may raise WF_error *)
+	      (target, option_name, atts)
+	  | _ ->
+	      raise(Error("Bad PXP processing instruction"))
+	end
+      with
+	  WF_error _ ->
+	    raise(Error("Bad PXP processing instruction"))
+
   end
 ;;
 
@@ -879,6 +971,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.9  2000/07/25 00:30:01  gerd
+ * 	Added support for pxp:dtd PI options.
+ *
  * Revision 1.8  2000/07/23 02:16:34  gerd
  * 	Support for DFAs.
  *

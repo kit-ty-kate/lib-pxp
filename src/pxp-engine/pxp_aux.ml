@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.4 2000/07/16 18:31:09 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.5 2000/07/25 00:30:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -133,6 +133,18 @@ let count_lines s =
 
   in
   count 0 0 false false
+;;
+
+
+let tokens_of_xml_pi lexers s =
+  let lexbuf = Lexing.from_string (s ^ " ") in
+  let rec collect () =
+    let t = lexers.scan_xml_pi lexbuf in
+    match t with
+	Pro_eof -> []
+      | _       -> t :: collect()
+  in
+  collect()
 ;;
 
 
@@ -520,6 +532,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.5  2000/07/25 00:30:01  gerd
+ * 	Added support for pxp:dtd PI options.
+ *
  * Revision 1.4  2000/07/16 18:31:09  gerd
  * 	The exception Illegal_character has been dropped.
  *
