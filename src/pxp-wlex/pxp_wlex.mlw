@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mlw,v 1.4 2002/08/03 17:56:31 gerd Exp $
+(* $Id: pxp_wlex.mlw,v 1.5 2002/08/05 22:35:08 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -396,16 +396,16 @@ and scan_tag_eb_att = parse
           raise(WF_error("The character '&' must be written as '&amp;'")) }
   | '\009'
       { fun d ->
-          CharData "\009", Tag_eb_att d }
+          CharData " ", Tag_eb_att d }
   | '\013' '\010'
       { fun d ->
-          LineEnd "\013\010", Tag_eb_att d }
+          LineEnd_att "  ", Tag_eb_att d }
   | '\013'
       { fun d ->
-          LineEnd "\013", Tag_eb_att d }
+          LineEnd_att " ", Tag_eb_att d }
   | '\010'
       { fun d ->
-          LineEnd "\010", Tag_eb_att d }
+          LineEnd_att " ", Tag_eb_att d }
   | '<'
       { fun d ->
           (* Depending on the situation, '<' may be legal or not: *)
@@ -791,6 +791,10 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mlw,v $
+ * Revision 1.5  2002/08/05 22:35:08  gerd
+ * 	Fixed newline characters in attribute values for event-based
+ * attribute parsing.
+ *
  * Revision 1.4  2002/08/03 17:56:31  gerd
  * 	Support for event-based parsing of attribute values.
  *
