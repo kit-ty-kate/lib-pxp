@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.10 2000/07/23 02:16:33 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.11 2000/08/14 22:24:55 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -422,7 +422,7 @@ class ['ext] parser_object
 	  if config.encoding = `Enc_utf8 then
 	    s   (* No recoding necessary *)
 	  else
-	    Pxp_encoding.recode_string 
+	    Netconversion.recode_string 
 	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
 	in
 
@@ -2110,6 +2110,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.11  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.10  2000/07/23 02:16:33  gerd
  * 	Support for DFAs.
  *

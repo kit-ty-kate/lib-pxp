@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.5 2000/07/25 00:30:01 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.6 2000/08/14 22:24:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,7 +12,7 @@
 open Pxp_types
 open Pxp_lexer_types
 open Pxp_lexers
-open Pxp_encoding
+open Netconversion
 
 let character enc warner k =
   assert (k>=0);
@@ -23,7 +23,7 @@ let character enc warner k =
 		    " outside the accepted range of code points"));
 
   try
-    Pxp_encoding.makechar enc k
+    makechar (enc : rep_encoding :> encoding) k
   with
       Not_found ->
 	warner # warn ("Code point cannot be represented in internal encoding: "
@@ -532,6 +532,10 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.6  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.5  2000/07/25 00:30:01  gerd
  * 	Added support for pxp:dtd PI options.
  *

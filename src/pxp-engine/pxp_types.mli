@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.7 2000/07/27 00:41:15 gerd Exp $
+(* $Id: pxp_types.mli,v 1.8 2000/08/14 22:24:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -96,27 +96,10 @@ class type collect_warnings =
 class drop_warnings : collect_warnings;;
 
 
-type encoding =
-  [  `Enc_utf8       (* UTF-8 *)
-  |  `Enc_utf16      (* UTF-16 with unspecified endianess (restricted usage) *)
-  |  `Enc_utf16_le   (* UTF-16 little endian *)
-  |  `Enc_utf16_be   (* UTF-16 big endian *)
-  |  `Enc_iso88591   (* ISO-8859-1 *)
-  |  `Enc_iso88592   (* ISO-8859-2 *)
-  |  `Enc_iso88593   (* ISO-8859-3 *)
-  |  `Enc_iso88594   (* ISO-8859-4 *)
-  |  `Enc_iso88595   (* ISO-8859-5 *)
-  |  `Enc_iso88596   (* ISO-8859-6 *)
-  |  `Enc_iso88597   (* ISO-8859-7 *)
-  |  `Enc_iso88598   (* ISO-8859-8 *)
-  |  `Enc_iso88599   (* ISO-8859-9 *)
-  |  `Enc_iso885910  (* ISO-8859-10 *)
-  |  `Enc_iso885913  (* ISO-8859-13 *)
-  |  `Enc_iso885914  (* ISO-8859-14 *)
-  |  `Enc_iso885915  (* ISO-8859-15 *)
-  ]
-;;
-
+type encoding = Netconversion.encoding;;
+  (* We accept all encodings for character sets which are defined in
+   * Netconversion (package netstring).
+   *)
 
 type rep_encoding =
   (* The subset of 'encoding' that may be used for internal representation
@@ -130,17 +113,6 @@ type rep_encoding =
 ;;
 
 
-val encoding_of_string : string -> encoding;;
-    (* Returns the encoding of the name of the encoding. Fails if the 
-     * encoding is unknown.
-     * E.g. encoding_of_string "iso-8859-1" = `Enc_iso88591
-     *)
-
-val string_of_encoding : encoding -> string;;
-    (* Returns the name of the encoding. *)
-
-
-
 exception Validation_error of string
   (* Violation of a validity constraint *)
 
@@ -151,9 +123,6 @@ exception Error of string
   (* Other error *)
 
 exception Character_not_supported
-
-exception Bad_character_stream
-  (* Cannot decode character stream *)
 
 exception At of (string * exn)
   (* The string is a description where the exn happened. The exn value can
@@ -182,6 +151,10 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.8  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.7  2000/07/27 00:41:15  gerd
  * 	new 8 bit codes
  *

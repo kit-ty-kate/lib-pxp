@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.6 2000/07/27 00:41:15 gerd Exp $
+(* $Id: pxp_types.ml,v 1.7 2000/08/14 22:24:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -80,27 +80,7 @@ class drop_warnings =
 ;;
 
 
-type encoding =
-  [  `Enc_utf8       (* UTF-8 *)
-  |  `Enc_utf16      (* UTF-16 with unspecified endianess (restricted usage) *)
-  |  `Enc_utf16_le   (* UTF-16 little endian *)
-  |  `Enc_utf16_be   (* UTF-16 big endian *)
-  |  `Enc_iso88591   (* ISO-8859-1 *)
-  |  `Enc_iso88592   (* ISO-8859-2 *)
-  |  `Enc_iso88593   (* ISO-8859-3 *)
-  |  `Enc_iso88594   (* ISO-8859-4 *)
-  |  `Enc_iso88595   (* ISO-8859-5 *)
-  |  `Enc_iso88596   (* ISO-8859-6 *)
-  |  `Enc_iso88597   (* ISO-8859-7 *)
-  |  `Enc_iso88598   (* ISO-8859-8 *)
-  |  `Enc_iso88599   (* ISO-8859-9 *)
-  |  `Enc_iso885910  (* ISO-8859-10 *)
-  |  `Enc_iso885913  (* ISO-8859-13 *)
-  |  `Enc_iso885914  (* ISO-8859-14 *)
-  |  `Enc_iso885915  (* ISO-8859-15 *)
-  ]
-;;
-
+type encoding = Netconversion.encoding;;
 
 type rep_encoding =
   (* The subset of 'encoding' that may be used for internal representation
@@ -112,68 +92,6 @@ type rep_encoding =
 ;;
 
 
-let norm_enc_name e =
-  (* Removes some characters from e; uppercase *)
-  let e' = String.create (String.length e) in
-  let rec next i j =
-    if i < String.length e then
-      match e.[i] with
-	  ('-'|'_'|'.') -> next (i+1) j
-	| c             -> e'.[j] <- c; next (i+1) (j+1)
-    else
-      j
-  in
-  let l = next 0 0 in
-  String.uppercase(String.sub e' 0 l)
-;;
-
-
-let encoding_of_string e =
-  match norm_enc_name e with
-      ("UTF16"|"UCS2"|"ISO10646UCS2") -> `Enc_utf16
-    | "UTF16BE"   -> `Enc_utf16_be
-    | "UTF16LE"   -> `Enc_utf16_le
-    | "UTF8"      -> `Enc_utf8
-    | "ISO88591"  -> `Enc_iso88591
-    | "ISO88592"  -> `Enc_iso88592
-    | "ISO88593"  -> `Enc_iso88593
-    | "ISO88594"  -> `Enc_iso88594
-    | "ISO88595"  -> `Enc_iso88595
-    | "ISO88596"  -> `Enc_iso88596
-    | "ISO88597"  -> `Enc_iso88597
-    | "ISO88598"  -> `Enc_iso88598
-    | "ISO88599"  -> `Enc_iso88599
-    | "ISO885910" -> `Enc_iso885910
-    | "ISO885913" -> `Enc_iso885913
-    | "ISO885914" -> `Enc_iso885914
-    | "ISO885915" -> `Enc_iso885915
-    | _ ->
-	failwith "Pxp_types.encoding_of_string: unknown encoding"
-;;
-
-
-let string_of_encoding (e : encoding) =
-  match e with
-      `Enc_utf16    -> "UTF-16"
-    | `Enc_utf16_be -> "UTF-16-BE"
-    | `Enc_utf16_le -> "UTF-16-LE"
-    | `Enc_utf8     -> "UTF-8"
-    | `Enc_iso88591 -> "ISO-8859-1"
-    | `Enc_iso88592 -> "ISO-8859-2"
-    | `Enc_iso88593 -> "ISO-8859-3"
-    | `Enc_iso88594 -> "ISO-8859-4"
-    | `Enc_iso88595 -> "ISO-8859-5"
-    | `Enc_iso88596 -> "ISO-8859-6"
-    | `Enc_iso88597 -> "ISO-8859-7"
-    | `Enc_iso88598 -> "ISO-8859-8"
-    | `Enc_iso88599 -> "ISO-8859-9"
-    | `Enc_iso885910 -> "ISO-8859-10"
-    | `Enc_iso885913 -> "ISO-8859-13"
-    | `Enc_iso885914 -> "ISO-8859-14"
-    | `Enc_iso885915 -> "ISO-8859-15"
-;;
-
-
 exception Validation_error of string
 
 exception WF_error of string
@@ -181,9 +99,6 @@ exception WF_error of string
 exception Error of string
 
 exception Character_not_supported
-
-exception Bad_character_stream
-  (* Cannot decode character stream *)
 
 exception At of (string * exn)
 
@@ -202,7 +117,7 @@ let rec string_of_exn x0 =
 	"ERROR: " ^ s
     | Character_not_supported ->
         "RESTRICTION: Character not supported"
-    | Bad_character_stream ->
+    | Netconversion.Malformed_code ->
         "ERROR: Bad character stream"
     | Undeclared ->
         "INFORMATION: Undeclared"
@@ -231,6 +146,10 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.7  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.6  2000/07/27 00:41:15  gerd
  * 	new 8 bit codes
  *

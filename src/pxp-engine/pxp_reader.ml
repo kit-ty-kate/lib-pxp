@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.8 2000/07/16 18:31:09 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.9 2000/08/14 22:24:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -79,10 +79,10 @@ class virtual resolve_general
 	encoding <- `Enc_utf8
       else if String.sub s 0 2 = "\254\255" then
 	encoding <- `Enc_utf16
-	  (* Note: Pxp_encoding.recode will detect the big endianess, too *)
+	  (* Note: Netconversion.recode will detect the big endianess, too *)
       else if String.sub s 0 2 = "\255\254" then
 	encoding <- `Enc_utf16
-	  (* Note: Pxp_encoding.recode will detect the little endianess, too *)
+	  (* Note: Netconversion.recode will detect the little endianess, too *)
       else
 	encoding <- `Enc_utf8
 
@@ -148,7 +148,7 @@ class virtual resolve_general
 		 m_in, m_in, encoding
 	       end
 	       else
-		 Pxp_encoding.recode
+		 Netconversion.recode
 		   ~in_enc:encoding
 		   ~in_buf:buffer
 		   ~in_pos:0
@@ -162,7 +162,7 @@ class virtual resolve_general
 	     in
 	     if n_in = 0 then
 	       (* An incomplete character at the end of the stream: *)
-	       raise Bad_character_stream;
+	       raise Netconversion.Malformed_code;
 	       (* failwith "Badly encoded character"; *)
 	     encoding <- encoding';
 	     consume n_in;
@@ -173,7 +173,7 @@ class virtual resolve_general
     method change_encoding enc =
       if not encoding_requested then begin
 	if enc <> "" then begin
-	  match encoding_of_string enc with
+	  match Netconversion.encoding_of_string enc with
 	      `Enc_utf16 ->
 		(match encoding with
 		     (`Enc_utf16_le | `Enc_utf16_be) -> ()
@@ -536,7 +536,7 @@ class resolve_as_file
       in
       
       let path = 
-	Pxp_encoding.recode_string
+	Netconversion.recode_string
 	  ~in_enc:  `Enc_utf8
 	  ~out_enc: system_encoding
 	  path_utf8 in
@@ -546,7 +546,7 @@ class resolve_as_file
 	(* May raise Sys_error *)
 
     with
-      | Bad_character_stream -> assert false
+      | Netconversion.Malformed_code -> assert false
 	    (* should not happen *)
 
   in
@@ -668,6 +668,10 @@ class combine ?prefer rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.9  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.8  2000/07/16 18:31:09  gerd
  * 	The exception Illegal_character has been dropped.
  *

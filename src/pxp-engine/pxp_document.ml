@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.10 2000/07/23 02:16:34 gerd Exp $
+(* $Id: pxp_document.ml,v 1.11 2000/08/14 22:24:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1084,7 +1084,8 @@ class ['ext] document the_warner =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
       let r = self # root in
-      wms ("<?xml version='1.0' encoding='" ^ string_of_encoding enc ^ 
+      wms ("<?xml version='1.0' encoding='" ^ 
+	   Netconversion.string_of_encoding enc ^ 
 	   "'?>\n");
       ( match self # dtd # root with
 	    None ->
@@ -1111,6 +1112,10 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.11  2000/08/14 22:24:55  gerd
+ * 	Moved the module Pxp_encoding to the netstring package under
+ * the new name Netconversion.
+ *
  * Revision 1.10  2000/07/23 02:16:34  gerd
  * 	Support for DFAs.
  *
