@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.16 2002/03/10 23:39:45 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.17 2002/07/14 23:03:29 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -241,10 +241,16 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 
     method name = v.name
 
+    method lex_id = v.lex_id
+
     method set_lex_id id = v.lex_id <- id
 
     method line = v.p_line
     method column = v.p_column
+
+    method set_line_column l c =
+      v.line <- l;
+      v.column <- c
 
     method encoding = v.encoding
     (* method lexerset = lexerset *)
@@ -257,7 +263,7 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 	    None -> assert false
 	  | Some m -> m
       : < current_entity : entity; 
-	  pop_entity : unit;
+	  pop_entity : unit -> unit;
 	  push_entity : entity -> unit >
       )
 
@@ -268,6 +274,9 @@ class virtual entity the_dtd the_name the_warner init_encoding =
     method set_counts_as_external =
       v.counts_as_external <- true
 
+    method lexbuf = v.lexbuf
+
+    method virtual resolver : resolver option
 
     method virtual open_entity : bool -> lexers -> unit
 	(* open_entity force_parsing lexid:
@@ -298,11 +307,19 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 	 * from non-document entities do not add these tokens.
 	 *)
 
-    method virtual close_entity : lexers
+    method close_entity =
 	(* close_entity:
 	 * closes the entity and returns the name of the lexer that must
 	 * be used to scan the next token.
 	 *)
+      let current_lex_id = v.lex_id in
+      v.deferred_token <- None;
+      v.lex_id <- Closed;
+      current_lex_id
+
+    method virtual is_open : bool
+      (* Whether the entity is currently open *)
+
 
     method virtual replacement_text : (string * bool)
 	(* replacement_text:
@@ -380,6 +397,7 @@ class virtual entity the_dtd the_name the_warner init_encoding =
                                       v.lexerset_scan_document_comment
 		| Ignored_section  -> assert false
   	          (* Ignored_section: only used by method next_ignored_token *)
+		| Closed           -> (fun _ -> (Eof, Closed))
 	    in
 	    let tok, lex_id' = scan_fn v.lexbuf in
 
@@ -536,7 +554,7 @@ class virtual entity the_dtd the_name the_warner init_encoding =
     method private handle_eof =
       let mng = self # manager in
       begin try
-	mng # pop_entity;
+	mng # pop_entity();
 	let next_lex_id = self # close_entity in
 	let en = mng # current_entity in
 	en # set_lex_id next_lex_id;
@@ -553,14 +571,17 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 
       (* TODO: Do we need a test on deferred tokens here? *)
 
-	let tok, lex_id' = v.lexerset.scan_ignored_section v.lexbuf in
-	if v.debug then
-	  prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok ^ " (Ignored)");
-	update_other_lines v tok;
-	match tok with
-	  | Conditional_begin _ -> Conditional_begin (self :> entity_id)
-	  | Conditional_end _   -> Conditional_end   (self :> entity_id)
-	  | _                   -> tok
+        if v.lex_id = Closed then
+	  Eof
+	else
+	  let tok, lex_id' = v.lexerset.scan_ignored_section v.lexbuf in
+	  if v.debug then
+	    prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok ^ " (Ignored)");
+	  update_other_lines v tok;
+	  match tok with
+	    | Conditional_begin _ -> Conditional_begin (self :> entity_id)
+	    | Conditional_end _   -> Conditional_end   (self :> entity_id)
+	    | _                   -> tok
 
 
     method process_xmldecl pl =
@@ -635,10 +656,16 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
 
 
     method set_manager (m : < current_entity : entity; 
-			      pop_entity : unit;
+			      pop_entity : unit -> unit;
 			      push_entity : entity -> unit >) = 
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : unit )
+
+    method resolver = (None : resolver option)
+
+    method lex_id =
+      ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
+	  : lexers)
 
     method set_lex_id (id : lexers) =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
@@ -652,6 +679,10 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : int )
 
+    method set_line_column (_:int) (_:int) =
+      ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
+	  : unit )
+
     method full_name =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : string )
@@ -663,6 +694,10 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
 
     method set_debugging_mode (_:bool) = ()
 
+    method lexbuf =
+      ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
+	  : Lexing.lexbuf )
+
     method open_entity (_:bool) (_:lexers) =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : unit )
@@ -670,6 +705,8 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
     method close_entity =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : lexers )
+
+    method is_open = false  (* NDATA entities cannot be opened *)
 
     method replacement_text =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
@@ -751,6 +788,8 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
     method ext_id = ext_id
 
+    method resolver = Some resolver
+
     method open_entity force_parsing init_lex_id =
       (* Note that external entities are always parsed, i.e. Begin_entity
        * and End_entity tokens embrace the inner tokens to force that
@@ -824,7 +863,10 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	failwith ("External entity " ^ v.name ^ " not open");
       resolver # close_in;
       resolver_is_open <- false;
-      v.lex_id
+      super # close_entity
+
+
+    method is_open = resolver_is_open
 
 
     method replacement_text =
@@ -1062,121 +1104,148 @@ class internal_entity the_dtd the_name the_warner the_literal_value
       if not is_open then
 	failwith ("Internal entity " ^ v.name ^ " not open");
       is_open <- false;
-      v.lex_id
+      super # close_entity
+
+
+    method is_open = is_open
 
 
     method replacement_text =
       if is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       replacement_text, contains_external_references
+
+
+    method resolver = (None : resolver option)
   end
 ;;
 
-(**********************************************************************)
 
-(* An 'entity_manager' is a stack of entities, where the topmost entity
- * is the currently active entity, the second entity is the entity that
- * referred to the active entity, and so on.
- *
- * The entity_manager can communicate with the currently active entity.
- *
- * The entity_manager provides an interface for the parser; the functions
- * returning the current token and the next token are exported.
+(* An entity_section is an object that reads a section from an underlying
+ * entity as if this section was an entity of its own. In detail, the
+ * following rules apply:
+ * - If a token is read from the entity_section, it is actually read from
+ *   the underlying entity (except the first and the last token). I.e.
+ *   the token stream of the entity_section and the underlying entity is
+ *   essentially the same.
+ * - However, the entity_section has its own lexical context. The method
+ *   set_lex_id changes only the lexer ID of the entity_section, and not
+ *   of the underlying entity.
+ * - The first token is always Begin_entity, and the last token is always
+ *   End_entity. These tokens are not taken from the underlying entity,
+ *   but simpy pretended at the beginning and at the end of the section.
+ * - The section begins at the current position of the (open) underlying
+ *   entity when the method open_entity of the section is called. It is 
+ *   an error if the underlying entity is at the beginning itself.
+ *   [TODO: The latter condition is currently not checked.]
+ * - The section ends when the method close_entity is called. The next
+ *   token will be End_token, and then an endless sequence of Eof.
+ * - A section cannot be opened a second time.
+ * - Changes of encodings are ignored. (The underlying entity must do that.)
  *)
 
-class entity_manager (init_entity : entity) =
-  object (self)
-    val mutable entity_stack = Stack.create()
-    val mutable current_entity = init_entity
-    val mutable current_entity's_full_name = lazy (init_entity # full_name)
-				   
-    val mutable yy_get_next_ref = ref (fun () -> assert false)
+type section_state = P_bof | P_normal of int | P_pre_eof | P_eof
+  (* P_normal n: The number n is the number of open inner entities *)
 
-    initializer
-      init_entity # set_manager (self :> 
-				 < current_entity : entity; 
-				   pop_entity : unit;
-				   push_entity : entity -> unit >
-				);
-      yy_get_next_ref := (fun () -> init_entity # next_token)
+class entity_section (init_ent:entity) =
+object (self) 
+  val ent = init_ent
+  val mutable state = P_bof
+  val mutable is_open = false
+  val mutable saved_lex_id = Closed
 
-    method push_entity e =
-      e # set_manager (self :> 
-		       < current_entity : entity; 
-		         pop_entity : unit;
-			 push_entity : entity -> unit >
-		      );
-      Stack.push (current_entity, current_entity's_full_name) entity_stack;
-      current_entity <- e;
-      current_entity's_full_name <- lazy (e # full_name);
-      yy_get_next_ref := (fun () -> e # next_token);
-
-    method pop_entity =
-      (* May raise Stack.Empty *)
-      let e, e_name = Stack.pop entity_stack in
-      current_entity <- e;
-      current_entity's_full_name <- e_name;
-      yy_get_next_ref := (fun () -> e # next_token);
-
-
-
-    method position_string =
-      (* Gets a string describing the position of the last token;
-       * includes an entity backtrace
-       *)
-      let b = Buffer.create 200 in
-      Buffer.add_string b
-	("In entity " ^ current_entity # full_name
-	 ^ ", at line " ^ string_of_int (current_entity # line)
-	 ^ ", position " ^ string_of_int (current_entity # column)
-	 ^ ":\n");
-      Stack.iter
-	(fun (e, e_name) ->
-	   Buffer.add_string b 
-	     ("Called from entity " ^ Lazy.force e_name
-	      ^ ", line " ^ string_of_int (e # line)
-	      ^  ", position " ^ string_of_int (e # column)
-	      ^ ":\n");
-	)
-	entity_stack;
-      Buffer.contents b
-
-
-    method position =
-      (* Returns the triple (full_name, line, column) of the last token *)
-      Lazy.force current_entity's_full_name, 
-      current_entity # line,
-      current_entity # column
-
-
-    method current_entity_counts_as_external =
-      (* Whether the current entity counts as external to the main
-       * document for the purpose of stand-alone checks.
-       *)
-      (* TODO: improve performance *)
-      let is_external = ref false in
-      let check (e, _) =
-	if e # counts_as_external then begin
-	  is_external := true;
-	end;
-      in
-      check (current_entity,());
-      Stack.iter check entity_stack;
-      !is_external
-
-
-    method current_entity  = current_entity
-
-    method yy_get_next_ref = yy_get_next_ref
-
-  end
+  method is_ndata = ent # is_ndata
+  method name = ent # name
+  method lex_id = ent # lex_id
+  method set_lex_id = 
+    if not is_open then
+      failwith "Pxp_entity.entity_section#set_lex_id: not open";
+    ent # set_lex_id
+  method line = ent # line
+  method column = ent # column
+  method set_line_column = 
+    if not is_open then
+      failwith "Pxp_entity.entity_section#set_line_column: not open";
+    ent # set_line_column
+  method encoding = ent # encoding
+  method set_manager (_ : < current_entity : entity; 
+		            pop_entity : unit -> unit;
+			    push_entity : entity -> unit >) = ()
+  method counts_as_external = ent # counts_as_external
+  method set_counts_as_external : unit = 
+    failwith "Pxp_entity.entity_section#set_counts_as_external: not possible";
+  method lexbuf = ent # lexbuf
+  method resolver = ent # resolver
+  method open_entity (_:bool) (lid:lexers) = 
+    if is_open then
+      failwith "Pxp_entity.entity_section#open_entity: already open";
+    if not ent#is_open then
+      failwith "Pxp_entity.entity_section#open_entity: Underlying entity is not open";
+    saved_lex_id <- ent # lex_id;
+    state <- P_bof;
+    is_open <- true;
+  method close_entity =
+    if not is_open then
+      failwith "Pxp_entity.entity_section#close_entity: not open";
+    is_open <- false;
+    ent # set_lex_id saved_lex_id;
+    assert (match state with P_bof | P_normal _ -> true | _ -> false);
+    (* CHECK: P_normal n when n>0 *)
+    state <- P_pre_eof;
+    saved_lex_id
+  method is_open = is_open
+  method replacement_text : (string * bool) =
+    failwith "Pxp_entity.entity_section#replacement_text: not possible"
+  method xml_declaration = ent # xml_declaration
+  method set_debugging_mode = ent # set_debugging_mode
+  method full_name = ent # full_name
+  method next_token =
+    match state with
+      | P_bof ->
+	  state <- P_normal 0;
+	  Begin_entity
+      | P_normal n -> 
+	  let tok = ent # next_token in
+	  (* Notes:
+	   * - [tok = Begin_entity] can have two reasons: [ent] has produced
+	   *   [Begin_entity], or [ent] has just found an entity reference
+	   *   whose entity has been opened. Because the latter is possible
+	   *   we do not catch [Begin_entity] here.
+	   * - [tok = End_entity]: This token is always produced by [ent],
+	   *   and so we can signal an error 
+	   *)
+	  ( match tok with
+	      | (End_entity | Eof) ->
+		  raise(Error "Cannot end entity here")
+	      | _ ->
+		  tok
+	  )
+      | P_pre_eof -> 
+	  state <- P_eof; 
+	  End_entity
+      | P_eof -> 
+	  Eof
+  method next_ignored_token =
+    (* We can ignore End_entity and Eof because the caller already signals
+     * an error when the entity ends in an IGNORE section
+     *)
+    ent # next_ignored_token
+  method process_xmldecl (_:prolog_token list) = ()
+  method process_missing_xmldecl = ()
+  method ext_id = ent # ext_id
+  method notation = ent # notation
+end
 ;;
-      
+
+(* class entity_manager: has been moved to Pxp_entity_manager *)
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.17  2002/07/14 23:03:29  gerd
+ * 	New class entity_section.
+ *
  * Revision 1.16  2002/03/10 23:39:45  gerd
  * 	ext_id works also for external entities.
  *
