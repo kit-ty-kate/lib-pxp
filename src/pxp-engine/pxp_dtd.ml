@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.22 2003/01/21 00:19:18 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.23 2003/03/23 21:43:37 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -327,7 +327,7 @@ class dtd  the_warner init_encoding =
       end;
       Str_hashtbl.add pinstr name pi;
       if not (List.mem name pinstr_names) then
-	pinstr_names <- name :: pinstr_names;
+	pinstr_names <- pinstr_names @ [name];
 
 
     method element name =
@@ -1197,6 +1197,10 @@ end
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.23  2003/03/23 21:43:37  gerd
+ * 	Preserving the correct order of processing instructions
+ * (Blair Zajac)
+ *
  * Revision 1.22  2003/01/21 00:19:18  gerd
  * 	Support for resolver_id.
  *

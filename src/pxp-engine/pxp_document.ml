@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.30 2002/03/15 21:34:25 gerd Exp $
+(* $Id: pxp_document.ml,v 1.31 2003/03/23 21:43:37 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -919,7 +919,7 @@ class virtual [ 'ext ] pinstr_features =
 	with
 	    Not_found -> []
       in
-      pinstr <- StringMap.add name (pi :: old_list) pinstr;
+      pinstr <- StringMap.add name (old_list @ [pi]) pinstr;
 	
     method pinstr name =
       try
@@ -3755,6 +3755,10 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.31  2003/03/23 21:43:37  gerd
+ * 	Preserving the correct order of processing instructions
+ * (Blair Zajac)
+ *
  * Revision 1.30  2002/03/15 21:34:25  gerd
  * 	Fix: strip_whitespace traverses the subtree even for
  * xml:space=preserve because there might be an xml:space=default
