@@ -16,7 +16,7 @@ all:
 
 .PHONY: clean
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa test_canonxml
+	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa out.xml
 
 .PHONY: CLEAN
 CLEAN: clean
