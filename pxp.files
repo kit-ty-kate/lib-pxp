@@ -218,6 +218,7 @@ d rtests/canonxml/data_jclark_valid/not-sa/out
 p rtests/canonxml/data_jclark_valid/not-sa/out/.*\.xml
 d rtests/canonxml/data_jclark_valid/sa
 p rtests/canonxml/data_jclark_valid/sa/.*\.xml
+p rtests/canonxml/data_jclark_valid/sa/.*\.ent
 d rtests/canonxml/data_jclark_valid/sa/out
 p rtests/canonxml/data_jclark_valid/sa/out/.*\.xml
 #d rtests/canonxml/data_jclark_valid/sa-problems
@@ -243,7 +244,7 @@ d rtests/canonxml/data_valid/comments/out
 p rtests/canonxml/data_valid/comments/out/.*\.xml
 
 d rtests/canonxml/data_valid/conditional
-p rtests/canonxml/data_valid/conditional/.*\.xml
+p rtests/canonxml/data_valid/conditional/.*\.\(xml|ent\)
 f rtests/canonxml/data_valid/conditional/INDEX
 d rtests/canonxml/data_valid/conditional/out
 p rtests/canonxml/data_valid/conditional/out/.*\.xml
