@@ -13,8 +13,9 @@ opt:
 
 generate: pxp_wlex.ml
 
-pxp_wlex.ml: pxp_wlex.mll
-	wlex pxp_wlex.mll
+pxp_wlex.ml: pxp_wlex.mlw
+	cp pxp_wlex.mlw pxp_wlex.mll
+	(wlex pxp_wlex.mll; x=$$?; rm pxp_wlex.mll; exit $$x)
 
 depend: *.ml
 	ocamldep *.ml *.mli >depend

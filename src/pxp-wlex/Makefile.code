@@ -13,9 +13,6 @@ all: pxp_wlex.cma
 
 opt: pxp_wlex.cmxa
 
-pxp_wlex.ml: pxp_wlex.mll
-	wlex pxp_wlex.mll
-
 pxp_wlex.cma: $(OBJ) pxp_wlex_link.cmo
 	$(OCAMLC) -o pxp_wlex.cma -a $(OBJ)
 
