@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.29 2001/06/28 22:42:07 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.30 2001/06/29 14:44:35 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -446,17 +446,7 @@ class ['ext] parser_object
 	failwith("Encoding mismatch");
 
       (* --- Initialize 'elstack': Push the super-root on the stack. *)
-      let super_root = 
-	if config.enable_super_root_node then
-	  create_super_root_node spec dtd 
-	else
-	  (* because spec may not contain an exemplar for the super root: *)
-	  create_no_node spec dtd
-      in
-      (* Move the super root or the emulation to the stack: *)
-      stack_push (super_root, "", (self :> entity_id)) elstack;
-
-
+      (* (This is now done later, in the contents_start rule) *)
 
       (********* Here the method "parse" begins. The grammar below is
        *         transformed to a local function of this method
@@ -1687,7 +1677,19 @@ contents_start():
    * object only back via a global variable). The only solution is to
    * modify the object that has been passed to the parsing function directly.
    */
-  $ {{ dtd <- transform_dtd dtd; }}
+  $ {{ dtd <- transform_dtd dtd; 
+       
+       (* Initialize the element stack: *)
+       let super_root = 
+	 if config.enable_super_root_node then
+	   create_super_root_node spec dtd 
+	 else
+	   (* because spec may not contain an exemplar for the super root: *)
+	   create_no_node spec dtd
+       in
+       (* Move the super root or the emulation to the stack: *)
+       stack_push (super_root, "", (self :> entity_id)) elstack;
+     }}
   start_tag() content()*
     {{ () }}
 
@@ -2573,6 +2575,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.30  2001/06/29 14:44:35  gerd
+ * 	Fixed: ~transform_dtd works now if enable_super_root
+ *
  * Revision 1.29  2001/06/28 22:42:07  gerd
  * 	Fixed minor problems:
  * 	- Comments must be contained in one entity
