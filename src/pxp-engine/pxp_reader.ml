@@ -818,7 +818,7 @@ class resolve_as_file
 	(* May raise Sys_error *)
 		
       with
-	| Malformed_code as e ->
+	| Netconversion.Malformed_code as e ->
 	    raise (Not_resolvable e)
 	| Sys_error _ as e ->
 	    raise (Not_resolvable e)
