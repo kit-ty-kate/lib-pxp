@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.7 2000/08/17 00:33:02 gerd Exp $
+(* $Id: generator.ml,v 1.8 2001/06/14 13:01:02 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -807,7 +807,7 @@ let rec next_token context lexbuf =
 ;;
 
 
-let parse_and_generate ch =
+let parse_and_generate file_name ch out =
   let b = Buffer.create 20000 in
 
   let rec find_sep context lexbuf =
@@ -856,7 +856,6 @@ let parse_and_generate ch =
   (* First read until '%%' *)
   let lexbuf = Lexing.from_channel ch in
   let context = { old_line = 0; old_column = 0; line = 1; column = 0 } in
-  let file_name = "stdin" in
   try
     output_code_location b file_name ("", 1, 0);
     find_sep context lexbuf;
@@ -868,25 +867,65 @@ let parse_and_generate ch =
     output_code_location b file_name ("", context.line, context.column);
     find_rest context lexbuf;
     (* Output everything: *)
-    print_string (Buffer.contents b)
+    output_string out (Buffer.contents b)
   with
       any ->
 	Printf.eprintf 
-	  "Error at line %d column %d: %s\n"
+	  "Error at line %d column %d: "
 	  context.old_line
-	  context.old_column
-	  (Printexc.to_string any);
-	exit 1
+	  context.old_column;
+	  raise any
 ;;
 
 
-parse_and_generate stdin;;
-exit 0;;
+let main() =
+  let in_filename = ref "" in
+  Arg.parse
+      []
+      (fun s -> in_filename := s)
+      "usage: m2parsergen filename.m2y";
+  if !in_filename = "" then
+    failwith "No input file.";
+
+  let in_file = open_in !in_filename in
+  let out_filename = (Filename.chop_extension !in_filename) ^ ".ml" in
+  let out_file = open_out out_filename in
+
+  ( try 
+      parse_and_generate !in_filename in_file out_file
+    with
+	any ->
+	  close_in in_file;
+	  close_out out_file;
+	  Sys.remove out_filename;
+	  raise any
+  );
+
+  close_in in_file;
+  close_out out_file
+;;
+
+try 
+  main()
+with
+    Failure e ->
+      prerr_endline e;
+      exit 1
+  | Sys_error e ->
+      prerr_endline e;
+      exit 1
+  | any ->
+      prerr_endline (Printexc.to_string any);
+      exit 1
+;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.8  2001/06/14 13:01:02  gerd
+ * 	Parsing of arguments
+ *
  * Revision 1.7  2000/08/17 00:33:02  gerd
  * 	Bugfix: tok* and tok? work now if tok is an untyped token
  * without label.
