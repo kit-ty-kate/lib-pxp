@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.3 2000/09/21 21:28:16 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.4 2000/10/01 19:47:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -167,10 +167,53 @@ type lexer_set =
       scan_for_crlf        : Lexing.lexbuf -> token;
     }
 
+
+let fast_lexing_from_string s =
+  (* avoids copying s *)
+  { Lexing.refill_buff = (fun lexbuf -> lexbuf.Lexing.lex_eof_reached <- true);
+    Lexing.lex_buffer = s;   (* instead of s ^ "" *)
+    Lexing.lex_buffer_len = String.length s;
+    Lexing.lex_abs_pos = 0;
+    Lexing.lex_start_pos = 0;
+    Lexing.lex_curr_pos = 0;
+    Lexing.lex_last_pos = 0;
+    Lexing.lex_last_action = 0;
+    Lexing.lex_eof_reached = true }
+;;
+
+let reuse_lexing_from_string lexbuf s =
+  (* uses lexbuf again for another string (avoids memory allocation) *)
+  lexbuf.Lexing.lex_buffer <- s;
+  lexbuf.Lexing.lex_buffer_len <- String.length s;
+  lexbuf.Lexing.lex_abs_pos <- 0;
+  lexbuf.Lexing.lex_start_pos <- 0;
+  lexbuf.Lexing.lex_curr_pos <- 0;
+  lexbuf.Lexing.lex_last_pos <- 0;
+  lexbuf.Lexing.lex_last_action <- 0;
+  lexbuf.Lexing.lex_eof_reached <- true
+;;
+
+
+let sub_lexeme lexbuf k l =
+  (* = String.sub (Lexing.lexeme lexbuf) k l *)
+  let lexeme_len = lexbuf.Lexing.lex_curr_pos - lexbuf.Lexing.lex_start_pos in
+  if (k < 0 || k > lexeme_len || l < 0 || k+l > lexeme_len) then
+    invalid_arg "sub_lexeme";
+  let s = String.create l in
+  String.unsafe_blit 
+    lexbuf.Lexing.lex_buffer (lexbuf.Lexing.lex_start_pos + k) s 0 l;
+  s
+;;
+
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.4  2000/10/01 19:47:53  gerd
+ * 	New functions: sub_lexeme, fast_lexing_from_string,
+ * reuse_lexing_from_string.
+ *
  * Revision 1.3  2000/09/21 21:28:16  gerd
  * 	New token IgnoreLineEnd: simplifies line counting, and
  * corrects a bug.

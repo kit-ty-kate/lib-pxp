@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.mli,v 1.3 2000/09/21 21:28:16 gerd Exp $
+(* $Id: pxp_lexer_types.mli,v 1.4 2000/10/01 19:47:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -111,11 +111,31 @@ type lexer_set =
 (* lexer_set: Every internal encoding has its own set of lexer functions *)
 
 
+(* And here some functions improving the Lexing module of the stdlib: *)
+
+val fast_lexing_from_string : string -> Lexing.lexbuf
+  (* Similar to Lexing.from_string, but does not copy the passed string
+   * intialially
+   *)
+
+val reuse_lexing_from_string : Lexing.lexbuf -> string -> unit
+  (* lexbuf: a buffer from a previous Lexing.from_string 
+   * (or fast_lexing_from_string).
+   * Modifies lexbuf such that the lexer starts again with the passed string
+   *)
+
+val sub_lexeme : Lexing.lexbuf -> int -> int -> string
+  (* Same as String.sub (Lexing.lexeme lexbuf) k l *)
+
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lexer_types.mli,v $
+ * Revision 1.4  2000/10/01 19:47:53  gerd
+ * 	New functions: sub_lexeme, fast_lexing_from_string,
+ * reuse_lexing_from_string.
+ *
  * Revision 1.3  2000/09/21 21:28:16  gerd
  * 	New token IgnoreLineEnd: simplifies line counting, and
  * corrects a bug.
