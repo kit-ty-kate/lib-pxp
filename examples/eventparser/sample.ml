@@ -1,4 +1,4 @@
-(* $Id: sample.ml,v 1.1 2002/07/14 23:02:51 gerd Exp $
+(* $Id: sample.ml,v 1.2 2002/08/03 17:40:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -11,7 +11,9 @@
 
 open Pxp_yacc
 open Pxp_lexer_types
-open Number
+open Pxp_types
+open Expr
+open Exprlex
 open Printf
 
 
@@ -56,10 +58,12 @@ let parse s =
 
 
 (* curly_parse: demonstrates how to use escape_contents. The character
- * { escapes from normal parsing and calls [escape].
- * Try: curly_parse "<a>{123}</a>"
- *      curly_parse "<a>{{123}}</a>"
- *      curly_parse "<a>{123 </a>}</a>"
+ * { escapes from normal parsing and calls [escape]. The arithmetic
+ * expression inside { ... } is evaluated, and the result is taken 
+ * as the text content.
+ * Try: curly_parse "<a>{123 + 5}</a>"
+ *      curly_parse "<a>{{123 + 5}}</a>"
+ *      curly_parse "<a>{123 + 5</a>}</a>"
  *)
 
 let inc_col (l,c) = (l,c+1);;
@@ -68,33 +72,48 @@ let add_col n (l,c) = (l,c+n);;
 
 
 let curly_parse s =
-  let escape tok mng =
+  let parse_expr mng =
+    (* We get now the current lexical buffer of PXP, and use it for
+     * our own parsing. In particular, we call Expr.topexpr
+     * to parse the arithmetic expression. While parsing,
+     * we track the current line and column (function [scan]).
+     *)
+    let line_col = ref (mng # current_line_column) in
+    (* Note: current_line_column returns the position of the beginning of
+     * the token that has been parsed last. The last token was "{" (Lcurly).
+     * So we must add 1 to this position to get the position of the 
+     * beginning of the next token.
+     *)
+    line_col := inc_col !line_col;
+    let rec scan buf =
+      match scan_expr buf with
+	  Newline -> 
+	    line_col := inc_line !line_col; 
+	    scan buf
+	| Space ->
+	    let n = Lexing.lexeme_end buf - Lexing.lexeme_start buf in
+	    line_col := add_col n !line_col;
+	    scan buf
+	| tok -> 
+	    let n = Lexing.lexeme_end buf - Lexing.lexeme_start buf in
+	    line_col := add_col n !line_col;
+	    tok
+    in
+    let lexbuf = mng # current_lexbuf in
+    let value = topexpr scan lexbuf in
+    printf "Result of expression: %d\n" value;
+    mng # update_line_column !line_col;
+    string_of_int value
+  in
+
+  let escape_contents tok mng =
+    (* This function is called when "{", "{{", "}", or "}}" are found in
+     * character node context.
+     *)
     match tok with
 	Lcurly ->
 	  (* "{" found: *)
-	  (* We get now the current lexical buffer of PXP, and use it for
-	   * our own parsing. In particular, we call Number.scan_number
-	   * until the token Stop (corresponding to "}") is found.
-	   * Furthermore, we track the current line and column.
-	   *)
-	  let lexbuf = mng # current_lexbuf in
-	  let line_col = ref (mng # current_line_column) in
-	  line_col := inc_col !line_col;    (* for the Lcurly token itself *)
-	  let t = ref Space in
-	  while !t <> Stop do
-	    t := scan_number lexbuf;
-	    let n = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
-	    line_col := add_col n !line_col;
-	    match !t with
-		Number k -> printf "Number %d\n" k
-	      | Space    -> printf "Space\n";
-	      | Newline  -> printf "Newline\n";   
-		            line_col := inc_line !line_col
-	      | Stop     -> printf "Stop\n";
-	      | Other    -> printf "Other\n"
-	  done;
-	  mng # update_line_column !line_col;
-	  ""
+	  parse_expr mng
       | LLcurly -> 
 	  (* "{{" found: map to "{" *)
 	  "{"
@@ -106,7 +125,32 @@ let curly_parse s =
 	  "}"
       | _ -> assert false
   in
-  let config = { default_config with escape_contents = Some escape } in
+
+  let escape_attributes tok mng =
+    (* This function is called when "{", "{{", "}", or "}}" are found in
+     * attribute values.
+     *)
+    match tok with
+	Lcurly ->
+	  (* "{" found: *)
+	  parse_expr mng
+      | LLcurly ->
+	  (* "{{" found: *)
+	  "{"
+      | Rcurly ->
+	  (* "}" found: *)
+	  failwith "Single brace } not allowed"
+      | RRcurly ->
+	  (* "}}" found: *)
+	  "}"
+      | _ ->
+	  assert false
+  in
+
+  let config = { default_config with 
+		   escape_contents = Some escape_contents;
+		   escape_attributes = Some escape_attributes;
+	       } in
   process_entity
     config
     Entry_document
@@ -118,7 +162,8 @@ let curly_parse s =
 
 (* rec_curly_parse: Here, escape_contents calls the XML parser recursively,
  * i.e. you can write XML documents inside curly braces, like in
- * rec_curly_parse "<A> { <B> x </B> } </A>"
+ * rec_curly_parse "<A> { <B> x </B> } </A>" or
+ * rec_curly_parse "<A att='{ <B> x </B> }'>y</A>"
  *
  * This is currently very experimental!
  *)
@@ -128,6 +173,7 @@ class any_entity_id = object end ;;
 
 let rec_curly_parse s =
   let ent_id_guard = new any_entity_id in
+  let base_config = { default_config with debugging_mode = true } in
 
   let rec escape ent_id tok mng =
     (* ent_id: is the entity ID containing the last Lcurly, or ent_id_guard
@@ -148,7 +194,10 @@ let rec_curly_parse s =
 	  let sub_ent = new Pxp_entity.entity_section current_ent in
 	  let sub_ent_id = (sub_ent :> entity_id) in
 	  let sub_config =
-	    { default_config with escape_contents = Some (escape sub_ent_id) }
+	    { base_config with
+		escape_contents = Some (escape sub_ent_id) ;
+		escape_attributes = Some (escape sub_ent_id) ;
+	    }
 	  in
 	  (* Pushing sub_ent makes it the top-level entity: *)
 	  mng # push_entity sub_ent;  
@@ -188,7 +237,10 @@ let rec_curly_parse s =
       | _ -> assert false
   in
   let config = 
-    { default_config with escape_contents = Some (escape ent_id_guard) } in
+    { base_config with 
+	escape_contents = Some (escape ent_id_guard);
+	escape_attributes = Some (escape ent_id_guard);
+    } in
 
   process_entity
     config
@@ -202,6 +254,9 @@ let rec_curly_parse s =
  * History:
  * 
  * $Log: sample.ml,v $
+ * Revision 1.2  2002/08/03 17:40:19  gerd
+ * 	Support for curly braces in attribute values.
+ *
  * Revision 1.1  2002/07/14 23:02:51  gerd
  * 	Initial revision.
  *
