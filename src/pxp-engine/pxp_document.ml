@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.22 2001/06/08 01:15:46 gerd Exp $
+(* $Id: pxp_document.ml,v 1.23 2001/06/09 22:33:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -135,6 +135,7 @@ class type [ 'ext ] node =
 			   (string * att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
+    method dump : Format.formatter -> unit
   end
 
 and ['ext] namespace_info =
@@ -603,6 +604,7 @@ class virtual ['ext] node_impl an_ext =
                                          dtd -> node_type -> unit
 
 
+    method virtual dump : Format.formatter -> unit
 
   end
 ;;
@@ -611,6 +613,39 @@ class virtual ['ext] node_impl an_ext =
 (**********************************************************************)
 
 let no_position = ("?", 0, 0) ;;
+
+let format_att_value fmt v =
+  match v with
+      Implied_value -> Format.pp_print_string fmt "Implied_value"
+    | Value s -> Format.pp_print_string fmt ("Value \"" ^ String.escaped s ^ "\"")
+    | Valuelist l ->
+	Format.pp_print_string fmt "Valuelist [";
+	Format.pp_print_string fmt (String.concat "; " 
+				      (List.map 
+					 (fun s -> 
+					    "\"" ^ String.escaped s ^ "\""
+					 )
+					 l
+				      )
+				   );
+	Format.pp_print_string fmt "]";
+;;
+
+let format_pinstr fmt pinstr =
+  match pinstr with
+      None -> ()
+    | Some pl ->
+	Hashtbl.iter
+	  (fun _ pi ->
+	     Format.pp_print_cut fmt ();
+	     Format.pp_print_string fmt "+ <?";
+	     Format.pp_print_string fmt (pi # target);
+	     Format.pp_print_string fmt " ";
+	     Format.pp_print_string fmt (pi # value);
+	     Format.pp_print_string fmt "?>"
+	  )
+	  pl
+;;
 
 
 class ['ext] data_impl an_ext : ['ext] node =
@@ -686,6 +721,14 @@ class ['ext] data_impl an_ext : ['ext] node =
     method internal_delete _ =           assert false
     method internal_init _ _ _ _ _ _ _ = assert false
     method internal_init_other _ _ _ =   assert false
+
+    method dump fmt =
+      Format.pp_open_hbox fmt ();
+      Format.pp_print_string fmt "* T_data \"";
+      Format.pp_print_string fmt (String.escaped content);
+      Format.pp_print_string fmt "\"";
+      Format.pp_close_box fmt ();
+
   end
 ;;
 
@@ -805,6 +848,14 @@ class ['ext] attribute_impl ~element ~name value dtd =
 	   Value s -> s
 	 | Valuelist l -> String.concat " " l
 	 | Implied_value -> raise Not_found
+
+    method dump fmt =
+      Format.pp_open_hbox fmt ();
+      Format.pp_print_string fmt "+ T_attribute ";
+      Format.pp_print_string fmt att_name;
+      Format.pp_print_string fmt "=";
+      format_att_value fmt att_value;
+      Format.pp_close_box fmt ();
 
     (* Senseless methods: *)
 
@@ -1017,6 +1068,12 @@ let rec att_remove_nodes l =
 ;;
 
 
+let att_have_nodes l =
+  match l with
+      Att_with_node (_,_,_,_) -> true
+    | _ -> false
+;;
+
 
 let list_split n l =
   (* Returns l1, l2 with l = List.rev l1 @ l2 and length l1 = n *)
@@ -1061,6 +1118,51 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
       val mutable pinstr = (None : (string,proc_instruction) Hashtbl.t option)
 
       val mutable position = no_position
+
+      method dump fmt =
+	Format.pp_open_vbox fmt 2;
+	( match ntype with
+	      T_none -> 
+		Format.pp_print_string fmt "* T_none";
+	    | T_element n -> 
+		Format.pp_print_string fmt "* T_element \"";
+		Format.pp_print_string fmt n;
+		Format.pp_print_string fmt "\"";
+	    | T_comment ->
+		Format.pp_print_string fmt "* T_comment";
+	    | T_pinstr pi ->
+		Format.pp_print_string fmt "* T_pinstr \"";
+		Format.pp_print_string fmt pi;
+		Format.pp_print_string fmt "\"";
+	    | T_super_root ->
+		Format.pp_print_string fmt "* T_super_root";
+	    | _ ->
+		assert false
+	);
+	att_iter
+	  (fun n v ->
+	     Format.pp_print_cut fmt ();
+	     Format.pp_print_string fmt n;
+	     Format.pp_print_string fmt "=";
+	     format_att_value fmt v;
+	  )
+	  attributes;
+	if att_have_nodes attributes then begin
+	  List.iter
+	    (fun n ->
+	       Format.pp_print_cut fmt ();
+	       n # dump fmt;
+	    )
+	    (att_return_nodes attributes);
+	end;
+	format_pinstr fmt pinstr;
+	List.iter
+	  (fun n ->
+	     Format.pp_print_cut fmt ();
+	     n # dump fmt;
+	  )
+	  (List.rev rev_nodes);
+	Format.pp_close_box fmt (); 
 
       method private set_flag which value =
 	flags <- (flags land (lnot which)) lor
@@ -2381,8 +2483,6 @@ class [ 'ext ] namespace_element_impl an_ext =
 	    normprefix <- "";
 	    localname  <- new_name
 
-    method internal_init_other new_pos new_dtd new_ntype =
-      method_na "internal_init_other"
 
     method private get_nsdecls prefixes =
       (* This method modifies the behaviour of 'write'. In 'prefixes' the
@@ -2491,9 +2591,18 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
 
      method node_type = T_namespace srcprefix
 
-     method data = self # namespace_uri
+     method data = 
+       (self # namespace_manager) # get_primary_uri normprefix
 
-     method normprefix = normprefix
+     method normprefix = 
+       (* This is a hack to ensure whenever there is no srcprefix we will
+	* not have a normprefix, either.
+	* However, there may be a namespace URI
+	*)
+       if srcprefix = "" then
+	 ""
+       else
+	 normprefix
 
     method namespace_uri = 
       (* XPath requires this to be null: *)
@@ -2501,6 +2610,25 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
 
     method namespace_manager =
       self # dtd # namespace_manager
+
+    method dump fmt =
+      Format.pp_open_vbox fmt 2;
+      Format.pp_print_string fmt "+ T_namespace";
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "normprefix=";
+      Format.pp_print_string fmt (self # normprefix);
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "srcprefix=";
+      Format.pp_print_string fmt srcprefix;
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "uri=";
+      ( try
+	  Format.pp_print_string fmt (self # data);
+	with
+	    Not_found ->
+	      Format.pp_print_string fmt "<Not found>"
+      );
+      Format.pp_close_box fmt ()
 
     (* Senseless methods: *)
 
@@ -2593,7 +2721,6 @@ object
 
   method srcprefix = srcprefix
 
-  (* TODO: check the following algorithm *)
   method declaration =
     match declaration with
 	Some d -> d
@@ -2602,13 +2729,20 @@ object
 	  let done_srcprefixes = ref [] in
 	  let dtd = parent # dtd in
 	  let pos = ref 0 in
+	  (* Note: The first pair ("!", s) contains the current default
+	   * namespace. if s = "" there is no such default; otherwise,
+	   * s is the normprefix of the default.
+	   *)
 	  List.iter
 	    (fun (srcprefix, normprefix) -> 
 	       if not (List.mem srcprefix !done_srcprefixes) then begin
-		 let s = if srcprefix = "!" then "" else srcprefix in
-		 let nsnode = new namespace_impl s normprefix dtd in
-		 nsnode # internal_adopt (Some parent) !pos;
-		 d := nsnode :: !d;
+		 let srcprefix' = 
+		   if srcprefix = "!" then "" else srcprefix in
+		 if normprefix <> "" then begin
+		   let nsnode = new namespace_impl srcprefix' normprefix dtd in
+		   nsnode # internal_adopt (Some parent) !pos;
+		   d := nsnode :: !d;
+		 end;
 		 done_srcprefixes := srcprefix :: !done_srcprefixes;
 	       end
 	    )
@@ -3391,7 +3525,29 @@ class ['ext] document the_warner =
       r # write os enc;
       wms "\n";
 
+    method dump fmt =
+      Format.pp_open_vbox fmt 2;
+      Format.pp_print_string fmt "* document";
+      format_pinstr fmt (Some (Lazy.force pinstr));
+      (match root with
+	   None -> ()
+	 | Some r ->
+	     Format.pp_print_cut fmt ();
+	     r # dump fmt
+      );
+      Format.pp_close_box fmt ();
+
+
   end
+;;
+
+let print_node (n : 'ext node) =
+  n # dump (Format.std_formatter)
+;;
+
+
+let print_doc (n : 'ext document) =
+  n # dump (Format.std_formatter)
 ;;
 
 
@@ -3399,6 +3555,11 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.23  2001/06/09 22:33:14  gerd
+ * 	Added 'dump' methods to 'node' and 'document'. Also print_node,
+ * print_doc.
+ * 	Fixed namespace_info.
+ *
  * Revision 1.22  2001/06/08 01:15:46  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions

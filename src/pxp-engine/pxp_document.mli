@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.17 2001/06/08 01:15:46 gerd Exp $
+(* $Id: pxp_document.mli,v 1.18 2001/06/09 22:33:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -763,6 +763,9 @@ class type [ 'ext ] node =
 			   (string * Pxp_types.att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
+
+    method dump : Format.formatter -> unit
+
   end
 
 and ['ext] namespace_info =
@@ -780,7 +783,7 @@ and ['ext] namespace_info =
        *   namespace # node_type = T_namespace "srcprefix"
        * meaning that the srcprefix is declared to correspond to the
        * namespace URI
-       *   namespace # namespace_uri.
+       *   namespace # data.
        * This list always declares the prefix "xml". If there is a default
        * namespace, it is declared for the prefix "".
        *)
@@ -1351,14 +1354,30 @@ class [ 'ext ] document :
        * If a DTD is present, the DTD is included into the internal subset.
        *)
 
+    method dump : Format.formatter -> unit
+
   end
 ;;
+
+
+(* Printers for toploop: *)
+
+val print_node :
+    'ext node -> unit ;;
+
+val print_doc :
+    'ext document -> unit ;;
 
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.18  2001/06/09 22:33:14  gerd
+ * 	Added 'dump' methods to 'node' and 'document'. Also print_node,
+ * print_doc.
+ * 	Fixed namespace_info.
+ *
  * Revision 1.17  2001/06/08 01:15:46  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions
