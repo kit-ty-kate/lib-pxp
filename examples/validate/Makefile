@@ -22,7 +22,7 @@ pxpvalidate.1: pxpvalidate.pod
 	pod2man --section=1 --center "www.ocaml-programming.de" --release 'PXP 1.1 tools' --lax pxpvalidate.pod >pxpvalidate.1
 
 releasebyte:
-	(cd ..; tar czf pxpvalidate-1.1.tar.gz pxpvalidate/{INSTALL,LICENSE,Makefile,pxpvalidate.1,pxpvalidate.byte,setup.sh,validate.ml})
+	(cd ..; tar czf pxpvalidate-1.1.1.tar.gz pxpvalidate/{INSTALL,LICENSE,Makefile,pxpvalidate.1,pxpvalidate.byte,setup.sh,validate.ml})
 
 #----------------------------------------------------------------------
 .PHONY: all
