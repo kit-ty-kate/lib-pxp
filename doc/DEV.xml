@@ -51,6 +51,13 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>XXX:</em>Addition of ulex lexing.</p>
+	<p>Fix in Pxp_reader.combine.</p>
+	<p>Revised namespace handling: There are now namespace_scope
+	  objects keeping the scoping structure of the namespaces.
+	  The namespace_info stuff has been removed.</p>
+      </li>
+
       <li><p><em>1.1.94.2:</em> Again fixes for the combination of
 3.07/wlex</p>
       </li>
