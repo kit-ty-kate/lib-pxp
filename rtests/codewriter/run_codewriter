@@ -8,3 +8,6 @@ echo "*** marshal_simple"
 
 echo "*** marshal_namespace"
 ./marshal_namespace
+
+echo "*** marshal_recode"
+./marshal_recode
