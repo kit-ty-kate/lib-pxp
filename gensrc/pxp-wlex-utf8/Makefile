@@ -29,6 +29,7 @@ gen_done: $(INPUT)/*.def $(INPUT)/*.src
 		-lexsrc "$(INPUT)/lex.src" \
 		-linksrc "$(INPUT)/link_wlex.src" \
 		-encoding "$(ENC)" \
+		-outformat wlex \
 		-outlexprefix "pxp_wlex_$(ENC)" \
 		-outlinkprefix "pxp_wlex_link_$(ENC)"
 	for mll in *.mll; do echo "Doing $$mll:"; $(WLEX) $$mll; done
@@ -41,7 +42,7 @@ CLEAN: clean
 
 # distclean is not clean, because the distribution contains the .ml files
 # and gen_done
-distclean: 
+distclean:
 	rm -f $(CLEAN_LIST) META
 
 install:
