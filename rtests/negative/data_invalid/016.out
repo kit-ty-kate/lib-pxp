@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/016.xml", at line 7, position 22:
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/016.xml", at line 7, position 22:
 ERROR (Validity constraint): Attribute `idrefs' is lexically malformed

@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# $Id: run_negative,v 1.2 2000/05/01 16:23:39 gerd Exp $
+# $Id: run_negative,v 1.3 2001/06/29 11:17:24 gerd Exp $
 
 
 t=./test_negative
@@ -32,6 +32,13 @@ check_test () {
 	    echo Test $input OK
 	else
 	    echo Test $input FAILED!!!
+	    if [ $verbose -gt 0 ]; then
+		echo "=== ACTUAL OUTPUT ==="
+		cat current.out
+		echo "=== EXPECTED OUTPUT ==="
+		cat "$output"
+		echo "#####################################################"
+	    fi
 	fi
     else
 	echo Test $input still uninitialized
@@ -66,7 +73,7 @@ for_directory () {
 
 usage () {
     cat <<EOF >&2
-usage: $0 [ -init -wf ] file ... dir ...
+usage: $0 [ -init -wf -verbose ] file ... dir ...
 EOF
     exit 1
 }
@@ -74,6 +81,7 @@ EOF
 
 action="check_test"
 options=""
+verbose=0
 while true; do
     case "x$1" in
 	x-init)
@@ -82,6 +90,10 @@ while true; do
 	    ;;
 	x-wf)
 	    options="$options -wf"
+	    shift
+	    ;;
+        x-verbose)
+	    verbose=1
 	    shift
 	    ;;
 	x-*)
@@ -106,6 +118,9 @@ fi
 
 # ======================================================================
 # $Log: run_negative,v $
+# Revision 1.3  2001/06/29 11:17:24  gerd
+# 	Updated for PXP 1.1
+#
 # Revision 1.2  2000/05/01 16:23:39  gerd
 # 	Added data_invalid.
 #

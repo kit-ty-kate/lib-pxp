@@ -1,2 +1,3 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/ext-sa/001.xml", at line 3, position 1:
-ERROR (Validity constraint): The root element is not declared
+In entity e = SYSTEM "001.ent", at line 1, position 0:
+Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/ext-sa/001.xml", line 4, position 5:
+ERROR (Validity constraint): Recursive reference to entity `e'

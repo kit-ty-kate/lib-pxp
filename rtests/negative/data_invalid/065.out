@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/065.xml", at line 13, position 24:
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/065.xml", at line 13, position 24:
 ERROR (Validity constraint): Reference to entity `e3' violates standalone declaration

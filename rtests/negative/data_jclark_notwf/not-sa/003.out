@@ -1,3 +1,3 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/not-sa/003.xml", at line 1, position 30:
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/not-sa/003.xml", at line 1, position 30:
 In entity [dtd] = SYSTEM "003.ent", at line 2, position 11:
 ERROR (Well-formedness constraint): Bad conditional section

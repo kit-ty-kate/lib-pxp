@@ -1,5 +1,5 @@
 In entity e3, at line 1, position 0:
 Called from entity e2, line 1, position 0:
 Called from entity e1, line 1, position 0:
-Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/071.xml", line 6, position 5:
+Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/071.xml", line 6, position 5:
 ERROR (Validity constraint): Recursive reference to entity `e1'

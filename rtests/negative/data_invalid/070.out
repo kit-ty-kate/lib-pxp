@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/070.xml", at line 19, position 32:
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/070.xml", at line 19, position 32:
 ERROR (Validity constraint): Element `outer3' violates standalone declaration because extra white space separates the sub elements

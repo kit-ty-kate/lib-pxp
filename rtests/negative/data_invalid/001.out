@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/001.xml", at line 5, position 3:
-ERROR (Validity constraint): The root element is `b' but is declared as `a
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/001.xml", at line 5, position 3:
+ERROR (Validity constraint): The root element is `b' but is declared as `a'

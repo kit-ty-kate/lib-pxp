@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/049.xml", at line 3, position 15:
-ERROR (Well-formedness constraint): End-tag does not match start-tag
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/049.xml", at line 3, position 15:
+ERROR (Well-formedness constraint): End tag `a' does not match start tag `doc' (was at line 1, position 0)

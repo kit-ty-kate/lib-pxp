@@ -1,3 +1,3 @@
 In entity e, at line 1, position 7:
-Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/090.xml", line 4, position 5:
+Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/090.xml", line 4, position 5:
 ERROR (Well-formedness constraint): Attribute value contains character '<' literally

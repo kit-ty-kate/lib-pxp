@@ -1,2 +1,2 @@
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/104.xml", at line 4, position 13:
-ERROR (Well-formedness constraint): End-tag not in the same entity as the start-tag
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_jclark_notwf/sa/104.xml", at line 4, position 13:
+ERROR (Well-formedness constraint): End tag `foo' not in the same entity as the start tag `foo'

@@ -1,4 +1,4 @@
 WARNING: More than one ATTLIST declaration for element type `el'
 WARNING: More than one ATTLIST declaration for element type `el'
-In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_invalid/068.xml", at line 19, position 23:
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/pxp/rtests/negative/data_invalid/068.xml", at line 19, position 23:
 ERROR (Validity constraint): Attribute `v3' of element type `el' violates standalone declaration
