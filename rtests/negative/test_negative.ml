@@ -1,4 +1,4 @@
-(* $Id: test_negative.ml,v 1.5 2000/07/14 14:20:11 gerd Exp $
+(* $Id: test_negative.ml,v 1.6 2000/07/14 14:57:12 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -18,10 +18,6 @@ class warner =
   object 
     method warn w =
       print_endline ("WARNING: " ^ w)
-    method print_warnings =
-      ""
-    method reset =
-      ()
   end
 ;;
 
@@ -84,6 +80,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_negative.ml,v $
+ * Revision 1.6  2000/07/14 14:57:12  gerd
+ * 	Updated: warner
+ *
  * Revision 1.5  2000/07/14 14:20:11  gerd
  * 	Updated because of PXP interface changes.
  *

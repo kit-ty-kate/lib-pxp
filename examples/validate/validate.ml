@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.8 2000/07/14 14:13:15 gerd Exp $
+(* $Id: validate.ml,v 1.9 2000/07/14 14:57:30 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -18,10 +18,6 @@ class warner =
   object 
     method warn w =
       print_endline ("WARNING: " ^ w)
-    method print_warnings =
-      ""
-    method reset =
-      ()
   end
 ;;
 
@@ -87,6 +83,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.9  2000/07/14 14:57:30  gerd
+ * 	Updated: warner
+ *
  * Revision 1.8  2000/07/14 14:13:15  gerd
  * 	Cosmetic changes.
  *
