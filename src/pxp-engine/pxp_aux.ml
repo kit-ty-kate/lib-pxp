@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.7 2000/09/17 00:10:59 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.8 2000/10/01 19:45:28 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,7 +12,17 @@
 open Pxp_types
 open Pxp_lexer_types
 open Pxp_lexers
+open Pxp_lib
 open Netconversion
+
+module HashedString = struct
+  type t = string
+  let equal (a:string) (b:string) = (a = b)
+  let hash = Hashtbl.hash 
+end;;
+
+module Str_hashtbl = Hashtbl.Make(HashedString);;
+
 
 let character enc warner k =
   assert (k>=0);
@@ -46,106 +56,132 @@ let check_name warner name =
 
 let tokens_of_content_string lexerset s =
   (* tokenizes general entities and character entities *)
-  let lexbuf = Lexing.from_string s in
+  let lexbuf = fast_lexing_from_string s in
   let rec next_token () =
     match lexerset.scan_content_string lexbuf with
-	Eof -> []
-      | tok -> tok :: next_token()
+	Eof        -> []
+      | CharData _ -> let tok = CharData (Lexing.lexeme lexbuf) in
+	              tok :: next_token()
+      | tok        -> tok :: next_token()
   in
   next_token()
 ;;
 
 
-let rec expand_attvalue_with_rec_check lexerset dtd s warner entities norm_crlf =
+exception Quick_exit;;
+
+let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities norm_crlf =
   (* recursively expands general entities and character entities;
    * checks "standalone" document declaration;
    * normalizes whitespace
+   *
+   * Exception: Quick_exit: the expanded value is equal to s
    *)
-  let lexbuf = Lexing.from_string s in
-  let rec expand () = (
-    match lexerset.scan_content_string lexbuf with
-	Eof -> []
-      | ERef n ->
-	  if List.mem n entities then
-	    raise(WF_error("Recursive reference to general entity `" ^ n ^ "'"));
-	  let en, extdecl = dtd # gen_entity n in
-	  if dtd # standalone_declaration && extdecl then
-	    raise(Validation_error("Reference to entity `" ^ n ^ 
-				   "' violates standalone declaration"));
-	  let rtext, rtext_contains_ext_refs = en # replacement_text in
-	  if rtext_contains_ext_refs then
-	    raise(Validation_error("Found reference to external entity in attribute value"));
-	  let l' = 
+  match lexerset.scan_content_string lexbuf with
+      Eof -> []
+    | ERef n ->
+	if List.mem n entities then
+	  raise(WF_error("Recursive reference to general entity `" ^ n ^ "'"));
+	let en, extdecl = dtd # gen_entity n in
+	if dtd # standalone_declaration && extdecl then
+	  raise(Validation_error("Reference to entity `" ^ n ^ 
+				 "' violates standalone declaration"));
+	let rtext, rtext_contains_ext_refs = en # replacement_text in
+	if rtext_contains_ext_refs then
+	  raise(Validation_error("Found reference to external entity in attribute value"));
+	let l' = 
+	  try
 	    expand_attvalue_with_rec_check 
-	      lexerset dtd rtext warner (n :: entities) false
+	      (fast_lexing_from_string rtext) 
+	      (String.length rtext)
+	      lexerset dtd warner (n :: entities) false
+	  with
+	      Quick_exit -> [rtext]
 	  in
-	  l' @ expand()
-      | CRef(-1) ->
-	  if norm_crlf then begin
-	    " " :: expand()
-	  end
-	  else begin
-	    "  " :: expand()
-	  end
-      | CRef n ->
-	  (character lexerset.lex_encoding warner n) :: expand()
-      | CharData "<" ->
+	  l' @ expand_attvalue_with_rec_check 
+	         lexbuf l lexerset dtd warner entities norm_crlf
+    | CRef(-1) ->
+	if norm_crlf then begin
+	  " " :: expand_attvalue_with_rec_check 
+	             lexbuf l lexerset dtd warner entities norm_crlf
+	end
+	else begin
+	  "  " :: expand_attvalue_with_rec_check
+ 	              lexbuf l lexerset dtd warner entities norm_crlf
+	end
+    | CRef n ->
+	(character lexerset.lex_encoding warner n) :: 
+	expand_attvalue_with_rec_check
+ 	    lexbuf l lexerset dtd warner entities norm_crlf
+    | CharData _  ->
+	if Lexing.lexeme_char lexbuf 0 = '<' then
 	  raise 
 	    (WF_error
-	       ("Attribute value contains character '<' literally"))
-      | CharData x  ->
-	  x :: expand()
-      | _ -> assert false
-  )
-  in
-  expand()
+	       ("Attribute value contains character '<' literally"));
+	if Lexing.lexeme_start lexbuf = 0 &&
+	   Lexing.lexeme_end lexbuf = l then
+	   raise Quick_exit
+	else
+	  let x = Lexing.lexeme lexbuf in
+	  x :: expand_attvalue_with_rec_check
+ 	           lexbuf l lexerset dtd warner entities norm_crlf
+    | _ -> assert false
 ;;
 
 
-let expand_attvalue lexerset dtd s warner norm_crlf =
+let expand_attvalue lexbuf lexerset dtd s warner norm_crlf =
   (* norm_crlf: whether the sequence CRLF is recognized as one character or
-   * not (i.e. two characters)
+   * not (i.e. two characters).
+   * lexbuf: must result from a previous Lexing.from_string
    *)
-  let l =
-    expand_attvalue_with_rec_check lexerset dtd s warner [] norm_crlf in
-  String.concat "" l
+  try
+    reuse_lexing_from_string lexbuf s;
+    let l =
+      expand_attvalue_with_rec_check 
+	lexbuf (String.length s) lexerset dtd warner [] norm_crlf in
+    String.concat "" l
+  with
+      Quick_exit ->
+	s
 ;;
 
 
-let count_lines s =
-  (* returns number of lines in s, number of columns of the last line *)
-  let l = String.length s in
+type linecount =
+    { mutable lines : int;
+      mutable columns : int;
+    }
+;;
 
-  let rec count n k no_cr no_lf =
-    let next_cr = 
-      if no_cr then
-	(-1)
-      else
-	try String.index_from s k '\013' with Not_found -> (-1) in
-    let next_lf = 
-      if no_lf then
-	(-1)
-      else
-	try String.index_from s k '\010' with Not_found -> (-1) in
-    if next_cr >= 0 & (next_lf < 0 or next_cr < next_lf) then begin
-      if next_cr+1 < l & s.[next_cr+1] = '\010' then
-	count (n+1) (next_cr+2) false (next_lf < 0)
-      else
-	count (n+1) (next_cr+1) false (next_lf < 0)
-    end
-    else if next_lf >= 0 then begin
-      count (n+1) (next_lf+1) (next_cr < 0) false
-    end
-    else
-      n, (l - k)
 
-  in
-  count 0 0 false false
+let rec count_lines_aux lc s n k =
+  let next_cr_or_lf = crlf_index_from s k in
+  if next_cr_or_lf >= 0 then begin
+    match s.[next_cr_or_lf] with
+	'\010' ->
+	  count_lines_aux lc s (n+1) (next_cr_or_lf+1)
+      | '\013' ->
+	  let l = String.length s in
+	  if (next_cr_or_lf+1 < l && s.[next_cr_or_lf+1] = '\010') then
+	    count_lines_aux lc s (n+1) (next_cr_or_lf+2)
+	  else
+	    count_lines_aux lc s (n+1) (next_cr_or_lf+1)
+      | _ ->
+	  assert false
+  end
+  else begin
+    lc.lines <- n;
+    lc.columns <- String.length s - k;
+  end
+;;
+
+let count_lines lc s =
+  (* modifies lc: number of lines in s, number of columns of the last line *)
+  count_lines_aux lc s 0 0
 ;;
 
 
 let tokens_of_xml_pi lexers s =
-  let lexbuf = Lexing.from_string (s ^ " ") in
+  let lexbuf = fast_lexing_from_string (s ^ " ") in
   let rec collect () =
     let t = lexers.scan_xml_pi lexbuf in
     match t with
@@ -256,7 +292,7 @@ let check_attribute_value_lexically lexerset x t v =
    * - t = A_enum _: v must match <nmtoken>
    * - t = A_cdata: not checked
    *)
-  let lexbuf = Lexing.from_string v in
+  let lexbuf = fast_lexing_from_string v in
   let rec get_name_list() =
     match lexerset.scan_name_string lexbuf with
 	Eof    -> []
@@ -298,7 +334,7 @@ let split_attribute_value lexerset v =
   (* splits 'v' into a list of names or nmtokens. The white space separating
    * the names/nmtokens in 'v' is suppressed and not returned.
    *)
-  let lexbuf = Lexing.from_string v in
+  let lexbuf = fast_lexing_from_string v in
   let rec get_name_list() =
     match lexerset.scan_name_string lexbuf with
 	Eof         -> []
@@ -312,7 +348,7 @@ let split_attribute_value lexerset v =
 
 
 let normalize_line_separators lexerset s =
-  let lexbuf = Lexing.from_string s in
+  let lexbuf = fast_lexing_from_string s in
   let rec get_string() =
     match lexerset.scan_for_crlf lexbuf with
 	Eof        -> ""
@@ -323,33 +359,8 @@ let normalize_line_separators lexerset s =
 ;;
 
 
-let value_of_attribute lexerset dtd n atype v =
-  (* The attribute with name 'n', type 'atype' and string value 'v' is
-   * decomposed, and the att_value is returned:
-   * - It is checked whether 'v' conforms to the lexical rules for attributes
-   *   of type 'atype'
-   * - If 'atype <> A_cdata', leading and trailing spaces are removed from 'v'.
-   * - If 'atype = A_notation d', it is checked if 'v' matches one of the
-   *   notation names contained in d.
-   * - If 'atype = A_enum d', it is checked whether 'v' matches one of the
-   *   tokens from d
-   * - If 'atype' refers to a "single-value" type, the value is retured as
-   *   Value u, where u is the normalized value. If 'atype' refers to a 
-   *   "list" type, the value if returned as Valuelist l, where l contains
-   *   the tokens.
-   *
-   * Note that this function does not implement all normalization rules.
-   * It is expected that the string passed as 'v' is already preprocessed;
-   * i.e. character and entity references are resolved, and the substitution
-   * of white space characters by space characters has already been performed.
-   * If these requirements are met, the value returned by this function
-   * will be perfectly normalized.
-   *
-   * Further checks:
-   * - ENTITY and ENTITIES values: It is checked whether there is an
-   *   unparsed general entity
-   * [ Other checks planned: ID, IDREF, IDREFS but not yet implemented ]
-   *)
+let value_of_attribute_aux lexerset dtd n atype v =
+  (* See value_of_attribute below. *)
 
   let lexical_error() =
     lazy (raise(Validation_error("Attribute `" ^ n ^ "' is lexically malformed"))) in
@@ -411,6 +422,45 @@ let value_of_attribute lexerset dtd n atype v =
 		  ("Attribute `" ^ n ^ 
 		   "' does not match one of the declared enumerator tokens"));
 	Value v'
+;;
+
+
+let value_of_attribute lexerset dtd n atype v =
+  (* The attribute with name 'n', type 'atype' and string value 'v' is
+   * decomposed, and the att_value is returned:
+   * - It is checked whether 'v' conforms to the lexical rules for attributes
+   *   of type 'atype'
+   * - If 'atype <> A_cdata', leading and trailing spaces are removed from 'v'.
+   * - If 'atype = A_notation d', it is checked if 'v' matches one of the
+   *   notation names contained in d.
+   * - If 'atype = A_enum d', it is checked whether 'v' matches one of the
+   *   tokens from d
+   * - If 'atype' refers to a "single-value" type, the value is retured as
+   *   Value u, where u is the normalized value. If 'atype' refers to a 
+   *   "list" type, the value if returned as Valuelist l, where l contains
+   *   the tokens.
+   *
+   * Note that this function does not implement all normalization rules.
+   * It is expected that the string passed as 'v' is already preprocessed;
+   * i.e. character and entity references are resolved, and the substitution
+   * of white space characters by space characters has already been performed.
+   * If these requirements are met, the value returned by this function
+   * will be perfectly normalized.
+   *
+   * Further checks:
+   * - ENTITY and ENTITIES values: It is checked whether there is an
+   *   unparsed general entity
+   * [ Other checks planned: ID, IDREF, IDREFS but not yet implemented ]
+   *)
+
+  if atype = A_cdata then
+    (* The most frequent case *)
+    Value v
+  else
+    value_of_attribute_aux lexerset dtd n atype v
+      (* Note that value_of_attribute_aux allocates memory for the local
+       * functions even if they are not called at all.
+       *)
 ;;
 
 
@@ -540,6 +590,10 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.8  2000/10/01 19:45:28  gerd
+ * 	New module: Str_hashtbl.
+ * 	Many optimizations, especially expand_attvalue and count_lines.
+ *
  * Revision 1.7  2000/09/17 00:10:59  gerd
  * 	Optimizations in expand_attvalue
  *
