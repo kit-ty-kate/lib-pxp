@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.mli,v 1.3 2003/06/22 14:49:08 gerd Exp $
+(* $Id: pxp_ev_parser.mli,v 1.4 2003/06/29 15:44:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -38,8 +38,10 @@ val process_entity :
       Pxp_entity_manager.entity_manager ->
       (event -> unit) ->
         unit
-  (* Parses a document or a document fragment, but do not validate
-   * it. Only checks on well-formedness are performed.
+  (* Parses a document or a document fragment. At least the well-formedness
+   * of the document is checked, but the flags of the [entry] argument
+   * may specify more.
+   *
    * While parsing, events are generated and the passed function is
    * called for every event. The parsed text is read from the
    * current entity of the entity manager. It is allowed that the
@@ -47,18 +49,26 @@ val process_entity :
    * 
    * The entry point to the parsing rules can be specified.
    * Notes to entry points:
-   * - Entry_document:
+   * - `Entry_document:
    *   The first generated event is always E_start_doc,
    *   it contains the whole DTD as object (no events are generated
    *   during DTD parsing, only the result is passed back). The
    *   events for the contents follow, terminated by E_end_doc and
    *   E_end_of_stream.
-   * - Entry_content:
+   * - `Entry_content:
    *   Only events for contents are generated. They are terminated
    *   by E_end_of_stream.
-   * - Entry_declaration:
+   * - `Entry_declaration:
    *   Currently not supported. (But see Pxp_dtd_parser for functions
    *   parsing DTDs.)
+   *
+   * The entry points have options, see [Pxp_types] for explanations.
+   *
+   * The generated events are not normalized with respect to:
+   * - Several E_char_data events may be generated for the same
+   *   character data section
+   * There are filter functions that apply normalization routines
+   * to the events, see below.
    *
    * Only the following config options have an effect:
    * - warner
@@ -174,9 +184,9 @@ val drop_ignorable_whitespace_filter : 'a filter
    *
    * This filter works only if the DTD found in the event stream
    * actually contains element declarations. This is usually enabled
-   * by including the `Extend_dtd_fully option to the [entry] passed
-   * to the [create_pull_parser] call. Furthermore, there must be
-   * an E_start_doc event.
+   * by including the `Extend_dtd_fully or `Val_mode_dtd options to 
+   * the [entry] passed to the [create_pull_parser] call. Furthermore, 
+   * there must be an E_start_doc event.
    *
    * This filter does not perform any other validation checks.
    *)
@@ -186,6 +196,9 @@ val drop_ignorable_whitespace_filter : 'a filter
  * History:
  * 
  * $Log: pxp_ev_parser.mli,v $
+ * Revision 1.4  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.3  2003/06/22 14:49:08  gerd
  * 	Added norm_cdata_filter, drop_ignorable_whitespace_filter
  *

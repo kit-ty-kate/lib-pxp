@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.21 2003/06/20 21:00:33 gerd Exp $
+(* $Id: pxp_types.mli,v 1.22 2003/06/29 15:44:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -590,14 +590,15 @@ val open_source :
 
 
 type entry =
-    [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
-    | `Entry_declarations of [ `Extend_dtd_fully ] list
+    [ `Entry_document     of [ `Val_mode_dtd | `Extend_dtd_fully | 
+			       `Parse_xml_decl ] list
+    | `Entry_declarations of [ `Val_mode_dtd | `Extend_dtd_fully ] list
     | `Entry_content      of [ `Dummy ] list
     | `Entry_expr         of [ `Dummy ] list
     ]
    (* Entry points for the parser (used to call [process_entity]:
     * - `Entry_document: The parser reads a complete document that
-    *   may have a DOCTYPE and a DTD.
+    *   must have a DOCTYPE and may have a DTD.
     * - `Entry_declarations: The parser reads the external subset
     *   of a DTD
     * - `Entry_content: The parser reads an entity containing contents,
@@ -611,12 +612,35 @@ type entry =
     *
     * The entry points have a list of flags. Note that `Dummy is
     * ignored and only present because O'Caml does not allow empty
-    * variants.
-    * - `Extend_dtd_fully: By default, only the <!ENTITY> declarations
-    *   are processed (because this is sufficient for well-formedness
-    *   parsing). This flag causes that all declarations are processed;
-    *   this does not validate the document, however, but is a necessary
-    *   step to do so.
+    * variants. 
+    * For `Entry_document, and `Entry_declarations, the flags determine
+    * the kind of DTD object that is generated. Without flags, the DTD
+    * object is configured for well-formedness mode:
+    *
+    * - Elements, attributes, and notations found in the XML text are not 
+    *   added to the DTD; entity declarations are added, however. Additionally,
+    *   the DTD is configured such that it does not complain about missing
+    *   elements, attributes, and notations (dtd#arbitrary_allowed).
+    *
+    * The flags affecting the DTD have the following meaning:
+    *
+    * - `Extend_dtd_fully: Elements, attributes, and notations are added
+    *    to the DTD. The DTD mode dtd#arbitrary_allowed is enabled. If you
+    *    validated the XML document later, this would mean that declared
+    *    elements, attributes, and notations would actually be validated, but
+    *    that non-declared objects would be handled like in well-formedness
+    *    mode. Of course, you must pass the parsed events to a validator
+    *    in order to validate them, this is not done implicitly.
+    *
+    * - `Val_mode_dtd: The DTD object is set up for validation, i.e. all
+    *    declarations are added to the DTD, and dtd#arbitrary_allowed is 
+    *    disabled. Furthermore, some validation checks are already done
+    *    for the DTD (e.g. whether the root element is declared).
+    *    Of course, you must pass the parsed events to a validator
+    *    in order to validate them, this is not done implicitly.
+    *
+    * There is another option regarding the XML declaration:
+    *
     * - `Parse_xml_decl: By default, the XML declaration
     *   <?xml version="1.0" encoding="..." standalone="..."?> is
     *   ignored except for the encoding attribute. This flags causes
@@ -691,6 +715,9 @@ type event =
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.22  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.21  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.

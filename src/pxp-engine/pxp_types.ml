@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.20 2003/06/20 21:00:33 gerd Exp $
+(* $Id: pxp_types.ml,v 1.21 2003/06/29 15:44:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -209,8 +209,9 @@ let open_source cfg src use_document_entity dtd =
 
 
 type entry =
-    [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
-    | `Entry_declarations of [ `Extend_dtd_fully ] list
+    [ `Entry_document     of [ `Val_mode_dtd | 
+			       `Extend_dtd_fully | `Parse_xml_decl ] list
+    | `Entry_declarations of [ `Val_mode_dtd | `Extend_dtd_fully ] list
     | `Entry_content      of [ `Dummy ] list
     | `Entry_expr         of [ `Dummy ] list
     ]
@@ -237,6 +238,9 @@ type event =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.21  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.20  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.

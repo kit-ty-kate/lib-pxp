@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd_parser.ml,v 1.3 2003/06/20 15:14:13 gerd Exp $
+(* $Id: pxp_dtd_parser.ml,v 1.4 2003/06/29 15:44:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -61,7 +61,7 @@ let parse_dtd_entity cfg src =
     ~gen_att_events:false true Declaration;
   begin try
     let context = make_context mgr in
-    pobj # parse context (`Entry_declarations [`Extend_dtd_fully ]);
+    pobj # parse context (`Entry_declarations [`Val_mode_dtd ]);
     if en # is_open then ignore(en # close_entity);
   with
     | Failure "Invalid UTF-8 stream" ->
@@ -94,7 +94,7 @@ let extract_dtd_from_document_entity cfg src =
   in
 
   let mng = create_entity_manager ~is_document:true cfg src in
-  let entry = `Entry_document [ `Extend_dtd_fully; `Parse_xml_decl ] in
+  let entry = `Entry_document [ `Val_mode_dtd; `Parse_xml_decl ] in
   let handle ev =
     match ev with
 	E_start_doc(_,_,dtd) -> raise(Return_DTD dtd)
@@ -119,6 +119,9 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_dtd_parser.ml,v $
+ * Revision 1.4  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.3  2003/06/20 15:14:13  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

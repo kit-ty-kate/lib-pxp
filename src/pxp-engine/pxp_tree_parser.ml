@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.4 2003/06/20 21:00:33 gerd Exp $
+(* $Id: pxp_tree_parser.ml,v 1.5 2003/06/29 15:44:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -697,23 +697,13 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
                    cfg0.recognize_standalone_declaration && (not p_wf)
             } in
   let dtd = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
-  if p_wf then begin
-    (* Instead of dtd # allow_arbitrary, because the processing instruction
-     * survives marshalling:
-     *)
-    dtd # add_pinstr
-      (new proc_instruction
-	 "pxp:dtd"
-	 "optional-element-and-notation-declarations"
-	 cfg.encoding);
-  end;
   ( match cfg.enable_namespace_processing with
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
   let doc = new document ?swarner:cfg.swarner cfg.warner cfg.encoding in
   let entry_flags =
-    (if p_wf then [] else [`Extend_dtd_fully]) @
+    (if p_wf then [] else [`Val_mode_dtd]) @
     [`Parse_xml_decl]
   in
   let pobj =
@@ -778,6 +768,9 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_tree_parser.ml,v $
+ * Revision 1.5  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.4  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.

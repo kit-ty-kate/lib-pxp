@@ -1,4 +1,4 @@
-(* $Id: pxp_core_parser.m2y,v 1.3 2003/06/20 21:00:33 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_core_parser.m2y,v 1.4 2003/06/29 15:44:30 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -362,13 +362,40 @@ class virtual core_parser
 	let extend_dtd =
 	  match start_symbol with
 	      `Entry_document flags ->
-		List.mem `Extend_dtd_fully flags
+		List.mem `Extend_dtd_fully flags || 
+		List.mem `Val_mode_dtd flags
 	    | `Entry_declarations flags ->
-		List.mem `Extend_dtd_fully flags
+		List.mem `Extend_dtd_fully flags ||
+		List.mem `Val_mode_dtd flags
 	    | `Entry_continuation st ->
 		st.cont_extend_dtd
-	    | _ -> false
+	    | _ -> 
+		false
 	in
+
+	( match start_symbol with
+	      `Entry_document flags ->
+		if not (List.mem `Val_mode_dtd flags) then
+		  (* Instead of dtd # allow_arbitrary, because the processing
+		   * instruction survives marshalling:
+		   *)
+		  dtd # add_pinstr
+		    (new proc_instruction
+		       "pxp:dtd"
+		       "optional-element-and-notation-declarations"
+		       config.encoding);
+		
+	    | `Entry_declarations flags ->
+		if not (List.mem `Val_mode_dtd flags) then
+		  dtd # add_pinstr
+		    (new proc_instruction
+		       "pxp:dtd"
+		       "optional-element-and-notation-declarations"
+		       config.encoding);
+	    | _ ->
+		()
+	);
+
 
         (* process_xmldecl:
 	 * Whether the XML declaration is parsed and the found XML version
@@ -2093,6 +2120,9 @@ end
  * History:
  * 
  * $Log: pxp_core_parser.m2y,v $
+ * Revision 1.4  2003/06/29 15:44:30  gerd
+ * 	New entry flag: `Val_mode_dtd
+ *
  * Revision 1.3  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.
