@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.3 2000/07/09 00:13:37 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.4 2000/07/14 13:56:49 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -263,6 +263,12 @@ and dtd_element : dtd -> string ->
        * attributes
        *)
 
+    method id_attribute_name : string option
+      (* Returns the name of the attribute with type ID, or None. *)
+
+    method idref_attribute_names : string list
+      (* Returns the names of the attributes with type IDREF or IDREFS. *)
+
     method add_attribute : string -> 
                            Pxp_types.att_type -> 
 			   Pxp_types.att_default -> 
@@ -339,6 +345,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.4  2000/07/14 13:56:49  gerd
+ * 	Added methods id_attribute_name and idref_attribute_names.
+ *
  * Revision 1.3  2000/07/09 00:13:37  gerd
  * 	Added methods gen_entity_names, par_entity_names.
  *

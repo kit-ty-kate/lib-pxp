@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.4 2000/07/09 00:13:37 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.5 2000/07/14 13:56:48 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -329,6 +329,9 @@ and dtd_element the_dtd the_name =
 	    ([] : (string * ((att_type * att_default) * bool)) list)
     val mutable attributes_validated = false
 
+    val mutable id_att_name = None
+    val mutable idref_att_names = []
+
     val mutable allow_arbitrary = false
 
     method name = name
@@ -375,6 +378,14 @@ and dtd_element the_dtd the_name =
 		    raise(Validation_error("Declaration of attribute `xml:space' does not conform to XML specification"))
 	      end
 	  | _ -> ()
+	end; 
+	begin match t with
+	    A_id ->
+	      id_att_name <- Some aname;
+	  | (A_idref | A_idrefs) ->
+	      idref_att_names <- aname :: idref_att_names
+	  | _ ->
+	      ()
 	end;
 	attributes <- (aname, ((t,d),extdecl)) :: attributes;
 	attributes_validated <- false;
@@ -426,6 +437,9 @@ and dtd_element the_dtd the_name =
 		[])
 	   attributes)
 
+    method id_attribute_name = id_att_name
+
+    method idref_attribute_names = idref_att_names
 
 
     method write_compact_as_latin1 os = 
@@ -777,6 +791,9 @@ and proc_instruction the_target the_value init_encoding =
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.5  2000/07/14 13:56:48  gerd
+ * 	Added methods id_attribute_name and idref_attribute_names.
+ *
  * Revision 1.4  2000/07/09 00:13:37  gerd
  * 	Added methods gen_entity_names, par_entity_names.
  *
