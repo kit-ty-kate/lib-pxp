@@ -70,10 +70,8 @@ almost everything.
     <title>Description</title>
     <p>
 <em>PXP</em> is a validating XML parser for <a
-href="&url.ocaml;">O'Caml</a>. It is designed such that all of the requirements
-that the <a href="&url.xml-spec;">w3c demands of an XML parser</a> can be
-fulfilled, but this is not yet the case for the latest release; however,
-the parser is already very close to the standard.
+href="&url.ocaml;">O'Caml</a>. It strictly complies to the 
+<a href="&url.xml-spec;">XML-1.0</a> standard.
 </p>
 
     <p>The parser is simple to call, usually only one statement (function
@@ -92,9 +90,10 @@ because it simplifies the structure of programs processing XML documents.
 </p>
 
     <p>
-Note that the class interface does not comply to the DOM standard. I think
-that DOM is not applicable to O'Caml. Of course, my interface has a
-similar task at all.
+Note that the class interface does not comply to the DOM standard. It was not a
+development goal to realize a standard API (industrial developers can this much
+better than I); however, the API is powerful enough to be considered as
+equivalent with DOM.
 </p>
 
     <sect2>
@@ -123,54 +122,11 @@ XML style, and how data records can be stored using XML.
     </sect2>
 
     <sect2>
-      <title>Restrictions</title>
+      <title>Restrictions and missing features</title>
       <p>
-As the parser is validating, it should be able to report all violations
-against the XML rules. This is currently not the case. Mainly the
-following restrictions apply:
+The following restrictions apply that are not violations of the standard:
 </p>
-
       <ul>
-	<li>
-	  <p>
-That IDs are unique, and that IDREFs reference only existing IDs, are
-  only checked in a deferred way, i.e. once these features are used by
-  the application.
-</p>
-	</li>
-
-	<li>
-	  <p>
-It is not checked if the content models are deterministic.
-</p>
-	</li>
-      </ul>
-
-      <p>
-Furthermore, the following restrictions apply that are not violations of
-the standard:
-</p>
-
-      <ul>
-	<li><p>
-Error messages are sometimes confusing (but they are getting better from
-version to version).</p></li>
-
-	<li><p>
-The exact locations of processing instructions are not stored in the
-document object. It is only known which element is the direct parent
-of the processing instruction. (NEW since 0.2.9: It is possible to 
-configure the parser such that imaginary nodes are automatically added
-for PIs; as these nodes can be located exactly this is also true for
-the PIs in them - see option "processing_instructions_inline".)
-
-</p></li>
-
-	<li><p>
-XML comments are always dropped<footnote>In the DOM standard, comments are
-accessible. I think this is a bad feature, as comments should not be regarded
-as text to be processed.</footnote>.</p></li>
-
 	<li><p>
 The attributes "xml:space", and "xml:lang" are not supported specially.
   (The application can do this.)</p></li>
@@ -183,18 +139,29 @@ The built-in support for SYSTEM and PUBLIC identifiers is limited to
 	<li><p>
 It is currently not possible to check for interoperatibility with SGML.
 </p></li>
-
-	<li><p>
-There is currently no "early parser hook", i.e. a possibility to throw
-  away parts of the document that are not needed directly after they have
-  been read. (Perhaps this is possible by deriving the document class.)
-</p></li>
       </ul>
+
+<p>The following features are also missing:</p>
+      <ul>
+	<li><p>There is no special support for namespaces.</p>
+	</li>
+	<li><p>There is no support for XPATH or XSLT.</p>
+	</li>
+      </ul>
+<p>However, I hope that these features will be implemented soon, either by
+myself or by contributors (who are invited to do so).</p>
     </sect2>
 
     <sect2>
       <title>Recent Changes</title>
       <ul>
+	<li>
+	  <p>Changed in 0.99.7:</p>
+	  <p>There are now additional node types T_super_root, T_pinstr and
+T_comment, and the parser is able to create the corresponding nodes.</p>
+	  <p>The functions for character set conversion have been moved to
+the Netstring package; they are not specific for XML.</p>
+	</li>
 	<li>
 	  <p>Changed in 0.99.6:</p>
 	  <p>Implemented a check on deterministic content models. Added
