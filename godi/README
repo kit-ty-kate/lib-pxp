@@ -1,0 +1,30 @@
+This directory contains GODI build instructions to compile and install
+the latest SVN version of PXP. To access these instructions,
+proceed as follows:
+
+- Type "make" in this directory. This creates two files:
+
+  godi-pxp-<Version>.build.tgz
+  available.new
+
+- Copy these files into a directory that can be accessed by
+  http.
+
+  In my environment, I just create a symlink from
+  ~/public_html/godi-pxp to this directory, so the
+  files are accessible at the URL
+  http://ice/~gerd/godi-pxp
+
+- Edit your godi.conf file, and add this line:
+
+  GODI_BUILD_SITES += http://ice/~gerd/godi-pxp
+
+  Of course, use the URL that accesses the mentioned directory,
+  not my URL. (Read on for a public URL.)
+
+Now start godi_console. The package update recognizes that there
+is a second directory with source packages, and merges them with
+the main list of packages. You can then just build godi-pxp.
+
+Note that you need access to the SVN (https) port (443) from
+your network (ask your sysadmin). 
