@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.38 2002/07/14 23:46:29 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.39 2002/08/03 17:55:59 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -48,6 +48,8 @@ type config =
       enable_namespace_processing : namespace_manager option;
       enable_namespace_info : bool;
       escape_contents : 
+	             (Pxp_lexer_types.token -> entity_manager -> string) option;
+      escape_attributes : 
 	             (Pxp_lexer_types.token -> entity_manager -> string) option;
       debugging_mode : bool;
     }
@@ -872,21 +874,12 @@ let make_pool_string = pool_string init_config.name_pool in
 	  end
 	in
 
-(*
-	let rec start_tag_check_attlist al =
-	  match al with
-	      (nv1, num1) :: al' ->
-		if not num1 && al' <> [] then begin
-		  match al with
-		      ((n1,_),_) :: ((n2,_),_) :: _ ->
-			raise(WF_error("Whitespace is missing between attributes `" ^
-				       n1 ^ "' and `" ^ n2 ^ "'"))
-		    | _ -> assert false
-		end;
-		start_tag_check_attlist al'
-	    | [] -> ()
+        let process_attribute_event tok =
+          match config.escape_attributes with
+              None -> assert false
+            | Some f ->
+		f tok context.manager
 	in
-*)
 
 	let reused_lexbuf = Pxp_lexing.from_string "" in
 %%
@@ -937,6 +930,9 @@ let make_pool_string = pool_string init_config.name_pool in
 %token Rcurly
 %token RRcurly
 
+%token SQuote
+%token DQuote
+
 %token <> Comment_material
 %token <> Doctype
 %token <> Doctype_rangle
@@ -961,6 +957,7 @@ let make_pool_string = pool_string init_config.name_pool in
 %token <> Cdata
 %token <> CRef
 %token <> ERef
+%token <> ERef_att
 %token <> PERef
 %token <> CharData
 %token <> LineEnd
@@ -2176,6 +2173,73 @@ attval():
 | v:Attval_nl_normalized
     {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner false }}
 
+/* The following rules are only used if event-based attribute parsing
+ * is enabled. In this case, neither Attval nor Attval_nl_normalized,
+ * but SQuote, DQuote and attribute tokens are scanned.
+ */
+| SQuote sl:attval_squote_token()* SQuote
+    {{ String.concat "" sl }}
+| DQuote sl:attval_dquote_token()* DQuote
+    {{ String.concat "" sl }}
+
+
+attval_squote_token():
+  name:ERef_att
+    {{ 
+       let etext = "&" ^ name ^ ";" in
+       Pxp_aux.expand_attvalue 
+	 reused_lexbuf lexerset dtd etext config.warner false
+     }}
+| code:CRef
+    {{ Pxp_aux.character config.encoding config.warner code }}
+| data:CharData
+    {{ 
+       if String.contains data '<' then
+	 raise
+           (WF_error ("Attribute value contains character '<' literally"))
+       else
+	 data
+     }}
+| LLcurly
+    {{ process_attribute_event LLcurly }}
+| Lcurly
+    {{ process_attribute_event Lcurly }}
+| RRcurly
+    {{ process_attribute_event RRcurly }}
+| Rcurly
+    {{ process_attribute_event Rcurly }}
+| DQuote
+    {{ "\"" }}
+
+
+attval_dquote_token():
+  name:ERef_att
+    {{ 
+       let etext = "&" ^ name ^ ";" in
+       Pxp_aux.expand_attvalue 
+	 reused_lexbuf lexerset dtd etext config.warner false
+     }}
+| code:CRef
+    {{ Pxp_aux.character config.encoding config.warner code }}
+| data:CharData
+    {{ 
+       if String.contains data '<' then
+	 raise
+           (WF_error ("Attribute value contains character '<' literally"))
+       else
+	 data
+     }}
+| LLcurly
+    {{ process_attribute_event LLcurly }}
+| Lcurly
+    {{ process_attribute_event Lcurly }}
+| RRcurly
+    {{ process_attribute_event RRcurly }}
+| Rcurly
+    {{ process_attribute_event Rcurly }}
+| SQuote
+    {{ "'" }}
+
 
 start_tag_rangle():
   Rangle       {{ false }}
@@ -2588,7 +2652,8 @@ let call_tree_parser ~configuration:cfg
       (id_index :> 'ext index option)
   in
   let mgr = new entity_manager en dtd in
-  en # open_entity true init_lexer;
+  let gen_att_events = cfg.escape_attributes <> None in
+  en # open_entity ~gen_att_events true init_lexer;
   begin try
     let context = make_context mgr in
     pobj # parse context entry;
@@ -2819,6 +2884,7 @@ let default_config =
     enable_namespace_processing = None;
     enable_namespace_info = false;
     escape_contents = None;
+    escape_attributes = None;
     debugging_mode = false;
   }
 
@@ -2895,7 +2961,8 @@ let call_event_parser ~configuration:cfg
       | Entry_content      -> Content
   in
   let en = mgr # current_entity in
-  en # open_entity true init_lexer;
+  let gen_att_events = Some(cfg.escape_attributes <> None) in
+  en # open_entity ?gen_att_events true init_lexer;
   begin try
     let context = make_context mgr in
 
@@ -2936,6 +3003,10 @@ let process_entity
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.39  2002/08/03 17:55:59  gerd
+ * 	Support for event-based parsing of attribute values: New config
+ * option escape_attributes.
+ *
  * Revision 1.38  2002/07/14 23:46:29  gerd
  * 	Fix: Reverting to the old method, and creating a new
  * entity_manager to read the external DTD subset.

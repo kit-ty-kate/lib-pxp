@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.17 2002/07/14 23:05:01 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.18 2002/08/03 17:55:59 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -316,8 +316,25 @@ type config =
 	 * access the lexing buffer directly. The result of the function
 	 * are the characters to substitute.
 	 *
+	 * "{" is the token Lcurly, "{{" is the token LLcurly, "}" is the
+	 * token Rcurly, and "}}" is the token RRcurly.
+	 *
 	 * Default: None
 	 *)
+
+      escape_attributes : 
+	             (Pxp_lexer_types.token -> Pxp_entity_manager.entity_manager -> 
+			string) option;
+        (* If defined, the [escape_attributes] function is called whenever 
+	 * the tokens "{", "{{", "}", or "}}" are found inside attribute
+	 * values. 
+	 * The result of the function is the string substituted for the
+	 * token.
+	 * See also [escape_contents].
+	 *
+	 * Default: None
+	 *)
+
 
       (* The following options are not implemented, or only for internal
        * use.
@@ -629,6 +646,10 @@ val process_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.18  2002/08/03 17:55:59  gerd
+ * 	Support for event-based parsing of attribute values: New config
+ * option escape_attributes.
+ *
  * Revision 1.17  2002/07/14 23:05:01  gerd
  * 	Event-based interface.
  *
