@@ -1,0 +1,228 @@
+=head1 NAME
+
+pxpvalidate - validate XML documents
+
+=head1 SYNOPSIS
+
+B<pxpvalidate> [ I<OPTION> ... ] [ I<URL> ... ]
+
+=head1 DESCRIPTION
+
+This command validates the XML documents specified on the command line
+by the XML parser PXP. The program produces warning and error messages
+on stderr, and it exits with a non-zero code if an error is found. The
+program stops at the first error. If the XML documents are all valid,
+the program exits with a code of 0.
+
+=head2 URLs
+
+The documents are named by their I<URLs>. By default, only C<file>
+URLs are allowed (but you can optionally configure helper applications
+to process other URL schemes such as C<http> or C<ftp>, see below).
+For example, to validate the file stored in C</directory/data.xml>
+you can call B<pxpvalidate> as follows:
+
+    pxpvalidate file:///directory/data.xml
+
+Note that the conventions for URL notations apply: Meta characters like
+"#" or "?" are reserved and must be written using a "%hex" encoding;
+for instance "%23" instead of "#", or "%3f" instead of "?".
+
+If you do not pass an absolute URL to B<pxpvalidate>, the URL will be
+interpreted relative to the current directory. So
+
+    cd /directory
+    pxpvalidate data.xml
+
+works as well.
+
+=head2 External entities
+
+The parser reads not only the documents passed on the command line but
+also every other document that is referred to as an external
+entity. For example, if the XML document is
+
+    <!DOCTYPE sample SYSTEM "sample.dtd" [
+    <!ENTITY text SYSTEM "text.xml">
+    ]>
+
+    <sample>
+      &text;
+    </sample>
+
+the parser reads the files "sample.dtd" and "text.xml", too, and of
+course further files if further entity references occur in these
+files.
+
+The parser indicates an error if it cannot resolve a reference to an
+external file.
+
+=head2 Extent of the validation checks
+
+The parser checks all well-formedness and validation constraints
+specified in the XML 1.0 standard. This includes:
+
+=over 4
+
+=item *
+
+Whether the documents are well-formed (syntactically correct)
+
+=item * 
+
+Whether the elements and attributes are used as declared, i.e.
+meet the C<ELEMENT> and C<ATTLIST> declarations.
+
+=item *
+
+Whether the document is standalone if flagged as standalone
+
+=item *
+
+Whether the ID attributes are unique
+
+=item *
+
+Whether fixed attributes have the declared value
+
+=item *
+
+Whether entities exist 
+
+=item *
+
+Whether notations exist
+
+=back
+
+This list is not complete, see the full specification of XML 1.0 for
+details.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-wf>
+
+The parser checks only the well-formedness of the documents, and omits
+any validation.
+
+=item B<-iso-8859-1>
+
+The parser represents the documents internally as ISO-8859-1 encoded
+strings and not as UTF-8 strings, the default. This results in faster
+processing if the documents are encoded in ISO-8859-1, but it may
+cause problems if documents contain characters outside of the range of
+the ISO-8859-1 character set.
+
+=item B<-namespaces>
+
+Enables the namespace support. If the B<-wf> option is turned on, too,
+this will only mean that element and attribute names must not contain
+more than one colon character. Unlike other parsers, PXP can validate
+documents using namespaces. See below for a discussion of this issue.
+
+=item B<-pubid> I<id>=I<file>
+
+If the parser finds a PUBLIC identifier I<id>, it will read the
+specified I<file>. (This is really a file name, and not a URL.)
+This option overrides the system identifier found in the document for
+this public identifier.
+
+This option can be specified several times.
+
+=item B<-helper> I<scheme>=I<command>
+
+Configures a helper command that gets the contents of a URL for the
+given I<scheme>. For example, to use B<wget> as helper application for
+ftp URLs, add the option
+
+      -helper 'ftp=wget -O - -nv'
+
+The command is expected to output the contents of the file to stdout.
+
+This option can be specified several times.
+
+=item B<-helper-mh> I<scheme>=I<command>
+
+Configures a helper command that gets the contents of a URL for the
+given I<scheme>. For example, to use B<wget> as helper application for
+http URLs, add the option
+
+      -helper-mh 'http=wget -O - -nv -s'
+
+The command is expected to output first a MIME header and then,
+separated by a blank line, the contents of the file to stdout.
+
+Using B<-helper-mh> is preferred if MIME headers are available. The
+parser extracts the character encoding of the file from the MIME
+header.
+
+This option can be specified several times.
+
+=back
+
+=head1 ENCODINGS
+
+=head2 The character encoding of URLs
+
+URLs are interpreted as "%-encoded UTF-8 strings", as suggested by the
+XML standard.
+
+=head2 The character encoding of filenames
+
+The parser assumes that the file system stores filenames as UTF-8
+strings. (Sorry, it is currently not possible to change this.)
+
+=head2 The encodings of entities
+
+Every external entity can be encoded in a different character set. A
+document can refer to entities that are encoded differently.
+The parser supports UTF-8, UTF-16, UTF-32, all ISO-8859 encodings, and
+a list of other 8 bit character set.
+
+
+=head1 VALIDATION AND NAMESPACES
+
+PXP can validate documents that use namespaces. However, it is
+necessary to add processing instructions to the DTD because the XML
+standard does not specify how to refer to namespaces in DTDs.
+
+It is quite simple. The processing instruction
+
+<?pxp:dtd namespace prefix="I<prefix>" uri="I<uri>"?>
+
+declares that the namespace I<uri> can be referred to from the DTD by
+prefixing element and attribute names by the string I<prefix>,
+followed by a colon character. For example, to define the prefix
+C<xh> for the XHTML URI C<http://www.w3.org/1999/xhtml> just add
+the line
+
+    <?pxp:dtd namespace prefix="xh" uri="http://www.w3.org/1999/xhtml"?>
+
+to the DTD, and prepend the prefix "xh:" to the names of all elements
+in the DTD (e.g. "xh:body" instead of "body").
+
+If the author of the XHTML document prefers another prefix, PXP
+automatically converts the other prefix to the declared prefix "xh":
+
+    <html:body xmlns:html="http://www.w3.org/1999/xhtml">
+      ...
+    </html:body>
+
+Note that if you do not declare the namespaces in the DTD, the parser
+will use the first used prefix for a namespace as the reference
+prefix, and it will take this prefix to match the element names in the
+document with the element names in the DTD. This may cause problems.
+
+=head1 AUTHOR
+
+The parser PXP and the frontend B<pxpvalidate> have been written by
+Gerd Stolpmann (gerd@gerd-stolpmann.de).
+
+=head1 WEB SITE
+
+The sources are published on the web site 
+http://www.ocaml-programming.de. You will find there also material
+about the programming language Objective Caml (in which PXP is
+written).
