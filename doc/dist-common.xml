@@ -1,0 +1,123 @@
+<?xml encoding="ISO-8859-1"?>
+
+<!-- ************************************************************ -->
+<!-- EXTERNAL URLs                                                -->
+<!-- ************************************************************ -->
+
+<!ENTITY url.ocaml           
+         "http://caml.inria.fr/">
+
+<!ENTITY url.ocaml.list
+         "http://caml.inria.fr/caml-list-eng.html">
+
+<!ENTITY url.ocaml.download
+         "ftp://ftp.inria.fr/lang/caml-light/">
+
+<!ENTITY url.ocaml.camlp4
+         "http://caml.inria.fr/camlp4/">
+
+<!ENTITY url.ocaml.hump
+         "http://caml.inria.fr/hump.html">
+
+<!ENTITY url.ocaml.mottl
+         "http://miss.wu-wien.ac.at/~mottl/ocaml_sources/intro.html">
+
+<!ENTITY url.ocaml.mottl.pcre
+         "http://miss.wu-wien.ac.at/~mottl/ocaml_sources/pcre_ocaml.tar.gz">
+
+<!ENTITY url.ocaml.lindig
+         "http://www.cs.tu-bs.de/softech/people/lindig/software/index.html">
+
+<!ENTITY url.ocaml.lindig.ocmarkup
+         "http://www.cs.tu-bs.de/softech/people/lindig/software/ocmarkup.html">
+
+<!ENTITY url.ocaml.lindig.tony
+         "http://www.cs.tu-bs.de/softech/people/lindig/software/tony.html">
+
+<!ENTITY url.ocaml.filliatre
+         "http://www.lri.fr/~filliatr/software.en.html">
+
+<!ENTITY url.ocaml.filliatre.cgi
+         "http://www.lri.fr/~filliatr/ftp/ocaml/cgi/">
+
+<!ENTITY url.xml-spec        
+         "http://www.w3.org/TR/1998/REC-xml-19980210.html">
+
+<!ENTITY url.xml.oasis
+         "http://www.oasis-open.org/cover/">
+
+<!ENTITY url.xml.w3c
+         "http://www.w3c.org/XML/">
+
+<!ENTITY url.jclark-xmltdata 
+         "ftp://ftp.jclark.com/pub/xml/xmltest.zip">
+
+<!ENTITY urlprefix.ietf.rfc
+         "http://www.ietf.org/rfc">
+   <!-- Ohne "/" am Ende! -->
+
+<!ENTITY url.apache
+         "http://www.apache.org/">
+
+
+<!-- ************************************************************ -->
+<!-- MY URLs                                                      -->
+<!-- ************************************************************ -->
+
+<!ENTITY url.linkdb
+         "http://www.npc.de/ocaml/linkdb">
+
+<!-- ************************************************************ -->
+<!-- HOMEPAGE URLs                                                -->
+<!-- ************************************************************ -->
+
+<!-- GENERIC -->
+
+<!ENTITY url.gps-ocaml-download 
+         "http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml">
+
+<!ENTITY url.gps-ocaml-projects
+         "http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml/projects">
+
+<!ENTITY url.gps-old-download
+         "http://people.darmstadt.netsurf.de/Gerd.Stolpmann/download">
+
+
+<!-- SPECIFIC -->
+
+<!ENTITY release.findlib
+         "SOME-VERSION">
+
+<!ENTITY url.findlib-download
+         "&url.gps-ocaml-download;/findlib-&release.findlib;.tar.gz">
+
+<!ENTITY url.findlib-project
+         "&url.gps-ocaml-projects;/findlib/">
+
+<!ENTITY url.findlib-manual
+         "&url.gps-ocaml-projects;/findlib/">
+
+
+
+<!ENTITY release.markup
+         "SOME-VERSION">
+
+<!ENTITY url.markup-download    
+         "&url.gps-ocaml-download;/markup-&release.markup;.tar.gz">
+
+<!ENTITY url.markup-project
+         "&url.gps-ocaml-projects;/markup">
+
+<!ENTITY url.markup-manual
+         "&url.gps-ocaml-projects;/markup/manual">
+
+
+<!-- ************************************************************ -->
+<!-- MAIL URLs                                                    -->
+<!-- ************************************************************ -->
+
+<!ENTITY person.gps '<a href="mailto:&person.gps.mail;">Gerd Stolpmann</a>'>
+
+<!ENTITY person.gps.mail
+         "Gerd.Stolpmann@darmstadt.netsurf.de">
+
