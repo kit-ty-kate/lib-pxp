@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_aux.ml,v 1.1 2002/08/28 23:54:34 gerd Exp $
+(* $Id: pxp_lex_aux.ml,v 1.2 2002/08/31 23:24:50 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -34,6 +34,13 @@
   let tok_LineEndCR__Content     = LineEnd "\r", Content
   let tok_LineEndLF__Content     = LineEnd "\n", Content
   let tok_CharDataRBRACKET__Content = CharData "]", Content
+  let tok_CharDataTAB               = CharData "\009"
+  let tok_CharDataTAB__Content      = CharData "\009", Content
+  let tok_CharDataLF                = CharData "\n"
+  let tok_CharDataSPACE             = CharData " "
+  let tok_CharDataLT                = CharData "<"
+  let tok_CharDataQUOT              = CharData "\""
+  let tok_CharDataAPOS              = CharData "'"
   let tok_Lcurly__Content        = Lcurly, Content
   let tok_LLcurly__Content       = LLcurly, Content
   let tok_Rcurly__Content        = Rcurly, Content
@@ -95,6 +102,7 @@
     in
     find k
 
+(* --- currently not used ---
   let get_ws_end s k =
     let l =  String.length s in
     let rec find j =
@@ -106,11 +114,15 @@
 	l
     in
     find k
+*)
 
   let scan_pi pi xml_scanner =
-    let s = String.sub pi 2 (String.length pi - 4) in
-            (* the PI without the leading "<?" and the trailing "?>" *)
-    let xml_lexbuf = Lexing.from_string (s ^ " ") in
+    (* pi: The contents of the processing instruction (inside <?...?>).
+     * xml_scanner: The scanner scan_xml_pi (in lex.src)
+     * This function analyzes the processing instruction and returns
+     * either a PI token or a PI_xml token.
+     *)
+    let xml_lexbuf = Lexing.from_string (pi ^ " ") in
       (* Add space because the lexer expects whitespace after every
        * clause; by adding a space there is always whitespace at the 
        * end of the string.
@@ -145,10 +157,10 @@
 	  PI_xml (collect())
 	end
       | _ -> 
-	  let len_param = String.length s - s_len in
+	  let len_param = String.length pi - s_len in
 	  (* It is possible that len_param = -1 *)
 	  if len_param >= 1 then
-	    PI(s_name, String.sub s s_len len_param)
+	    PI(s_name, String.sub pi s_len len_param)
 	  else
 	    PI(s_name, "")
 
@@ -156,6 +168,10 @@
  * History:
  * 
  * $Log: pxp_lex_aux.ml,v $
+ * Revision 1.2  2002/08/31 23:24:50  gerd
+ * 	scan_pi: The function does no longer expect the pi delimiters
+ * <? and ?> in the passed string
+ *
  * Revision 1.1  2002/08/28 23:54:34  gerd
  * 	Support for new lexer definition style.
  *
