@@ -32,6 +32,7 @@ clean:
 CLEAN: clean
 
 distclean:
+	rm -f Makefile.conf
 	$(MAKE) -C tools distclean
 	$(MAKE) -C src distclean
 	$(MAKE) -C examples distclean
