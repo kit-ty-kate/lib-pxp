@@ -7,7 +7,7 @@
 OCAMLPATH=../..
 
 test_negative: test_negative.ml
-	ocamlfind ocamlc -custom -o test_negative -package .,str -linkpkg test_negative.ml
+	ocamlfind ocamlc -g -custom -o test_negative -package .,str -linkpkg test_negative.ml
 
 #----------------------------------------------------------------------
 .PHONY: all
