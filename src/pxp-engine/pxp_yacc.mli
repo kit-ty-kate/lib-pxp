@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.15 2001/06/08 01:15:47 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.16 2002/03/10 23:40:52 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -313,7 +313,7 @@ type config =
     }
 
 
-type source =
+type source = Pxp_dtd.source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (ext_id * Pxp_reader.resolver)
 
@@ -500,6 +500,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.16  2002/03/10 23:40:52  gerd
+ * 	type source is now primarily defined in Pxp_dtd.
+ *
  * Revision 1.15  2001/06/08 01:15:47  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions

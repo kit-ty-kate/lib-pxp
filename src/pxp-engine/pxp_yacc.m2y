@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.35 2002/02/20 00:25:23 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.36 2002/03/10 23:40:52 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -49,7 +49,7 @@ type config =
       debugging_mode : bool;
     }
 
-type source =
+type source = Pxp_dtd.source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (ext_id * Pxp_reader.resolver)
 
@@ -2617,6 +2617,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.36  2002/03/10 23:40:52  gerd
+ * 	type source is now primarily defined in Pxp_dtd.
+ *
  * Revision 1.35  2002/02/20 00:25:23  gerd
  * 	using Pxp_lexing instead of Lexing.
  *
