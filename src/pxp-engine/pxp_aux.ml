@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.2 2000/07/08 22:15:45 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -433,7 +433,7 @@ let write_data_string os content =
   let i = ref 0 in
   for k = 0 to String.length content - 1 do
     match content.[k] with
-	('&' | '<' | '>' | '"') as c ->
+	('&' | '<' | '>' | '"' | '%') as c ->
 	  if !i < k then
 	    write os content !i (k - !i);
 	  begin match c with
@@ -441,6 +441,7 @@ let write_data_string os content =
 	    | '<' -> write os "&lt;"   0 4
 	    | '>' -> write os "&gt;"   0 4
 	    | '"' -> write os "&quot;" 0 6
+	    | '%' -> write os "&#37;"  0 5  (* reserved in DTDs *)
 	    | _   -> assert false
 	  end;
 	  i := k+1
@@ -455,6 +456,9 @@ let write_data_string os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.2  2000/07/08 22:15:45  gerd
+ * 	[Merging 0.2.10:] write_data_string: The character '%' is special, too.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
