@@ -1,0 +1,200 @@
+######################################################################
+####################### THE PXP PREPROCESSOR #########################
+######################################################################
+
+**********************************************************************
+Declaration of charsets
+**********************************************************************
+
+<:pxp_charset< source="ENC1" representation="ENC2" >> ;;
+
+This is a dummy expression evaluation to (). It has an important side-effect,
+however: The character encodings of the preprocessor are set.
+
+source="ENC1": Sets the encoding of the source code. Default is
+               ISO-8859-1
+
+representation="ENC2": Sets the encoding of the representation values.
+                       Default is ISO-8859-1.
+
+Example:
+
+<:pxp_charset< representation="UTF-8" >>
+  --> Changes the representation encoding to UTF-8.
+
+TODO: Reset the charsets at the beginning of source files.
+
+**********************************************************************
+XML expressions
+**********************************************************************
+
+The following kinds of XML expressions can be built:
+
+<:pxp_text< TEXT >>
+    NOT YET IMPLEMENTED!
+    Just another notation for string literals.    
+
+<:pxp_tree< EXPR >>
+    Builds a well-formed PXP tree. The variables "spec" and "dtd" are
+    assumed to contain the specification and the DTD object. (The
+    latter is required even for well-formed mode, but it may be empty.)
+
+<:pxp_vtree< EXPR >>
+    Builds a validated PXP tree. Only the elements created by EXPR
+    are validated; injected subtrees are assumed to be already valid.
+    The variables "spec" and "dtd" are assumed to contain the
+    specification and the DTD object.
+
+<:pxp_evlist< EXPR >>
+    NOT YET IMPLEMENTED!
+    Builds a list of PXP events. The list may contain:
+    - E_start_tag
+    - E_end_tag
+    - E_char_data
+    - E_pinstr
+    - E_comment
+    - CHECK: Super root node?
+
+<:pxp_nsevlist< EXPR >>
+    NOT YET IMPLEMENTED!
+    Build a list of PXP events in namespace-aware mode. The list may contain:
+    - E_ns_start_tag
+    - E_ns_end_tag
+    - E_char_data
+    - E_pinstr
+    - E_comment
+    - CHECK: Super root node?
+    The variable "dtd" is assumed to contain the DTD object, which is
+    additionally required in namespace-aware mode. XXX
+
+    CHECK: Which prefixes? How to declare namespace scopes?
+
+<:pxp_evpull< EXPR >>
+    NOT YET IMPLEMENTED!
+    Builds a pull-type generator for PXP events. (Type 'a -> event option)
+
+<:pxp_nsevpull< EXPR >>
+    NOT YET IMPLEMENTED!
+    Builds a pull-type generator for PXP events in namespace-aware mode.
+
+SYNTAX OF EXPR:
+
+- Elements:
+  <name att1="val1" att2="val2">[ SUBNODES ]
+
+  Note that there is no </name>; the list of subnodes is enclosed by
+  square brackets.
+
+  Special notations:
+
+  - Instead of "name", there may be a string expression in parenthesis,
+    e.g. <("myprefix:" ^ variable) att1="val1">
+
+  - Instead of "val1", a string expression is allowed, too:
+    <name att1="val1"^"suffix">
+
+  - Instead of "att1", there may be a string expression in parenthesis:
+    <name ("myprefix:" ^ variable)="val1">
+
+  - The "empty tag" is allowed as in XML: <name/> as abbreviation for
+    <name>[].
+
+  - Instead of the square brackets, a node list expression is allowed,
+    e.g. <name>( variable @ [ ... ])
+
+  - As abbreviation, it is allowed to omit the square brackets when
+    the list includes exactly one element:
+    <a><b/>  ==  <a>[<b/>]
+
+- Data nodes:
+  Any string expression is a data node! Examples:
+
+  <a>[ "ABC" ]              --> Element "a" with one data node "ABC"
+  <a>[ "ABC" ^ "DEF" ]      --> Element "a" with one data node "ABCDEF"
+  <a>[ "ABC" "DEF" ]        --> Element "a" with two data nodes "ABC" and "DEF"
+
+  There is also the explicit data node:
+
+  <a>[<*>"ABC"]            --> Element "a" with one data node "ABC"
+
+  It is sometimes useful as typing hint.
+
+- Processing instructions:
+  <?> "TARGET" "VALUE"
+
+- XML comments:
+  <!> "Contents of the comment node"
+
+- Super root node:
+  <^>[ SUBNODES ]
+
+- String expressions:
+
+  - Literals are enclosed in double quotes. It is allowed to use
+    numeric entities, and the predefined named entities, e.g.
+    "I said: &quot;Hello&quot;"
+    "The euro sign: &#8364;"
+
+  - The only operator is ^ to concatenate strings, e.g.
+    ("abc"^"def")^"ghi"
+
+- Node list expressions:
+
+  - Lists are created by bracket expressions: [ ITEM1 ITEM2 ... ]
+
+  - The only operator is @ to concatenate lists, e.g.
+    [ "ABC" <a/> ] @ variable
+
+  - When the first token is "[", the whole expression may be a
+    node list expression:
+
+    <:pxp_tree< [ <a/> <b/> ] >>
+
+- Identifiers:
+
+  It is allowed to include O'Caml identifiers into node, node list,
+  and string expressions, e.g.
+
+  let s = "abc" in <:pxp_tree< <*>s >>
+  (creates a data node with the contents of s)
+
+  let s = "abc" in <:pxp_tree< <element att=s/> >>
+  (creates an element where the attribute has the value of s)
+
+  In doubt, the most general type is assumed, e.g.
+
+  <:pxp_tree< <a>x >>
+
+  Here, x must be a node list, although it could also be a string or
+  a node. It is usually possible to give hints when a more specific
+  type is needed, e.g.
+
+  <:pxp_tree< <a>[x] >>       (x is a node)
+  <:pxp_tree< <a><*>x >>      (x is a string)
+
+- Antiquotations:
+
+  To include arbitrary O'Caml expressions, put them into (: ... :),
+  e.g.
+
+  <:pxp_tree< <a att=(: string_of_int n :) /> >>
+
+  They are allowed where a node, node list or string expression is
+  expected. In addition to this, antiquotations can also occur
+  in attribute lists:
+
+  <:pxp_tree< <a att1="1" (: [ "att2", "2" ] :) /> >>
+
+  In this case, a type of (string*string) list is assumed.
+
+- Comments:
+
+  The normal O'Caml comments (* ... *) are also allowed in PXP
+  expressions.
+
+**********************************************************************
+Traps
+**********************************************************************
+
+- It is not checked whether the representation charset is the
+  actually used charset (e.g. as found in dtd#encoding).

@@ -1,0 +1,10 @@
+#use "topfind";;
+#camlp4o;;
+#require "netstring";;
+#require "pxp";;
+#load "pxp_pp.cmo";;
+open Pxp_pp;;
+open Pxp_types;;
+open Pxp_tree_parser;;
+let spec = default_spec;;
+let dtd = new Pxp_dtd.dtd (new Pxp_types.drop_warnings) `Enc_utf8;;
