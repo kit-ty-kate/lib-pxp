@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# $Id: configure,v 1.1 2001/06/14 23:35:06 gerd Exp $
+# $Id: configure,v 1.2 2001/07/04 21:53:26 gerd Exp $
 
 # defaults:
 with_lex_iso88591=1
@@ -15,7 +15,7 @@ help_wlex="Enable/disable wlex-based lexical analyzer for ISO-8859-1 and UTF-8"
 
 options="lex_iso88591 lex_utf8 wlex"
 
-options () {
+print_options () {
 	for opt in $options; do
 		e="o=\$with_$opt"
 		eval "$e"
@@ -47,7 +47,7 @@ _EOF_
 Defaults are:
 
 _EOF_
-	options >&2
+	print_options >&2
 	exit 1
 }
 
@@ -85,7 +85,7 @@ done
 ######################################################################
 # Check ocamlfind
 
-echo -n "Checking for ocamlfind... "
+printf "%s" "Checking for ocamlfind... "
 if ocamlfind query stdlib >/dev/null 2>/dev/null; then
 	echo "found"
 else
@@ -99,7 +99,7 @@ fi
 ######################################################################
 # Check netstring
 
-echo -n "Checking for netstring... "
+printf "%s" "Checking for netstring... "
 if ocamlfind query netstring >/dev/null 2>/dev/null; then
 	echo "found"
 else
@@ -113,7 +113,7 @@ fi
 # Check wlex
 
 if [ $with_wlex -gt 0 ]; then
-	echo -n "Checking for wlexing... "
+	printf "%s" "Checking for wlexing... "
 	if ocamlfind query wlexing >/dev/null 2>/dev/null; then
 		echo "found"
 	else
@@ -126,7 +126,7 @@ fi
 ######################################################################
 # Check cygwin
 
-echo -n "Checking for cygwin... "
+printf "%s" "Checking for cygwin... "
 u=`uname`
 case "$u" in
 	CYGWIN*)
@@ -136,14 +136,14 @@ case "$u" in
 	*)
 		echo "not found"
 		;;
-esac		
+esac
 
 ######################################################################
 # Summary
 
 echo
 echo "Effective options:"
-options
+print_options
 echo
 
 pkglist="pxp pxp-engine"
@@ -191,7 +191,7 @@ _EOF_
 ######################################################################
 # Finish
 
-echo 
+echo
 echo "You can now compile PXP by invoking"
 echo "   make all"
 echo "for the bytecode compiler, and optionally by invoking"
