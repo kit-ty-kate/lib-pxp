@@ -115,7 +115,9 @@ f examples/xmlforms/styles/ds-object.dtd
 f examples/xmlforms/styles/ds-style.dtd
 
 d examples/eventparser
-f examples/eventparser/number.mll
+f examples/eventparser/Makefile
+f examples/eventparser/expr.mly
+f examples/eventparser/exprlex.mll
 f examples/eventparser/sample.ml
 
 d src

@@ -1,21 +1,25 @@
 - Event-based parsers:
 
-  rec_curly_parse "<!DOCTYPE A [ <!ENTITY b '}'> ]> <A>{<B>xxx</B>&b;</A>";;
-
-  Idee: create_proxy muss selbst aufgerufen werden statt ~inside_entity.
-
-  * When calling the parser, pass the entity_manager, not the source
-    ( ==> parser can recursively call itself )
-
   * Parse a single element, PI, comment, ... instead of misc* element misc*
 
-  * { and } inside attribute lists
+  * process_entity: erstes Token kann übergeben werden
+
+    Letztes Token?
+
+  * { and } inside attribute lists DONE
+    
+    TODO: Don't forget: pxp_lex_content_string.src: more efficient way of
+    handling character sequences
 
   * Check: standalone flag
 
   * Signature for entity_manager
 
   * Examples
+
+  * Pull parser
+
+    Parse a single tag!
 
 - Follow-Ups:
 
@@ -28,6 +32,22 @@
     werden. dies hat aber nur Einfluss auf die konstruktion der DTD.
 
   * standalone
+
+  * Clean-Up of Pxp_entity. At least define class type entity (in .ml).
+
+  * Entry point document: hat einen Parameter, der definiert, wie mit
+    DTDs umgegangen werden soll.
+    type dtd_mode = [ `Only_entities | `Full ]
+
+  * Pxp_light: XML-Baum als rekursiver Typ
+    Pxp_light_trans: Light-Darstellung von/nach Heavy-Darstellung konvertieren
+    Pxp_light_docemu: Light-Darstellung als Document-kompatible Klasse
+
+- Improvements:
+
+  * Clone nodes and change DTD
+
+  * parse_wfdocument_entity: argument ~share_dtd
 
 ------------------------------
 
@@ -54,9 +74,13 @@
 - PXP 1.2: Adapter to Nethtml: Parses HTML and converts it to a PXP object
   tree.
 
+  ==> module Pxp_html
+
 - PXP 1.2: embedded XML (see below)
 
 - PXP 1.2: XPATH
+
+  ==> module Pxp_xpath definiert XPATH-Kernfunktionen
 
 - PXP 1.2: Adapter to Netclient
 
@@ -92,18 +116,42 @@ by index.
   spec, dtd: aus dem Environment
 
   ${name:string}: Ein String wird in das Attribut/Textknoten eingefügt
+  {string <ocaml-name>}
 
   ${name:att_value}: Das Attribut wird auf den att_value gesetzt.
     NUR so: attribut="${name:att_value}"
+  {att_value <ocaml-name>}
 
   ${name:node}: Ein einzelner Knoten
+  {node <ocaml-name>}
 
   ${name:nodelist}: Eine liste von Knoten
+  {nodes <ocaml-name>}
 
   Beispiel:
 
   let m = <element< <a href="abc">The hyperlink to ${dest:string}</a> >>
+  let m = <element< <a href="abc">The hyperlink to {string dest}</a> >>
 
   Ergibt: m : string -> 'ext node
+          m : dest:string -> 'ext node
 
   Die Leerzeichen vor <a> und nach </a> werden ignoriert
+
+  spec, dtd: feste ocaml-Bezeichner
+
+
+  <xml< <element>...</element> >>
+  <xml< <?pi ...?> >>
+  <xml< <!-- ... --> >>
+  <xml< data >>           (Leerzeichen am Anfang und Ende ignoriert)
+
+  Der XML-Ausdruck wird im well-formed-Modus gelesen. Daher wird kein
+  ignorable whitespace erkannt.
+
+  <declaredtd< DTD >>  ??? (later)
+    - Entity-Definitionen benutzen
+    - Validierung des Ausdrucks ??? Geht evtl. nicht
+    - Ignorable whitespace
+
+  Namespaces?
