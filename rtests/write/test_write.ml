@@ -1,4 +1,4 @@
-(* $Id: test_write.ml,v 1.2 2000/08/16 23:44:21 gerd Exp $
+(* $Id: test_write.ml,v 1.3 2001/05/17 22:35:46 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -25,8 +25,8 @@ let parse_and_write in_filename =
   let spec =
     let e = new element_impl default_extension in
     make_spec_from_mapping
-      ~super_root_exemplar:      e
-      ~default_pinstr_exemplar:  e
+      ~super_root_exemplar:      (new super_root_impl default_extension)
+      ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
@@ -82,6 +82,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_write.ml,v $
+ * Revision 1.3  2001/05/17 22:35:46  gerd
+ * 	Updated.
+ *
  * Revision 1.2  2000/08/16 23:44:21  gerd
  * 	Updates because of changes of the PXP API.
  *

@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.4 2000/08/17 01:20:15 gerd Exp $
+(* $Id: compile.ml,v 1.5 2001/05/17 22:38:27 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -27,9 +27,9 @@ let compile in_filename out_filename print super_root pis comments =
   let spec =
     let e = new element_impl default_extension in
     make_spec_from_mapping
-      ~super_root_exemplar:      e
-      ~default_pinstr_exemplar:  e
-      ~comment_exemplar:         e
+      ~super_root_exemplar:      (new super_root_impl default_extension)
+      ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
+      ~comment_exemplar:         (new comment_impl default_extension)
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
@@ -111,6 +111,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.5  2001/05/17 22:38:27  gerd
+ * 	Updated.
+ *
  * Revision 1.4  2000/08/17 01:20:15  gerd
  * 	Update: Also tested whether super root nodes, pinstr nodes
  * and comment nodes work.
