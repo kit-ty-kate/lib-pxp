@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.12 2000/08/18 20:14:00 gerd Exp $
+(* $Id: pxp_document.ml,v 1.13 2000/08/26 23:29:10 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -20,8 +20,8 @@ type node_type =
   | T_pinstr of string
   | T_comment
   | T_none
-  | T_attribute
-  | T_namespace
+  | T_attribute of string
+  | T_namespace of string
 ;;
 
 
@@ -43,14 +43,18 @@ class type [ 'ext ] node =
     method root : 'ext node
     method orphaned_clone : 'self
     method orphaned_flat_clone : 'self
-    method add_node : 'ext node -> unit
+    method add_node : ?force:bool -> 'ext node -> unit
     method add_pinstr : proc_instruction -> unit
     method pinstr : string -> proc_instruction list
     method pinstr_names : string list
+    method node_position : int
     method sub_nodes : 'ext node list
     method iter_nodes : ('ext node -> unit) -> unit
     method iter_nodes_sibl :
       ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
+    method nth_node : int -> 'ext node
+    method previous_node : 'ext node
+    method next_node : 'ext node
     method set_nodes : 'ext node list -> unit
     method data : string
     method node_type : node_type
@@ -67,6 +71,7 @@ class type [ 'ext ] node =
     method id_attribute_value : string
     method idref_attribute_names : string list
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method attributes_as_nodes : 'ext node list
     method set_comment : string option -> unit
     method comment : string option
     method dtd : dtd
@@ -79,7 +84,8 @@ class type [ 'ext ] node =
     method keep_always_whitespace_mode : unit
     method write : output_stream -> encoding -> unit
     method write_compact_as_latin1 : output_stream -> unit
-    method internal_adopt : 'ext node option -> unit
+    method internal_adopt : 'ext node option -> int -> unit
+    method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
                            dtd -> string -> (string * string) list -> unit
@@ -123,6 +129,34 @@ let make_spec_from_mapping
 	   | Some m -> m
 	)
     }
+;;
+
+
+let make_spec_from_alist
+      ?super_root_exemplar 
+      ?comment_exemplar
+      ?default_pinstr_exemplar 
+      ?(pinstr_alist = [])
+      ~data_exemplar ~default_element_exemplar ~element_alist () =
+  let m = List.length  pinstr_alist in
+  let pinstr_mapping = Hashtbl.create m in
+  List.iter
+    (fun (name,ex) -> Hashtbl.add pinstr_mapping name ex)
+    pinstr_alist;
+  let n = List.length  element_alist in
+  let element_mapping = Hashtbl.create m in
+  List.iter
+    (fun (name,ex) -> Hashtbl.add element_mapping name ex)
+    element_alist;
+  make_spec_from_mapping
+    ?super_root_exemplar:      super_root_exemplar
+    ?comment_exemplar:         comment_exemplar
+    ?default_pinstr_exemplar:  default_pinstr_exemplar
+    ~pinstr_mapping:           pinstr_mapping
+    ~data_exemplar:            data_exemplar
+    ~default_element_exemplar: default_element_exemplar
+    ~element_mapping:          element_mapping
+    ()
 ;;
 
 (**********************************************************************)
@@ -288,6 +322,7 @@ class virtual ['ext] node_impl an_ext =
     constraint 'ext = 'ext node #extension
 
     val mutable parent = (None : 'ext node option)
+    val mutable node_position = -1
     val mutable dtd = (None : dtd option)
     val mutable extension = an_ext
 
@@ -312,10 +347,21 @@ class virtual ['ext] node_impl an_ext =
 	  None -> (self : 'ext #node :> 'ext node)
 	| Some p -> p # root
 
+    method node_position = 
+      if node_position >= 0 then node_position else
+	raise Not_found
+
+    method previous_node =
+      self # parent # nth_node (self # node_position - 1)
+
+    method next_node =
+      self # parent # nth_node (self # node_position + 1)
+
     method orphaned_clone =
       let x = extension # clone in
       let n =
 	{< parent = None;
+	   node_position = -1;
 	   extension = x;
 	>} in
       x # set_node (n : 'ext #node  :> 'ext node);
@@ -325,6 +371,7 @@ class virtual ['ext] node_impl an_ext =
       let x = extension # clone in
       let n =
 	{< parent = None;
+	   node_position = -1;
 	   extension = x;
 	>} in
       x # set_node (n : 'ext #node  :> 'ext node);
@@ -340,23 +387,27 @@ class virtual ['ext] node_impl an_ext =
 	  None -> failwith "Pxp_document.node_impl#encoding: No DTD available"
 	| Some d -> d # encoding
 
-    method internal_adopt (new_parent : 'ext node option) =
+    method internal_adopt (new_parent : 'ext node option) pos =
       begin match parent with
 	  None -> ()
 	| Some p ->
 	    if new_parent <> None then
 	      failwith "Pxp_document.node_impl#internal_adopt: Tried to add a bound element"
       end;
-      parent <- new_parent
+      parent <- new_parent;
+      node_position <- pos
 
+    method internal_set_pos pos =
+      node_position <- pos
 
-    method virtual add_node : 'ext node -> unit
+    method virtual add_node : ?force:bool -> 'ext node -> unit
     method virtual add_pinstr : proc_instruction -> unit
     method virtual sub_nodes : 'ext node list
     method virtual pinstr : string -> proc_instruction list
     method virtual pinstr_names : string list
     method virtual iter_nodes : ('ext node -> unit) -> unit
     method virtual iter_nodes_sibl : ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
+    method virtual nth_node : int -> 'ext node
     method virtual set_nodes : 'ext node list -> unit
     method virtual data : string
     method virtual node_type : node_type
@@ -370,6 +421,7 @@ class virtual ['ext] node_impl an_ext =
     method virtual optional_string_attribute : string -> string option
     method virtual optional_list_attribute : string -> string list
     method virtual quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method virtual attributes_as_nodes : 'ext node list
     method virtual set_comment : string option -> unit
     method virtual comment : string option
     method virtual create_element : 
@@ -401,7 +453,7 @@ class ['ext] data_impl an_ext : ['ext] node =
 
     method position = no_position
 
-    method add_node _ =
+    method add_node ?(force=false) _ =
       failwith "method 'add_node' not applicable to data node"
     method add_pinstr _ =
       failwith "method 'add_pinstr' not applicable to data node"
@@ -410,6 +462,7 @@ class ['ext] data_impl an_ext : ['ext] node =
     method sub_nodes = []
     method iter_nodes _ = ()
     method iter_nodes_sibl _ = ()
+    method nth_node _ = raise Not_found
     method set_nodes _ =
       failwith "method 'set_nodes' not applicable to data node"
     method data = content
@@ -429,6 +482,7 @@ class ['ext] data_impl an_ext : ['ext] node =
     method idref_attribute_names = []
     method quick_set_attributes _ =
       failwith "method 'quick_set_attributes' not applicable to data node"
+    method attributes_as_nodes = []
     method comment = None
     method set_comment c =
       match c with
@@ -471,6 +525,161 @@ class ['ext] data_impl an_ext : ['ext] node =
 
 (**********************************************************************)
 
+class ['ext] attribute_impl ~element ~name value dtd =
+  (object (self)
+     val mutable parent = (None : 'ext node option)
+     val mutable dtd = dtd
+     val mutable element_name = element
+     val mutable att_name = name
+     val mutable att_value = value
+			       
+     method parent = 
+       match parent with
+	   None -> raise Not_found
+	 | Some p -> p
+	     
+     method root =
+       match parent with
+	   None -> (self : 'ext #node :> 'ext node)
+	 | Some p -> p # root
+	     
+     method internal_adopt new_parent _ =
+       parent <- new_parent
+
+     method orphaned_clone =
+       {< parent = None >}
+       
+     method orphaned_flat_clone =
+       {< parent = None >}
+       
+     method dtd = dtd
+		    
+     method encoding = dtd # encoding
+			 
+     method node_type = T_attribute att_name
+			  
+     method attribute n =
+       if n = att_name then att_value else raise Not_found
+	 
+     method attribute_names = [ att_name ]
+				
+     method attribute_type n =
+       let eltype = dtd # element element_name in
+       ( try
+	   let atype, adefault = eltype # attribute n in
+	   atype
+	 with
+	     Undeclared ->
+	       A_cdata
+       )
+		       
+     method attributes = [ att_name, att_value ]
+			   
+     method required_string_attribute n =
+       if n = att_name then
+	 match att_value with
+	     Value s -> s
+	   | Valuelist l -> String.concat " " l
+	   | Implied_value -> raise Not_found
+       else
+	 failwith "Pxp_document.attribute_impl#required_string_attribute: not found"
+
+	 
+     method required_list_attribute n =
+       if n = att_name then
+	 match att_value with
+	     Value s -> [ s ]
+	   | Valuelist l -> l
+	   | Implied_value -> raise Not_found
+       else
+	 failwith "Pxp_document.attribute_impl#required_list_attribute: not found"
+	 
+     method optional_string_attribute n =
+       if n = att_name then
+	 match att_value with
+	     Value s -> Some s
+	   | Valuelist l -> Some(String.concat " " l)
+	   | Implied_value -> None
+       else
+	 None
+	 
+     method optional_list_attribute n =
+       if n = att_name then
+	 match att_value with
+	     Value s -> [ s ]
+	   | Valuelist l -> l
+	   | Implied_value -> []
+       else
+	 []
+	 
+    (* Senseless methods: *)
+	 
+     method sub_nodes = []
+     method pinstr _ = []
+     method pinstr_names = []
+     method iter_nodes _ = ()
+     method iter_nodes_sibl _ = ()
+     method nth_node _ = raise Not_found
+     method data = ""
+     method position = ("?",0,0)
+     method comment = None
+     method local_validate ?use_dfa () = ()
+					   
+    (* Non-applicable methods: *)
+					   
+     method extension =
+       failwith "Pxp_document.attribute_impl#extension: not applicable"
+     method delete =
+       failwith "Pxp_document.attribute_impl#delete: not applicable"
+     method node_position =
+       failwith "Pxp_document.attribute_impl#node_position: not applicable"
+     method previous_node = 
+       failwith "Pxp_document.attribute_impl#previous_node: not applicable"
+     method next_node = 
+       failwith "Pxp_document.attribute_impl#next_node: not applicable"
+     method internal_set_pos _ =
+       failwith "Pxp_document.attribute_impl#internal_set_pos: not applicable"
+     method internal_delete _ =
+       failwith "Pxp_document.attribute_impl#internal_delete: not applicable"
+     method internal_init _ _ _ _ =
+       failwith "Pxp_document.attribute_impl#internal_init: not applicable"
+     method internal_init_other _ _ _ =
+       failwith "Pxp_document.attribute_impl#internal_init_other: not applicable"
+     method add_node ?force _ =
+       failwith "Pxp_document.attribute_impl#add_node: not applicable"
+     method add_pinstr _ =
+       failwith "Pxp_document.attribute_impl#add_pinstr: not applicable"
+     method set_nodes _ =
+       failwith "Pxp_document.attribute_impl#set_nodes: not applicable"
+     method quick_set_attributes _ =
+       failwith "Pxp_document.attribute_impl#quick_set_attributes: not applicable"
+     method attributes_as_nodes =
+       failwith "Pxp_document.attribute_impl#dattributes_as_nodes: not applicable"
+     method set_comment c =
+       if c <> None then
+	 failwith "Pxp_document.attribute_impl#set_comment: not applicable"
+     method create_element ?position _ _ _ =
+       failwith "Pxp_document.attribute_impl#create_element: not applicable"
+     method create_data _ _ =
+       failwith "Pxp_document.attribute_impl#create_data: not applicable"
+     method keep_always_whitespace_mode =
+       failwith "Pxp_document.attribute_impl#keep_always_whitespace_mode: not applicable"
+     method write _ _ =
+       failwith "Pxp_document.attribute_impl#write: not applicable"
+     method write_compact_as_latin1 _ =
+       failwith "Pxp_document.attribute_impl#write_compact_as_latin1: not applicable"
+     method id_attribute_name =
+       failwith "Pxp_document.attribute_impl#id_attribute_name: not applicable"
+     method id_attribute_value =
+       failwith "Pxp_document.attribute_impl#id_attribute_value: not applicable"
+     method idref_attribute_names =
+       failwith "Pxp_document.attribute_impl#idref_attribute_names: not applicable"
+   end
+     : ['ext] node)
+;;
+
+(**********************************************************************)
+
 class ['ext] element_impl an_ext : ['ext] node =
     object (self:'self)
       inherit ['ext] node_impl an_ext as super
@@ -483,7 +692,10 @@ class ['ext] element_impl an_ext : ['ext] node =
       val mutable idref_att_names = []
       val mutable rev_nodes = ([] : 'c list)
       val mutable nodes = (None : 'c list option)
+      val mutable array = (None : 'c array option)
+      val mutable size = 0
       val mutable attributes = []
+      val mutable att_nodes = []
       val mutable comment = None
       val pinstr = lazy (Hashtbl.create 10 : (string,proc_instruction) Hashtbl.t)
       val mutable keep_always_whitespace = false
@@ -510,11 +722,11 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      "'"
 	  | T_comment -> "Wrapper element for comment"
 	  | T_none -> "NO element"
-	  | T_attribute -> assert false
-	  | T_namespace -> assert false
+	  | T_attribute _ -> assert false
+	  | T_namespace _ -> assert false
 	  | T_data -> assert false
 
-      method add_node n =
+      method add_node ?(force = false) n =
 	let only_whitespace s =
 	  (* Checks that the string "s" contains only whitespace. On failure,
 	   * Validation_error is raised.
@@ -555,38 +767,44 @@ class ['ext] element_impl an_ext : ['ext] node =
 		    Any         -> ()
 		  | Unspecified -> ()
 		  | Empty       -> 
-		      if n # data <> "" then
-			raise(Validation_error(self # error_name ^ 
-					       " must be empty"));
-		      raise Skip
+		      if not force then begin
+			if n # data <> "" then
+			  raise(Validation_error(self # error_name ^ 
+						 " must be empty"));
+			raise Skip
+		      end
 		  | Mixed _     -> ()
 		  | Regexp _    -> 
-		      only_whitespace (n # data);
-		      (* TODO: following check faster *)
-		      if n # dtd # standalone_declaration &&
-		         n # data <> ""
-		      then begin
-			(* The standalone declaration is violated if the
-			 * element declaration is contained in an external
-			 * entity.
-			 *)
-			if ext_decl then
-			  raise
-			    (Validation_error
-			       (self # error_name ^ 
-				" violates standalone declaration"  ^
-				" because extra white space separates" ^ 
-				" the sub elements"));
-		      end;
-		      if not keep_always_whitespace then raise Skip
+		      if not force then begin
+			only_whitespace (n # data);
+			(* TODO: following check faster *)
+			if n # dtd # standalone_declaration &&
+		          n # data <> ""
+			then begin
+			  (* The standalone declaration is violated if the
+			   * element declaration is contained in an external
+			   * entity.
+			   *)
+			  if ext_decl then
+			    raise
+			      (Validation_error
+				 (self # error_name ^ 
+				  " violates standalone declaration"  ^
+				  " because extra white space separates" ^ 
+				  " the sub elements"));
+			end;
+			if not keep_always_whitespace then raise Skip
+		      end
 		end
 	    | _ ->
 		()
 	  end;
 	  (* all OK, so add this node: *)
-	  n # internal_adopt (Some (self : 'ext #node :> 'ext node));
+	  n # internal_adopt (Some (self : 'ext #node :> 'ext node)) size;
 	  rev_nodes <- n :: rev_nodes;
-	  nodes <- None
+	  nodes <- None;
+	  array <- None;
+	  size <- size + 1
 	with Skip ->
 	  ()
 
@@ -636,27 +854,48 @@ class ['ext] element_impl an_ext : ['ext] node =
 	in
 	next None cl
 
+      method nth_node p =
+	if p < 0 or p >= size then raise Not_found;
+	if array = None then
+	  array <- Some (Array.of_list (self # sub_nodes));
+	match array with
+	    None -> assert false
+	  | Some a ->
+	      a.(p)
+
       method set_nodes nl =
+	let old_size = size in
 	List.iter
-	  (fun n -> n # internal_adopt None)
+	  (fun n -> n # internal_adopt None (-1))
 	  rev_nodes;
 	begin try
+	  size <- 0;
 	  List.iter
-	    (fun n -> n # internal_adopt (Some (self : 'ext #node :> 'ext node)))
+	    (fun n -> n # internal_adopt 
+		            (Some (self : 'ext #node :> 'ext node))
+		            size;
+	              size <- size + 1)
 	    nl
 	with
 	    e ->
 	      (* revert action as much as possible *)
 	      List.iter
-		(fun n -> n # internal_adopt None)
+		(fun n -> n # internal_adopt None (-1))
 		rev_nodes;
+	      size <- old_size;
+	      let pos = ref (size-1) in
 	      List.iter
-		(fun n -> n # internal_adopt (Some (self : 'ext #node :> 'ext node)))
+		(fun n -> n # internal_adopt 
+		                (Some (self : 'ext #node :> 'ext node))
+		                !pos;
+		          decr pos
+		)
 		rev_nodes;
 	      (* [TODO] Note: there may be bad members in nl *)
 	      raise e
 	end;
 	rev_nodes <- List.rev nl;
+	array <- None;
 	nodes <- None
 
 
@@ -671,13 +910,20 @@ class ['ext] element_impl an_ext : ['ext] node =
 	let x = extension # clone in
 	let n =
 	  {< parent = None;
+	     node_position = -1;
 	     extension = x;
 	     rev_nodes = sub_clones;
 	     nodes = None;
+	     array = None;
 	  >} in	
 
+	let pos = ref (size - 1) in
 	List.iter
-	  (fun m -> m # internal_adopt (Some (n : 'ext #node :> 'ext node)))
+	  (fun m -> m # internal_adopt 
+	              (Some (n : 'ext #node :> 'ext node)) 
+	              !pos;
+	            decr pos
+	  )
 	  sub_clones;
 
 	x # set_node (n : 'ext #node  :> 'ext node);
@@ -687,9 +933,12 @@ class ['ext] element_impl an_ext : ['ext] node =
 	let x = extension # clone in
 	let n =
 	  {< parent = None;
+	     node_position = -1;
 	     extension = x;
 	     rev_nodes = [];
 	     nodes = None;
+	     size = 0;
+	     array = None;
 	  >} in	
 
 	x # set_node (n : 'ext #node  :> 'ext node);
@@ -698,8 +947,14 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method internal_delete n =
 	rev_nodes <- List.filter (fun n' -> n' != n) rev_nodes;
+	size <- size - 1;
+	let p = ref (size-1) in
+	List.iter
+	  (fun n' -> n' # internal_set_pos !p; decr p)
+	  rev_nodes;
 	nodes <- None;
-	n # internal_adopt None
+	n # internal_adopt None (-1);
+	
 
       method data =
 	let cl = self # sub_nodes in
@@ -707,21 +962,20 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method node_type = ntype
 
+
       method attribute n =
 	List.assoc n attributes
 
       method attribute_names =
 	List.map fst attributes
 
-
       method attribute_type n =
-	let d =
-	  match dtd with
-	      None -> failwith "attribute_type: not available without DTD"
-	    | Some d -> d
-	in
 	match ntype with
 	    T_element name ->
+	      let d =
+		match dtd with
+		    None -> assert false 
+		  | Some d -> d in
 	      let eltype = d # element name in
 	      ( try
 		  let atype, adefault = eltype # attribute n in
@@ -742,7 +996,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    | Implied_value -> raise Not_found
 	with
 	    Not_found ->
-	      failwith "Markup.document, method required_string_attribute: not found"
+	      failwith "Pxp_document, method required_string_attribute: not found"
 
       method optional_string_attribute n =
 	try
@@ -794,7 +1048,38 @@ class ['ext] element_impl an_ext : ['ext] node =
 
 
       method quick_set_attributes atts =
-	attributes <- atts
+	match ntype with
+	    T_element _ ->
+	      attributes <- atts;
+	      att_nodes <- []
+	  | _ ->
+	      failwith "quick_set_attributes: not applicable for non-element node"
+
+
+      method attributes_as_nodes =
+	match att_nodes with
+	    [] when attributes = [] ->
+	      []
+	  | [] ->
+	      let dtd = self # dtd in
+	      let element_name =
+		match ntype with
+		    T_element n -> n
+		  | _ ->
+		      assert false in
+	      let l =
+		List.map
+		  (fun (n,v) ->
+		     new attribute_impl 
+		       ~element:element_name
+		       ~name:n
+		       v
+		       dtd)
+		  attributes in
+	      att_nodes <- l;
+	      l
+	  | _ ->
+	      att_nodes
 
 
       method create_element 
@@ -817,7 +1102,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      obj # internal_init_other position new_dtd new_type;
 	      obj
 	  | _ ->
-	      failwith "create_element: Cannot create such nodes"
+	      failwith "create_element: Cannot create such node"
 
 
       method internal_init_other new_pos new_dtd new_ntype =
@@ -830,6 +1115,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	content_model <- Any;
 	content_dfa <- lazy None;
 	attributes <- [];
+	att_nodes <- [];
 	dtd <- Some new_dtd;
 	ext_decl <- false;
 	id_att_name <- None;
@@ -846,6 +1132,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	ntype <- T_element new_name;
 	position <- new_pos;
 	comment <- None;
+	att_nodes <- [];
 
 	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
 	let sadecl = new_dtd # standalone_declaration in
@@ -1116,6 +1403,213 @@ let create_pinstr_node ?position spec dtd pi =
 ;;
 
 
+let find ?(deeply=false) f base =
+  let rec search_flat children =
+    match children with
+	[] -> raise Not_found
+      | n :: children' ->
+	  if f n then n else search_flat children'
+  in
+  let rec search_deep children =
+    match children with
+	[] -> raise Not_found
+      | n :: children' ->
+	  if f n then
+	    n 
+	  else
+	    try search_deep (n # sub_nodes)
+	    with Not_found -> search_deep children'
+  in
+  (if deeply then search_deep else search_flat)
+  (base # sub_nodes)
+;;
+
+
+let find_all ?(deeply=false) f base =
+  let rec search_flat children =
+    match children with
+	[] -> []
+      | n :: children' ->
+	  if f n then n :: search_flat children' else search_flat children'
+  in
+  let rec search_deep children =
+    match children with
+	[] -> []
+      | n :: children' ->
+	  let rest =
+	    search_deep (n # sub_nodes) @ search_deep children' in
+	  if f n then
+	    n :: rest
+	  else
+	    rest
+  in
+  (if deeply then search_deep else search_flat)
+  (base # sub_nodes)
+;;
+
+
+let find_element ?deeply eltype base =
+  find 
+    ?deeply:deeply 
+    (fun n -> 
+       match n # node_type with
+	   T_element name -> name = eltype
+	 | _              -> false)
+    base
+;;
+
+
+let find_all_elements ?deeply eltype base =
+  find_all
+    ?deeply:deeply 
+    (fun n -> 
+       match n # node_type with
+	   T_element name -> name = eltype
+	 | _              -> false)
+    base
+;;
+
+
+exception Skip;;
+
+let map_tree ~pre ?(post=(fun x -> x)) base =
+  let rec map_rec n =
+    (try
+      let n' = pre n in
+      if n' # node_type <> T_data then begin
+	let children = n # sub_nodes in
+	let children' = map_children children in
+	n' # set_nodes children';
+      end;
+      post n'
+    with
+	Skip -> raise Not_found
+    )
+  and map_children l =
+    match l with
+	[] -> []
+      | child :: l' ->
+	  (try 
+	     let child' = map_rec child in
+	     child' :: map_children l'
+	   with
+	       Not_found ->
+		 map_children l'
+	  )
+  in
+  map_rec base
+;;
+
+
+let map_tree_sibl ~pre ?(post=(fun _ x _ -> x)) base =
+  let rec map_rec l n r =
+    (try
+      let n' = pre l n r in
+      if n' # node_type <> T_data then begin
+	let children = n # sub_nodes in
+	let children' = map_children None children in
+	let children'' = postprocess_children None children' in
+	n' # set_nodes children'';
+      end;
+      n'
+    with
+	Skip -> raise Not_found
+    )
+  and map_children predecessor l =
+    (match l with
+	 [] -> []
+       | child :: l' ->
+	   let successor =
+	     match l' with
+		 []    -> None
+	      | x :: _ -> Some x in
+	   (try 
+	      let child' = map_rec predecessor child successor in
+	      child' :: map_children (Some child) l'
+	    with
+		Not_found ->
+		  map_children (Some child) l'
+	   )
+    )
+  and postprocess_children predecessor l =
+    (match l with
+	 [] -> []
+       | child :: l' ->
+	   let successor =
+	     match l' with
+		 []     -> None
+	       | x :: _ -> Some x in
+	   (try 
+	      let child' = post predecessor child successor in
+	      child' :: postprocess_children (Some child) l'
+	    with
+		Skip ->
+		  postprocess_children (Some child) l'
+	   )
+    )
+  in
+  let base' = map_rec None base None in
+  try post None base' None with Skip -> raise Not_found
+;;
+
+
+let iter_tree ?(pre=(fun x -> ())) ?(post=(fun x -> ())) base =
+  let rec iter_rec n =
+    (try
+      pre n;
+      let children = n # sub_nodes in
+      iter_children children;
+      post n
+    with
+	Skip -> raise Not_found
+    )
+  and iter_children l =
+    match l with
+	[] -> []
+      | child :: l' ->
+	  (try 
+	     iter_rec child;
+	     iter_children l'
+	   with
+	       Not_found ->
+		 iter_children l'
+	  )
+  in
+  iter_rec base
+;;
+
+
+let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
+  let rec iter_rec l n r =
+    (try
+      pre l n r;
+      let children = n # sub_nodes in
+      iter_children None children;
+      post l n r
+    with
+	Skip -> raise Not_found
+    )
+  and iter_children predecessor l =
+    (match l with
+	 [] -> []
+       | child :: l' ->
+	   let successor =
+	     match l' with
+		 []    -> None
+	      | x :: _ -> Some x in
+	   (try 
+	      iter_rec predecessor child successor;
+	      iter_children (Some child) l'
+	    with
+		Not_found ->
+		  iter_children (Some child) l'
+	   )
+    )
+  in
+  iter_rec None base None
+;;
+
+
 class ['ext] document the_warner =
   object (self)
     val mutable xml_version = "1.0"
@@ -1276,6 +1770,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.13  2000/08/26 23:29:10  gerd
+ * 	Implementations for the changed in rev 1.9 of pxp_document.mli.
+ *
  * Revision 1.12  2000/08/18 20:14:00  gerd
  * 	New node_types: T_super_root, T_pinstr, T_comment, (T_attribute),
  * (T_none), (T_namespace).
