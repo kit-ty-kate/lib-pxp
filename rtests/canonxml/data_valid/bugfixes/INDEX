@@ -10,3 +10,6 @@ reported bugs have been fixed.
 		where PI nodes are created. In the "comments" directory
 		there is another test for the case that comments delimit
 		data material
+004.xml		2002-08-31: Whether the method replacement_text of
+		external entities recognizes the XML declaration at the
+		beginning of files

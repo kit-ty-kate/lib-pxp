@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE x [
+<!ENTITY % e1 SYSTEM "004.ent1">
+%e1;
+<!--<!ENTITY f SYSTEM "004.ent2">-->
+<!ELEMENT x ANY>
+]>
+
+<!-- This test checks whether the entity f can be expanded although
+     there is an XML declaration <?xml version="1.0"?> at the beginning
+     of 004.ent2. In particular, the method replacement_text of
+     external entities is tested.
+  -->
+
+<x>&f;</x>
