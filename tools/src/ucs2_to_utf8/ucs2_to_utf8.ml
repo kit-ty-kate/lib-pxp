@@ -3,6 +3,8 @@
 (*                   14/05/2000                       *)
 (******************************************************)
 
+(* [14-Jun-2001] Slightly modified by Gerd Stolpmann *)
+
 (* Surrogate Pairs are not accepted in XML files (is it true???) *)
 exception SurrogatePairs;;
 
@@ -162,7 +164,7 @@ let ucs2_to_utf8 { Types.id = id ; Types.rel = rel } =
 ;;
 
 (* The function actually used to produce the output *)
-let output = print_string ;;
+let output = ref (fun _ -> ());;      (* modified by GS *)
 
 (* padded_string_of_int i returns the string representing the        *)
 (* integer i (i < 256) using exactly 3 digits (example: 13 -> "013") *)
@@ -180,20 +182,20 @@ let rec print_disjunction ?(first = true) =
  function
     [] -> ()
   | he::tl ->
-     if not first then output " | " ;
+     if not first then !output " | " ;
      print_re he ;
      print_disjunction ~first:false tl
 and print_re =
  function
-    Types.Char i -> output ("'\\" ^ padded_string_of_int i ^ "'")
+    Types.Char i -> !output ("'\\" ^ padded_string_of_int i ^ "'")
   | Types.Interval (l,u) ->
-     output ("['\\" ^ padded_string_of_int l ^ "'-'\\" ^
+     !output ("['\\" ^ padded_string_of_int l ^ "'-'\\" ^
       padded_string_of_int u ^ "']")
-  | Types.Identifier i -> output i
+  | Types.Identifier i -> !output i
   | Types.Concat rell ->
      let foo rel =
       if List.length rel > 1 then
-       (output "(" ; print_disjunction rel ; output ")")
+       (!output "(" ; print_disjunction rel ; !output ")")
       else
        print_disjunction rel
      in
@@ -202,14 +204,43 @@ and print_re =
 
 (* print_definition prints a definition in the format expected by ocamllex *)
 let print_definition { Types.id = id ; Types.rel = rel } =
- output ("let " ^ id ^ " =\n   ") ;
+ !output ("let " ^ id ^ " =\n   ") ;
  print_disjunction rel ;
- output "\n\n"
+ !output "\n\n"
 ;;
 
 (* main *)
 let _ =
- let lexbuf = Lexing.from_channel stdin in
-  let ucs2_result = Parser.main Lexer.token lexbuf in
-   List.iter print_definition (List.map ucs2_to_utf8 ucs2_result)
+  (* modified by Gerd Stolpmann *)
+  let in_filename = ref "" in
+  let out_filename = ref "" in
+  Arg.parse
+      []
+      (fun s -> 
+	 if !in_filename = "" then
+	   in_filename := s
+	 else
+	   if !out_filename = "" then
+	     out_filename := s
+	   else raise (Arg.Bad "Too many arguments")
+      )
+      "usage: ucs2_to_utf8 infile outfile";
+   if !in_filename = "" || !out_filename = "" then (
+     prerr_endline "Too few arguments";
+     exit 1
+   );
+   try
+     let in_file = open_in !in_filename in
+     let out_file = open_out !out_filename in
+     let lexbuf = Lexing.from_channel in_file in
+     let ucs2_result = Parser.main Lexer.token lexbuf in
+     output := output_string out_file;
+     List.iter print_definition (List.map ucs2_to_utf8 ucs2_result);
+     close_in in_file;
+     close_out out_file
+   with
+       any ->
+	 (try Sys.remove !out_filename with _ -> ());
+	 prerr_endline (Printexc.to_string any);
+	 exit 1
 ;;
