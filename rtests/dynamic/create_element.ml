@@ -1,4 +1,4 @@
-(* $Id: create_element.ml,v 1.2 2001/06/04 18:54:36 gerd Exp $ *)
+(* $Id: create_element.ml,v 1.3 2001/12/15 18:06:41 gerd Exp $ *)
 
 (* This test checks whether create_element processes the attribute list
  * correctly. The attributes are passed using the ~att_values argument, and
@@ -45,7 +45,7 @@ let spec = default_spec;;
 
 let sorted_atts e =
   let atts = e # attributes in
-  List.sort ~cmp:(fun (a,_) (b,_) -> Pervasives.compare a b) atts
+  List.sort (fun (a,_) (b,_) -> Pervasives.compare a b) atts
 ;;
 
 let dotest name f creator =
