@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/019.xml", at line 9, column 0: 
+Markup_types.Validation_error("Attribute `ent' is lexically malformed")

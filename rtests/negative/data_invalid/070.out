@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/070.xml", at line 19, column 24: 
+Markup_types.Validation_error("Element `outer3' violates standalone declaration because extra white space separates the sub elements")

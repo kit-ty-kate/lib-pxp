@@ -1,0 +1,19 @@
+<?xml version="1.0" standalone="yes"?>
+
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ELEMENT el EMPTY>
+<!ATTLIST el v1 CDATA "abc">
+<!ENTITY % declare_v2 '<!ATTLIST el v2 CDATA "def">'>
+%declare_v2;
+<!ENTITY % declare_v3 SYSTEM "060.ent">
+%declare_v3;
+]>
+
+<any>
+  <any><el v1="ABC" v2="DEF" v3="GHI"/></any>
+  <any><el v2="DEF" v3="GHI"/></any>
+  <any><el v3="GHI"/></any>
+  <any><el/></any>
+</any>
+

@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/066.xml", at line 18, column 26: 
+Markup_types.Validation_error("Reference to entity `e3' violates standalone declaration")

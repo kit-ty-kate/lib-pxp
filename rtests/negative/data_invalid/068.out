@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/068.xml", at line 19, column 28: 
+Markup_types.Validation_error("Attribute `v3' of element type `el' violates standalone declaration")

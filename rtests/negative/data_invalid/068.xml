@@ -1,0 +1,21 @@
+<?xml version="1.0" standalone="yes"?>
+
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ELEMENT el EMPTY>
+<!ATTLIST el v1 NMTOKEN #IMPLIED>
+<!ENTITY % declare_v2 '<!ATTLIST el v2 NMTOKEN #IMPLIED>'>
+%declare_v2;
+<!ENTITY % declare_v3 SYSTEM "068.ent">
+%declare_v3;
+]>
+
+<any>
+  <any><el v1="abc"/></any>
+  <any><el v2="abc"/></any>
+  <any><el v3="abc"/></any>
+  <any><el v1=" abc "/></any>
+  <any><el v2=" abc "/></any>
+  <any><el v3=" abc "/></any>
+</any>
+

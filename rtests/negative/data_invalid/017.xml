@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ELEMENT el EMPTY>
+<!ATTLIST el id ID #IMPLIED
+             idref IDREF #IMPLIED
+>
+]>
+
+<any>
+  <el id="a10"/>
+  <el idref="a20"/>
+</any>

@@ -1,0 +1,67 @@
+----------------------------------------
+Root element
+----------------------------------------
+
+001.xml		Declared root element type matches actual root element type
+
+----------------------------------------
+Attributes
+----------------------------------------
+
+010.xml		ID attributes must match the Name production (not nmtoken)
+011.xml		ID attributes uniquely identify the element bearing them
+		*** TODO ***
+012.xml		No element type must have several ID attributes declared
+013.xml		No ID attribute must have a default
+014.xml		No ID attribute must have a default (FIXED)
+015.xml		Attributes of type IDREF must match the Name production
+016.xml		Attributes of type IDREFS must match the Names production
+017.xml		Attributes of type IDREF must match the value of an ID
+		attribute
+		*** TODO ***
+018.xml		Attributes of type IDREFS must match the values of ID
+		attributes
+		*** TODO ***
+019.xml		Attributes of type ENTITY must match the Name production
+020.xml		Attributes of type ENTITIES must match the Names production
+021.xml		Attributes of type ENTITY must match an unparsed entity
+022.xml		Attributes of type ENTITIES must match unparsed entities
+023.xml		Attributes of type NMTOKEN must match the nmtoken production
+024.xml		Attributes of type NMTOKENS must match the nmtokens production
+025.xml		like 015.xml, but the default value is tested
+026.xml		like 016.xml, but the default value is tested
+027.xml		like 019.xml, but the default value is tested
+028.xml		like 020.xml, but the default value is tested
+029.xml		like 023.xml, but the default value is tested
+030.xml		like 024.xml, but the default value is tested
+031.xml		all notation names in the declaration must have been declared
+032.xml		Values of NOTATION type must match one declared value
+033.xml		Values of NOTATION type must match one declared value
+034.xml		Only one NOTATION attribute per element
+035.xml		Values of enum type must match one of the declared values
+036.xml		Values of enum type must match one of the declared values
+037.xml		missing #REQUIRED attribute
+038.xml		#FIXED attributes must match the declared default
+
+----------------------------------------
+Standalone declaration
+----------------------------------------
+
+060.xml		Externally declared default values are rejected
+061.xml		variant of 060.xml (internal entity within external entity)
+062.xml		variant of 060.xml (external subset of DTD)
+063.xml		Externally declared parsed general entities are rejected
+	        (entity ref occurs in main text)
+064.xml		Externally declared parsed general entities are rejected
+		(entity ref occurs in attribute value)
+065.xml		Externally declared parsed general entities are rejected
+		(entity ref occurs in attribute default)
+		*** THINK ABOUT THIS CASE AGAIN ***
+066.xml		Externally declared unparsed entities are rejected
+		(entity ref occurs in attribute value)
+067.xml 	Externally declared unparsed entities are rejected
+		(entity ref occurs in attribute default)
+068.xml		Externally declared NMTOKEN attributes require normal form
+069.xml		Externally declared NMTOKENS attributes require normal form
+070.xml		Externally declared elements with regexp content model
+		do not like extra white space

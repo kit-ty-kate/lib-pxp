@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/037.xml", at line 8, column 0: 
+Markup_types.Validation_error("Required attribute `x' is missing")

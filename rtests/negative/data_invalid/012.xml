@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!DOCTYPE el [
+<!ELEMENT el EMPTY>
+<!ATTLIST el id1 ID #IMPLIED>
+<!ATTLIST el id2 ID #IMPLIED>
+]>
+
+<el/>

@@ -1,0 +1,17 @@
+<?xml version="1.0" standalone="yes"?>
+
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ENTITY e1 "abc">
+<!ENTITY % declare_e2 '<!ENTITY e2 "def">'>
+%declare_e2;
+<!ENTITY % declare_e3 SYSTEM "063.ent">
+%declare_e3;
+]>
+
+<any>
+  &e1;
+  &e2;
+  &e3;
+</any>
+

@@ -1,0 +1,21 @@
+<?xml version="1.0" standalone="yes"?>
+
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ELEMENT inner EMPTY>
+<!ELEMENT outer1 (inner)>
+<!ENTITY % declare_outer2 '<!ELEMENT outer2 (inner)>'>
+%declare_outer2;
+<!ENTITY % declare_outer3 SYSTEM "070.ent">
+%declare_outer3;
+]>
+
+<any>
+  <any><outer1><inner/></outer1></any>
+  <any><outer2><inner/></outer2></any>
+  <any><outer3><inner/></outer3></any>
+  <any><outer1><inner/> </outer1></any>
+  <any><outer2><inner/> </outer2></any>
+  <any><outer3><inner/> </outer3></any>
+</any>
+

@@ -1,0 +1,20 @@
+<?xml version="1.0" standalone="yes"?>
+
+<!DOCTYPE any [
+<!ELEMENT any ANY>
+<!ENTITY e1 SYSTEM "abc" NDATA n1>
+<!ENTITY % declare_e2 '<!ENTITY e2 SYSTEM "def" NDATA n2>'>
+%declare_e2;
+<!ENTITY % declare_e3 SYSTEM "066.ent">
+%declare_e3;
+<!ELEMENT el EMPTY>
+<!ATTLIST el att ENTITY #IMPLIED
+>
+]>
+
+<any>
+  <any><el att="e1"/></any>
+  <any><el att="e2"/></any>
+  <any><el att="e3"/></any>
+</any>
+

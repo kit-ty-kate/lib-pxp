@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!DOCTYPE el [
+<!ENTITY ndata SYSTEM "" NDATA x>
+<!ELEMENT el EMPTY>
+<!ATTLIST el ent ENTITY "10">
+]>
+
+<el/>

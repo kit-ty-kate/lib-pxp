@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!DOCTYPE el [
+<!ELEMENT el EMPTY>
+<!ATTLIST el nms NMTOKENS #IMPLIED>
+]>
+<el nms="10 []"/>

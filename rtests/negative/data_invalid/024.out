@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/024.xml", at line 7, column 0: 
+Markup_types.Validation_error("Attribute `nms' is lexically malformed")

@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/032.xml", at line 6, column 2: 
+Markup_types.Validation_error("Illegal default value for attribute `n' in declaration for element `el'")

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE el [
+<!ELEMENT el EMPTY>
+<!ATTLIST el idrefs IDREFS #IMPLIED>
+]>
+
+<el idrefs="100 200"/>

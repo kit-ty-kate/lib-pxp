@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE el [
+<!NOTATION gif PUBLIC "image/gif">
+<!ELEMENT el EMPTY>
+<!ATTLIST el n NOTATION (gif) #IMPLIED>
+]>
+<el n="jpeg"/>

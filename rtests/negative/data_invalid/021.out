@@ -1,0 +1,2 @@
+In entity [toplevel document] = SYSTEM "data_invalid/021.xml", at line 9, column 0: 
+Markup_types.WF_error("Reference to undeclared general entity `x'")
