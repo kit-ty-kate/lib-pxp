@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.4 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.5 2000/09/17 00:11:42 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -7,6 +7,7 @@
 
 open Pxp_types
 open Pxp_lexer_types
+open Pxp_lex_link
 
 let lexer_set_iso88591 = 
   { lex_encoding         = `Enc_iso88591;
@@ -59,6 +60,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.5  2000/09/17 00:11:42  gerd
+ * 	Updated for wlexers.
+ *
  * Revision 1.4  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
