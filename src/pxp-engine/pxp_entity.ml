@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.9 2000/09/17 00:11:22 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.10 2000/09/21 21:28:16 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -304,6 +304,8 @@ class virtual entity the_dtd the_name the_warner
 			      (* count v + delimiting quotes *)
 			      let nl,nc = count_lines v in
 			      if nl = 0 then 0,(nc+2) else nl,(nc+1)
+			  | IgnoreLineEnd ->
+			      1,0
 			  | _ -> 
 			      0, (Lexing.lexeme_end lexbuf - 
 				  Lexing.lexeme_start lexbuf) 
@@ -393,6 +395,9 @@ class virtual entity the_dtd the_name the_warner
 		      Unparsed_string(normalize_line_separators lexerset value)
 		    else
 		      ustr
+
+          (* Turn IgnoreLineEnd into Ignore *)
+		| IgnoreLineEnd -> Ignore
 		      
           (* These tokens require that the entity_id parameter is set: *)
 		| Doctype _      -> Doctype       (self :> entity_id)
@@ -1099,6 +1104,10 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.10  2000/09/21 21:28:16  gerd
+ * 	New token IgnoreLineEnd: simplifies line counting, and
+ * corrects a bug.
+ *
  * Revision 1.9  2000/09/17 00:11:22  gerd
  * 	Optimized line numbering.
  *

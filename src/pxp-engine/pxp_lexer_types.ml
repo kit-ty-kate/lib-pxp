@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.2 2000/08/18 20:14:31 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.3 2000/09/21 21:28:16 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -35,6 +35,7 @@ type token =
   | Comment_material of string (* within a comment *)
   | Comment_end              (* --> *)
   | Ignore                   (* ignored whitespace *)
+  | IgnoreLineEnd            (* ignored whitespace (one newline character) *)
   | Eq                       (* = *)
   | Rangle                   (* > as tag delimiter *)
   | Rangle_empty             (* /> as tag delimiter *)
@@ -101,6 +102,7 @@ let string_of_tok tok =
   | Rangle -> "Rangle"
   | Rangle_empty -> "Rangle_empty"
   | Ignore -> "Ignore"
+  | IgnoreLineEnd -> "IgnoreLineEnd"
   | Eq -> "Eq"
   | Dtd_begin _ -> "Dtd_begin"
   | Dtd_end _ -> "Dtd_end"
@@ -169,6 +171,10 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.3  2000/09/21 21:28:16  gerd
+ * 	New token IgnoreLineEnd: simplifies line counting, and
+ * corrects a bug.
+ *
  * Revision 1.2  2000/08/18 20:14:31  gerd
  * 	Comment -> Comment_begin, Comment_material, Comment_end.
  *
