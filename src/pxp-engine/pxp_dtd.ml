@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.19 2001/07/02 23:21:40 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.20 2001/12/03 23:45:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -394,15 +394,57 @@ class dtd  the_warner init_encoding =
 
     method pinstr_names = pinstr_names
 
+    method write_ref os enc =
+      let write_sysid s =
+	write_markup_string 
+	  ~from_enc:`Enc_utf8 ~to_enc:enc os
+	  ( if String.contains s '"' then
+	      "'" ^ s ^ "'"
+	    else
+	      "\"" ^ s ^ "\""
+	  )
+      in
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
+      wms "<!DOCTYPE ";
+      ( match root with
+	    None -> failwith "#write: DTD without root";
+	  | Some r -> wms r
+      );
+      begin match id with
+	  None ->
+	    failwith "#write_ref: DTD does not have an ID"
+	| Some (External (Public (p,s))) ->
+	    wms " PUBLIC ";
+	    write_sysid p;
+	    wms " ";
+	    write_sysid s
+	| Some (External (System s)) ->
+	    wms " SYSTEM ";
+	    write_sysid s
+	| Some (External _) ->
+	    failwith "#write_ref: External ID cannot be represented"
+	| Some Internal ->
+	    failwith "#write_ref: Cannot write internal ID"
+	| Some (Derived _) ->
+	    failwith "#write_ref: Cannot write derived ID"
+      end;
+      wms ">\n";
+
+
     method write os enc doctype = 
       let wms = 
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
       let write_sysid s =
-	if String.contains s '"' then
-	  wms ("'" ^ s ^ "'")
-	else
-	  wms ("\"" ^ s ^ "\"");
+	write_markup_string 
+	  ~from_enc:`Enc_utf8 ~to_enc:enc os
+	  ( if String.contains s '"' then
+	      "'" ^ s ^ "'"
+	    else
+	      "\"" ^ s ^ "\""
+	  )
       in
 
       if doctype then begin
@@ -1122,6 +1164,9 @@ end
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.20  2001/12/03 23:45:55  gerd
+ * 	new method [write_ref]
+ *
  * Revision 1.19  2001/07/02 23:21:40  gerd
  * 	Added the Entity module.
  *

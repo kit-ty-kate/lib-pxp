@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.14 2001/07/02 23:21:40 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.15 2001/12/03 23:45:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -277,13 +277,25 @@ class dtd :
        *)
 
     method write : Pxp_types.output_stream -> Pxp_types.encoding -> bool -> unit
-      (* write_compact_as_latin1 os enc doctype:
+      (* write os enc doctype:
        * Writes the DTD as 'enc'-encoded string to 'os'. If 'doctype', a 
        * DTD like <!DOCTYPE root [ ... ]> is written. If 'not doctype',
        * only the declarations are written (the material within the
        * square brackets).
        *)
 
+    method write_ref : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+     (* write_ref os enc:
+      * Writes a reference to the DTD as 'enc'-encoded string to 'os'.
+      * The reference looks as follows:
+      *   <!DOCTYPE root SYSTEM ... > or
+      *   <!DOCTYPE root PUBLIC ... >
+      * Of course, the DTD must have an external ID:
+      * - dtd#id = External(System ...) or
+      * - dtd#id = External(Public ...)
+      * If the DTD is internal or mixed, the method [write_ref] will fail.
+      * If the ID is anonymous or private, the method will fail, too.
+      *)
 
     (*----------------------------------------*)
     method invalidate : unit
@@ -407,7 +419,7 @@ and dtd_element : dtd -> string ->
        *)
 
     method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
-      (* write_compact_as_latin1 os enc:
+      (* write os enc:
        * Writes the <!ELEMENT ... > declaration to 'os' as 'enc'-encoded string.
        *)
 
@@ -507,6 +519,9 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.15  2001/12/03 23:45:55  gerd
+ * 	new method [write_ref]
+ *
  * Revision 1.14  2001/07/02 23:21:40  gerd
  * 	Added the Entity module.
  *
