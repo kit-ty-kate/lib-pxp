@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.2 2000/07/04 22:12:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -642,6 +642,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
       match ext_id with
 	  System s    -> " = SYSTEM \"" ^ s ^ "\""
 	| Public(p,s) -> " = PUBLIC \"" ^ p ^ "\" \"" ^ s ^ "\""
+	| Anonymous   -> " = ANONYMOUS"
 
 
     method open_entity force_parsing init_lex_id =
@@ -651,7 +652,14 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
        *)
       if resolver_is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ name ^ "'"));
-      let lex = resolver # open_in ext_id in
+      let lex = 
+	try
+	  resolver # open_in ext_id 
+	with
+	    Pxp_reader.Not_competent ->
+	      failwith ("PXP: No working input method found for this external entity: " ^ 
+			self # full_name)
+      in
       resolver_is_open <- true;
       lexbuf  <- lex;
       prolog  <- None;
@@ -1035,6 +1043,11 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.2  2000/07/04 22:12:47  gerd
+ * 	Update: Case ext_id = Anonymous.
+ * 	Update: Handling of the exception Not_competent when reading
+ * from a resolver.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
