@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.6 2000/07/08 21:53:00 gerd Exp $
+(* $Id: validate.ml,v 1.7 2000/07/14 14:11:06 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -14,33 +14,39 @@ let print_error e =
   print_endline (string_of_exn e)
 ;;
 
+class warner =
+  object 
+    method warn w =
+      print_endline ("WARNING: " ^ w)
+    method print_warnings =
+      ""
+    method reset =
+      ()
+  end
+;;
 
 let parse debug wf iso88591 filename =
   try 
     (* Parse the document: *)
     let doc =
       (if wf then parse_wfdocument_entity 
-             else parse_document_entity ?transform_dtd:None)
+             else 
+	       let index = new hash_index in
+	       parse_document_entity 
+	         ?transform_dtd:None 
+	         ~id_index:(index :> 'ext index))
 	{ default_config with 
 	    debugging_mode = debug;
 	    encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
+	    idref_pass = true;
+	    warner = new warner
         }
 	(from_file filename)
 	default_spec 
     in
-    (* Check the uniqueness of IDs: *)
-    doc # root # reset_finder;
-    if not wf then (try ignore(doc # root # find "") with Not_found -> ());
-    (* Print warnings that have been collected while parsing: *)
-    let s = default_config.warner # print_warnings in
-    if s <> "" then print_endline s;
-    default_config.warner # reset
+    ()
   with
       e ->
-	(* Something went wrong. First print warning. *)
-	let s = default_config.warner # print_warnings in
-	if s <> "" then print_endline s;
-	default_config.warner # reset;
 	(* Print error; remember that there was an error *)
 	error_happened := true;
 	print_error e
@@ -78,6 +84,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.7  2000/07/14 14:11:06  gerd
+ * 	Updated because of changes of the PXP API.
+ *
  * Revision 1.6  2000/07/08 21:53:00  gerd
  * 	Updated because of PXP interface changes.
  *
