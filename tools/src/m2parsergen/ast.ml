@@ -1,4 +1,4 @@
-(* $Id: ast.ml,v 1.2 2000/05/08 22:03:01 gerd Exp $
+(* $Id: ast.ml,v 1.3 2000/05/09 00:03:22 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -12,6 +12,7 @@ type symbol =
     U_symbol of (string * string option)      (* U_symbol(token, label) *)
   | L_symbol of (string * string list * string option)
                                         (* L_symbol(token, args, label) *)
+  | L_indirect of (string * string list * string option)
 ;;
 
 
@@ -55,6 +56,10 @@ type text =
  * History:
  * 
  * $Log: ast.ml,v $
+ * Revision 1.3  2000/05/09 00:03:22  gerd
+ * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
+ * OCaml identifier.
+ *
  * Revision 1.2  2000/05/08 22:03:01  gerd
  * 	It is now possible to have a $ {{ }} sequence right BEFORE
  * the first token. This code is executed just after the first token

@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.3 2000/05/08 22:03:01 gerd Exp $
+(* $Id: generator.ml,v 1.4 2000/05/09 00:03:22 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -191,6 +191,7 @@ let label_of_symbol tree sym =
       U_symbol (tok, lab) -> 
 	if is_typed tree tok then lab else None
     | L_symbol (_, _, lab) -> lab
+    | L_indirect (_, _, lab) -> lab
 ;;
 
 
@@ -217,7 +218,10 @@ let selector_set_of_rule tree name =
 		  U_symbol (tok_name,_) ->
 		    [ tok_name ]
 		| L_symbol (rule_name, _, _) ->
-		 collect (name :: visited_rules) rule_name
+		    collect (name :: visited_rules) rule_name
+		| L_indirect (_, _, _) ->
+		    failwith("The first symbol in rule `" ^ name ^ 
+			     "' is an indirect call; this is not allowed")
 	   )
 	   r.rule_branches
 	)
@@ -274,6 +278,31 @@ let process_branch b file_name tree branch =
     Buffer.add_string b " in\n"
   in
 
+  let make_indirect_rule_invocation ml_name args lab allow_not_found =
+    (* Produces: let <label> = ml_name ... args in 
+     * If not allow_not_found, the exception Not_found is caught and
+     * changed into Parsing.Parse_error.
+     *)
+    Buffer.add_string b "let ";
+    begin match lab with
+	None   -> Buffer.add_string b "_"
+      | Some l -> Buffer.add_string b l
+    end;
+    Buffer.add_string b " = ";
+    if not allow_not_found then
+      Buffer.add_string b "try ";
+    Buffer.add_string b ml_name;
+    Buffer.add_string b " yy_current yy_get_next";
+    List.iter
+      (fun a -> Buffer.add_string b " ";
+	        Buffer.add_string b a;
+      )
+      args;
+    if not allow_not_found then
+      Buffer.add_string b " with Not_found -> raise Parsing.Parse_error";
+    Buffer.add_string b " in\n"
+  in
+
   let process_symbol sym previous_was_token allow_not_found =
     match sym with
 	U_symbol(tok, lab) ->
@@ -318,6 +347,10 @@ let process_branch b file_name tree branch =
 	  if previous_was_token then
 	    Buffer.add_string b "ignore(yy_get_next());\n";
 	  make_rule_invocation called_rule args lab allow_not_found
+      | L_indirect(ml_name, args, lab) ->
+	  if previous_was_token then
+	    Buffer.add_string b "ignore(yy_get_next());\n";
+	  make_indirect_rule_invocation ml_name args lab allow_not_found
   in
 
   let process_pattern (current_position, previous_was_token) pat =
@@ -327,6 +360,7 @@ let process_branch b file_name tree branch =
 	match pat.pat_symbol with
 	    U_symbol(_,Some l)   -> l
 	  | L_symbol(_,_,Some l) -> l
+	  | L_indirect(_,_,Some l) -> l
 	  | _ -> ""
       end
       else ""
@@ -341,6 +375,7 @@ let process_branch b file_name tree branch =
       match pat.pat_symbol with
 	  U_symbol(_,_)   -> pat.pat_modifier = Exact
 	| L_symbol(_,_,_) -> false
+	| L_indirect(_,_,_) -> false
     in
 
     (* First distinguish between Exact, Option, and Repetition: *)
@@ -476,6 +511,8 @@ let process_branch b file_name tree branch =
 	| L_symbol(called_rule, args, lab) ->
 	    make_rule_invocation called_rule args lab true;
 	    false
+	| L_indirect(_,_,_) -> 
+	    failwith("The first symbol in some rule is an indirect call; this is not allowed")
       end
     in
 
@@ -528,6 +565,8 @@ let process_branch b file_name tree branch =
 	      U_symbol(_,_) -> ""
 	    | L_symbol(_,_,None) -> ""
 	    | L_symbol(_,_,Some l) -> l
+	    | L_indirect(_,_,None) -> ""
+	    | L_indirect(_,_,Some l) -> l
 	in
 	Buffer.add_string b current_position;
 	Buffer.add_string b "\" in\n";
@@ -642,7 +681,10 @@ let process b file_name tree =
 		    Buffer.add_string b "\n";
 		    s_done := s_rule' @ !s_done;
 		  end
-
+	      | L_indirect(ml_name, args, lab) ->
+		  (* An invocation of an indirect rule *)
+		  failwith("The first symbol in rule `" ^ r.rule_name ^ 
+			   "' is an indirect call; this is not allowed")
 	 )
 	 r.rule_branches;
 
@@ -796,6 +838,10 @@ exit 0;;
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.4  2000/05/09 00:03:22  gerd
+ * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
+ * OCaml identifier.
+ *
  * Revision 1.3  2000/05/08 22:03:01  gerd
  * 	It is now possible to have a $ {{ }} sequence right BEFORE
  * the first token. This code is executed just after the first token

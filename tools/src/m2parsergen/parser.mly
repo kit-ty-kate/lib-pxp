@@ -1,4 +1,4 @@
-/* $Id: parser.mly,v 1.3 2000/05/08 22:03:01 gerd Exp $
+/* $Id: parser.mly,v 1.4 2000/05/09 00:03:22 gerd Exp $
  * ----------------------------------------------------------------------
  *
  */
@@ -24,7 +24,8 @@
 %token Loop_plus
 %token Loop_star
 %token Dollar
-%token Eof
+%token Lbracket
+%token Rbracket%token Eof
 
 %start text
 %type <Ast.text> text
@@ -137,10 +138,15 @@ symbol:
     { U_symbol($3, Some $1) }
 | Lname Colon Lname Lparen actual_arguments 
     { L_symbol($3, $5, Some $1) }
+| Lname Colon Lbracket Lname Rbracket Lparen actual_arguments 
+    { L_indirect($4, $7, Some $1) }
 | Uname
     { U_symbol($1, None) }
 | Lname Lparen actual_arguments 
     { L_symbol($1, $3, None) }
+| Lbracket Lname Rbracket Lparen actual_arguments 
+    { L_indirect($2, $5, None) }
+
 
 actual_arguments:
   Rparen
@@ -166,6 +172,10 @@ opt_error_handler:
  * History:
  * 
  * $Log: parser.mly,v $
+ * Revision 1.4  2000/05/09 00:03:22  gerd
+ * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
+ * OCaml identifier.
+ *
  * Revision 1.3  2000/05/08 22:03:01  gerd
  * 	It is now possible to have a $ {{ }} sequence right BEFORE
  * the first token. This code is executed just after the first token
