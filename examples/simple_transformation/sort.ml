@@ -1,4 +1,4 @@
-(* $Id: sort.ml,v 1.2 2000/08/24 09:40:11 gerd Exp $
+(* $Id: sort.ml,v 1.3 2000/08/30 16:05:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -25,7 +25,7 @@ let sort by tree =
 			     let b_string = 
 			       try (find_element by b) # data 
 			       with Not_found -> "" in
-			     compare a_string b_string)
+			     Pervasives.compare a_string b_string)
 			  l in
 	       n # set_nodes l';
 	       n
@@ -67,6 +67,9 @@ main();;
  * History:
  * 
  * $Log: sort.ml,v $
+ * Revision 1.3  2000/08/30 16:05:44  gerd
+ * 	Minor update
+ *
  * Revision 1.2  2000/08/24 09:40:11  gerd
  * 	Allow that columns are missing.
  *
