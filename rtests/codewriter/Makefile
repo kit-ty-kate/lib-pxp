@@ -5,8 +5,6 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../../src
-
 all: compile marshal_simple marshal_namespace marshal_recode
 
 compile: compile.ml

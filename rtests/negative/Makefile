@@ -4,8 +4,6 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../../src
-
 test_negative: test_negative.ml
 	ocamlfind ocamlc -g -custom -o test_negative -package pxp,str -linkpkg test_negative.ml
 

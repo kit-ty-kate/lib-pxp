@@ -5,8 +5,6 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../../src
-
 all: create_element modify strip
 
 create_element: create_element.ml

@@ -5,8 +5,6 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-OCAMLPATH=../../src
-
 .PHONY: all
 all: test_write test_namespace
 
