@@ -1,0 +1,45 @@
+
+type token =
+  A | B | C of int | EOF
+;;
+
+%%
+
+%token A
+%token B
+%token <> C
+%token EOF
+
+%%
+
+r():
+  one:s()
+  {{ }}
+  b:B
+  two:B?
+  three:s()
+  {{ prerr_endline ("Result: " ^ string_of_int three) }}
+? {{ prerr_endline ("ERROR: " ^ !yy_position) }}
+
+s():
+  A 
+  {{ }}
+  {{ prerr_endline "A"; 0 }}
+| B 
+  {{ }}
+  {{ prerr_endline "B"; 0 }}
+| n:C
+  {{ }}
+  {{ prerr_endline ("C: " ^ string_of_int n); n }}
+%%
+
+let input = ref [ A; B; B; B; C 5; EOF ] in
+let current() = List.hd !input in
+let next_token () =
+  prerr_endline "get_next";
+  input := List.tl !input;
+  List.hd !input
+in
+parse_r current next_token
+;;
+
