@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.3 1999/11/09 22:27:30 gerd Exp $
+(* $Id: validate.ml,v 1.4 2000/05/01 16:44:57 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -8,40 +8,36 @@ open Markup_document;;
 open Markup_yacc;;
 open Markup_types;;
 
-let pr2 f a b = try f a b with Markup_types.At(where,what) -> print_endline where; print_endline (Printexc.to_string what); raise Not_found;;
-let pr3 f a b c = try f a b c with Markup_types.At(where,what) -> print_endline where; print_endline (Printexc.to_string what); raise Not_found;;
-let pr4 f a b c d = try f a b c d  with Markup_types.At(where,what) -> print_endline where; print_endline (Printexc.to_string what); raise Not_found;;
-let pr5 f a b c d e = try f a b c d e  with Markup_types.At(where,what) -> print_endline where; print_endline (Printexc.to_string what); raise Not_found;;
-
-
 let error_happened = ref false;;
 
-let rec print_error e =
-  match e with
-      Markup_types.At(where,what) ->
-	print_endline where;
-	print_error what
-    | _ ->
-	print_endline (Printexc.to_string e)
+let print_error e =
+  print_endline (string_of_exn e)
 ;;
 
 
 let parse debug wf filename =
   try 
-    let _ =
+    (* Parse the document: *)
+    let doc =
       (if wf then parse_wf_entity else parse_document_entity)
 	{ default_config with debugging_mode = debug }
-	(ExtID (System filename))
+	(File filename)
 	default_dom 
     in
+    (* Check the uniqueness of IDs: *)
+    doc # root # reset_finder;
+    if not wf then (try ignore(doc # root # find "") with Not_found -> ());
+    (* Print warnings that have been collected while parsing: *)
     let s = default_config.warner # print_warnings in
     if s <> "" then print_endline s;
     default_config.warner # reset
   with
       e ->
+	(* Something went wrong. First print warning. *)
 	let s = default_config.warner # print_warnings in
 	if s <> "" then print_endline s;
 	default_config.warner # reset;
+	(* Print error; remember that there was an error *)
 	error_happened := true;
 	print_error e
 ;;
@@ -76,6 +72,10 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.4  2000/05/01 16:44:57  gerd
+ * 	Added check for ID uniqueness.
+ * 	Using new error formatter.
+ *
  * Revision 1.3  1999/11/09 22:27:30  gerd
  * 	The programs returns now an exit code of 1 if one of the
  * XML files produces an error.
