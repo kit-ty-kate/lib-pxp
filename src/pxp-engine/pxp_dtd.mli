@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.8 2000/08/18 21:18:45 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.9 2000/09/09 16:41:32 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -28,6 +28,17 @@
  *
  *)
 
+
+type validation_record =
+    { content_model   : Pxp_types.content_model_type;
+      content_dfa     : Pxp_dfa.dfa_definition option Lazy.t;
+      id_att_name     : string option;
+      idref_att_names : string list;
+    }
+  (* This is an internally structure used to pass validation information 
+   * efficiently from the DTD to the document nodes.
+   * Please do not use this type in your own programs.
+   *)
 
 class dtd :
   (* Creation:
@@ -114,7 +125,7 @@ class dtd :
     method element : string -> dtd_element
       (* looks up the element declaration with the given name. Raises 
        * Validation_error if the element cannot be found. (If "allow_arbitrary"
-       * has been invoked before, Unrestricted is raised instead.)
+       * has been invoked before, Undeclared is raised instead.)
        *)
 
     method element_names : string list
@@ -314,6 +325,10 @@ and dtd_element : dtd -> string ->
       (* DEPRECATED METHOD; included only to keep compatibility with
        * older versions of the parser
        *)
+
+    method internal_vr : validation_record
+      (* INTERNAL METHOD: Returns the validation record for this element type. 
+       *)
   end
 
 (* ---------------------------------------------------------------------- *)
@@ -384,6 +399,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.9  2000/09/09 16:41:32  gerd
+ * 	New type validation_record.
+ *
  * Revision 1.8  2000/08/18 21:18:45  gerd
  * 	Updated wrong comments for methods par_entity and gen_entity.
  * These can raise WF_error and not Validation_error, and this is the

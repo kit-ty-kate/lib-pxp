@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.10 2000/08/18 21:18:45 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.11 2000/09/09 16:41:32 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,6 +12,15 @@ open Pxp_aux
 open Pxp_dfa
 
 (**********************************************************************)
+
+type validation_record =
+    { content_model   : content_model_type;
+      content_dfa     : dfa_definition option Lazy.t;
+      id_att_name     : string option;
+      idref_att_names : string list;
+    }
+;;
+
 
 class dtd  the_warner init_encoding =
   object (self)
@@ -484,6 +493,8 @@ and dtd_element the_dtd the_name =
 
     val mutable allow_arbitrary = false
 
+    val mutable vr = (None : validation_record option)
+
     method name = name
 
     method set_cm_and_extdecl m extdecl =
@@ -492,6 +503,7 @@ and dtd_element the_dtd the_name =
 	content_model_validated <- false;
 	content_dfa <- lazy (self # compute_content_dfa);
 	externally_declared <- extdecl;
+	self # update_vr;
 	dtd # invalidate
       end
       else
@@ -544,8 +556,10 @@ and dtd_element the_dtd the_name =
 	begin match t with
 	    A_id ->
 	      id_att_name <- Some aname;
+	      self # update_vr;
 	  | (A_idref | A_idrefs) ->
-	      idref_att_names <- aname :: idref_att_names
+	      idref_att_names <- aname :: idref_att_names;
+	      self # update_vr;
 	  | _ ->
 	      ()
 	end;
@@ -603,6 +617,24 @@ and dtd_element the_dtd the_name =
 
     method idref_attribute_names = idref_att_names
 
+
+    method private update_vr =
+      vr <- None
+
+    method internal_vr =
+      (	match vr with
+	    None ->
+	      vr <- Some { content_model = content_model;
+			   content_dfa =  content_dfa;
+			   id_att_name = id_att_name;
+			   idref_att_names = idref_att_names;
+			 }
+	  | _ -> ()
+      );
+      ( match vr with
+	    None -> assert false
+	  | Some vr' -> vr'
+      )
 
     method write os enc = 
       let encoding = self # encoding in
@@ -971,6 +1003,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.11  2000/09/09 16:41:32  gerd
+ * 	New type validation_record.
+ *
  * Revision 1.10  2000/08/18 21:18:45  gerd
  * 	Updated wrong comments for methods par_entity and gen_entity.
  * These can raise WF_error and not Validation_error, and this is the
