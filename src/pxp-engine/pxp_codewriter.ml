@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.3 2000/07/09 00:30:00 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.4 2000/07/09 17:59:35 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -299,8 +299,13 @@ let rec write_local_subtree out n =
 	output_string out ("let t = Pxp_document.create_data_node spec dtd \"" ^
 			   String.escaped (n # data) ^ "\" in\n")
     | T_element elname ->
+	let loc, line, col = n # position in
+	output_string out
+	  ("let pos = \"" ^ String.escaped loc ^ "\", " ^ 
+	   string_of_int line ^ ", " ^ 
+	   string_of_int col ^ " in\n");
 	output_string out 
-          ("let t = Pxp_document.create_element_node spec dtd \"" ^
+          ("let t = Pxp_document.create_element_node ~position:pos spec dtd \"" ^
            String.escaped elname ^ "\" [ ");
 	List.iter
 	  (fun (name,value) ->
@@ -419,6 +424,9 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.4  2000/07/09 17:59:35  gerd
+ * 	Updated: The position of element nodes is also written.
+ *
  * Revision 1.3  2000/07/09 00:30:00  gerd
  * 	Notations are written before they are used.
  * 	Unparsed entities are included.
