@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.5 2000/07/09 17:51:50 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.6 2000/07/14 13:55:00 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1021,15 +1021,15 @@ class entity_manager (init_entity : entity) =
       Buffer.add_string b
 	("In entity " ^ current_entity # full_name
 	 ^ ", at line " ^ string_of_int (current_entity # line)
-	 ^ ", column " ^ string_of_int (current_entity # column)
-	 ^ ": ");
+	 ^ ", position " ^ string_of_int (current_entity # column)
+	 ^ ":\n");
       Stack.iter
 	(fun (e, e_name) ->
 	   Buffer.add_string b 
-	     ("\nCalled from entity " ^ Lazy.force e_name
+	     ("Called from entity " ^ Lazy.force e_name
 	      ^ ", line " ^ string_of_int (e # line)
-	      ^  ", column " ^ string_of_int (e # column)
-	      ^ ":");
+	      ^  ", position " ^ string_of_int (e # column)
+	      ^ ":\n");
 	)
 	entity_stack;
       Buffer.contents b
@@ -1071,6 +1071,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.6  2000/07/14 13:55:00  gerd
+ * 	Cosmetic changes.
+ *
  * Revision 1.5  2000/07/09 17:51:50  gerd
  * 	Entities return now the beginning of a token as its
  * position.
