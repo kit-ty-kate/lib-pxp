@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.7 2001/06/28 21:24:36 gerd Exp $
+(* $Id: compile.ml,v 1.8 2001/06/28 21:27:13 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -54,7 +54,7 @@ let compile in_filename out_filename print super_root pis comments =
     
     let ch = open_out out_filename in
     Pxp_codewriter.write_document ch tree;
-    output_string ch "(create_document { Pxp_yacc.default_config with Pxp_yacc.encoding = `Enc_utf8 } Pxp_yacc.default_spec) # write (Pxp_types.Out_channel stdout) `Enc_utf8;;\n";
+    output_string ch "(create_document { Pxp_yacc.default_config with Pxp_yacc.encoding = `Enc_utf8 } Pxp_yacc.default_spec) # write (`Out_channel stdout) `Enc_utf8;;\n";
     close_out ch;
 
     if print then
@@ -111,6 +111,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.8  2001/06/28 21:27:13  gerd
+ * 	Again Out_channel
+ *
  * Revision 1.7  2001/06/28 21:24:36  gerd
  * 	Out_channel -> `Out_channel
  *
