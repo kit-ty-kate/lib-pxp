@@ -1,14 +1,8 @@
-(* $Id: pxp_reader.ml,v 1.6 2000/07/09 01:05:33 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.7 2000/07/09 15:32:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
-
-(* TODO: need a strategy when to close channels if I/O errors or parser
- * errors happen
- *)
-
-(* TODO: clone-Verbot? *)
 
 open Pxp_types;;
 exception Not_competent;;
@@ -239,7 +233,7 @@ class resolve_read_any_channel ?(auto_close=true) ~channel_of_id =
 ;;
 
 
-class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
+class resolve_read_this_channel1 is_stale ?id ?fixenc ?auto_close ch =
 
   let getchannel = ref (fun xid -> assert false) in
 
@@ -249,7 +243,12 @@ class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
 	      (fun xid -> !getchannel xid)
 	      as super
 
-    val is_clone = is_clone
+    val mutable is_stale = is_stale
+      (* The channel can only be read once. To avoid that the channel
+       * is opened several times, the flag 'is_stale' is set after the
+       * first time.
+       *)
+
     val fixid = id
     val fixenc = fixenc
     val fixch = ch
@@ -266,14 +265,19 @@ class resolve_read_this_channel1 is_clone ?id ?fixenc ?auto_close ch =
       ch, fixenc
 
     method private init_in (id:ext_id) =
-      super # init_in id
+      if is_stale then
+	raise Not_competent
+      else begin
+	super # init_in id;
+	is_stale <- true
+      end
 
     method close_in =
       current_channel <- None
 
     method clone =
       let c = new resolve_read_this_channel1 
-		true 
+		is_stale 
 		?id:fixid ?fixenc:fixenc ?auto_close:(Some auto_close) fixch
       in
       c # init_rep_encoding internal_encoding;
@@ -334,14 +338,18 @@ class resolve_read_any_string ~string_of_id =
 ;;
 
 
-class resolve_read_this_string1 is_clone ?id ?fixenc str =
+class resolve_read_this_string1 is_stale ?id ?fixenc str =
 
   let getstring = ref (fun xid -> assert false) in
 
   object (self)
     inherit resolve_read_any_string (fun xid -> !getstring xid) as super
 
-    val is_clone = is_clone
+    val is_stale = is_stale
+      (* For some reasons, it is not allowed to open a clone of the resolver 
+       * a second time when the original resolver is already open.
+       *)
+
     val fixid = id
     val fixenc = fixenc
     val fixstr = str
@@ -359,10 +367,15 @@ class resolve_read_this_string1 is_clone ?id ?fixenc str =
 
 
     method private init_in (id:ext_id) =
-      super # init_in id
+      if is_stale then
+	raise Not_competent
+      else
+	super # init_in id
 
     method clone =
-      let c = new resolve_read_this_string1 true ?id:fixid ?fixenc:fixenc fixstr
+      let c = new resolve_read_this_string1 
+		(is_stale or current_string <> None) 
+		?id:fixid ?fixenc:fixenc fixstr
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
@@ -654,6 +667,9 @@ class combine ?prefer rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.7  2000/07/09 15:32:01  gerd
+ * 	Fix in resolve_this_channel, resolve_this_string
+ *
  * Revision 1.6  2000/07/09 01:05:33  gerd
  * 	New methode 'close_all' that closes the clones, too.
  *
