@@ -1,4 +1,4 @@
-(* $Id: sort.ml,v 1.1 2000/08/22 21:57:44 gerd Exp $
+(* $Id: sort.ml,v 1.2 2000/08/24 09:40:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -19,8 +19,12 @@ let sort by tree =
 	       let l = n # sub_nodes in
 	       let l' = List.sort
 			  (fun a b ->
-			     let a_string = (find_element by a) # data in
-			     let b_string = (find_element by b) # data in
+			     let a_string = 
+			       try (find_element by a) # data 
+			       with Not_found -> "" in
+			     let b_string = 
+			       try (find_element by b) # data 
+			       with Not_found -> "" in
 			     compare a_string b_string)
 			  l in
 	       n # set_nodes l';
@@ -63,6 +67,9 @@ main();;
  * History:
  * 
  * $Log: sort.ml,v $
+ * Revision 1.2  2000/08/24 09:40:11  gerd
+ * 	Allow that columns are missing.
+ *
  * Revision 1.1  2000/08/22 21:57:44  gerd
  * 	Initial revision.
  *
