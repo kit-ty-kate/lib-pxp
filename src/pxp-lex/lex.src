@@ -733,7 +733,7 @@ scan_tag_eb_att = parse
       { fun d ->
           let l = lexeme_len lexbuf in
 	  let s = sub_lexeme lexbuf 1 (l-2) in
-	  (ERef_att s), Tag_eb_att d)
+	  (ERef_att s), Tag_eb_att d
       }
   | "&#" ascii_digit+ ";"
       { fun d ->
