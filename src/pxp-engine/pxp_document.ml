@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.17 2000/09/22 22:54:30 gerd Exp $
+(* $Id: pxp_document.ml,v 1.18 2000/10/01 19:46:28 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -162,124 +162,159 @@ let make_spec_from_alist
     ()
 ;;
 
+let rec string_mem_assoc (x : string) = function
+  | [] -> false
+  | (a, b) :: l -> a = x || string_mem_assoc x l
+;;
+
+(* Note: string_mem_assoc is faster than List.mem_assoc applied to strings
+ * because the generic comparison is avoided.
+ *)
+
+let rec simple_check_att l =
+  (* If there are several attributes with the same name --> Wf_error *)
+  match l with
+      [] -> ()
+    | (n,att_val) :: l' ->
+	if string_mem_assoc n l' then
+	  raise (WF_error("Attribute `" ^ n ^ 
+			  "' occurs twice"));
+	simple_check_att l'
+;;
+
+
+let rec hashtbl_check_att att_names l =
+  match l with
+      [] -> ()
+    | (n,att_val) :: l' ->
+	if Str_hashtbl.mem att_names n then
+	  raise (WF_error("Attribute `" ^ n ^ 
+			  "' occurs twice"));
+	Str_hashtbl.add att_names n ();
+	hashtbl_check_att att_names l'
+;;
+
+
 (**********************************************************************)
 
 exception Found;;
+
+let rec is_empty_node_list cl =
+  (* Whether the node list counts as empty or not. *)
+  match cl with
+      [] -> true
+    | n :: cl' ->
+	( match n # node_type with
+	    | T_element _     -> false
+	    | _               -> is_empty_node_list cl' (* ignore other nodes *)
+	)
+;;
+
+
+let rec run_regexp cl ml =
+  (* Validates regexp content models ml against instances cl. This
+   * function works for deterministic and non-determninistic models.
+   * The implementation uses backtracking and may sometimes be slow.
+   *
+   * cl:   the list of children that will have to be matched
+   * ml:   the list of regexps that will have to match (to be read as
+   *       sequence)
+   * returns () meaning that no match has been found, or raises Found.
+   *)
+  match ml with
+      [] ->
+	if cl = [] then raise Found;      (* Frequent case *)
+	if is_empty_node_list cl then raise Found;  (* General condition *)
+    | Seq seq :: ml' ->
+	assert (seq <> []);     (* necessary to ensure termination *)
+	run_regexp cl (seq @ ml')
+    | Alt alts :: ml' ->
+	let rec find alts =
+	  match alts with
+	      [] -> ()
+	    | alt :: alts' ->
+		run_regexp cl (alt :: ml');
+		find alts'
+	in
+	assert (alts <> []);      (* Alt [] matches nothing *)
+	find alts
+    | Repeated re :: ml' ->
+	let rec norm re =     (* to avoid infinite loops *)
+	  match re with
+	      Repeated subre  -> norm subre    (* necessary *)
+	    | Optional subre  -> norm subre    (* necessary *)
+	    | Repeated1 subre -> norm subre    (* an optimization *)
+	    | _               -> re
+	in
+	let re' = norm re in
+	run_regexp cl (re' :: Repeated re' :: ml');
+	run_regexp cl ml'
+    | Repeated1 re :: ml' ->
+	run_regexp cl (re :: Repeated re :: ml')
+    | Optional re :: ml' ->
+	run_regexp cl (re :: ml');
+	run_regexp cl ml';
+    | Child chld :: ml' ->
+	match cl with
+	    [] ->
+	      ()
+	  | sub_el :: cl' ->
+	      begin match sub_el # node_type with
+		  T_data ->                       (* Ignore data *)
+		    run_regexp cl' ml
+		      (* Note: It can happen that we find a data node here
+		       * if the 'keep_always_whitespace' mode is turned on.
+		       *)
+		| T_element nt ->
+		    if nt = chld then run_regexp cl' ml'
+		| _ ->                            (* Ignore this element *)
+		    run_regexp cl' ml
+	      end
+;;
+
+
+let run_dfa cl dfa =
+  (* Validates regexp content models ml against instances cl. This
+   * function works ONLY for deterministic models.
+   * The implementation executes the automaton.
+   *)
+  let current_vertex = ref dfa.dfa_start in
+  let rec next_step cl =
+    match cl with
+	el :: cl' ->
+	  begin match el # node_type with
+	      T_data ->                       (* Ignore data *)
+		next_step cl'
+		  (* Note: It can happen that we find a data node here
+		   * if the 'keep_always_whitespace' mode is turned on.
+		   *)
+	    | T_element nt ->
+		begin try
+		  current_vertex := Graph.follow_edge !current_vertex nt;
+		  next_step cl'
+		with
+		    Not_found -> false
+		end
+	    | _ ->                         (* Ignore this node *)
+		next_step cl'
+	  end
+      | [] ->
+	  VertexSet.mem !current_vertex dfa.dfa_stops
+  in
+  next_step cl
+;;
+
 
 let validate_content ?(use_dfa=None) model (el : 'a node) =
   (* checks that the nodes of 'el' matches the DTD. Returns 'true'
    * on success and 'false' on failure.
    *)
-
-  let rec is_empty cl =
-    (* Whether the node list counts as empty or not. *)
-    match cl with
-	[] -> true
-      | n :: cl' ->
-	  ( match n # node_type with
-	      | T_element _     -> false
-	      | _               -> is_empty cl'    (* ignore other nodes *)
-	  )
-  in
-
-  let rec run_regexp cl ml =
-    (* Validates regexp content models ml against instances cl. This
-     * function works for deterministic and non-determninistic models.
-     * The implementation uses backtracking and may sometimes be slow.
-     *
-     * cl:   the list of children that will have to be matched
-     * ml:   the list of regexps that will have to match (to be read as
-     *       sequence)
-     * returns () meaning that no match has been found, or raises Found.
-     *)
-    match ml with
-	[] ->
-	  if cl = [] then raise Found;      (* Frequent case *)
-	  if is_empty cl then raise Found;  (* General condition *)
-      | Seq seq :: ml' ->
-	  assert (seq <> []);     (* necessary to ensure termination *)
-	  run_regexp cl (seq @ ml')
-      | Alt alts :: ml' ->
-	  let rec find alts =
-	    match alts with
-		[] -> ()
-	      | alt :: alts' ->
-		  run_regexp cl (alt :: ml');
-		  find alts'
-	  in
-	  assert (alts <> []);      (* Alt [] matches nothing *)
-	  find alts
-      | Repeated re :: ml' ->
-	  let rec norm re =     (* to avoid infinite loops *)
-	    match re with
-		Repeated subre  -> norm subre    (* necessary *)
-	      | Optional subre  -> norm subre    (* necessary *)
-	      | Repeated1 subre -> norm subre    (* an optimization *)
-	      | _               -> re
-	  in
-	  let re' = norm re in
-	  run_regexp cl (re' :: Repeated re' :: ml');
-	  run_regexp cl ml'
-      | Repeated1 re :: ml' ->
-	  run_regexp cl (re :: Repeated re :: ml')
-      | Optional re :: ml' ->
-	  run_regexp cl (re :: ml');
-	  run_regexp cl ml';
-      | Child chld :: ml' ->
-	  match cl with
-	      [] ->
-		()
-	    | sub_el :: cl' ->
-		begin match sub_el # node_type with
-		    T_data ->                       (* Ignore data *)
-		      run_regexp cl' ml
-		      (* Note: It can happen that we find a data node here
-		       * if the 'keep_always_whitespace' mode is turned on.
-		       *)
-		  | T_element nt ->
-		      if nt = chld then run_regexp cl' ml'
-		  | _ ->                            (* Ignore this element *)
-		      run_regexp cl' ml
-		end
-  in
-
-  let run_dfa cl dfa =
-    (* Validates regexp content models ml against instances cl. This
-     * function works ONLY for deterministic models.
-     * The implementation executes the automaton.
-     *)
-    let current_vertex = ref dfa.dfa_start in
-    let rec next_step cl =
-      match cl with
-	  el :: cl' ->
-	    begin match el # node_type with
-		T_data ->                       (* Ignore data *)
-		  next_step cl'
-		    (* Note: It can happen that we find a data node here
-		     * if the 'keep_always_whitespace' mode is turned on.
-		     *)
-	      | T_element nt ->
-		  begin try
-		    current_vertex := Graph.follow_edge !current_vertex nt;
-		    next_step cl'
-		  with
-		      Not_found -> false
-		  end
-	      | _ ->                         (* Ignore this node *)
-		  next_step cl'
-	    end
-	| [] ->
-	    VertexSet.mem !current_vertex dfa.dfa_stops
-    in
-    next_step cl
-  in	
-
   match model with
       Unspecified -> true
     | Any -> true
     | Empty ->
 	let cl = el # sub_nodes in
-	is_empty cl 
+	is_empty_node_list cl 
     | Mixed (MPCDATA :: mix) ->
 	let mix' = List.map (function
 				 MPCDATA -> assert false
@@ -712,7 +747,7 @@ let no_validation =
     id_att_name = None;
     idref_att_names = [];
     init_att_vals = [| |];
-    att_lookup = Hashtbl.create 1;
+    att_lookup = Str_hashtbl.create 1;
     att_info = [| |];
     att_required = [];
     accept_undeclared_atts = true;
@@ -788,17 +823,21 @@ let rec att_map_make f l =
 ;;
 
 
-let att_make_from_2_arrays a b =
-  let l = ref No_atts in
-  let add_array x =
-    for k = Array.length x - 1 downto 0 do
-      let (n,v) = x.( k ) in
-      l := Att(n,v,!l);
-    done
-  in
-  add_array b;
-  add_array a;
-  !l
+let att_add_array l x =
+  for k = Array.length x - 1 downto 0 do
+    let (n,v) = x.( k ) in
+    l := Att(n,v,!l);
+  done
+;;
+ 
+
+let att_add_raw_list lexerset mk_pool_value new_dtd l x =
+  List.iter
+    (fun (n,att_val) ->
+       let v = mk_pool_value (Value att_val) in
+       l := Att(n,v,!l);
+    )
+    x
 ;;
 
 
@@ -815,6 +854,17 @@ let rec att_return_nodes l =
       No_atts      -> []
     | Att (n,v,l') -> assert false
     | Att_with_node (_,_,n,l') -> n :: att_return_nodes l'
+;;
+
+
+let only_whitespace error_name s =
+  (* Checks that the string "s" contains only whitespace. On failure,
+   * Validation_error is raised.
+   *)
+  if not (Pxp_lib.only_whitespace s) then
+    raise(Validation_error(error_name() ^ 
+			   " must not have character contents"));
+  ()
 ;;
 
 
@@ -875,32 +925,6 @@ class ['ext] element_impl an_ext : ['ext] node =
 	  | T_data -> assert false
 
       method add_node ?(force = false) n =
-	let only_whitespace s =
-	  (* Checks that the string "s" contains only whitespace. On failure,
-	   * Validation_error is raised.
-	   *)
-	  let l = String.length s in
-	  if l < 100 then begin
-	    for i=0 to l - 1 do  (* for loop is faster for small 'l' *)
-	      match s.[i] with
-		  ('\009'|'\010'|'\013'|'\032') -> ()
-		| _ ->
-		    raise(Validation_error(self # error_name ^ 
-					   " must not have character contents"));
-	    done
-	  end
-	  else begin
-	    let lexbuf = Lexing.from_string s in
-	    let lexerset = Pxp_lexers.get_lexer_set (self # dtd # encoding) in
-	    let t = lexerset.scan_name_string lexbuf in
-	    if t <> Ignore or
-	      (lexerset.scan_name_string lexbuf <> Eof)
-	    then
-	      raise(Validation_error(self # error_name ^
-				     " must not have character contents"));
-	    ()
-	  end
-	in
 	(* general DTD check: *)
 	begin match dtd with
 	    None -> ()
@@ -924,7 +948,10 @@ class ['ext] element_impl an_ext : ['ext] node =
 		  | Mixed _     -> ()
 		  | Regexp _    -> 
 		      if not force then begin
-			only_whitespace (n # data);
+			let lexerset = 
+			  Pxp_lexers.get_lexer_set (self # dtd # encoding) in
+			only_whitespace (fun()->self # error_name) 
+			                (n # data);
 			(* TODO: following check faster *)
 			if n # dtd # standalone_declaration &&
 		          n # data <> ""
@@ -1451,7 +1478,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 		(fun (att_name, att_val) ->
 		   let bad = ref false in
 		   try
-		     let k = Hashtbl.find vr.att_lookup att_name in
+		     let k = Str_hashtbl.find vr.att_lookup att_name in
 		             (* or raise Not_found *)
 		     bad := true;
 		     if att_found.(k) then
@@ -1549,56 +1576,25 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    (* round 2 *)
 	    
 	    let n = List.length !undeclared_atts in
-	    let extra_att_vals = Array.create n ("", Implied_value) in
 	    
 	    if n < 5 then begin
 	      (* variant A *)
-	      let k = ref 0 in
-	      let rec add_att l =
-		match l with
-		    [] -> ()
-		  | (n,att_val) :: l' ->
-		      if List.mem_assoc n l' then
-			raise (WF_error("Attribute `" ^ n ^ 
-					"' occurs twice in element `" ^ 
-					new_name ^ "'"));
-		      let v0 = value_of_attribute
-				 lexerset new_dtd n A_cdata att_val in
-		      let v = mk_pool_value v0 in
-		      extra_att_vals.( !k ) <- (n, v);
-		      incr k;
-		      add_att l'
-	      in
-	      add_att !undeclared_atts
+	      simple_check_att !undeclared_atts
 	    end
 	    else begin
 	      (* variant B *)
-	      let k = ref 0 in
-	      let att_names = Hashtbl.create n in
-	      let rec add_att l =
-		match l with
-		    [] -> ()
-		  | (n,att_val) :: l' ->
-		      if Hashtbl.mem att_names n then
-			raise (WF_error("Attribute `" ^ n ^ 
-					"' occurs twice in element `" ^ 
-					new_name ^ "'"));
-		      let v0 = value_of_attribute
-				 lexerset new_dtd n A_cdata att_val in
-		      let v = mk_pool_value v0 in
-		      extra_att_vals.( !k ) <- (n, v);
-		      incr k;
-		      Hashtbl.add att_names n ();
-		      add_att l'
-	      in
-	      add_att !undeclared_atts
+	      let att_names = Str_hashtbl.create n in
+	      hashtbl_check_att att_names !undeclared_atts
 	    end;
-	    extra_att_vals
+	    !undeclared_atts
 	  end (* of round 2 *)
-	  else [| |]
+	  else []
 	in 
 
-	attributes <- att_make_from_2_arrays att_vals att_vals'
+	let a = ref No_atts in
+	att_add_array a att_vals;
+	att_add_raw_list lexerset mk_pool_value new_dtd a att_vals';
+	attributes <- !a
 
 
 (* ------------------------------------------------------------
@@ -1746,13 +1742,15 @@ class ['ext] element_impl an_ext : ['ext] node =
 
       method local_validate ?(use_dfa=false) () =
 	(* validates that the content of this element matches the model *)
-	let dfa = if use_dfa then Lazy.force vr.content_dfa else None in
-	if not (validate_content 
-		  ~use_dfa:dfa
-		  vr.content_model 
-		  (self : 'ext #node :> 'ext node)) then
-	  raise(Validation_error(self # error_name ^ 
-				 " does not match its content model"))
+	if vr.content_model <> Any then begin
+	  let dfa = if use_dfa then Lazy.force vr.content_dfa else None in
+	  if not (validate_content 
+		    ~use_dfa:dfa
+		    vr.content_model 
+		    (self : 'ext #node :> 'ext node)) then
+	    raise(Validation_error(self # error_name ^ 
+				   " does not match its content model"))
+	end
 
 
       method create_data _ _ =
@@ -2371,6 +2369,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.18  2000/10/01 19:46:28  gerd
+ * 	Optimizations, especially in internal_init.
+ *
  * Revision 1.17  2000/09/22 22:54:30  gerd
  * 	Optimized the attribute checker (internal_init of element
  * nodes). The validation_record has now more fields to support
