@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE x:a [
+<!ELEMENT x:a ANY>
+<!ATTLIST x:a q CDATA #IMPLIED>
+<!ATTLIST x:a x:r CDATA #IMPLIED>
+<!ELEMENT y:a ANY>
+]>
+
+<x:a xmlns:x="http://www.ocaml-programming.de/pxp" q="1">
+  xy
+  <y:a xmlns:y="http://www.ocaml-programming.de/pxp/2">123</y:a>
+  <a xmlns="http://www.ocaml-programming.de/pxp">
+    abc
+    <a xmlns="http://www.ocaml-programming.de/pxp/2">345</a>
+    <a>def</a>
+    <a xmlns:z="http://www.ocaml-programming.de/pxp" z:r="1">mno</a>
+  </a>
+</x:a>
