@@ -51,6 +51,21 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>1.1.94:</em> The Pxp_reader module has been
+completely rewritten. This fixes some problems with relative
+URLs. - Pxp_yacc has been split up into four modules: Pxp_tree_parser
+contains now the parser API returning object trees, Pxp_dtd_parser
+is the parser API returning DTDs, Pxp_ev_parser is the event-based
+API, and Pxp_core_parser is the core of the parser. Pxp_yacc is
+still available as compatibility API. As part of the module
+redesign, Pxp_types includes now parts of its interface from
+Pxp_core_types_type. I hope this style of programming is 
+comprehensible. - I think PXP can now compiled with CVS releases
+of O'Caml. - It is now possible to turn warnings into errors. -
+The event-based parser can now preprocess namespaces. Furthermore,
+there are normalization filters.</p>
+      </li>
+
       <li><p><em>1.1.93:</em> This is a bugfix release. Sometimes
 files were not closed in previous versions, but now they are.
 There were debug statements in the pull parser code, I have
