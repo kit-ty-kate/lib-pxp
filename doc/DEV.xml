@@ -51,6 +51,10 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>1.1.94.2:</em> Again fixes for the combination of
+3.07/wlex</p>
+      </li>
+
       <li><p><em>1.1.94.1:</em> Fixes for 3.07 concerning the
 pregenerated wlexers. - New: Pxp_document.build_node_tree</p>
       </li>

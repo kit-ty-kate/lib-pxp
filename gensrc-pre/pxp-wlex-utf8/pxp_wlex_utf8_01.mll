@@ -201,7 +201,7 @@ and
 scan_pi_string = parse
     pi_string "?>"
       { let len = 
-	  Pxp_lexing.lexeme_end lexbuf - Pxp_lexing.lexeme_start lexbuf in
+	  Pxp_lexing.lexeme_len lexbuf in
 	Some (Pxp_lexing.sub_lexeme lexbuf 0 (len-2)) 
       }
   | ""
@@ -538,7 +538,7 @@ scan_content = parse
       { Comment_begin dummy_entity, (Comment Content) }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	if Lexing.lexeme_char lexbuf 1 = '/' then
 	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag_entry
@@ -547,7 +547,7 @@ scan_content = parse
 	  Within_tag_entry
       }
   | "<![CDATA[" cdata_string "]]>"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
@@ -556,13 +556,13 @@ scan_content = parse
       { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
       }
   | "&#" ascii_digit+ ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content }
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
@@ -623,14 +623,14 @@ scan_within_tag = parse
   | '='
       { tok_Eq__Within_tag }
   | '"' char_but_quot* '"'
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" char_but_apos* "'"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"

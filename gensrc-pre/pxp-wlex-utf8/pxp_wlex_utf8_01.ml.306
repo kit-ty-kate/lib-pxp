@@ -835,7 +835,7 @@ and scan_pi_string engine lexbuf =
     0 -> (
 # 203 "pxp_wlex_utf8_01.mll"
         let len = 
-	  Pxp_lexing.lexeme_end lexbuf - Pxp_lexing.lexeme_start lexbuf in
+	  Pxp_lexing.lexeme_len lexbuf in
 	Some (Pxp_lexing.sub_lexeme lexbuf 0 (len-2)) 
       )
   | 1 -> (
@@ -1242,7 +1242,7 @@ and scan_content engine lexbuf =
         Comment_begin dummy_entity, (Comment Content) )
   | 2 -> (
 # 541 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	if Lexing.lexeme_char lexbuf 1 = '/' then
 	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag_entry
@@ -1252,7 +1252,7 @@ and scan_content engine lexbuf =
       )
   | 3 -> (
 # 550 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content )
   | 4 -> (
 # 553 "pxp_wlex_utf8_01.mll"
@@ -1264,15 +1264,15 @@ and scan_content engine lexbuf =
       )
   | 6 -> (
 # 559 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content )
   | 7 -> (
 # 562 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content )
   | 8 -> (
 # 565 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content )
   | 9 -> (
 # 568 "pxp_wlex_utf8_01.mll"
@@ -1344,7 +1344,7 @@ and scan_within_tag engine lexbuf =
         tok_Eq__Within_tag )
   | 6 -> (
 # 626 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag )
   | 7 -> (
@@ -1353,7 +1353,7 @@ and scan_within_tag engine lexbuf =
       )
   | 8 -> (
 # 633 "pxp_wlex_utf8_01.mll"
-        let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+        let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag )
   | 9 -> (
