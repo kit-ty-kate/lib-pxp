@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.18 2001/06/29 13:57:30 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.19 2001/07/02 23:21:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1107,10 +1107,24 @@ object (self)
 ;;
 
 
+module Entity = struct
+  let get_name ent = ent # name
+  let get_full_name ent = ent # full_name
+  let get_encoding ent = ent # encoding
+  let replacement_text ent = fst(ent # replacement_text)
+  let create_internal_entity ~name ~value dtd =
+    new internal_entity dtd name (dtd # warner) value false false 
+        (dtd # encoding)
+end
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.19  2001/07/02 23:21:40  gerd
+ * 	Added the Entity module.
+ *
  * Revision 1.18  2001/06/29 13:57:30  gerd
  * 	Weakened the xml:space check.
  *

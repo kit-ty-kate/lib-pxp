@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.13 2001/06/08 01:15:47 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.14 2001/07/02 23:21:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -470,10 +470,46 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
 
 (*$-*)
 
+(* ---------------------------------------------------------------------- *)
+
+(* Useful properties of entities: *)
+
+module Entity : sig
+  val get_name : Pxp_entity.entity -> string
+      (* Return the name of the entity. *)
+
+  val get_full_name : Pxp_entity.entity -> string
+      (* The full name includes the ID, too *)
+ 
+  val get_encoding : Pxp_entity.entity -> Pxp_types.rep_encoding
+      (* Return the encoding of the internal representation of the entity *)
+
+  val replacement_text : Pxp_entity.entity -> string
+      (* Return the replacement text of the entity. Works for both
+       * internal and external entities.
+       *)
+
+  val create_internal_entity : 
+      name:string -> value:string -> dtd -> Pxp_entity.entity
+      (* Creates an internal entity. The name and the value must be
+       * encoded in the same encoding as the DTD.
+       * Note that if the entity is to be used as parameter entity,
+       * the first and the last characters of the value should be 
+       * spaces.
+       *)
+
+end
+;;
+
+
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.14  2001/07/02 23:21:40  gerd
+ * 	Added the Entity module.
+ *
  * Revision 1.13  2001/06/08 01:15:47  gerd
  * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
  * makes it possible that the DTD can recognize the processing instructions
