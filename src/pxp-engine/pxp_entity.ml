@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.10 2000/09/21 21:28:16 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.11 2000/10/01 19:49:51 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -56,26 +56,197 @@ type state =
 
 (**********************************************************************)
 
-class virtual entity the_dtd the_name the_warner 
-              init_errors_with_line_numbers init_encoding =
+class type ['entity] preliminary_dtd =
+object
+  method standalone_declaration : bool
+  method gen_entity : string -> ('entity * bool)
+  method par_entity : string -> 'entity
+end
+;;
+
+
+(* Instead of many instance variables we have many record components of
+ * one instance variable. Speeds the entity methods up.
+ *)
+
+type 'entity entity_variables = 
+    { mutable dtd : 'entity preliminary_dtd;
+      mutable name : string;
+      mutable warner : collect_warnings;
+      
+      mutable encoding : rep_encoding;
+      mutable lexerset : lexer_set;
+
+      mutable lexerset_scan_document : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_document_type : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_content : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_within_tag : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_declaration : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_decl_comment : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_content_comment : Lexing.lexbuf -> (token * lexers);
+      mutable lexerset_scan_document_comment : Lexing.lexbuf -> (token * lexers);
+      mutable lexbuf : Lexing.lexbuf;
+        (* The lexical buffer currently used as character source. *)
+
+      mutable prolog : prolog_token list option;
+        (* Stores the initial <?xml ...?> token as PI_xml *)
+      mutable prolog_pairs : (string * string) list;
+        (* If prolog <> None, these are the (name,value) pairs of the
+	 * processing instruction.
+	 *)
+
+      mutable lex_id : lexers;
+        (* The name of the lexer that should be used for the next token *)
+
+      mutable force_parameter_entity_parsing : bool;
+        (* 'true' forces that inner entities will always be embraced by
+	 *        Begin_entity and End_entity.
+	 * 'false': the inner entity itself decides this
+	 *)
+
+      mutable check_text_declaration : bool;
+        (* 'true': It is checked that the <?xml..?> declaration matches the
+         *         production TextDecl.
+         *)
+
+      mutable normalize_newline : bool;
+        (* Whether this entity converts CRLF or CR to LF, or not *)
+
+      mutable line : int;          (* current line *)
+      mutable column : int;        (* current column *)
+
+      mutable p_line : int;        (* previous line *)
+      mutable p_column : int;      (* previous column *)
+
+      mutable linecount : linecount;   (* aux component for line counting *)
+
+      mutable counts_as_external : bool;
+        (* Whether the entity counts as external (for the standalone check). *)
+
+      mutable at_bof : bool;
+
+      mutable deferred_token : token list option;
+        (* If you set this to Some tl, the next invocations of 
+	 * next_token_from_entity will return the tokens in tl.
+	 * This makes it possible to insert tokens into the stream.
+	 *)
+
+      mutable debug : bool;
+    }
+;;
+
+
+let make_variables the_dtd the_name the_warner init_encoding =
+  let ls = Pxp_lexers.get_lexer_set init_encoding in
+  { dtd = (the_dtd : 'entity #preliminary_dtd :> 'entity preliminary_dtd);
+    name = the_name;
+    warner = the_warner;
+    
+    encoding = init_encoding;
+    lexerset = ls;
+
+    lexerset_scan_document         = ls.scan_document;
+    lexerset_scan_document_type    = ls.scan_document_type;
+    lexerset_scan_content          = ls.scan_content;
+    lexerset_scan_within_tag       = ls.scan_within_tag;
+    lexerset_scan_declaration      = ls.scan_declaration;
+    lexerset_scan_decl_comment     = ls.scan_decl_comment;
+    lexerset_scan_content_comment  = ls.scan_content_comment;
+    lexerset_scan_document_comment = ls.scan_document_comment;
+    
+    lexbuf = Lexing.from_string "";
+    
+    prolog = None;
+    prolog_pairs = [];
+    
+    lex_id = Document;
+    
+    force_parameter_entity_parsing = false;
+    check_text_declaration = true;
+    
+    normalize_newline = true;
+    
+    line = 1;
+    column = 0;
+
+    p_line = 1;
+    p_column = 1;
+
+    linecount = { lines = 0; columns = 0 };
+    
+    counts_as_external = false;
+    
+    at_bof = true;
+    deferred_token = None;
+    
+    debug = false;
+  }
+;;
+
+let update_lines v =
+  let n_lines = v.linecount.lines in
+  let n_columns = v.linecount.columns in
+  v.line <- v.line + n_lines;
+  v.column <- if n_lines = 0 then v.column + n_columns else n_columns
+;;
+
+let update_content_lines v tok =
+  match tok with
+      LineEnd _ -> 
+	v.line <- v.line + 1;
+	v.column <- 0;
+    | (PI(_,_)|PI_xml _|Cdata _) ->
+	count_lines v.linecount (Lexing.lexeme v.lexbuf);
+	update_lines v;
+    | _ -> 
+	v.column <- v.column + Lexing.lexeme_end v.lexbuf 
+	                     - Lexing.lexeme_start v.lexbuf
+;;
+
+let update_lines_within_tag v tok =
+  match tok with
+      Attval av -> 
+	(* count av + delimiting quotes *)
+	count_lines v.linecount av;
+	if v.linecount.lines = 0 then 
+	  v.column <- v.column + v.linecount.columns + 2
+	else begin
+	  update_lines v;
+	  v.column <- v.column + 1;
+	end
+    | IgnoreLineEnd ->
+	v.line <- v.line + 1;
+	v.column <- 0;
+    | _ -> 
+	v.column <- v.column + Lexing.lexeme_end v.lexbuf 
+	                     - Lexing.lexeme_start v.lexbuf
+;;
+
+let update_other_lines v tok =
+  count_lines v.linecount (Lexing.lexeme v.lexbuf);
+  update_lines v;
+;;
+
+
+class virtual entity the_dtd the_name the_warner init_encoding =
   object (self)
     (* This class prescribes the type of all entity objects. Furthermore,
      * the default 'next_token' mechanism is implemented.
      *)
 
-    (* 'init_errors_with_line_numbers': whether error messages contain line
-     * numbers or not.
-     * Calculating line numbers is expensive.
-     *)
+    val v = make_variables the_dtd the_name the_warner init_encoding
 
-    val mutable dtd = the_dtd
-    val mutable name = the_name
-    val mutable warner = the_warner
+    method is_ndata = false
+      (* Returns if this entity is an NDATA (unparsed) entity *)
 
-    val encoding = (init_encoding : rep_encoding)
-    val lexerset = Pxp_lexers.get_lexer_set init_encoding
+    method name = v.name
 
-    method encoding = encoding
+    method set_lex_id id = v.lex_id <- id
+
+    method line = v.p_line
+    method column = v.p_column
+
+    method encoding = v.encoding
     (* method lexerset = lexerset *)
 
     val mutable manager = None
@@ -92,83 +263,11 @@ class virtual entity the_dtd the_name the_warner
 
     method set_manager m = manager <- Some m
 
-
-    val mutable lexbuf = Lexing.from_string ""
-      (* The lexical buffer currently used as character source. *)
-
-    val mutable prolog = None
-      (* Stores the initial <?xml ...?> token as PI_xml *)
-
-    val mutable prolog_pairs = []
-      (* If prolog <> None, these are the (name,value) pairs of the
-       * processing instruction.
-       *)
-
-
-    val mutable lex_id = Document
-      (* The name of the lexer that should be used for the next token *)
-
-    method set_lex_id id = lex_id <- lex_id
-
-
-
-    val mutable force_parameter_entity_parsing = false
-      (* 'true' forces that inner entities will always be embraced by
-       *        Begin_entity and End_entity.
-       * 'false': the inner entity itself decides this
-       *)
-
-    val mutable check_text_declaration = true
-      (* 'true': It is checked that the <?xml..?> declaration matches the
-       *         production TextDecl.
-       *)
-
-    val mutable normalize_newline = true
-      (* Whether this entity converts CRLF or CR to LF, or not *)
-
-
-    val mutable line = 1     (* current line *)
-    val mutable column = 0   (* current column *)
-    val mutable pos = 0      (* current absolute character position *)
-    val errors_with_line_numbers = init_errors_with_line_numbers
-
-    val mutable p_line = 1
-    val mutable p_column = 1
-
-    method line = p_line
-    method column = p_column
-
-
-    val mutable counts_as_external = false
-
-    method counts_as_external = counts_as_external
-        (* Whether the entity counts as external (for the standalone check). *)
+    method counts_as_external = v.counts_as_external
 
     method set_counts_as_external =
-      counts_as_external <- true
+      v.counts_as_external <- true
 
-
-    val mutable last_token = Bof
-      (* XXX
-       * These two variables are used to check that between certain pairs of
-       * tokens whitespaces exist. 'last_token' is simply the last token,
-       * but not Ignore, and not PERef (which both represent whitespace).
-       * 'space_seen' records whether Ignore or PERef was seen between this
-       * token and 'last_token'.
-       *)
-
-    val mutable deferred_token = None
-      (* If you set this to Some tl, the next invocations of 
-       * next_token_from_entity will return the tokens in tl.
-       * This makes it possible to insert tokens into the stream.
-       *)
-
-    val mutable debug = false
-
-    method is_ndata = false
-      (* Returns if this entity is an NDATA (unparsed) entity *)
-
-    method name = name
 
     method virtual open_entity : bool -> lexers -> unit
 	(* open_entity force_parsing lexid:
@@ -214,116 +313,83 @@ class virtual entity the_dtd the_name the_warner
 	 *)
 
 
-    method lexbuf = lexbuf
+    method lexbuf = v.lexbuf
 
 
     method xml_declaration =
       (* return the (name,value) pairs of the initial <?xml name=value ...?>
        * processing instruction.
        *)
-      match prolog with
+      match v.prolog with
 	  None ->
 	    None
 	| Some p ->
-	    Some prolog_pairs
+	    Some v.prolog_pairs
 
 
     method set_debugging_mode m =
-      debug <- m
+      v.debug <- m
 
     method private virtual set_encoding : string -> unit
 
 
     method full_name =
-      name
-
+      v.name
 
     method next_token =
       (* read next token from this entity *)
 
-      match deferred_token with
+      let v = v in   (* Lookup the instance variable only once *)
+      let debug = v.debug in
+
+      match v.deferred_token with
 	  Some toklist ->
 	    ( match toklist with
 		  [] -> 
-		    deferred_token <- None;
+		    v.deferred_token <- None;
 		    self # next_token
 		| tok :: toklist' ->
-		    deferred_token <- Some toklist';
+		    v.deferred_token <- Some toklist';
 		    if debug then
-		      prerr_endline ("- Entity " ^ name ^ ": " ^ string_of_tok tok ^ " (deferred)");
+		      prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok ^ " (deferred)");
 		    tok
 	    )
 	| None -> begin
-            let this_line = line
-            and this_column = column in
-	    let this_pos = pos in
-	    p_line <- this_line;
-	    p_column <- this_column;
+	    v.p_line <- v.line;
+	    v.p_column <- v.column;
 	    (* Read the next token from the appropriate lexer lex_id, and get the
 	     * name lex_id' of the next lexer to be used.
 	     *)
-	    let tok, lex_id' =
-	      match lex_id with
-		  Document         -> lexerset.scan_document lexbuf
-		| Document_type    -> lexerset.scan_document_type lexbuf
-		| Content          -> lexerset.scan_content lexbuf
-		| Within_tag       -> lexerset.scan_within_tag lexbuf
-		| Declaration      -> lexerset.scan_declaration lexbuf
-		| Content_comment  -> lexerset.scan_content_comment lexbuf
-		| Decl_comment     -> lexerset.scan_decl_comment lexbuf
-		| Document_comment -> lexerset.scan_document_comment lexbuf
+	    let update_fn = ref update_content_lines in
+	    let scan_fn =
+	      match v.lex_id with
+		  Document         -> update_fn := update_other_lines;
+                                      v.lexerset_scan_document
+		| Document_type    -> update_fn := update_other_lines;
+                                      v.lexerset_scan_document_type
+		| Content          -> v.lexerset_scan_content
+		| Within_tag       -> update_fn := update_lines_within_tag;
+                                      v.lexerset_scan_within_tag
+		| Declaration      -> update_fn := update_other_lines;
+                                      v.lexerset_scan_declaration
+		| Content_comment  -> update_fn := update_other_lines;
+                                      v.lexerset_scan_content_comment
+		| Decl_comment     -> update_fn := update_other_lines;
+                                      v.lexerset_scan_decl_comment
+		| Document_comment -> update_fn := update_other_lines;
+                                      v.lexerset_scan_document_comment
 		| Ignored_section  -> assert false
-		      (* Ignored_section: only used by method next_ignored_token *)
+  	          (* Ignored_section: only used by method next_ignored_token *)
 	    in
-
-	    if debug then
-	      prerr_endline ("- Entity " ^ name ^ ": " ^ string_of_tok tok);
+	    let tok, lex_id' = scan_fn v.lexbuf in
 
 	    (* Find out the number of lines and characters of the last line: *)
-	    let n_lines, n_columns =
-	      match lex_id with
-		  Content ->
-		    (* An optimized way: *)
-		    if errors_with_line_numbers then
-		      ( match tok with
-			    LineEnd _ -> 
-			      1,0
-			  | (PI(_,_)|PI_xml _|Cdata _) ->
-			      count_lines (Lexing.lexeme lexbuf)
-			  | _ -> 
-			      0, (Lexing.lexeme_end lexbuf - 
-				  Lexing.lexeme_start lexbuf) 
-		      )
-		    else
-		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
-		| Within_tag ->
-		    (* Another optimization *)
-		    if errors_with_line_numbers then
-		      ( match tok with
-			    Attval v -> 
-			      (* count v + delimiting quotes *)
-			      let nl,nc = count_lines v in
-			      if nl = 0 then 0,(nc+2) else nl,(nc+1)
-			  | IgnoreLineEnd ->
-			      1,0
-			  | _ -> 
-			      0, (Lexing.lexeme_end lexbuf - 
-				  Lexing.lexeme_start lexbuf) 
-		      )
-		    else
-		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
-		| _ ->
-		    (* The default way: *)
-		    if errors_with_line_numbers then
-		      count_lines (Lexing.lexeme lexbuf)
-		    else
-		      0, (Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf)
-	    in
-	    line <- this_line + n_lines;
-	    column <- if n_lines = 0 then this_column + n_columns else n_columns;
-  	    pos <- Lexing.lexeme_end lexbuf;
-	    lex_id <- lex_id';
+	    !update_fn v tok;
+	    v.lex_id <- lex_id';
 
+	    if debug then
+	      prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok);
+	    
 	    (* Throw Ignore and Comment away; Interpret entity references: *)
 	    (* NOTE: Of course, references to general entities are not allowed
 	     * everywhere; parameter references, too. This is already done by the
@@ -331,52 +397,47 @@ class virtual entity the_dtd the_name the_warner
 	     * are allowed.
 	     *)
 
-	    (* TODO: last_token is only used to detect Bof. Can be simplified *)
-
-	    let at_bof = (last_token = Bof) in
-	    last_token <- tok;
-
 	    let tok' =
 	      match tok with
 
           (* Entity references: *)
 
 		| ERef n    -> 
-                    let en, extdecl = dtd # gen_entity n in
-		    if dtd # standalone_declaration && extdecl then
+                    let en, extdecl = v.dtd # gen_entity n in
+		    if v.dtd # standalone_declaration && extdecl then
 		      raise
 			(Validation_error
 			   ("Reference to entity `" ^ n ^ 
 			    "' violates standalone declaration"));
 		    en # set_debugging_mode debug;
-	            en # open_entity true lex_id;
+	            en # open_entity true v.lex_id;
 		    self # manager # push_entity en;
 		    en # next_token;
 		| PERef n   -> 
-		    let en = dtd # par_entity n in
+		    let en = v.dtd # par_entity n in
 		    en # set_debugging_mode debug;
-	            en # open_entity force_parameter_entity_parsing lex_id;
+	            en # open_entity v.force_parameter_entity_parsing v.lex_id;
 		    self # manager # push_entity en;
 		    en # next_token;
 
           (* Convert LineEnd to CharData *)
 		| LineEnd s -> 
-		    if normalize_newline then 
+		    if v.normalize_newline then 
 		      CharData "\n"
 		    else
 		      CharData s
 
           (* Also normalize CDATA sections *)
 		| Cdata value as cd ->
-		    if normalize_newline then 
-		      Cdata(normalize_line_separators lexerset value)
+		    if v.normalize_newline then 
+		      Cdata(normalize_line_separators v.lexerset value)
 		    else
 		      cd
 
           (* If there are CRLF sequences in a PI value, normalize them, too *)
 		| PI(name,value) as pi ->
-		    if normalize_newline then
-		      PI(name, normalize_line_separators lexerset value)
+		    if v.normalize_newline then
+		      PI(name, normalize_line_separators v.lexerset value)
 		    else
 		      pi
          
@@ -384,15 +445,15 @@ class virtual entity the_dtd the_name the_warner
 	   * into Attval_nl_normalized. This is detected by other code.
 	   *)
 		| Attval value as av ->
-		    if normalize_newline then
+		    if v.normalize_newline then
 		      av
 		    else
 		      Attval_nl_normalized value
 
           (* Another CRLF normalization case: Unparsed_string *)
 		| Unparsed_string value as ustr ->
-		    if normalize_newline then
-		      Unparsed_string(normalize_line_separators lexerset value)
+		    if v.normalize_newline then
+		      Unparsed_string(normalize_line_separators v.lexerset value)
 		    else
 		      ustr
 
@@ -424,9 +485,9 @@ class virtual entity the_dtd the_name the_warner
 
 		| Eof       -> 
 		    if debug then begin
-		      prerr_endline ("- Entity " ^ name ^ " # handle_eof");
+		      prerr_endline ("- Entity " ^ v.name ^ " # handle_eof");
 		      let tok = self # handle_eof in
-		      prerr_endline ("- Entity " ^ name ^ " # handle_eof: returns " ^ string_of_tok tok);
+		      prerr_endline ("- Entity " ^ v.name ^ " # handle_eof: returns " ^ string_of_tok tok);
 		      tok
 		    end
 		    else
@@ -438,16 +499,17 @@ class virtual entity the_dtd the_name the_warner
                     tok
 
 	    in
-	    if at_bof & tok <> Eof
-	    then begin
-	      if debug then
-		prerr_endline ("- Entity " ^ name ^ " # handle_bof");
-	      self # handle_bof tok'
+	    if v.at_bof then begin
+	      v.at_bof <- false;
+	      if tok <> Eof then begin
+		if debug then
+		  prerr_endline ("- Entity " ^ v.name ^ " # handle_bof");
+		self # handle_bof tok'
+	      end
+	      else tok'
 	    end
-	    else
-	      tok'
+	    else tok'
 	  end
-
 
     (* 'handle_bof' and 'handle_eof' can be used as hooks. Behaviour:
      *
@@ -489,16 +551,10 @@ class virtual entity the_dtd the_name the_warner
 
       (* TODO: Do we need a test on deferred tokens here? *)
 
-        let this_line = line
-        and this_column = column in
-	let this_pos = pos in
-	let tok, lex_id' = lexerset.scan_ignored_section lexbuf in
-	if debug then
-	  prerr_endline ("- Entity " ^ name ^ ": " ^ string_of_tok tok ^ " (Ignored)");
-	let n_lines, n_columns = count_lines (Lexing.lexeme lexbuf) in
-	line <- this_line + n_lines;
-	column <- if n_lines = 0 then this_column + n_columns else n_columns;
-	pos <- Lexing.lexeme_end lexbuf;
+	let tok, lex_id' = v.lexerset.scan_ignored_section v.lexbuf in
+	if v.debug then
+	  prerr_endline ("- Entity " ^ v.name ^ ": " ^ string_of_tok tok ^ " (Ignored)");
+	update_other_lines v tok;
 	match tok with
 	  | Conditional_begin _ -> Conditional_begin (self :> entity_id)
 	  | Conditional_end _   -> Conditional_end   (self :> entity_id)
@@ -510,15 +566,15 @@ class virtual entity the_dtd the_name the_warner
        * <?xml ...?> has been detected.
        * 'pl': This is the argument of the PI_xml token.
        *)
-      if debug then
-	prerr_endline ("- Entity " ^ name ^ " # process_xmldecl");
-      prolog <- Some pl;
-      prolog_pairs <- decode_xml_pi pl;
-      if check_text_declaration then
-	check_text_xml_pi prolog_pairs;
+      if v.debug then
+	prerr_endline ("- Entity " ^ v.name ^ " # process_xmldecl");
+      v.prolog <- Some pl;
+      v.prolog_pairs <- decode_xml_pi pl;
+      if v.check_text_declaration then
+	check_text_xml_pi v.prolog_pairs;
       begin
 	try
-	  let e = List.assoc "encoding" prolog_pairs in
+	  let e = List.assoc "encoding" v.prolog_pairs in
 	  self # set_encoding e
 	with
 	    Not_found ->
@@ -528,8 +584,8 @@ class virtual entity the_dtd the_name the_warner
 
     method process_missing_xmldecl =
       (* The parser calls this method if the XML declaration is missing *)
-      if debug then
-	prerr_endline ("- Entity " ^ name ^ " # process_missing_xmldecl");
+      if v.debug then
+	prerr_endline ("- Entity " ^ v.name ^ " # process_missing_xmldecl");
       self # set_encoding ""
 
 
@@ -634,15 +690,13 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
   end
 ;;
 
-
 class external_entity the_resolver the_dtd the_name the_warner the_ext_id
                       the_p_special_empty_entities
-		      init_errors_with_line_numbers
 		      init_encoding
   =
   object (self)
     inherit entity
-              the_dtd the_name the_warner init_errors_with_line_numbers
+              the_dtd the_name the_warner 
 	      init_encoding
             as super
 
@@ -671,7 +725,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
     val mutable state = At_beginning
 
     initializer
-      counts_as_external <- true;
+      v.counts_as_external <- true;
 
 
     method private set_encoding e =
@@ -680,7 +734,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
 
     method full_name =
-      name ^
+      v.name ^
       match ext_id with
 	  System s    -> " = SYSTEM \"" ^ s ^ "\""
 	| Public(p,s) -> " = PUBLIC \"" ^ p ^ "\" \"" ^ s ^ "\""
@@ -693,7 +747,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
        * the entity is only called where the syntax allows it.
        *)
       if resolver_is_open then
-	raise(Validation_error("Recursive reference to entity `" ^ name ^ "'"));
+	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       let lex = 
 	try
 	  resolver # open_in ext_id 
@@ -710,20 +764,19 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 			   string_of_exn e))
       in
       resolver_is_open <- true;
-      lexbuf  <- lex;
-      prolog  <- None;
-      lex_id  <- init_lex_id;
+      v.lexbuf  <- lex;
+      v.prolog  <- None;
+      v.lex_id  <- init_lex_id;
       state <- At_beginning;
-      line <- 1;
-      column <- 0;
-      pos <- 0;
-      last_token <- Bof;
-      normalize_newline <- true;
+      v.line <- 1;
+      v.column <- 0;
+      v.at_bof <- true;
+      v.normalize_newline <- true;
 
 
     method private handle_bof tok =
       (* This hook is only called if the stream is not empty. *)
-      deferred_token <- Some [ tok ];
+      v.deferred_token <- Some [ tok ];
       state <- Inserted_begin_entity;
       Begin_entity
 
@@ -740,7 +793,7 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	    end
 	    else begin
 	      (* Insert Begin_entity / End_entity *)
-	      deferred_token <- Some [ End_entity ];
+	      v.deferred_token <- Some [ End_entity ];
 	      state <- At_end;
 	      Begin_entity;
 	      (* After these two token have been processed, the lexer
@@ -758,10 +811,10 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
     method close_entity =
       if not resolver_is_open then
-	failwith ("External entity " ^ name ^ " not open");
+	failwith ("External entity " ^ v.name ^ " not open");
       resolver # close_in;
       resolver_is_open <- false;
-      lex_id
+      v.lex_id
 
 
     method replacement_text =
@@ -772,19 +825,18 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
        * which is considered not to be part of the replacement text.
        *)
       if resolver_is_open then
-	raise(Validation_error("Recursive reference to entity `" ^ name ^ "'"));
+	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       let lex = resolver # open_in ext_id in
       resolver_is_open <- true;
-      lexbuf  <- lex;
-      prolog  <- None;
+      v.lexbuf  <- lex;
+      v.prolog  <- None;
       (* arbitrary:    lex_id  <- init_lex_id; *)
       state <- At_beginning;
-      line <- 1;
-      column <- 0;
-      pos <- 0;
-      last_token <- Bof;
+      v.line <- 1;
+      v.column <- 0;
+      v.at_bof <- true;
       (* First check if the first token of 'lex' is <?xml...?> *)
-      begin match lexerset.scan_only_xml_decl lex with
+      begin match v.lexerset.scan_only_xml_decl lex with
 	  PI_xml pl ->
 	    self # process_xmldecl pl
 	| Eof ->
@@ -798,15 +850,15 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
       end;
       (* Then create the replacement text. *)
       let rec scan_and_expand () =
-	match lexerset.scan_dtd_string lexbuf with
+	match v.lexerset.scan_dtd_string v.lexbuf with
 	    ERef n -> "&" ^ n ^ ";" ^ scan_and_expand()
 	  | CRef(-1) -> "\n" ^ scan_and_expand()
 	  | CRef(-2) -> "\n" ^ scan_and_expand()
 	  | CRef(-3) -> "\n" ^ scan_and_expand()
-	  | CRef k -> character encoding warner k ^ scan_and_expand()
+	  | CRef k -> character v.encoding v.warner k ^ scan_and_expand()
 	  | CharData x -> x ^ scan_and_expand()
 	  | PERef n ->
-	      let en = dtd # par_entity n in
+	      let en = v.dtd # par_entity n in
 	      let (x,_) = en # replacement_text in
 	      x ^ scan_and_expand()
 	  | Eof ->
@@ -826,12 +878,11 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 
 
 class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
-                       init_errors_with_line_numbers
 		       init_encoding
   =
   object (self)
     inherit external_entity  the_resolver the_dtd the_name the_warner
-                             the_ext_id false init_errors_with_line_numbers
+                             the_ext_id false 
 			     init_encoding
 
     (* A document entity is an external entity that does not allow
@@ -840,8 +891,8 @@ class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
      *)
 
     initializer
-    force_parameter_entity_parsing <- true;
-    check_text_declaration <- false;
+    v.force_parameter_entity_parsing <- true;
+    v.check_text_declaration <- false;
 
     method counts_as_external = false
       (* Document entities count never as external! *)
@@ -850,7 +901,7 @@ class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
 
 
 class internal_entity the_dtd the_name the_warner the_literal_value
-                      the_p_internal_subset init_errors_with_line_numbers
+                      the_p_internal_subset 
                       init_is_parameter_entity
 		      init_encoding
   =
@@ -866,7 +917,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 
   object (self)
     inherit entity
-              the_dtd the_name the_warner init_errors_with_line_numbers
+              the_dtd the_name the_warner 
 	      init_encoding
 	    as super
 
@@ -883,17 +934,17 @@ class internal_entity the_dtd the_name the_warner the_literal_value
     initializer
     let lexbuf = Lexing.from_string the_literal_value in
     let rec scan_and_expand () =
-      match lexerset.scan_dtd_string lexbuf with
+      match v.lexerset.scan_dtd_string lexbuf with
 	  ERef n -> "&" ^ n ^ ";" ^ scan_and_expand()
 	| CRef(-1) -> "\r\n" ^ scan_and_expand()
 	| CRef(-2) -> "\r" ^ scan_and_expand()
 	| CRef(-3) -> "\n" ^ scan_and_expand()
-	| CRef k -> character encoding warner k ^ scan_and_expand()
+	| CRef k -> character v.encoding v.warner k ^ scan_and_expand()
 	| CharData x -> x ^ scan_and_expand()
 	| PERef n ->
 	    if p_internal_subset then
 	      raise(WF_error("Restriction of the internal subset: parameter entity not allowed here"));
-	    let en = dtd # par_entity n in
+	    let en = v.dtd # par_entity n in
 	    let (x, extref) = en # replacement_text in
 	    contains_external_references <-
 	      contains_external_references or extref;
@@ -906,8 +957,8 @@ class internal_entity the_dtd the_name the_warner the_literal_value
     is_open <- true;
     replacement_text <- scan_and_expand();
     is_open <- false;
-    normalize_newline <- false;
-    counts_as_external <- false;
+    v.normalize_newline <- false;
+    v.counts_as_external <- false;
 
 
     method process_xmldecl (pl:prolog_token list) =
@@ -925,28 +976,27 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 
     method open_entity force_parsing init_lex_id =
       if is_open then
-	raise(Validation_error("Recursive reference to entity `" ^ name ^ "'"));
+	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
 
       p_parsed_actually <- force_parsing;
-      lexbuf  <- Lexing.from_string 
-	           (if is_parameter_entity then
-		      (" " ^ replacement_text ^ " ")
-		    else
-		      replacement_text);
-      prolog  <- None;
-      lex_id  <- init_lex_id;
+      v.lexbuf  <- Lexing.from_string 
+	             (if is_parameter_entity then
+			(" " ^ replacement_text ^ " ")
+		      else
+			replacement_text);
+      v.prolog  <- None;
+      v.lex_id  <- init_lex_id;
       state <- At_beginning;
       is_open <- true;
-      line <- 1;
-      column <- 0;
-      pos <- 0;
-      last_token <- Bof;       (* CHECK: Is this right? *)
+      v.line <- 1;
+      v.column <- 0;
+      v.at_bof <- true;       (* CHECK: Is this right? *)
 
 
     method private handle_bof tok =
       (* This hook is only called if the stream is not empty. *)
       if p_parsed_actually then begin
-	deferred_token <- Some [ tok ];
+	v.deferred_token <- Some [ tok ];
 	state <- Inserted_begin_entity;
 	Begin_entity
       end
@@ -963,7 +1013,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 	    (* This is only possible if the stream is empty. *)
 	    if p_parsed_actually then begin
 	      (* Insert Begin_entity / End_entity *)
-	      deferred_token <- Some [ End_entity ];
+	      v.deferred_token <- Some [ End_entity ];
 	      state <- At_end;
 	      Begin_entity;
 	      (* After these two token have been processed, the lexer
@@ -986,14 +1036,14 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 
     method close_entity =
       if not is_open then
-	failwith ("Internal entity " ^ name ^ " not open");
+	failwith ("Internal entity " ^ v.name ^ " not open");
       is_open <- false;
-      lex_id
+      v.lex_id
 
 
     method replacement_text =
       if is_open then
-	raise(Validation_error("Recursive reference to entity `" ^ name ^ "'"));
+	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
       replacement_text, contains_external_references
   end
 ;;
@@ -1097,13 +1147,15 @@ class entity_manager (init_entity : entity) =
 
   end
 ;;
-
       
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.11  2000/10/01 19:49:51  gerd
+ * 	Numerous optimizations in the class "entity".
+ *
  * Revision 1.10  2000/09/21 21:28:16  gerd
  * 	New token IgnoreLineEnd: simplifies line counting, and
  * corrects a bug.
