@@ -31,10 +31,13 @@ uninstall:
 	$(MAKE) -C src uninstall	
 	for pkg in $(ALLGENPKGLIST); do $(OCAMLFIND) remove $$pkg; done
 
+# On the toplevel, clean is CLEAN:
+
 .PHONY: clean
 clean:
 	$(MAKE) -C tools CLEAN
 	$(MAKE) -C src CLEAN
+	for dir in gensrc/pxp-*; do $(MAKE) -C $$dir CLEAN || exit; done
 	$(MAKE) -C examples CLEAN
 	$(MAKE) -C rtests CLEAN
 

@@ -146,6 +146,7 @@ f src/pxp-engine/pxp_dtd.ml
 f src/pxp-engine/pxp_dtd.mli
 f src/pxp-engine/pxp_entity.ml
 f src/pxp-engine/pxp_entity_manager.ml
+f src/pxp-engine/pxp_lex_aux.ml
 f src/pxp-engine/pxp_lexer_types.ml
 f src/pxp-engine/pxp_lexer_types.mli
 f src/pxp-engine/pxp_lexers.ml
@@ -166,45 +167,70 @@ f src/pxp-engine/pxp_types.mli
 f src/pxp-engine/pxp_yacc.m2y
 f src/pxp-engine/pxp_yacc.mli
 
-d src/pxp-lex-generic
-f src/pxp-lex-generic/pxp_lex_aux.ml
-f src/pxp-lex-generic/pxp_lex_content.src
-f src/pxp-lex-generic/pxp_lex_content_string.src
-f src/pxp-lex-generic/pxp_lex_declaration.src
-f src/pxp-lex-generic/pxp_lex_defs_generic.def
-f src/pxp-lex-generic/pxp_lex_document.src
-f src/pxp-lex-generic/pxp_lex_document_type.src
-f src/pxp-lex-generic/pxp_lex_dtd_string.src
-f src/pxp-lex-generic/pxp_lex_misc.src
-f src/pxp-lex-generic/pxp_lex_name_string.src
-f src/pxp-lex-generic/pxp_lex_within_tag.src
+#d src/pxp-lex-generic
+#f src/pxp-lex-generic/pxp_lex_aux.ml
+#f src/pxp-lex-generic/pxp_lex_content.src
+#f src/pxp-lex-generic/pxp_lex_content_string.src
+#f src/pxp-lex-generic/pxp_lex_declaration.src
+#f src/pxp-lex-generic/pxp_lex_defs_generic.def
+#f src/pxp-lex-generic/pxp_lex_document.src
+#f src/pxp-lex-generic/pxp_lex_document_type.src
+#f src/pxp-lex-generic/pxp_lex_dtd_string.src
+#f src/pxp-lex-generic/pxp_lex_misc.src
+#f src/pxp-lex-generic/pxp_lex_name_string.src
+#f src/pxp-lex-generic/pxp_lex_within_tag.src
 
-d src/pxp-lex-iso88591
-f src/pxp-lex-iso88591/META.in
-f src/pxp-lex-iso88591/Makefile
-f src/pxp-lex-iso88591/Makefile.code
-f src/pxp-lex-iso88591/open_pxp_lex_aux_iso88591.src
-f src/pxp-lex-iso88591/open_pxp_lex_misc_iso88591.src
-f src/pxp-lex-iso88591/pxp_lex_defs_iso88591.def
-f src/pxp-lex-iso88591/pxp_lex_link_iso88591.ml
+#d src/pxp-lex-iso88591
+#f src/pxp-lex-iso88591/META.in
+#f src/pxp-lex-iso88591/Makefile
+#f src/pxp-lex-iso88591/Makefile.code
+#f src/pxp-lex-iso88591/open_pxp_lex_aux_iso88591.src
+#f src/pxp-lex-iso88591/open_pxp_lex_misc_iso88591.src
+#f src/pxp-lex-iso88591/pxp_lex_defs_iso88591.def
+#f src/pxp-lex-iso88591/pxp_lex_link_iso88591.ml
 
-d src/pxp-lex-utf8
-f src/pxp-lex-utf8/META.in
-f src/pxp-lex-utf8/Makefile
-f src/pxp-lex-utf8/Makefile.code
-f src/pxp-lex-utf8/open_pxp_lex_aux_utf8.src
-f src/pxp-lex-utf8/open_pxp_lex_misc_utf8.src
-f src/pxp-lex-utf8/pxp_lex_defs_drv_utf8.def
-f src/pxp-lex-utf8/pxp_lex_link_utf8.ml
+#d src/pxp-lex-utf8
+#f src/pxp-lex-utf8/META.in
+#f src/pxp-lex-utf8/Makefile
+#f src/pxp-lex-utf8/Makefile.code
+#f src/pxp-lex-utf8/open_pxp_lex_aux_utf8.src
+#f src/pxp-lex-utf8/open_pxp_lex_misc_utf8.src
+#f src/pxp-lex-utf8/pxp_lex_defs_drv_utf8.def
+#f src/pxp-lex-utf8/pxp_lex_link_utf8.ml
 
-d src/pxp-wlex
-f src/pxp-wlex/META.in
-f src/pxp-wlex/Makefile
-f src/pxp-wlex/Makefile.code
-f src/pxp-wlex/pxp_wlex.mlw
-f src/pxp-wlex/pxp_wlex.ml
-f src/pxp-wlex/pxp_wlex_aux.ml
-f src/pxp-wlex/pxp_wlex_link.ml
+#d src/pxp-wlex
+#f src/pxp-wlex/META.in
+#f src/pxp-wlex/Makefile
+#f src/pxp-wlex/Makefile.code
+#f src/pxp-wlex/pxp_wlex.mlw
+#f src/pxp-wlex/pxp_wlex.ml
+#f src/pxp-wlex/pxp_wlex_aux.ml
+#f src/pxp-wlex/pxp_wlex_link.ml
+
+d src/pxp-lex
+f src/pxp-lex/char_classes_generic.def
+f src/pxp-lex/char_classes_wlex.def
+f src/pxp-lex/lex.src 
+f src/pxp-lex/link_generic.src
+f src/pxp-lex/link_wlex.src
+
+d gensrc
+d gensrc/pxp-lex-pattern
+f gensrc/pxp-lex-pattern/Makefile
+f gensrc/pxp-lex-pattern/Makefile.in
+f gensrc/pxp-lex-pattern/META.in
+
+d gensrc/pxp-wlex
+f gensrc/pxp-wlex/Makefile
+f gensrc/pxp-wlex/META.in
+
+d gensrc/pxp-wlex-utf8
+f gensrc/pxp-wlex-utf8/Makefile
+f gensrc/pxp-wlex-utf8/META.in
+f gensrc/pxp-wlex-utf8/gen_done
+f gensrc/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
+f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.ml
+f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
 
 d rtests
 f rtests/Makefile
@@ -246,9 +272,12 @@ p rtests/canonxml/data_valid/att_normalization/out/.*\.xml
 d rtests/canonxml/data_valid
 d rtests/canonxml/data_valid/bugfixes
 p rtests/canonxml/data_valid/bugfixes/.*\.xml
+p rtests/canonxml/data_valid/bugfixes/.*\.ent.*
 f rtests/canonxml/data_valid/bugfixes/INDEX
 d rtests/canonxml/data_valid/bugfixes/out
 p rtests/canonxml/data_valid/bugfixes/out/.*\.xml
+d rtests/canonxml/data_valid/bugfixes/005
+p rtests/canonxml/data_valid/bugfixes/005/.*\.ent.*
 
 d rtests/canonxml/data_valid/comments
 p rtests/canonxml/data_valid/comments/.*\.xml
@@ -321,6 +350,11 @@ f rtests/write/test_namespace.ml
 f rtests/write/test_write.ml
 p rtests/write/sample.*\.xml
 
+d rtests/lex
+f rtests/lex/Makefile
+f rtests/lex/run
+f rtests/lex/text_lex_utf8.ml
+
 d tools
 f tools/Makefile
 f tools/collect_files
@@ -339,10 +373,19 @@ f tools/src/m2parsergen/generator.ml
 f tools/src/m2parsergen/lexer.mll
 f tools/src/m2parsergen/parser.mly
 
-d tools/src/ucs2_to_utf8
-f tools/src/ucs2_to_utf8/Makefile
-f tools/src/ucs2_to_utf8/README
-f tools/src/ucs2_to_utf8/lexer.mll
-f tools/src/ucs2_to_utf8/parser.mly
-f tools/src/ucs2_to_utf8/types.ml
-f tools/src/ucs2_to_utf8/ucs2_to_utf8.ml
+#d tools/src/ucs2_to_utf8
+#f tools/src/ucs2_to_utf8/Makefile
+#f tools/src/ucs2_to_utf8/README
+#f tools/src/ucs2_to_utf8/lexer.mll
+#f tools/src/ucs2_to_utf8/parser.mly
+#f tools/src/ucs2_to_utf8/types.ml
+#f tools/src/ucs2_to_utf8/ucs2_to_utf8.ml
+
+d tools/src/lexpp
+f tools/src/lexpp/Makefile
+f tools/src/lexpp/file.ml
+f tools/src/lexpp/lexer.mll
+f tools/src/lexpp/main.ml
+f tools/src/lexpp/parser.mly
+f tools/src/lexpp/types.ml
+f tools/src/lexpp/ucs2_to_utf8.ml

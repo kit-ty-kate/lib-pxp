@@ -5,8 +5,8 @@
   Include Characters > 0xFFFF
 
 - Lexers:
-  einchecken,
-  wlex-Support
+  einchecken,  DONE
+  wlex-Support DONE
 
 - Event-based parsers:
 
@@ -60,13 +60,18 @@
     Pxp_light_trans: Light-Darstellung von/nach Heavy-Darstellung konvertieren
     Pxp_light_docemu: Light-Darstellung als Document-kompatible Klasse
 
-  * Undo pxp_lexing.mlp
+  * Undo pxp_lexing.mlp DONE
 
 - Improvements:
 
   * Clone nodes and change DTD
 
   * parse_wfdocument_entity: argument ~share_dtd
+
+- Packen:
+
+  * pxp.files aktualisieren
+  * pxp_wlex_utf8_01.ml vorgenerieren
 
 ------------------------------
 
