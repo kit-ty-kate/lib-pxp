@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.2 2000/05/23 00:09:44 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.3 2000/05/29 21:14:57 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -8,7 +8,7 @@ open Markup_types
 open Markup_lexer_types
 
 let lexer_set_iso88591 = 
-  { lex_encoding         = Enc_iso88591;
+  { lex_encoding         = `Enc_iso88591;
     scan_document        = Pxp_lex_document_iso88591.scan_document;
     scan_content         = Pxp_lex_content_iso88591.scan_content;
     scan_within_tag      = Pxp_lex_within_tag_iso88591.scan_within_tag;
@@ -42,8 +42,8 @@ let init_utf8 ls =
 
 let get_lexer_set enc =
   match enc with
-      Enc_iso88591 -> lexer_set_iso88591
-    | Enc_utf8 ->
+      `Enc_iso88591 -> lexer_set_iso88591
+    | `Enc_utf8 ->
 	( match !lexer_set_utf8 with
 	      None ->
 		failwith ("Pxp_lexers: UTF-8 lexers not initialized")
@@ -58,6 +58,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.3  2000/05/29 21:14:57  gerd
+ * 	Changed the type 'encoding' into a polymorphic variant.
+ *
  * Revision 1.2  2000/05/23 00:09:44  gerd
  * 	The UTF-8 lexer set is no longer initialized here. It is done
  * in the new module Pxp_utf8. Reason: You can link without UTF-8 support.
