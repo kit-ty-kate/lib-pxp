@@ -9,19 +9,25 @@
 NAME=pxp
 TOP_DIR=.
 
+.PHONY: all
 all:
 	$(MAKE) -C tools all
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg all || exit; done
 
+.PHONY: opt
 opt:
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg opt || exit; done
 
+# The following PHONY rule is important for Cygwin:
+.PHONY: install
 install:
 	for pkg in $(PKGLIST); do $(MAKE) -C src/$$pkg install || exit; done
 
+.PHONY: uninstall
 uninstall:
 	$(MAKE) -C src uninstall	
 
+.PHONY: clean
 clean:
 	rm -f Makefile.conf
 	$(MAKE) -C tools CLEAN
@@ -29,8 +35,10 @@ clean:
 	$(MAKE) -C examples CLEAN
 	$(MAKE) -C rtests CLEAN
 
+.PHONY: CLEAN
 CLEAN: clean
 
+.PHONY: distclean
 distclean:
 	rm -f Makefile.conf
 	$(MAKE) -C tools distclean
