@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.5 2000/07/16 18:31:09 gerd Exp $
+(* $Id: pxp_types.ml,v 1.6 2000/07/27 00:41:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -86,6 +86,18 @@ type encoding =
   |  `Enc_utf16_le   (* UTF-16 little endian *)
   |  `Enc_utf16_be   (* UTF-16 big endian *)
   |  `Enc_iso88591   (* ISO-8859-1 *)
+  |  `Enc_iso88592   (* ISO-8859-2 *)
+  |  `Enc_iso88593   (* ISO-8859-3 *)
+  |  `Enc_iso88594   (* ISO-8859-4 *)
+  |  `Enc_iso88595   (* ISO-8859-5 *)
+  |  `Enc_iso88596   (* ISO-8859-6 *)
+  |  `Enc_iso88597   (* ISO-8859-7 *)
+  |  `Enc_iso88598   (* ISO-8859-8 *)
+  |  `Enc_iso88599   (* ISO-8859-9 *)
+  |  `Enc_iso885910  (* ISO-8859-10 *)
+  |  `Enc_iso885913  (* ISO-8859-13 *)
+  |  `Enc_iso885914  (* ISO-8859-14 *)
+  |  `Enc_iso885915  (* ISO-8859-15 *)
   ]
 ;;
 
@@ -100,13 +112,41 @@ type rep_encoding =
 ;;
 
 
+let norm_enc_name e =
+  (* Removes some characters from e; uppercase *)
+  let e' = String.create (String.length e) in
+  let rec next i j =
+    if i < String.length e then
+      match e.[i] with
+	  ('-'|'_'|'.') -> next (i+1) j
+	| c             -> e'.[j] <- c; next (i+1) (j+1)
+    else
+      j
+  in
+  let l = next 0 0 in
+  String.uppercase(String.sub e' 0 l)
+;;
+
+
 let encoding_of_string e =
-  match String.uppercase e with
-      ("UTF-16"|"UTF16"|"ISO-10646-UCS-2") -> `Enc_utf16
-    | ("UTF-16-BE"|"UTF16-BE")             -> `Enc_utf16_be
-    | ("UTF-16-LE"|"UTF16-LE")             -> `Enc_utf16_le
-    | ("UTF-8"|"UTF8")                     -> `Enc_utf8
-    | ("ISO-8859-1"|"ISO8859-1")           -> `Enc_iso88591
+  match norm_enc_name e with
+      ("UTF16"|"UCS2"|"ISO10646UCS2") -> `Enc_utf16
+    | "UTF16BE"   -> `Enc_utf16_be
+    | "UTF16LE"   -> `Enc_utf16_le
+    | "UTF8"      -> `Enc_utf8
+    | "ISO88591"  -> `Enc_iso88591
+    | "ISO88592"  -> `Enc_iso88592
+    | "ISO88593"  -> `Enc_iso88593
+    | "ISO88594"  -> `Enc_iso88594
+    | "ISO88595"  -> `Enc_iso88595
+    | "ISO88596"  -> `Enc_iso88596
+    | "ISO88597"  -> `Enc_iso88597
+    | "ISO88598"  -> `Enc_iso88598
+    | "ISO88599"  -> `Enc_iso88599
+    | "ISO885910" -> `Enc_iso885910
+    | "ISO885913" -> `Enc_iso885913
+    | "ISO885914" -> `Enc_iso885914
+    | "ISO885915" -> `Enc_iso885915
     | _ ->
 	failwith "Pxp_types.encoding_of_string: unknown encoding"
 ;;
@@ -119,6 +159,18 @@ let string_of_encoding (e : encoding) =
     | `Enc_utf16_le -> "UTF-16-LE"
     | `Enc_utf8     -> "UTF-8"
     | `Enc_iso88591 -> "ISO-8859-1"
+    | `Enc_iso88592 -> "ISO-8859-2"
+    | `Enc_iso88593 -> "ISO-8859-3"
+    | `Enc_iso88594 -> "ISO-8859-4"
+    | `Enc_iso88595 -> "ISO-8859-5"
+    | `Enc_iso88596 -> "ISO-8859-6"
+    | `Enc_iso88597 -> "ISO-8859-7"
+    | `Enc_iso88598 -> "ISO-8859-8"
+    | `Enc_iso88599 -> "ISO-8859-9"
+    | `Enc_iso885910 -> "ISO-8859-10"
+    | `Enc_iso885913 -> "ISO-8859-13"
+    | `Enc_iso885914 -> "ISO-8859-14"
+    | `Enc_iso885915 -> "ISO-8859-15"
 ;;
 
 
@@ -179,6 +231,9 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.6  2000/07/27 00:41:15  gerd
+ * 	new 8 bit codes
+ *
  * Revision 1.5  2000/07/16 18:31:09  gerd
  * 	The exception Illegal_character has been dropped.
  *

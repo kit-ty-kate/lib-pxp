@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.6 2000/07/16 18:31:09 gerd Exp $
+(* $Id: pxp_types.mli,v 1.7 2000/07/27 00:41:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -102,6 +102,18 @@ type encoding =
   |  `Enc_utf16_le   (* UTF-16 little endian *)
   |  `Enc_utf16_be   (* UTF-16 big endian *)
   |  `Enc_iso88591   (* ISO-8859-1 *)
+  |  `Enc_iso88592   (* ISO-8859-2 *)
+  |  `Enc_iso88593   (* ISO-8859-3 *)
+  |  `Enc_iso88594   (* ISO-8859-4 *)
+  |  `Enc_iso88595   (* ISO-8859-5 *)
+  |  `Enc_iso88596   (* ISO-8859-6 *)
+  |  `Enc_iso88597   (* ISO-8859-7 *)
+  |  `Enc_iso88598   (* ISO-8859-8 *)
+  |  `Enc_iso88599   (* ISO-8859-9 *)
+  |  `Enc_iso885910  (* ISO-8859-10 *)
+  |  `Enc_iso885913  (* ISO-8859-13 *)
+  |  `Enc_iso885914  (* ISO-8859-14 *)
+  |  `Enc_iso885915  (* ISO-8859-15 *)
   ]
 ;;
 
@@ -170,6 +182,9 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.7  2000/07/27 00:41:15  gerd
+ * 	new 8 bit codes
+ *
  * Revision 1.6  2000/07/16 18:31:09  gerd
  * 	The exception Illegal_character has been dropped.
  *
