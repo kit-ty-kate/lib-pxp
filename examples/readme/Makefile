@@ -3,9 +3,10 @@
 # make clean: 		remove intermediate files
 # make CLEAN:           remove intermediate files (recursively)
 # make distclean: 	remove any superflous files
-# make release: 	cleanup, create archive, tag CVS module 
-#			(for developers)
+# make install
 #----------------------------------------------------------------------
+
+BIN = /usr/local/bin
 
 .PHONY: readme
 readme:
@@ -30,4 +31,6 @@ distclean: clean
 	rm -f readme readme.opt
 	$(MAKE) -C styles distclean
 
-
+.PHONY: install
+install:
+	cp readme $(BIN)

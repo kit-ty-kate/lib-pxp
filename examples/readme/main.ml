@@ -1,4 +1,4 @@
-(* $Id: main.ml,v 1.1 1999/08/22 22:29:32 gerd Exp $
+(* $Id: main.ml,v 1.2 1999/08/23 16:54:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -60,9 +60,9 @@ let main() =
   let filename = ref None in
   Arg.parse
       [ "-html", Arg.Set want_html, 
-	      "  convert stdin to html";
+	      "  convert file to html";
 	"-text", Arg.Set want_text,
-	      "  convert stdin to text";
+	      "  convert file to text";
       ]
       (fun s -> 
 	 match !filename with
@@ -92,6 +92,9 @@ main();;
  * History:
  *
  * $Log: main.ml,v $
+ * Revision 1.2  1999/08/23 16:54:19  gerd
+ * 	Minor changes.
+ *
  * Revision 1.1  1999/08/22 22:29:32  gerd
  * 	Initial revision.
  *
