@@ -1,6 +1,22 @@
+# Note: The following Makefile works for _me_. The stable releases of
+# PXP contain an already built manual, so you do not need this Makefile.
+
+# The following software is required:
+# - jade/sp
+# - docbook 3.x (Davenport Group)
+# - docbook stylesheets by Normal Walsh
+#
+# Furthermore, you need an ocaml toploop "ocamlfattop" that can be
+# built by:
+# ocamlfind ocamlmktop -o ocamlfattop -package str,unix,findlib -linkpkg
+
 DOCBOOK_HTML = /usr/share/sgml/docbkdsl/html
 DOCBOOK_PRINT = /usr/share/sgml/docbkdsl/print
 SRC = $(PWD)/src
+
+SOURCE = ../../src/pxp-engine/pxp_document.mli \
+         ../../src/pxp-engine/pxp_types.mli
+UPSOURCE = $(shell for x in $(SOURCE); do echo "../$$x"; done)
 
 .PHONY: html ps
 
@@ -14,13 +30,18 @@ ps: ps/markup.ps ps/pic/done
 src/readme.ent: ../../examples/readme/to_html.ml
 	src/getcode.ml <../../examples/readme/to_html.ml >src/readme.ent
 
-src/yacc.mli.ent: ../../pxp_yacc.mli
-	src/getcode.ml <../../pxp_yacc.mli >src/yacc.mli.ent
+src/yacc.mli.ent: ../../src/pxp-engine/pxp_yacc.mli
+	src/getcode.ml <../../src/pxp-engine/pxp_yacc.mli >src/yacc.mli.ent
 
-src/dtd.mli.ent: ../../pxp_dtd.mli
-	src/getcode.ml <../../pxp_dtd.mli >src/dtd.mli.ent
+src/dtd.mli.ent: ../../src/pxp-engine/pxp_dtd.mli
+	src/getcode.ml <../../src/pxp-engine/pxp_dtd.mli >src/dtd.mli.ent
 
-html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
+src/extracted.ent: $(SOURCE)
+	mkdir -p src/extracted
+	rm -f src/extracted/*
+	(cd src; ./extract.ml $(UPSOURCE))
+
+html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent src/extracted.ent
 	mkdir -p html
 	cp src/markup.css html; \
 	cd html; \

@@ -1,4 +1,12 @@
-.acronym { 
+
+/* Style sheet for PXP manual */
+
+.ACRONYM { 
   font-weight: bold;
   color: #c71585
+}
+
+.COMMAND {
+  font-weight: medium;
+  background-color: #ffff00;
 }

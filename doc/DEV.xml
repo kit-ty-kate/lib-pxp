@@ -40,7 +40,9 @@ for PXP; if you are looking for the stable distribution, please go
 <a href="&url.pxp-download;">&release.pxp;</a></p>
       </li>
       <li><p><em>Current development version:</em> 
-<a href="&url.pxp-download-dev;">&release.pxp-dev;</a></p>
+<!--<a href="&url.pxp-download-dev;">&release.pxp-dev;</a>-->
+There is currently no development version!
+</p>
       </li>
     </ul>
   </sect1>
@@ -48,6 +50,7 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.1:</em> This is the new stable release!</p></li>
       <li><p><em>1.0.99:</em></p>
 	<p>Again a big change. First of all, the directory hierarchy has
 been modified. You find now all installed modules in "src", and all 

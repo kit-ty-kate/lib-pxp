@@ -6,9 +6,11 @@
 <!ENTITY percent "&#37;">
 <!ENTITY % get.markup-yacc.mli SYSTEM "yacc.mli.ent">
 <!ENTITY % get.markup-dtd.mli SYSTEM "dtd.mli.ent">
+<!ENTITY % get.extracted SYSTEM "extracted.ent">
 %readme.code.to-html;
 %get.markup-yacc.mli;
 %get.markup-dtd.mli;
+%get.extracted;
 
 <!ENTITY fun "-&gt;">                       <!-- function type operator -->
 
@@ -35,7 +37,7 @@
     </authorgroup>
     
     <copyright>
-      <year>1999, 2000</year><holder>Gerd Stolpmann</holder>
+      <year>1999 - 2001</year><holder>Gerd Stolpmann</holder>
     </copyright>
     <!-- </bookbiblio> -->
 
@@ -2417,20 +2419,15 @@ a pretty printer).</para>
 
       <sect1>
 	<title>The class type <literal>node</literal></title>
-	<para>
+	<formalpara>
+	  <title>Signature:</title>
+	  <para>
+            <anchor id="sig-class-type-node" xreflabel="Signature of class type node">
 
 From <literal>Pxp_document</literal>:
 
 <programlisting>
-type node_type =
-  T_data
-| T_element of string
-| T_super_root
-| T_pinstr of string
-| T_comment
-<replaceable>and some other, reserved types</replaceable>
-;;
-
+<anchor id="class-type-node">
 class type [ 'ext ] node =
   object ('self)
     constraint 'ext = 'ext node #extension
@@ -2441,14 +2438,19 @@ class type [ 'ext ] node =
 
     method extension : 'ext
     method dtd : dtd
+    method encoding : Pxp_types.rep_encoding
     method parent : 'ext node
     method root : 'ext node
     method sub_nodes : 'ext node list
     method iter_nodes : ('ext node &fun; unit) &fun; unit
     method iter_nodes_sibl : 
            ('ext node option &fun; 'ext node &fun; 'ext node option &fun; unit) &fun; unit
+    method previous_node : 'ext node
+    method next_node : 'ext node
+    method nth_node : int -&gt; 'ext node
     method node_type : node_type
-    method encoding : Pxp_types.rep_encoding
+    method node_position : int
+    method node_path : int list
     method data : string
     method position : (string * int * int)
     method comment : string option
@@ -2471,17 +2473,24 @@ class type [ 'ext ] node =
     method id_attribute_name : string
     method id_attribute_value : string
     method idref_attribute_names : string
+    method attributes_as_nodes : 'ext node list
 
     <anchor id="type-node-mods.sig"
    >(* <link linkend="type-node-mods" endterm="type-node-mods.title"
        ></link> *)
 
-    method add_node : ?force:bool &fun; 'ext node &fun; unit
-    method add_pinstr : proc_instruction &fun; unit
+    method append_node : 'ext node -&gt; unit
+    method insert_nodes : ?pos:int -&gt; 'ext node list -&gt; unit
     method delete : unit
+    method delete_nodes : ?pos:int -&gt; ?len:int -&gt; unit -&gt; unit
     method set_nodes : 'ext node list &fun; unit
-    method quick_set_attributes : (string * Pxp_types.att_value) list &fun; unit
+    method set_attributes : (string * Pxp_types.att_value) list &fun; unit
+    method set_attribute : (string * Pxp_types.att_value) list -> unit
+    method reset_attribute : string -> unit
     method set_comment : string option &fun; unit
+    method set_data : string -&gt; unit
+    method add_pinstr : proc_instruction &fun; unit
+    (* DEPRECATED: add_node, quick_set_attributes *)
 
     <anchor id="type-node-cloning.sig"
    >(* <link linkend="type-node-cloning" endterm="type-node-cloning.title"
@@ -2490,53 +2499,59 @@ class type [ 'ext ] node =
     method orphaned_clone : 'self
     method orphaned_flat_clone : 'self
     method create_element : 
+              ?name_pool_for_attribute_values:Pxp_types.pool -&gt;
               ?position:(string * int * int) &fun;
+              ?valcheck:bool -&gt;
+              ?att_values:((string * Pxp_types.att_value) list) -&gt;
               dtd &fun; node_type &fun; (string * string) list &fun;
                   'ext node
     method create_data : dtd &fun; string &fun; 'ext node
-    method keep_always_whitespace_mode : unit
+    (* REMOVED: keep_always_whitespace_mode *)
 
-    <anchor id="type-node-weird.sig"
-   >(* <link linkend="type-node-weird" endterm="type-node-weird.title"
+   <anchor id="type-node-validating.sig"
+   >(* <link linkend="type-node-validating" endterm="type-node-validating.title"
        ></link> *)
 
-    method local_validate : ?use_dfa:bool -> unit -> unit
+    method classify_data_node : 'ext node -&gt; data_node_classification
+    method validate_contents : 
+              ?use_dfa:bool -&gt; ?check_data_nodes:bool -&gt; unit -&gt; unit
+    method validate_attlist : unit -&gt; unit
+    method validate : unit -&gt; unit
+    method complement_attlist : unit -&gt; unit
+
+    (* DEPRECATED: local_validate *)
+
+
+    <anchor id="type-node-namespace.sig"
+   >(* <link linkend="type-node-namespace" endterm="type-node-namespace.title"
+       ></link> *)
+
+    method normprefix : string
+    method localname : string
+    method namespace_uri : string
+    method namespace_manager : namespace_manager
+    method namespace_info : 'ext namespace_info
 
     (* ... Internal methods are undocumented. *)
 
   end
 ;;
 </programlisting>
-
-In the module <literal>Pxp_types</literal> you can find another type
-definition that is important in this context:
-
-<programlisting>
-type Pxp_types.att_value =
-    Value     of string
-  | Valuelist of string list
-  | Implied_value
-;;
-</programlisting>
 </para>
+	</formalpara>
 
 	<sect2>
-	  <title>The structure of document trees</title>
+	  <title>The principal structure of document trees</title>
 
 <para>
-A node represents either an element or a character data section. There are two
-classes implementing the two aspects of nodes: <literal>element_impl</literal>
-and <literal>data_impl</literal>. The latter class does not implement all
-methods because some methods do not make sense for data nodes.
-</para>
-
-<para>
-(Note: PXP also supports a mode which forces that processing instructions and
-comments are represented as nodes of the document tree. However, these nodes
-are instances of <literal>element_impl</literal> with node types
-<literal>T_pinstr</literal> and <literal>T_comment</literal>,
-respectively. This mode must be explicitly configured; the basic representation
-knows only element and data nodes.)
+In a document parsed with the default parser settings every node represents
+either an element or a character data section. There are two classes
+implementing the two aspects of nodes: <literal>element_impl</literal> and
+<literal>data_impl</literal>. There are configurations which allow more
+node types to be created, in particular processing instruction nodes,
+comment nodes, and super root nodes, but these are discussed later.
+Note that you can always add these extra node types yourself to the node tree
+no matter what the parser configuration specifies.
 </para>
 
 	<para>The following figure 
@@ -2551,19 +2566,25 @@ objects storing the nodes have the class type <literal>node</literal>.</para>
 integrated into the tree; there is always an extra link to the attribute
 list. This is also true for processing instructions (not shown in the
 picture). This means that there are separated access methods for attributes and
-processing instructions.</para>
+processing instructions contained in the element node. In particular,
+you can call the <literal>attribute</literal> method on an element node
+to get the value of an attribute, and you can call the <literal>pinstr
+</literal> method to get the value of a processing instruction.
+Note that there are also attribute <emphasis>nodes</emphasis> and 
+processing instruction <emphasis>nodes</emphasis>; these are extra
+node types modifying the basic model discussed here; see below for details.
+</para>
 
 <figure id="node-term" float="1">
 <title>A tree with element nodes, data nodes, and attributes</title>
 <graphic fileref="pic/node_term" format="GIF"></graphic>
 </figure>
 
-	<para>Only elements, data sections, attributes and processing
-instructions (and comments, if configured) can, directly or indirectly, occur
-in the document tree. It is impossible to add entity references to the tree; if
-the parser finds such a reference, not the reference as such but the referenced
-text (i.e. the tree representing the structured text) is included in the
-tree.</para>
+	<para>Only elements, and data sections, and if configured, processing
+instructions and comments, can occur in the document tree. It is impossible to
+add entity references to the tree; if the parser finds such a reference, not
+the reference as such but the referenced text (i.e. the tree representing the
+structured text) is included into the tree.</para>
 
 	<para>Note that the parser collapses as much data material into one
 data node as possible such that there are normally never two adjacent data
@@ -2574,6 +2595,24 @@ comments. So <literal>a &amp;amp; b &lt;-- comment --&gt; c &lt;![CDATA[
 instance. However, you can create document trees manually which break this
 invariant; it is only the way the parser forms the tree.
 </para> 
+
+	  <para>The attributes of elements are not part of the document
+tree, i.e. the <literal>sub_nodes</literal> method never returns attribute
+nodes. Normally, attributes are not represented as nodes, but as pairs
+<literal>string * att_value</literal> of names and values. Here,
+<literal>att_value</literal> is a conventional variant type. There are lots of
+access methods for attributes, see 
+<link linkend="type-node-atts">below</link>. It is optionally possible
+to wrap the attributes as nodes (method
+<literal>attributes_as_nodes</literal>), but even in this case the attributes
+are outside the regular document tree.</para>
+
+	  <para>Normally, the processing instructions are also not included
+into the document tree. They are considered as an extra property of the
+element containing them, and can be retrieved by the <literal>pinstr</literal>
+method of the element node. If this way of handling processing instructions
+is not exact enough, the parser can optionally create processing instruction
+nodes that are regular members of the document tree.</para>
 
 <figure id="node-general" float="1">
 <title>Nodes are doubly linked trees</title>
@@ -2604,14 +2643,14 @@ parents after the operation.</para>
 </figure>
 
 	<para>
-The "delete" operation simply removes the links between two nodes. In the
+The "remove" operation simply removes the links between two nodes. In the
 picture (<link linkend="node-delete" endterm="node-delete"></link>) the node
 <literal>x</literal> is deleted from the list of subnodes of
 <literal>y</literal>. After that, <literal>x</literal> becomes the root of the
 subtree starting at this node.</para>
 
 <figure id="node-delete" float="1">
-<title>A deleted node becomes the root of the subtree</title>
+<title>A removed node becomes the root of the subtree</title>
 <graphic fileref="pic/node_delete" format="GIF"></graphic>
 </figure>
 
@@ -2630,6 +2669,156 @@ are called <emphasis>orphaned</emphasis>.
 	</sect2>
 
 	<sect2>
+	  <title>Optional features</title>
+	  <formalpara><title>Parser configuration:</title>
+	    <para>
+As already pointed out, the parser does only create element and data nodes by
+default. The configuration of the parser can be controlled by the 
+<literal>config</literal> record (see the module
+<literal>Pxp_yacc</literal>). There are a number of optional features that
+change the way the document trees are formed.</para>
+	  </formalpara>
+
+	  <para>Note that the parser configuration only controls the parser. If
+you create trees of your own, you can simply add all the additional node types
+to the tree without needing to enable these features.</para>
+
+	  <para>The so-called super root node is an extra node at the top of
+the parsed tree. Normally, the top node of the tree is the outermost
+element. By setting the option <literal>enable_super_root_node</literal> the
+parser creates trees with an artificial top node, the super root node; the
+outermost element of the document is one of the children of this node. The
+other children are the comments and processing instructions at top level (if
+such node types are to be created, too).</para>
+
+	  <para>The option <literal>enable_comment_nodes</literal> lets the
+parser add comment nodes when it parses comments. By default, the parser
+behaves as if the comments were non-existent. The contents of comments
+can be queried using the <literal>comment</literal> method.</para>
+
+	  <para>The option <literal>enable_pinstr_nodes</literal> changes the
+way processing instructions are added to the document. Instead of appending
+such instructions to their containing elements as additional properties, this
+mode forces the parser to create real nodes for them. (...)</para>
+
+	  <para>By default, the parser does not create data nodes for ignorable
+whitespace. The XML standard allows that elements contain whitespace characters
+even if they are declared not to contain character data. Because of this, the
+parser considers such whitespace as ignorable detail of the XML instance, and
+drops the characters silently. You can change this by setting
+<literal>drop_ignorable_whitespace</literal> to <literal>false</literal>; in
+this case, every character of the XML instance will be accepted by the parser
+and will be added to a data node of the document tree.</para>
+
+	  <para>By default, the parser creates elements with an annotation
+about the location in the XML source file. You can query this location by
+calling the method <literal>position</literal>. As this requires a lot of
+memory, it is possible to turn this off by setting
+<literal>store_element_positions</literal> to <literal>false</literal>.
+</para>
+
+	  <para>There are a number of further configuration options; however,
+these options do not change the structure of the document tree. See XXX.</para>
+
+	  <formalpara><title>Optional features of nodes:</title>
+	    <para>Another optional feature is the creation of attribute
+nodes. This may be required if you want to have data structures that contain
+attributes together with other types of nodes. The method
+<literal>attributes_as_nodes</literal> returns the attributes wrapped into node
+objects. Note that these nodes are read-only.</para>
+	  </formalpara>
+
+	  <formalpara><title>Validation options:</title> <para>The document
+nodes contain the routines validating the document body. Of course, the
+validation checks depend on what is stored in the DTD object. Note that you
+always need a DTD object, even if you run the parser in well-formedness mode;
+this mode is simply a property of the DTD object.</para>
+	  </formalpara>
+	  
+	  <para>Especially, the DTD object contains the declarations of
+elements, attribute lists, entities, and notations. Furthermore, the DTD knows
+whether the document is flagged as "standalone". As a real extension to
+classic XML processing, the DTD may specify a mix mode between "validating
+mode" and "well-formedness mode". It is possible to allow non-declared elements
+in the document, but to check declared elements against their declaration at
+the same time. Moreover, there is a similar feature for attribute lists; you
+can allow non-declared attributes and check declared attributes. (Well, the
+whole truth is that the parser works always in this mix mode, and that
+the "validating mode" and the "well-formedness mode" are only the extremes of
+the mix mode.)</para>
+
+	</sect2>
+
+	<sect2>
+	  <title>Namespaces</title>
+	  <para>
+Since version 1.1, PXP supports namespaces. In order to simplify the handling
+of namespace-aware documents PXP applies a transformation to the document
+which is called "prefix normalization". This transformation ensures that every
+namespace prefix uniquely identifies a namespace throughout the whole document.
+For an introduction into this transformation, see XXX.
+</para>
+	  <para>
+The important thing here is that the impact of namespaces on the representation
+of documents is minimal. For elements contained in namespaces, the method
+<literal>node_type</literal> will return a type <literal>T_element
+"<replaceable>normprefix</replaceable>:<replaceable>localname</replaceable>"</literal>
+where <literal><replaceable>normprefix</replaceable></literal> is the
+normalized prefix and <literal><replaceable>localname</replaceable></literal>
+is the local name of the element type within the namespace. As the normalized
+prefix <emphasis>identifies</emphasis> the namespace, it is often not necessary
+to determine the namespace URI of the namespace; the element types are still
+simple strings which simplifies programming a lot.</para>
+
+	  <para>
+The same applies to attributes. Attribute names are now either string
+containing a colon like
+"<replaceable>normprefix</replaceable>:<replaceable>localname</replaceable>",
+or they are strings without colons. In the first case, the attribute belongs to
+the namespace identified by the normalized prefix, and in the latter case, the
+attribute is locally defined.
+</para>
+	  <para>
+Note that the prefix normalization is a parser option which can be switched on
+by setting <literal>enable_namespace_processing</literal> to
+<literal>true</literal>. If you create XML trees on your own, it is your task
+to ensure that the prefixes are normalized.</para>
+
+	  <para>
+There are special namespace-aware implementations of the <literal>node</literal>
+class type which define additional namespace methods like
+<literal>namespace_uri</literal>. It is recommended to use these
+implementations although it is not strictly necessary.</para>
+
+	  <para>
+Furthermore, there is a rather experimental feature
+<literal>enable_namespace_info</literal>. This makes the parser store
+information about the namespace declarations into the namespace_info
+object. However, these data are incompatible with the rest of the document
+representation, and it is likely that this feature will be modified in the
+future. (It is possible to let the namespace_info object create namespace nodes
+for the containing element. Currently, these namespace nodes reflect the
+declaration of namespaces before the prefix normalization was applied; I am
+going to change this such that they reflect the declaration after the
+normalization.)
+</para>
+
+	</sect2>
+
+	<sect2>
+	  <title>Types</title>
+	  <para>
+   	    <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>&type-node-type;</listitem>
+	      <listitem>&type-data-node-classification;</listitem>
+	      <listitem>&type-att-value;</listitem>
+	      <listitem>&type-node;</listitem>
+	    </itemizedlist>
+          </para>
+	</sect2>
+
+
+	<sect2>
 	  <title>The methods of the class type <literal>node</literal></title>
 
 	  <anchor id="type-node-general">
@@ -2641,110 +2830,64 @@ are called <emphasis>orphaned</emphasis>.
 	    <para>
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
-		  <para>
-<literal>extension</literal>: The reference to the extension object which
-belongs to this node (see ...).</para>
+&type-node-extension;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>dtd</literal>: Returns a reference to the global DTD. All nodes
-of a tree must share the same DTD.
-</para>
+&type-node-dtd;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>parent</literal>: Get the father node. Raises
-<literal>Not_found</literal> in the case the node does not have a
-parent, i.e. the node is the root.</para>
+&type-node-encoding;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>root</literal>: Gets the reference to the root node of the tree.
-Every node is contained in a tree with a root, so this method always 
-succeeds. Note that this method <emphasis>searches</emphasis> the root,
-which costs time proportional to the length of the path to the root.
-</para>
+&type-node-parent;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>sub_nodes</literal>: Returns references to the children. The returned
-list reflects the order of the children. For data nodes, this method returns
-the empty list.
-</para>
+&type-node-root;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>iter_nodes f</literal>: Iterates over the children, and calls
-<literal>f</literal> for every child in turn. 
-</para>
+&type-node-sub-nodes;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>iter_nodes_sibl f</literal>: Iterates over the children, and calls
-<literal>f</literal> for every child in turn. <literal>f</literal> gets as
-arguments the previous node, the current node, and the next node.</para>
+&type-node-iter-nodes;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>node_type</literal>: Returns either <literal>T_data</literal> which
-means that the node is a data node, or <literal>T_element n</literal>
-which means that the node is an element of type <literal>n</literal>. 
-If configured, possible node types are also <literal>T_pinstr t</literal>
-indicating that the node represents a processing instruction with target
-<literal>t</literal>, and <literal>T_comment</literal> in which case the node
-is a comment.
-</para>
+&type-node-iter-nodes-sibl;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>encoding</literal>: Returns the encoding of the strings.</para>
+&type-node-previous-node;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>data</literal>: Returns the character data of this node and all
-children, concatenated as one string. The encoding of the string is what
-the method <literal>encoding</literal> returns.
-- For data nodes, this method simply returns the represented characters.
-For elements, the meaning of the method has been extended such that it
-returns something useful, i.e. the effectively contained characters, without
-markup. (For <literal>T_pinstr</literal> and <literal>T_comment</literal>
-nodes, the method returns the empty string.)
-</para>
+&type-node-next-node;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>position</literal>: If configured, this method returns the position of
-the element as triple (entity, line, byteposition). For data nodes, the
-position is not stored. If the position is not available the triple
-<literal>"?", 0, 0</literal> is returned.
-</para>
+&type-node-nth-node;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>comment</literal>: Returns <literal>Some text</literal> for comment
-nodes, and <literal>None</literal> for other nodes. The <literal>text</literal>
-is everything between the comment delimiters <literal>&lt;--</literal> and
-<literal>--&gt;</literal>.
-</para>
+&type-node-node-type;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>pinstr n</literal>: Returns all processing instructions that are
-directly contained in this element and that have a <emphasis>target</emphasis>
-specification of <literal>n</literal>. The target is the first word after
-the <literal>&lt;?</literal>.
-</para>
+&type-node-node-position;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>pinstr_names</literal>: Returns the list of all targets of processing
-instructions directly contained in this element.</para>
+&type-node-node-path;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>write s enc</literal>: Prints the node and all subnodes to the passed
-output stream as valid XML text, using the passed external encoding.
-</para>
+&type-node-data;
+		</listitem>
+		<listitem>
+&type-node-position;
+		</listitem>
+		<listitem>
+&type-node-comment;
+		</listitem>
+		<listitem>
+&type-node-pinstr;
+		</listitem>
+		<listitem>
+&type-node-pinstr-names;
+		</listitem>
+		<listitem>
+&type-node-write;
 		</listitem>
 	      </itemizedlist>
             </para>
@@ -2758,139 +2901,40 @@ output stream as valid XML text, using the passed external encoding.
 	    <para>
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
-		  <para>
-<literal>attribute n</literal>: Returns the value of the attribute with name
-<literal>n</literal>. This method returns a value for every declared 
-attribute, and it raises <literal>Not_found</literal> for any undeclared
-attribute. Note that it even returns a value if the attribute is actually
-missing but is declared as <literal>#IMPLIED</literal> or has a default
-value. - Possible values are:
-                  <itemizedlist mark="bullet" spacing="compact">
-		      <listitem>
-			<para>
-<literal>Implied_value</literal>: The attribute has been declared with the
-keyword <literal>#IMPLIED</literal>, and the attribute is missing in the
-attribute list of this element.</para>
-		      </listitem>
-		      <listitem>
-			<para>
-<literal>Value s</literal>: The attribute has been declared as type
-<literal>CDATA</literal>, as <literal>ID</literal>, as
-<literal>IDREF</literal>, as <literal>ENTITY</literal>, or as
-<literal>NMTOKEN</literal>, or as enumeration or notation, and one of the two
-conditions holds: (1) The attribute value is present in the attribute list in
-which case the value is returned in the string <literal>s</literal>. (2) The
-attribute has been omitted, and the DTD declared the attribute with a default
-value. The default value is returned in <literal>s</literal>. 
-- Summarized, <literal>Value s</literal> is returned for non-implied, non-list 
-attribute values.
-</para>
-		      </listitem>
-		      <listitem>
-			<para>
-<literal>Valuelist l</literal>: The attribute has been declared as type
-<literal>IDREFS</literal>, as <literal>ENTITIES</literal>, or
-as <literal>NMTOKENS</literal>, and one of the two conditions holds: (1) The
-attribute value is present in the attribute list in which case the
-space-separated tokens of the value are returned in the string list
-<literal>l</literal>. (2) The attribute has been omitted, and the DTD declared
-the attribute with a default value. The default value is returned in
-<literal>l</literal>. 
-- Summarized, <literal>Valuelist l</literal> is returned for all list-type
-attribute values.
-</para>
-		      </listitem>
-		    </itemizedlist>
-
-Note that before the attribute value is returned, the value is normalized. This
-means that newlines are converted to spaces, and that references to character
-entities (i.e. <literal>&amp;#<replaceable>n</replaceable>;</literal>) and
-general entities
-(i.e. <literal>&amp;<replaceable>name</replaceable>;</literal>) are expanded;
-if necessary, expansion is performed recursively.
-</para>
-
-<para>
-In well-formedness mode, there is no DTD which could declare an
-attribute. Because of this, every occuring attribute is considered as a CDATA
-attribute.
-</para>
+&type-node-attribute;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>required_string_attribute n</literal>: returns the Value attribute
-called n, or the Valuelist attribute as a string where the list elements
-are separated by spaces. If the attribute value is implied, or if the
-attribute does not exists, the method will fail. - This method is convenient
-if you expect a non-implied and non-list attribute value.
-</para>
+&type-node-required-string-attribute;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>optional_string_attribute n</literal>: returns the Value attribute
-called n, or the Valuelist attribute as a string where the list elements
-are separated by spaces. If the attribute value is implied, or if the
-attribute does not exists, the method returns None. - This method is 
-convenient if you expect a non-list attribute value including the implied
-value.
-</para>
+&type-node-optional-string-attribute;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>required_list_attribute n</literal>: returns the Valuelist attribute
-called n, or the Value attribute as a list with a single element.
-If the attribute value is implied, or if the
-attribute does not exists, the method will fail. - This method is 
-convenient if you expect a list attribute value.
-</para>
+&type-node-required-list-attribute;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>optional_list_attribute n</literal>: returns the Valuelist attribute
-called n, or the Value attribute as a list with a single element.
-If the attribute value is implied, or if the
-attribute does not exists, an empty list will be returned. - This method
-is convenient if you expect a list attribute value or the implied value.
-</para>
+&type-node-optional-list-attribute;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>attribute_names</literal>: returns the list of all attribute names of
-this element. As this is a validating parser, this list is equal to the
-list of declared attributes.
-</para>
+&type-node-attribute-names;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>attribute_type n</literal>: returns the type of the attribute called
-<literal>n</literal>. See the module <literal>Pxp_types</literal> for a
-description of the encoding of the types.
-</para>
+&type-node-attribute-type;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>attributes</literal>: returns the list of pairs of names and values
-for all attributes of
-this element.</para>
+&type-node-attributes;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>id_attribute_name</literal>: returns the name of the attribute that is
-declared with type ID. There is at most one such attribute. The method raises
-<literal>Not_found</literal> if there is no declared ID attribute for the
-element type.</para>
+&type-node-id-attribute-name;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>id_attribute_value</literal>: returns the value of the attribute that
-is declared with type ID. There is at most one such attribute. The method raises
-<literal>Not_found</literal> if there is no declared ID attribute for the
-element type.</para>
+&type-node-id-attribute-value;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>idref_attribute_names</literal>: returns the list of attribute names
-that are declared as IDREF or IDREFS.</para>
+&type-node-idref-attribute-names;
+		</listitem>
+		<listitem>
+&type-node-attributes-as-nodes;
 		</listitem>
 	      </itemizedlist>
           </para>
@@ -2899,86 +2943,49 @@ that are declared as IDREF or IDREFS.</para>
 	  <anchor id="type-node-mods">
 	  <formalpara>
 	    <title id="type-node-mods.title">
-              <link linkend="type-node-mods.sig">Modifying methods</link>
+              <link linkend="type-node-mods.sig">Mutating methods</link>
             </title>
 	    
 	    <para>
-The following methods are only defined for element nodes (more exactly:
-the methods are defined for data nodes, too, but fail always).
+The following methods may be used to modify the XML tree. These methods
+do not validate the changes, and the result may be invalid.
 
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
-		  <para>
-<literal>add_node sn</literal>: Adds sub node <literal>sn</literal> to the list
-of children. This operation is illustrated in the picture 
-<link linkend="node-add" endterm="node-add"></link>. This method expects that
-<literal>sn</literal> is a root, and it requires that <literal>sn</literal> and
-the current object share the same DTD.
-</para>
-
-<para>Because <literal>add_node</literal> is the method the parser itself uses
-to add new nodes to the tree, it performs by default some simple validation
-checks: If the content model is a regular expression, it is not allowed to add
-data nodes to this node unless the new nodes consist only of whitespace. In
-this case, the new data nodes are silently dropped (you can change this by
-invoking <literal>keep_always_whitespace_mode</literal>).
-</para>
-
-<para>If the document is flagged as stand-alone, these data nodes only
-containing whitespace are even forbidden if the element declaration is
-contained in an external entity. This case is detected and rejected.</para>
-
-<para>If the content model is <literal>EMPTY</literal>, it is not allowed to
-add any data node unless the data node is empty. In this case, the new data
-node is silently dropped.
-</para>
-
-<para>These checks only apply if there is a DTD. In well-formedness mode, it is
-assumed that every element is declared with content model
-<literal>ANY</literal> which prohibits any validation check. Furthermore, you
-turn these checks off by passing <literal>~force:true</literal> as first
-argument.</para>
+&type-node-append-node;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>add_pinstr pi</literal>: Adds the processing instruction
-<literal>pi</literal> to the list of processing instructions.
-</para>
-		</listitem>
-
-		<listitem>
-		  <para>
-<literal>delete</literal>: Deletes this node from the tree. After this
-operation, this node is no longer the child of the former father node; and the
-node loses the connection to the father as well. This operation is illustrated
-by the figure <link linkend="node-delete" endterm="node-delete"></link>.
-</para>
+&type-node-insert-nodes;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>set_nodes nl</literal>: Sets the list of children to
-<literal>nl</literal>. It is required that every member of <literal>nl</literal>
-is a root, and that all members and the current object share the same DTD.
-Unlike <literal>add_node</literal>, no validation checks are performed.
-</para>
-	      </listitem>
-	      <listitem>
-		  <para>
-<literal>quick_set_attributes atts</literal>: sets the attributes of this
-element to <literal>atts</literal>. It is <emphasis>not</emphasis> checked
-whether <literal>atts</literal> matches the DTD or not; it is up to the
-caller of this method to ensure this. (This method may be useful to transform
-the attribute values, i.e. apply a mapping to every attribute.)
-</para>
+&type-node-remove;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>set_comment text</literal>: This method is only applicable to
-<literal>T_comment</literal> nodes; it sets the comment text contained by such
-nodes. </para>
+&type-node-remove-nodes;
+		</listitem>
+		<listitem>
+&type-node-set-nodes;
+		</listitem>
+		<listitem>
+&type-node-set-attributes;
+		</listitem>
+		<listitem>
+&type-node-set-attribute;
+		</listitem>
+		<listitem>
+&type-node-reset-attribute;
+		</listitem>
+		<listitem>
+&type-node-set-comment;
+		</listitem>
+		<listitem>
+&type-node-set-data;
+		</listitem>
+		<listitem>
+&type-node-add-pinstr;
 		</listitem>
 	      </itemizedlist>
-</para>
+            </para>
 	  </formalpara>
 	  
 	  <anchor id="type-node-cloning">
@@ -2990,129 +2997,91 @@ nodes. </para>
 	    <para>
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
-		  <para>
-<literal>orphaned_clone</literal>: Returns a clone of the node and the complete
-tree below this node (deep clone). The clone does not have a parent (i.e. the
-reference to the parent node is <emphasis>not</emphasis> cloned). While
-copying the subtree, strings are skipped; it is likely that the original tree
-and the copy tree share strings. Extension objects are cloned by invoking
-the <literal>clone</literal> method on the original objects; how much of
-the extension objects is cloned depends on the implemention of this method.
-</para>
-		  <para>This operation is illustrated by the figure 
-<link linkend="node-clone" endterm="node-clone"></link>.
-</para>
+&type-node-orphaned-clone;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>orphaned_flat_clone</literal>: Returns a clone of the node,
-but sets the list of sub nodes to [], i.e. the sub nodes are not cloned.
-</para>
+&type-node-orphaned-flat-clone;
 		</listitem>
 		<listitem>
-		  <para>
-<anchor id="type-node-meth-create-element">
-<literal>create_element dtd nt al</literal>: Returns a flat copy of this node
-(which must be an element) with the following modifications: The DTD is set to
-<literal>dtd</literal>; the node type is set to <literal>nt</literal>, and the
-new attribute list is set to <literal>al</literal> (given as list of
-(name,value) pairs). The copy does not have children nor a parent. It does not
-contain processing instructions. See 
-<link linkend="type-node-ex-create-element">the example below</link>.
-</para>
-
-		  <para>Note that you can specify the position of the new node
-by the optional argument <literal>~position</literal>.</para>
+<!-- <anchor id="type-node-meth-create-element"> TODO -->
+&type-node-create-element;
 		</listitem>
 		<listitem>
-		  <para>
-<anchor id="type-node-meth-create-data">
-<literal>create_data dtd cdata</literal>: Returns a flat copy of this node
-(which must be a data node) with the following modifications: The DTD is set to
-<literal>dtd</literal>; the node type is set to <literal>T_data</literal>; the
-attribute list is empty (data nodes never have attributes); the list of
-children and PIs is empty, too (same reason). The new node does not have a
-parent. The value <literal>cdata</literal> is the new character content of the
-node. See 
-<link linkend="type-node-ex-create-data">the example below</link>.
-</para>
+<!-- <anchor id="type-node-meth-create-data"> TODO -->
+&type-node-create-data;
 		</listitem>
 		<listitem>
-		  <para>
-<literal>keep_always_whitespace_mode</literal>: Even data nodes which are
-normally dropped because they only contain ignorable whitespace, can added to
-this node once this mode is turned on. (This mode is useful to produce
-canonical XML.)
-</para>
+&type-node-create-other;
 		</listitem>
  	      </itemizedlist>
 </para>
 	  </formalpara>
 	  
-	  <anchor id="type-node-weird">
+	  <anchor id="type-node-validating">
 	  <formalpara>
-	    <title id="type-node-weird.title">
-              <link linkend="type-node-weird.sig">Validating methods</link>
+	    <title id="type-node-validating.title">
+              <link linkend="type-node-validating.sig">Validating methods</link>
             </title>
 	    <para>
-There is one method which locally validates the node, i.e. checks whether the
-subnodes match the content model of this node.
+The following methods validate nodes.
 
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
-		  <para>
-<literal>local_validate</literal>: Checks that this node conforms to the
-DTD by comparing the type of the subnodes with the content model for this
-node. (Applications need not call this method unless they add new nodes
-themselves to the tree.)
-</para>
+&type-node-classify-data-node;
+		</listitem>
+		<listitem>
+&type-node-validate-contents;
+		</listitem>
+		<listitem>
+&type-node-validate-attlist;
+		</listitem>
+		<listitem>
+&type-node-validate;
+		</listitem>
+		<listitem>
+&type-node-complement-attlist;
 		</listitem>
 	      </itemizedlist>
-</para>
+            </para>
 	  </formalpara>
+
+
+	  <anchor id="type-node-namespace">
+	  <formalpara>
+	    <title id="type-node-namespace.title">
+              <link linkend="type-node-namespace.sig">Namespace methods</link>
+            </title>
+	    <para>
+The following methods are about namespaces. They are only available if
+the class supports namespaces, otherwise you get a 
+<literal>Namespace_method_not_applicable</literal> exception. See XXX.
+
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>&type-node-normprefix;</listitem>
+		<listitem>&type-node-localname;</listitem>
+		<listitem>&type-node-namespace-uri;</listitem>
+		<listitem>&type-node-namespace-manager;</listitem>
+		<listitem>&type-node-namespace-info;</listitem>
+	      </itemizedlist>
+            </para>
+	  </formalpara>
+
+
 	</sect2>
 
 	<sect2>
 	  <title>The class <literal>element_impl</literal></title>
-	  <para>
-This class is an implementation of <literal>node</literal> which
-realizes element nodes:
 
-<programlisting>
-<![CDATA[
-class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
-]]>
-</programlisting>
+	  &class-element-impl;
 
-</para>
-	  <formalpara>
-	    <title>Constructor</title>
-	    <para>
-You can create a new instance by
-
-<programlisting>
-new element_impl <replaceable>extension_object</replaceable>
-</programlisting>
-
-which creates a special form of empty element which already contains a
-reference to the <replaceable>extension_object</replaceable>, but is
-otherwise empty. This special form is called an
-<emphasis>exemplar</emphasis>. The purpose of exemplars is that they serve as
-patterns that can be duplicated and filled with data. The method
-<link linkend="type-node-meth-create-element">
-<literal>create_element</literal></link> is designed to perform this action.
-</para>
-	  </formalpara>
-
-	  <anchor id="type-node-ex-create-element">
+	  <anchor id="type-node-ex-create-element" xreflabel="Create element node">
 	  <formalpara>
 	    <title>Example</title>
 
 	    <para>First, create an exemplar by
 
 <programlisting>
-let exemplar_ext = ... in
-let exemplar     = new element_impl exemplar_ext in
+let exemplar     = new element_impl ext_obj in
 </programlisting>
 
 The <literal>exemplar</literal> is not used in node trees, but only as
@@ -3123,7 +3092,7 @@ let element = exemplar # <link linkend="type-node-meth-create-element">create_el
 </programlisting>
 
 The <literal>element</literal> is a copy of <literal>exemplar</literal>
-(even the extension <literal>exemplar_ext</literal> has been copied)
+(even the extension <literal>ext_obj</literal> has been copied)
 which ensures that <literal>element</literal> and its extension are objects
 of the same class as the exemplars; note that you need not to pass a 
 class name or other meta information. The copy is initially connected 
@@ -3138,37 +3107,8 @@ subnodes.
 
 	<sect2>
 	  <title>The class <literal>data_impl</literal></title>
-	  <para>
-This class is an implementation of <literal>node</literal> which
-should be used for all character data nodes:
 
-<programlisting>
-<![CDATA[
-class [ 'ext ] data_impl : 'ext -> [ 'ext ] node
-]]>
-</programlisting>
-
-</para>
-
-	  <formalpara>
-	    <title>Constructor</title>
-	    <para>
-You can create a new instance by
-
-<programlisting>
-new data_impl <replaceable>extension_object</replaceable>
-</programlisting>
-
-which creates an empty exemplar node which is connected to
-<replaceable>extension_object</replaceable>. The node does not contain a
-reference to any DTD, and because of this it cannot be added to node trees.
-</para>
-	  </formalpara>
-	    
-	  <para>To get a fully working data node, apply the method
-<link linkend="type-node-meth-create-data"><literal>create_data</literal>
-</link> to the exemplar (see example).
-</para>
+	  &class-data-impl;
 
 	  <anchor id="type-node-ex-create-data">
 	  <formalpara>
@@ -3177,8 +3117,7 @@ reference to any DTD, and because of this it cannot be added to node trees.
 	    <para>First, create an exemplar by
 
 <programlisting>
-let exemplar_ext = ... in
-let exemplar     = new exemplar_ext data_impl in
+let exemplar     = new data_impl ext_obj in
 </programlisting>
 
 The <literal>exemplar</literal> is not used in node trees, but only as
@@ -3199,144 +3138,17 @@ be added to an element as child.
 	</sect2>
 
 	<sect2>
-	  <title>The type <literal>spec</literal></title>
-	  <para>
-The type <literal>spec</literal> defines a way to handle the details of
-creating nodes from exemplars.
-
-<programlisting><![CDATA[
-type 'ext spec
-constraint 'ext = 'ext node #extension
-
-val make_spec_from_mapping :
-      ?super_root_exemplar : 'ext node ->
-      ?comment_exemplar : 'ext node ->
-      ?default_pinstr_exemplar : 'ext node ->
-      ?pinstr_mapping : (string, 'ext node) Hashtbl.t ->
-      data_exemplar: 'ext node ->
-      default_element_exemplar: 'ext node ->
-      element_mapping: (string, 'ext node) Hashtbl.t -> 
-      unit -> 
-        'ext spec
-
-val make_spec_from_alist :
-      ?super_root_exemplar : 'ext node ->
-      ?comment_exemplar : 'ext node ->
-      ?default_pinstr_exemplar : 'ext node ->
-      ?pinstr_alist : (string * 'ext node) list ->
-      data_exemplar: 'ext node ->
-      default_element_exemplar: 'ext node ->
-      element_alist: (string * 'ext node) list -> 
-      unit -> 
-        'ext spec
-]]></programlisting>
-
-The two functions <literal>make_spec_from_mapping</literal> and
-<literal>make_spec_from_alist</literal> create <literal>spec</literal>
-values. Both functions are functionally equivalent and the only difference is
-that the first function prefers hashtables and the latter associative lists to
-describe mappings from names to exemplars.
-</para>
-
-<para>
-You can specify exemplars for the various kinds of nodes that need to be
-generated when an XML document is parsed:
-   	      
-<itemizedlist mark="bullet" spacing="compact">
-	      <listitem>
-		<para><literal>~super_root_exemplar</literal>: This exemplar
-is used to create the super root. This special node is only created if the
-corresponding configuration option has been selected; it is the parent node of
-the root node which may be convenient if every working node must have a parent.</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~comment_exemplar</literal>: This exemplar is
-used when a comment node must be created. Note that such nodes are only created
-if the corresponding configuration option is "on".
-</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~default_pinstr_exemplar</literal>: If a node
-for a processing instruction must be created, and the instruction is not listed
-in the table passed by <literal>~pinstr_mapping</literal> or
-<literal>~pinstr_alist</literal>, this exemplar is used.
-Again the configuration option must be "on" in order to create such nodes at
-all. 
-</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~pinstr_mapping</literal> or
-<literal>~pinstr_alist</literal>: Map the target names of processing
-instructions to exemplars. These mappings are only used when nodes for
-processing instructions are created.</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~data_exemplar</literal>: The exemplar for
-ordinary data nodes.</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~default_element_exemplar</literal>: This
-exemplar is used if an element node must be created, but the element type
-cannot be found in the tables <literal>element_mapping</literal> or
-<literal>element_alist</literal>.</para>
-	      </listitem>
-	      <listitem>
-		<para><literal>~element_mapping</literal> or
-<literal>~element_alist</literal>: Map the element types to exemplars. These
-mappings are used to create element nodes.</para>
-	      </listitem>
-	    </itemizedlist>
-
-In most cases, you only want to create <literal>spec</literal> values to pass
-them to the parser functions found in <literal>Pxp_yacc</literal>. However, it
-might be useful to apply <literal>spec</literal> values directly.
-</para>
-
-<para>The following functions create various types of nodes by selecting the
-corresponding exemplar from the passed <literal>spec</literal> value, and by
-calling <literal>create_element</literal> or <literal>create_data</literal> on
-the exemplar.
-
-<programlisting><![CDATA[
-val create_data_node : 
-      'ext spec -> 
-      dtd -> 
-      (* data material: *) string -> 
-          'ext node
-
-val create_element_node : 
-      ?position:(string * int * int) ->
-      'ext spec -> 
-      dtd -> 
-      (* element type: *) string -> 
-      (* attributes: *) (string * string) list -> 
-          'ext node
-
-val create_super_root_node :
-      ?position:(string * int * int) ->
-      'ext spec -> 
-       dtd -> 
-           'ext node
-
-val create_comment_node :
-      ?position:(string * int * int) ->
-      'ext spec -> 
-      dtd -> 
-      (* comment text: *) string -> 
-          'ext node
-
-val create_pinstr_node :
-      ?position:(string * int * int) ->
-      'ext spec -> 
-      dtd -> 
-      proc_instruction -> 
-          'ext node
-]]></programlisting>
-</para>
+	  <title>The classes <literal>super_root_impl</literal>,
+<literal>pinstr_impl</literal>, and <literal>comment_impl</literal>
+</title>
+	  &class-super-root-impl;
+	  &class-pinstr-impl;
+	  &class-comment-impl;
 	</sect2>
 
+
 	<sect2>
-	  <title>Examples</title>
+	  <title>Examples: Creating and accessing nodes</title>
 
 	  <formalpara>
 	    <title>Building trees.</title>
@@ -3361,11 +3173,11 @@ in
 let cherries = data_exemplar # create_data dtd "Cherries" in
 let orange   = data_exemplar # create_data dtd "An orange" in
 
-a1 # add_node b1;
-a1 # add_node c1;
-b1 # add_node a2;
-b1 # add_node cherries;
-a2 # add_node orange;
+a1 # append_node b1;
+a1 # append_node c1;
+b1 # append_node a2;
+b1 # append_node cherries;
+a2 # append_node orange;
 </programlisting>
 
 Alternatively, the last block of statements could also be written as:
@@ -3581,53 +3393,191 @@ Here, the case that the attribute is missing counts like the empty list.
 	</sect2>
 
 
-	<sect2>
-	  <title>Iterators</title>
 
-	  <para>There are also several iterators in Pxp_document; please see
-the mli file for details. You can find examples for them in the
-"simple_transformation" directory.
+	<sect2>
+	  <title>The type <literal>spec</literal></title>
+	  <itemizedlist>
+	    <listitem>&type-spec;</listitem>
+	    <listitem>&val-make-spec-from-mapping;</listitem>
+	    <listitem>&val-make-spec-from-alist;</listitem>
+	    <listitem>&val-create-data-node;</listitem>
+	    <listitem>&val-create-element-node;</listitem>
+	    <listitem>&val-create-super-root-node;</listitem>
+	    <listitem>&val-create-pinstr-node;</listitem>
+	    <listitem>&val-create-comment-node;</listitem>
+	  </itemizedlist>
+	</sect2>
+
+
+	<sect2>
+	  <title>Examples: Creating nodes using <literal>spec</literal></title>
+
+	  <formalpara>
+	    <title>Building trees.</title>
+
+	    <para>Here is again a piece of code that creates the tree of
+the figure <link linkend="node-term" endterm="node-term"></link>. Now
+the type <literal>spec</literal> is used to encapsulate the exemplar objects.
+
+<programlisting>
+let exemplar_ext = ... (* some extension *) in
+let dtd = ... (* some DTD *) in
+
+let element_exemplar = new element_impl exemplar_ext in
+let data_exemplar    = new data_impl    exemplar_ext in
+
+let spec = make_spec_from_alist 
+             ~data_exemplar:data_exemplar
+             ~default_element_exemplar:element_exemplar
+             ~element_alist:[]
+             () in
+
+let a1 = create_element_node spec dtd "a" ["att", "apple"]
+and b1 = create_element_node spec dtd "b" []
+and c1 = create_element_node spec dtd "c" []
+and a2 = create_element_node spec dtd "a" ["att", "orange"]
+in
+
+let cherries = create_data_node spec dtd "Cherries" in
+let orange   = create_data_node spec dtd "An orange" in
+
+a1 # append_node b1;
+a1 # append_node c1;
+b1 # append_node a2;
+b1 # append_node cherries;
+a2 # append_node orange;
+</programlisting>
+
+The type <literal>spec</literal> is obviously useful as a container for the
+exemplars. Moreover, the type <literal>spec</literal> allows it to
+control which extension object is used for which element type which is
+explained in the section <xref linkend="section-extension">.
+</para>
+	  </formalpara>
+	</sect2>
+
+	<sect2>
+	  <title id="document-iterators">Iterators</title>
+
+	  <para>There are also several iterators in Pxp_document. You can find
+examples for them in the "simple_transformation" directory.</para>
+
+	  <itemizedlist>
+	    <listitem>&val-find;</listitem>
+	    <listitem>&val-find-all;</listitem>
+	    <listitem>&val-find-element;</listitem>
+	    <listitem>&val-find-all-elements;</listitem>
+	    <listitem>&exc-skip;</listitem>
+	    <listitem>&val-map-tree;</listitem>
+	    <listitem>&val-map-tree-sibl;</listitem>
+	    <listitem>&val-iter-tree;</listitem>
+	    <listitem>&val-iter-tree-sibl;</listitem>
+	  </itemizedlist>
+	</sect2>
+
+	<sect2>
+	  <title>Stripping whitespace</title>
+
+	  &type-stripping-mode;
+	  &val-strip-whitespace;
+
+	  <formalpara>
+	    <title>Examples:</title>
+	    <para>
+	    <programlisting>
+strip_whitespace ~left:`Strip_one_lf ~right:`Strip_one_lf startnode
+</programlisting>
+
+Strips LF characters according to the SGML rules: One LF is stripped
+after the start tag, and one before the end tag. xml:space is respected.
+</para>
+	  </formalpara>
+
+	  <para>
+	    <programlisting>
+iter_tree
+  ~pre:(fun n -&gt; if n # node_type = T_data then 
+                   n # strip_whitespace 
+                    ~force:true ~left:`Strip_seq ~right:`Strip_seq
+       )
+  startnode
+</programlisting>
+
+Strips any whitespace characters from every data nodes individually.
+</para>
+
+	  <formalpara>
+	    <title>Traps:</title>
+	    <para>
+In order to work properly, this function expects a normalized XML tree
+(no consecutive text nodes, no empty text nodes). If the tree is not
+normalized, the semantics of strip_whitespace is well-defined, but
+the function may not do what is expected. Especially, whitespace is
+not stripped across text nodes. E.g. if the spaces in 
+
+<programlisting>
+&lt;A&gt;&#32;&#32;&lt;/A&gt;
+</programlisting>
+
+are stored in two nodes, and ~left:`Strip_seq is demanded,  the
+function will only remove the first space.
+</para>
+	  </formalpara>
+	</sect2>
+
+	<sect2>
+	  <title>Document order</title>
+	  <para>
+The functions compare and ord_compare implement the so-called
+"document order". The basic principle is that the nodes are linearly
+ordered by their occurence in the textual XML representation of the
+tree. While this is clear for element nodes, data nodes, comments, and
+processing instructions, a more detailed definition is necessary for the
+other node types. In particular, attribute nodes of an element node
+occur before any regular subnode of the element, and namespace nodes
+of that element occur even before the attribute nodes. So the order
+of nodes of
 
 <programlisting><![CDATA[
-val find : ?deeply:bool -> 
-           f:('ext node -> bool) -> 'ext node -> 'ext node
-
-val find_all : ?deeply:bool ->
-               f:('ext node -> bool) -> 'ext node -> 'ext node list
-
-val find_element : ?deeply:bool ->
-                   string -> 'ext node -> 'ext node
-
-val find_all_elements : ?deeply:bool ->
-                        string -> 'ext node -> 'ext node list
-
-exception Skip
-val map_tree :  pre:('exta node -> 'extb node) ->
-               ?post:('extb node -> 'extb node) ->
-               'exta node -> 
-                   'extb node
-
-
-val map_tree_sibl : 
-        pre: ('exta node option -> 'exta node -> 'exta node option -> 
-                  'extb node) ->
-       ?post:('extb node option -> 'extb node -> 'extb node option -> 
-                  'extb node) ->
-       'exta node -> 
-           'extb node
-
-val iter_tree : ?pre:('ext node -> unit) ->
-                ?post:('ext node -> unit) ->
-                'ext node -> 
-                    unit
-
-val iter_tree_sibl :
-       ?pre: ('ext node option -> 'ext node -> 'ext node option -> unit) ->
-       ?post:('ext node option -> 'ext node -> 'ext node option -> unit) ->
-       'ext node -> 
-           unit
+<sample a1="5" a2="6"><subnode/></sample> 
 ]]></programlisting>
+
+is
+
+<orderedlist>
+<listitem> <para>element "sample"</para>    </listitem>
+<listitem> <para>attribute "a1"</para>      </listitem>
+<listitem> <para>attribute "a2"</para>      </listitem>
+<listitem> <para>element "subnode"</para>   </listitem>
+</orderedlist>
+
+Note that the order of the attributes of the same element is unspecified,
+so "a2" may alternatively be ordered before "a1". If there were namespace
+nodes, they would occur between 1 and 2.
 </para>
+<para>
+If there is a super root node, it will be handled as the very first
+node.
+</para>
+
+	  <itemizedlist>
+	    <listitem>&val-compare;</listitem>
+	    <listitem>&type-ord-index;</listitem>
+	    <listitem>&val-create-ord-index;</listitem>
+	    <listitem>&val-ord-compare;</listitem>
+	  </itemizedlist>
+	</sect2>
+
+	<sect2>
+	  <title>Functions</title>
+	  <itemizedlist>
+	    <listitem>&val-normalize;</listitem>
+	    <listitem>&val-validate;</listitem>
+	    <listitem>&val-pinstr;</listitem>
+	    <listitem>&val-attribute-name;</listitem>
+	    <listitem>&val-attribute-value;</listitem>
+	    <listitem>&val-attribute-string-value;</listitem>
+	  </itemizedlist>
 	</sect2>
 
       </sect1>
@@ -3636,6 +3586,7 @@ val iter_tree_sibl :
 
       <sect1>
 	<title>The class type <literal>extension</literal></title>
+	<anchor id="section-extension" xreflabel="The class type extension">
 	<para>
 
 <programlisting>
@@ -3925,6 +3876,14 @@ is no data node for the space character because spaces are ignored in the
 character-free element <literal>y</literal>.
 </para>
 
+	  <formalpara>
+	    <title>Parser option:</title>
+	    <para>
+By setting the parser option <literal>drop_ignorable_whitespace</literal> to
+<literal>false</literal>, the behaviour of the parser is changed such that
+even ignorable whitespace characters are represented by data nodes.</para>
+	  </formalpara>
+
 	</sect2>
 
 	<sect2>
@@ -4015,24 +3974,33 @@ occur in a certain element, in the DTD, or in the whole document, but you
 cannot lookup the exact position within the construct.
 </para>
 
-	  <para>If you require the exact location of PIs, it is possible to
+	  <formalpara>
+	    <title>Parser option:</title>
+	    <para>If you require the exact location of PIs, it is possible to
 create extra nodes for them. This mode is controled by the option
 <literal>enable_pinstr_nodes</literal>. The additional nodes have the node type
 <literal>T_pinstr <replaceable>target</replaceable></literal>, and are created
 from special exemplars contained in the <literal>spec</literal> (see
 pxp_document.mli).</para>
+	  </formalpara>
 	</sect2>
 
 	<sect2>
 	  <title>The representation of comments</title> 
 
 <para>Normally, comments are not represented; they are dropped by
-default. However, if you require them, it is possible to create
+default.</para>
+
+	  <formalpara>
+	    <title>Parser option:</title>
+	    <para>
+However, if you require comment in the document tree, it is possible to create
 <literal>T_comment</literal> nodes for them. This mode can be specified by the
 option <literal>enable_comment_nodes</literal>. Comment nodes are created from
 special exemplars contained in the <literal>spec</literal> (see
 pxp_document.mli). You can access the contents of comments through the 
 method <literal>comment</literal>.</para>
+	  </formalpara>
 	</sect2>
 
 	<sect2>
@@ -4041,22 +4009,159 @@ method <literal>comment</literal>.</para>
 
 	  <para>These attributes are not supported specially; they are handled
 like any other attribute.</para>
-	</sect2>
 
-
-	<sect2>
-	  <title>And what about namespaces?</title>
-	  <para>Currently, there is no special support for namespaces.
-However, the parser allows it that the colon occurs in names such that it is
-possible to implement namespaces on top of the current API.</para>
-
-	  <para>Some future release of PXP will support namespaces as built-in
-feature...</para>
+	  <para>Note that the utility function
+<literal>strip_whitespace</literal> respects
+<literal>xml:space</literal>.</para>
 	</sect2>
 
       </sect1>
 
+<!-- ********************************************************************** -->
+      <sect1>
+	<title>Namespaces</title>
+	<anchor id="namespaces" xreflabel="Namespaces">
+
+	<sect2>
+	  <title>Prefix normalization</title>
+	
+	  <para>Namespaces have a unique identifier, the so-called namespace
+URI. For example, <literal>http://www.w3.org/1999/xhtml</literal> is the
+namespace URI of XHTML 1.0. As URIs are quite long, it would be a pain to use
+them directly to refer to namespaces. Because of this, namespaces are primarily
+referred to by a shorthand notation, the namespace prefix. For example, 
+in the following XML snippet the prefix "h" is declared as a shorthand
+for the XHTML namespace:
+
+<programlisting><![CDATA[
+<h:html xmlns:h="http://www.w3.org/1999/xhtml"> 
+  <h:head>
+    <h:title>Virtual Library</h:title> 
+  </h:head> 
+  <h:body> 
+    <h:p>Moved to <h:a href="http://vlib.org/">vlib.org</h:a>.</h:p> 
+  </h:body> 
+</h:html>
+]]></programlisting>
+
+It is possible to change the meaning of the prefixes everywhere in the
+document. Especially it is possible to change the meaning of a prefix for the
+scope of an element:
+
+<programlisting><![CDATA[
+<x:address xmlns:x="http://addresses.org">
+  <x:name xmlns:x="http://names.org">
+    Gerd Stolpmann
+  </x:name>
+</x:address>
+]]></programlisting>
+
+Here, the inner declaration of "x" temporarily overrides the outer declaration
+of "x". This limits the usability of namespace prefixes, as they do not
+identify namespaces throughout the whole document.</para>
+
+	<para>Many other parsers represent the namespace declarations
+explicitly by creating namespace nodes for the declarations. However, this has
+the disadvantage that you need to recur to the namespace URIs in order to
+identify namespaces in your programs, as the prefixes are not unique.</para>
+
+	<para>PXP has a different mode of processing namespaces. The prefixes
+are transformed while the document is being parsed such that they become
+unique. This transformation is called "prefix normalization". For example,
+the above <literal>x:address</literal> example would be transformed to
+
+<programlisting><![CDATA[
+<x:address xmlns:x="http://addresses.org">
+  <x1:name xmlns:x1="http://names.org">
+    Gerd Stolpmann
+  </x1:name>
+</x:address>
+]]></programlisting>
+
+and the parsed tree would have an outer element with node type
+<literal>T_element "x:address"</literal>, and an inner element with
+node type <literal>T_element "x1:name"</literal>. The obvious advantage is that
+the names of elements are still simple strings, and that it is not necessary to
+deal with pairs (namespace_uri,localname).
+</para>
+
+	<para>Furthermore, it is possible to control which prefixes are
+preferred. By manipulating the namespace_manager it is possible to demand a
+certain prefix for a certain namespace URI:
+
+<programlisting><![CDATA[
+dtd # namespace_manager # add_namespace "addr" "http://addresses.org";
+dtd # namespace_manager # add_namespace "nm" "http://names.org";
+]]></programlisting>
+
+Now the normalized text reads:
+
+<programlisting><![CDATA[
+<addr:address xmlns:addr="http://addresses.org">
+  <nm:name xmlns:nm="http://names.org">
+    Gerd Stolpmann
+  </nm:name>
+</addr:address>
+]]></programlisting>
+
+This has the advantage that you know in advance which prefixes will be used
+which simplifies programming a lot.
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>DTDs</title>
+	  <para>PXP defines a processing instruction for DTDs doing the same as
+the <literal>add_namespace</literal> method:
+
+<programlisting>
+&lt;?pxp:dtd namespace prefix="<replaceable>p</replaceable>" uri="<replaceable>u</replaceable>"?&gt;
+</programlisting>
+
+This makes it possible to declare elements (and attributes) for documents no
+matter which prefixes are actually used. For example, the following document is
+valid:
+
+<programlisting><![CDATA[
+<?xml version="1.0"?>
+<!DOCTYPE addr:address [
+
+<!ELEMENT addr:address (nm:name)>
+<!ELEMENT nm:name (#PCDATA)>
+
+<?pxp:dtd namespace prefix="addr" uri="http://addresses.org"?>
+<?pxp:dtd namespace prefix="nm"   uri="http://names.org"?>
+]>
+
+<x:address xmlns:x="http://addresses.org">
+  <x:name xmlns:x="http://names.org">
+    Gerd Stolpmann
+  </x:name>
+</x:address>
+]]></programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>How to enable namespace processing</title>
+	  <para>By default, PXP does no namespace processing. To enable it, set
+the parser option <literal>enable_namespace_processing</literal> to
+<literal>true</literal>. This makes the parser recognize namespace
+declarations, and it enables the prefix normalization, too.
+</para>
+
+	  <para>Furthermore, it is recommended to use the class
+<literal>namespace_element_impl</literal> instead of
+<literal>element_impl</literal>. </para>
+
+	  &class-namespace-element-impl;
+	</sect2>
+      </sect1>
+
+
     </chapter>
+
+
 
 <!-- ********************************************************************** -->
 
@@ -4469,6 +4574,10 @@ from_string: ...</para>
 	
 	<sect2>
 	  <title>Predefined resolver components</title>
+	  <para><emphasis>Note that the following section is not yet up to
+date. There are currently much more resolvers, especially resolvers for
+catalogs of PUBLIC and/or SYSTEM identifiers. See the interface Pxp_reader for details.</emphasis></para>
+
 	  <para>
 There are some classes in Pxp_reader that define common resolver behaviour.
 
@@ -4706,8 +4815,10 @@ written. Perhaps the interface definition of Pxp_dtd expresses the same:
 
 <programlisting>
 val default_config : config
+val default_namespace_config : config
 val default_extension : ('a node extension) as 'a
 val default_spec : ('a node extension as 'a) spec
+val default_namespace_spec : ('a node extension as 'a) spec
 </programlisting>
 </para>
 	</sect2>
@@ -4820,16 +4931,17 @@ Parses a fragment, but checks it only on well-formedness.
 <programlisting><![CDATA[
 type config =
     { warner : collect_warnings;
-      errors_with_line_numbers : bool;
       enable_pinstr_nodes : bool;
       enable_super_root_node : bool;
       enable_comment_nodes : bool;
+      drop_ignorable_whitespace : bool;
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;
       store_element_positions : bool;
       idref_pass : bool;
       validate_by_dfa : bool;
       accept_only_deterministic_models : bool;
+      enable_namespace_processing : Pxp_dtd.namespace_manager option;
       ...
     }
 ]]></programlisting>
@@ -4838,10 +4950,6 @@ type config =
 	      <listitem><para><literal>warner:</literal>The parser prints
 warnings by invoking the method <literal>warn</literal> for this warner
 object. (Default: all warnings are dropped)</para>
-	      </listitem>
-	      <listitem><para><literal>errors_with_line_numbers:</literal>If
-true, errors contain line numbers; if false, errors contain only byte
-positions. The latter mode is faster. (Default: true)</para>
 	      </listitem>
 	      <listitem><para><literal>enable_pinstr_nodes:</literal>If true,
 the parser creates extra nodes for processing instructions. If false,
@@ -4859,6 +4967,10 @@ false)</para>
 	      <listitem><para><literal>enable_comment_nodes:</literal>If true,
 the parser creates nodes for comments with type <literal>T_comment</literal>;
 if false, such nodes are not created. (Default: false)</para>
+	      </listitem>
+	      <listitem><para><literal>drop_ignorable_whitespace:</literal>
+Specifies to drop whitespace occuring in elements that are declared not to
+contain characters. (Default: true)</para>
 	      </listitem>
 	      <listitem><para><literal>encoding:</literal>Specifies the
 internal encoding of the parser. Most strings are then represented according to
@@ -4897,6 +5009,14 @@ accept_only_deterministic_models:</literal> If true, only deterministic content
 models are accepted; if false, any syntactically correct content models can be
 processed. (Default: true)</para>
 	      </listitem>
+	      <listitem><para><literal>enable_namespace_processing:</literal>
+By setting this to <literal>Some (new namespace_manager)</literal> namespace
+processing is enabled. The DTD will be initialized with the passed namespace
+manager. (Default: <literal>None</literal> for
+<literal>default_config</literal>, <literal>Some m</literal> for
+<literal>default_namespace_config</literal>)
+</para>
+	      </listitem>
 	    </itemizedlist></para>
 	</sect2>
 
@@ -4911,6 +5031,10 @@ let config = { default_config with idref_pass = true }
 </programlisting>
 The background is that I can add more options to the record in future versions
 of the parser without breaking your programs.</para>
+
+	  <para>To start with namespace processing, use
+<literal>default_namespace_config</literal> and
+<literal>default_namespace_spec</literal>.</para>
 
 	  <formalpara>
 	    <title>Do I need extra nodes for processing instructions?</title>
@@ -5085,7 +5209,7 @@ alternatives do not nest, the backtracking algorithm may be better.</para>
 
       </sect1>
 
-
+<!--
       <sect1>
 	<title>Updates</title> 
 
@@ -5101,6 +5225,7 @@ compare, create_ord_index, ord_number, ord_compare: See pxp_document.mli</para>
 	  </listitem>
 	</itemizedlist>
       </sect1>
+-->
 
     </chapter>
  

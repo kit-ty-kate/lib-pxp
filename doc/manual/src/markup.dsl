@@ -46,6 +46,14 @@
   ;; Default extension for graphic FILEREFs
   "gif")
 
+(define %default-title-end-punct%
+  ;; Only a space after run-in titles:
+  " ")
+
+(define (toc-depth nd)
+  (if (string=? (gi nd) (normalize "book"))
+      4
+      1))
 ]]>
 
 ;; printing:

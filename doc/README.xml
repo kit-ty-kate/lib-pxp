@@ -67,7 +67,7 @@ bunch of HTML files. An online version can be found <a
 Claudio Sacerdoti Coen. You may copy it as you like,
 you may use it even for commercial purposes as long as the license conditions
 are respected, see the file LICENSE coming with the distribution. It allows
-almost everything. 
+almost everything.
 </p>
 
     <p>Thanks also to Alain Frisch and Haruo Hosoya for discussions and bug
@@ -78,7 +78,7 @@ reports.</p>
     <title>Description</title>
     <p>
 <em>PXP</em> is a validating XML parser for <a
-href="&url.ocaml;">O'Caml</a>. It strictly complies to the 
+href="&url.ocaml;">O'Caml</a>. It strictly complies to the
 <a href="&url.xml-spec;">XML-1.0</a> standard.
 </p>
 
@@ -231,8 +231,177 @@ myself or by contributors (who are invited to do so).</p>
       <ul>
 	<li>
 	  <p>Changed in 1.1:</p>
-	  <p>(a long list, still to write)</p>
+	  <p>The parser supports now namespaces.</p>
+	  <p>Extended/updated Pxp_document interface. There is now a
+	  separate class for every node type. It is now clear which
+	  node methods validate and which do not validate. The node tree
+	  can now be simpler modified (insert/delete).
+	  It is now possible to start in
+	  well-formedness mode and validate the XML tree later (as
+	  a whole, or partially).</p>
+	  <p>New functions for tree normalization, and whitespace
+	  stripping.</p>
+	  <p>The implementation of Pxp_document has been updated, too.
+	  There are now many virtual classes, one class for one task.
+	  The attribute representation has been improved. The overall
+	  size of the document tree has been reduced.
+	  </p>
+	  <p>The parser is better in counting lines. The option
+	  errors_with_line_numbers could be removed because the parser
+	  is now fast enough that it does make sense to always count
+	  lines.</p>
+	  <p>There are now string pools that can save memory in some
+	  situations.</p>
+	  <p>New module Pxp_marshal allows marshalling of XML trees
+	  over channels (faster than writing the tree and reparsing
+	  it).</p>
+	  <p>For the most important entity functions there is an
+	  interface Pxp_document.Entity.</p>
+	  <p>Although there are many extensions, the parser has been
+	  speeded up.</p>
+	  <p>The parser has been divided up into several packages, and
+	  the directory structure of the distribution has been cleaned
+	  up.</p>
+	  <p>It is possible to chose among several lexical analyzers.
+	  One of them bases on Alain Frisch's wlex patch, which reduces
+	  the size of executables if a UTF-8 parser is needed.</p>
+	  <p>The parser works under Cygwin.</p>
+	  <p>Of course several bugfixes. Note that most bugs have been
+	  added in the development cycle between 1.0 and 1.1; only
+	  very few problems have been detected in the 1.0 release. I
+	  hope that 1.1 has similar quality.</p>
 	</li>
+<!--
+	<li><p><em>1.0.99:</em></p>
+	<p>Again a big change. First of all, the directory hierarchy has
+been modified. You find now all installed modules in "src", and all 
+tools in "tools", and so on. The new hierarchy makes it simpler to
+add optional modules.</p>
+	<p>For similar reasons, the package structure has changed, too.
+Instead of one package "pxp", there are now up to five packages:
+"pxp-engine", "pxp-lex-iso88591", "pxp-lex-utf8", "pxp-wlex", "pxp".
+Which packages are selected and compiled depends on the result of the
+"configure" run (which is new, too).</p>
+	<p>The namespace support has been completed. The Pxp_marshal and
+Pxp_codewriter modules can encode/decode namespace information. Namespace
+syntax is now fully checked. The namespace_manager class has been moved
+from Pxp_document to Pxp_dtd, and it is now considered as a new property
+of the DTD. There is a new processing instruction: &lt;?pxp:dtd namespace
+...?&gt; (see EXTENSIONS).</p>
+	<p>More important, some design flaws in Pxp_document have been
+fixed. In previous versions of PXP, it was a bit unclear which methods
+of the "node" classes are actually involved in validation and which not.
+Pxp_document.mli contains a discussion of this issue (and the
+changes in detail).</p>
+	<p>The "node" classes have some new methods, allowing simpler
+in-place modification of node trees.</p>
+	<p>There are now functions in Pxp_document stripping whitespace
+and normalizing trees.</p>
+	<p>The version number of PXP is now 1.0.99, as this version is a
+release candidate. The manual still needs updates, and some of the
+regression tests needs to be fixed. The release of PXP 1.1 is expected
+to happen at the end of June.</p>
+      </li>
+      <li><p><em>1.0.98.6:</em></p>
+	<p>This is a bigger change, including an initial implementation of
+namespaces and some cleanup in Pxp_document. In particular, the following
+modifications have been done:</p>
+	<p>In Pxp_document, there is now a separate class for every node
+type. You must now instantiate comment_impl in order to get a comment node
+(same applies to super_root_impl, pinstr_impl). It is no longer possible to
+instantiate element_impl in these cases (leads to error message that the 
+method internal_init_other is not available).</p>
+	<p>Namespaces: PXP implements namespaces by a technique called
+"prefix normalization". This technique simplifies namespaces a lot and makes
+them as compatible as possible with non-namespace processing. As defined 
+by W3C, namespaces are declared by a namespace URI (a unique identifier) but
+are accessed using a shorter namespace prefix. The problem is that the prefixes
+need not to be unique, even within a single document. To address this problem
+and to avoid complications, PXP _rewrites_ the prefixes while the document
+is being parsed such that the application using PXP only sees unique 
+prefixes. This means that every prefix corresponds to exactly one namespace
+URI once the document has been parsed by PXP. The mapping between the rewritten
+prefixes (called normprefixes) and the namespace URI is managed by a 
+namespace_manager (defined in Pxp_document). In order to control the names of
+the normprefixes it is possible to fill the namespace_manager with 
+(normprefix, uri) pairs before the parser is called. This results in a 
+programming style where it is still possible to identify element types by
+a single string (and not by an expanded_name as suggested in some W3C 
+standards). For example, in order to find out whether node x is a HTML anchor,
+it is sufficient to check whether x # node_type = T_element "html:a", and not
+necessary to perform the much more complicated operation
+x # localname = "a" &amp;&amp; x # namespace_uri = "http://www.w3c.org/TR/xhtml".</p>
+	<p>Namespace normalization has the advantage that DTDs can declare
+the XML objects using normalized prefixes.</p>
+	<p>In order to activate namespace processing, the following
+modifications to existing code are sufficient: (1) Create a namespace_manager
+(2) Set the Pxp_yacc.config label enable_namespace_processing to the
+namespace manager object (3) Use namespace_element_impl instead of
+element_impl. After these steps have been carried out, the application sees
+normalized element and attribute names (instead of unprocessed ones), and
+the additional namespace methods of namespace_element_impl are available
+(e.g. method namespace_uri to get the URI of the namespace).</p>
+	<p>The namespace support is currently very experimental; your comments
+are welcome. There are some known problems: (1) Pxp_marshal and Pxp_codewriter
+have not yet been updated for namespaces, they may or may not work for your
+application; (2) It is not checked whether element and attribute names contain
+only one colon; (3) If you do not set the namespace_manager manually, PXP
+simply chooses the first occurrence of a prefix as its normalized prefix.
+If you do not work with explit prefixes but only with default prefixes
+(using attribute xmlns="some uri"), PXP maps these to the normprefix
+"default" - this might not be what you want.</p>
+      </li>
+
+      <li><p><em>1.0.98.5:</em></p>
+	<p>Bugfix in Pxp_reader.combine.</p>
+	<p>Some changes that could PXP make work under Cygwin.</p>
+      </li>
+      <li><p><em>1.0.98.4:</em></p>
+	<p>New support for PUBLIC identifiers in Pxp_reader: The functions
+lookup_public_id_as_file and lookup_public_id_as_string lookup PUBLIC
+identifiers in a catalog (implemented as associative list). However, there
+is still no way to load a catalog from a file.</p>
+	<p>There are also catalogs for SYSTEM identifiers.</p>
+	<p>The behaviour of Pxp_reader.combine can be better controlled
+by a mode argument.</p>
+	<p>Removed the -p switch from ocamlopt invocations.</p>
+      </li>
+      <li><p><em>1.0.98.3:</em></p>
+	<p>A single fix (again line numbering) that only applies to the
+ocamlopt version. The symptom was an "array-out-of-bounds" runtime error.
+</p>
+      </li>
+
+      <li><p><em>1.0.98.2:</em></p>
+	<p>Corrects a bug with incorrect line numbering that was in
+1.0.98.1.</p>
+	<p>This version contains numerous optimizations, making the 
+parser clearly faster. I had some gprof sessions, and it was possible
+to reduce the amount of temporarily allocated memory. One important result is
+that the option errors_with_line_numbers could be removed; line counting
+is now very cheap.
+</p>
+      </li>
+
+      <li><p><em>1.0.98.1:</em></p>
+	<p>The memory consumption of the node objects has been reduced.</p>
+	<p>There is now a string pool option in type Pxp_yacc.config which
+makes it likely that equal strings share the same memory block.
+This option is experimental.</p>
+
+	<p>There is now support for Alains lexer generator wlex. This is
+currently very experimental. To enable wlex you must change the variable
+LEX_IMPL in Makefile.conf and recompile everything.  wlex is available here:
+http://www.eleves.ens.fr:8080/home/frisch/soft</p>
+
+	<p>Pxp_marshal contains functions to (un)serialize node trees and
+documents.  Loading the binary format is faster than parsing the XML source;
+applications are inter-process communication, and loading constant XML texts
+very quickly.</p>
+
+	<p>Several bug fixes (but no serious bugs have been found yet).</p>
+      </li>
+-->
 	<li>
 	  <p>Changed in 1.0:</p>
 	  <p>Support for document order.</p>
@@ -295,7 +464,7 @@ compatibility API that tries to be compatible with markup-0.2.10.</p>
 	  <p>Changed in 0.99.2:</p>
 	  <p>Added checks for the constraints about the standalone
 declaration.</p>
-	  <p>Added regression tests about attribute normalization, 
+	  <p>Added regression tests about attribute normalization,
 attribute checks, standalone checks.</p>
 	  <p>Fixed some minor errors of the attribute normalization
 function.</p>
@@ -334,7 +503,7 @@ that writes an XML tree to a buffer or to a channel. (But it is not a pretty
 printer...)</p>
 	  <p>Enhancement: If a DTD contains the processing instruction
 <code>
-&lt;?xml:allow_undeclared_attributes x?&gt;</code> 
+&lt;?xml:allow_undeclared_attributes x?&gt;</code>
 where "x" is the name of an already declared element it is allowed that
 instances of this element type have attributes that have not been declared.
 </p>
@@ -366,13 +535,13 @@ re-initialization of the resolver object.</p>
 	<li>
 	  <p>Changed in 0.2.6:</p>
 	  <p>Enhancement: The config parameter has a new component
-"errors_with_line_numbers". If "true", error exceptions come with line numbers 
+"errors_with_line_numbers". If "true", error exceptions come with line numbers
 (the default; and the only option in the previous versions); if "false"
 the line numbers are left out (only character positions). The parser is 10 to
 20 percent faster if the lines are not tracked.</p>
 	  <p>Enhancement: If a DTD contains the processing instruction
 <code>
-&lt;?xml:allow_undeclared_elements_and_notations?&gt;</code> 
+&lt;?xml:allow_undeclared_elements_and_notations?&gt;</code>
 it is allowed that
 elements and notations are undeclared. However, the elements for which
 declarations exist are still validated. The main effect is that the
@@ -384,7 +553,7 @@ are permitted at this location.</p>
 	<li>
 	  <p>Changed in 0.2.5:</p>
 	  <p>If the XML source is a string (i.e. Latin1 some_string is passed
-to the parser functions as source), resolving did not work properly in 
+to the parser functions as source), resolving did not work properly in
 previous releases. This is now fixed.
 </p>
 	</li>
@@ -394,7 +563,7 @@ previous releases. This is now fixed.
 of the root element was fixed. As a result, the "xmlforms" application works
 again. Again thanks to Haruo.</p>
 	  <p>Due to the XML specs it is forbidden that parameter entities are
-referenced within the internal subset if the referenced text is not a 
+referenced within the internal subset if the referenced text is not a
 complete declaration itself. This is checked, but the check was too hard;
 even in external entities referenced from the internal subset this rule
 was enforced. This has been corrected; in external entities it is now possible
@@ -403,7 +572,7 @@ to use parameter entities in an unrestricted way.
 	</li>
 	<li>
 	  <p>Changed in 0.2.3:</p>
-	  <p>A fix for a problem when installing Markup on Solaris. 
+	  <p>A fix for a problem when installing Markup on Solaris.
 Haruo detected the problem.</p>
 	</li>
 	<li>
@@ -429,7 +598,7 @@ detected if the "version", "encoding", and "standalone" attributes of an XML
 declaration are ordered in the right way.
 </p>
 	  <p>
-The error messages have been improved. 
+The error messages have been improved.
 </p>
 	</li>
 -->
