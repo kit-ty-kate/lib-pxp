@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.5 2000/07/16 19:36:03 gerd Exp $
+(* $Id: ds_context.ml,v 1.6 2000/07/23 20:25:05 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -127,7 +127,7 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
 		[ "name", name ] in
       let dnode = empty_dnode # create_data dtd value in
       e_string # add_node dnode;
-      e_string # local_validate;
+      e_string # local_validate();
       obj # add_node e_string;
       assert(self # get_slot name = value)
 
@@ -206,6 +206,9 @@ class context the_filename the_obj_dtd the_index the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.6  2000/07/23 20:25:05  gerd
+ * 	Update because of API change: local_validate.
+ *
  * Revision 1.5  2000/07/16 19:36:03  gerd
  * 	Updated.
  *
