@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.43 2002/08/31 23:28:01 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.44 2002/10/22 14:23:12 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1250,6 +1250,7 @@ doctypedecl_material(doctype_entid):
 		(if extend_dtd then [`Extend_dtd_fully] else []) in
 	      pobj # parse context (`Entry_declarations flags);
 	      mgr # pop_entity_until en;
+	      if en # is_open then ignore(en # close_entity);
 	    with
 		error ->
 		  (* When the error happens, the current entity can be
@@ -1258,6 +1259,7 @@ doctypedecl_material(doctype_entid):
 		   *)
 		  let pos = mgr # position_string in
 		  mgr # pop_entity_until en;
+		  if en # is_open then ignore(en # close_entity);
 		  raise (At(pos, error))
 	    end;
       end;
@@ -2839,10 +2841,12 @@ let call_tree_parser ~configuration:cfg
 	(* raised by the wlex-generated lexers only: map to Malformed_code *)
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	raise (At(pos, Netconversion.Malformed_code))
     | error ->
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	raise (At(pos, error))
   end;
   if cfg.idref_pass then begin
@@ -3138,12 +3142,14 @@ let process_entity
 	(* raised by the wlex-generated lexers only: map to Malformed_code *)
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	let e = At(pos, Netconversion.Malformed_code) in
 	eh (E_error e);
 	raise e
     | error ->
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	let e = At(pos, error) in
 	eh (E_error e);
 	raise e
@@ -3170,12 +3176,14 @@ let process_expr
 	(* raised by the wlex-generated lexers only: map to Malformed_code *)
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	let e = At(pos, Netconversion.Malformed_code) in
 	eh (E_error e);
 	raise e
     | error ->
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
+	if en # is_open then ignore(en # close_entity);
 	let e = At(pos, error) in
 	eh (E_error e);
 	raise e
@@ -3194,7 +3202,6 @@ let create_pull_parser
   let pull_queue_eof = ref false in
 
   let eh event =
-    prerr_endline("Adding event!");
     Queue.add event pull_queue
   in
 
@@ -3224,12 +3231,10 @@ let create_pull_parser
     (* This function is called when the queue is empty to add more elements *)
 
   let rec return_result x =
-    prerr_endline "return_result";
     try
       Some(Queue.take pull_queue)
     with
 	Queue.Empty ->
-	  prerr_endline "Empty";
 	  if !pull_queue_eof then
 	    None
 	  else begin
@@ -3244,12 +3249,14 @@ let create_pull_parser
 	  (* raised by the wlex-generated lexers only: map to Malformed_code *)
 	  let pos = mgr # position_string in
 	  mgr # pop_entity_until en;
+	  if en # is_open then ignore(en # close_entity);
 	  let e = At(pos, Netconversion.Malformed_code) in
 	  eh (E_error e);
 	  pull_queue_eof := true;
       | error ->
 	  let pos = mgr # position_string in
 	  mgr # pop_entity_until en;
+	  if en # is_open then ignore(en # close_entity);
 	  let e = At(pos, error) in
 	  eh (E_error e);
 	  pull_queue_eof := true;
@@ -3257,9 +3264,7 @@ let create_pull_parser
   
   let rec parse_slice context e () =
     try
-      prerr_endline "parse...";
       pobj # parse context e;
-      prerr_endline "parse(eof)!";
       (* If the [parse] method terminates, the end of the stream is reached!
        *)
       if en # is_open then ignore(en # close_entity);
@@ -3268,7 +3273,6 @@ let create_pull_parser
       pull_queue_eof := true;
     with
       | Interrupt_parsing st ->
-	  prerr_endline "interrupt";
 	  fill := parse_slice st.cont_context (`Entry_continuation st);
 	  ()
       | exn ->
@@ -3290,6 +3294,9 @@ let create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.44  2002/10/22 14:23:12  gerd
+ * 	Fix: Closing the topmost entities
+ *
  * Revision 1.43  2002/08/31 23:28:01  gerd
  * 	Bugfix: It is checked whether all entities are closed when
  * the parser stops. If not, an error is generated.
