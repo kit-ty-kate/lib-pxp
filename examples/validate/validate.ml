@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.5 2000/06/04 20:21:55 gerd Exp $
+(* $Id: validate.ml,v 1.6 2000/07/08 21:53:00 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -19,13 +19,14 @@ let parse debug wf iso88591 filename =
   try 
     (* Parse the document: *)
     let doc =
-      (if wf then parse_wf_entity else parse_document_entity)
+      (if wf then parse_wfdocument_entity 
+             else parse_document_entity ?transform_dtd:None)
 	{ default_config with 
 	    debugging_mode = debug;
 	    encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
         }
-	(File filename)
-	default_dom 
+	(from_file filename)
+	default_spec 
     in
     (* Check the uniqueness of IDs: *)
     doc # root # reset_finder;
@@ -77,6 +78,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.6  2000/07/08 21:53:00  gerd
+ * 	Updated because of PXP interface changes.
+ *
  * Revision 1.5  2000/06/04 20:21:55  gerd
  * 	Updated to new module names.
  *
