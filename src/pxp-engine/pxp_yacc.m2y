@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.20 2001/04/22 14:17:35 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.21 2001/04/22 15:15:40 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1829,10 +1829,18 @@ end_tag():
 	   | T_element n -> n
 	   | _ -> assert false
        in
-       if name <> x_name then
-	 raise(WF_error("End-tag does not match start-tag"));
+       if name <> x_name then begin
+	 let x_entname, x_line, x_col = x # position in
+	 raise(WF_error("End tag `" ^ name ^ 
+			"' does not match start tag `" ^ x_name ^ "'" ^
+			(if x_line = 0 then "" else
+			   " (was at line " ^ string_of_int x_line ^ 
+			   ", position " ^ string_of_int x_col ^ ")" )));
+       end;
        if tag_beg_entid != tag_end_entid then
-	 raise(WF_error("End-tag not in the same entity as the start-tag"));
+	 raise(WF_error("End tag `" ^ name ^ 
+			"' not in the same entity as the start tag `" ^
+		       x_name ^ "'"));
        if not config.disable_content_validation then 
 	 x # local_validate ~use_dfa:config.validate_by_dfa ();
        
@@ -2355,6 +2363,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.21  2001/04/22 15:15:40  gerd
+ * 	Improved error messages.
+ *
  * Revision 1.20  2001/04/22 14:17:35  gerd
  * 	from_channel uses now standard features of Pxp_reader, and
  * is no longer a hack.
