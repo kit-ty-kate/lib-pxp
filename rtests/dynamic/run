@@ -6,3 +6,6 @@ echo "create_element: "
 echo "modify:"
 ./modify
 
+echo "strip:"
+./strip
+

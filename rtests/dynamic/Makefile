@@ -7,13 +7,16 @@
 
 OCAMLPATH=../..
 
-all: create_element modify
+all: create_element modify strip
 
 create_element: create_element.ml
 	ocamlfind ocamlc -labels -g -custom -o create_element -package . -linkpkg create_element.ml
 
 modify: modify.ml
 	ocamlfind ocamlc -g -custom -o modify -package . -linkpkg modify.ml
+
+strip: strip.ml
+	ocamlfind ocamlc -g -custom -o strip -package . -linkpkg strip.ml
 
 #----------------------------------------------------------------------
 .PHONY: all
@@ -29,4 +32,4 @@ CLEAN: clean
 .PHONY: distclean
 distclean: clean
 	rm -f *~
-	rm -f create_element modify
+	rm -f create_element modify strip
