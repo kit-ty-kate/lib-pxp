@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.14 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.15 2003/06/21 13:17:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -200,16 +200,39 @@ class type resolver =
  *
  * Examples: To read from an in_channel, use:
  *
- * let obj_channel = new Netchannels.input_channel in_channel in
- * new Pxp_reader.resolve_to_this_obj_channel obj_channel
+ *   let obj_channel = new Netchannels.input_channel in_channel in
+ *   new Pxp_reader.resolve_to_this_obj_channel obj_channel
  *
  * To read from a string, use:
  *
- * let obj_channel = new Netchannels.input_string string in
- * new Pxp_reader.resolve_to_this_obj_channel obj_channel
+ *   let obj_channel = new Netchannels.input_string string in
+ *   new Pxp_reader.resolve_to_this_obj_channel obj_channel
  *
  * Furthermore, the new classes use the resolver_id record as generalized
  * names for entities. This solves most problems with relative URLs.
+ *
+ * The "Anonymous" ID: In previous versions of PXP, a resolver bound to
+ * the Anonymous ID matched the Anonymous ID. This is no longer true.
+ * The algebra has been changed such that Anonymous never matches, not 
+ * even itself.
+ * 
+ *   Example: The new resolver
+ *     let r = new resolve_to_this_obj_channel ~id:Anonymous ch 
+ *   will never accept any ID. In contrast to this, the old, and now
+ *   deprecated resolver
+ *     let r' = new resolve_read_this_channel ~id:Anonymous ch
+ *   accepted the ID Anonymous in previous versions of PXP.
+ *
+ * The rationale behind this change is that Anonymous acts now like 
+ * an "empty set", and not like a concrete element. You can use Private
+ * to create as many concrete elements as you want, so there is actually
+ * no need for the old behaviour of Anonymous.
+ *
+ * Note that even the resolver classes provided for backwards compatibility
+ * implement this change (to limit the confusion). This means that you
+ * might have to change your application to use Private instead of 
+ * Anonymous.
+ * 
  *)
 
 class resolve_to_this_obj_channel :
@@ -223,7 +246,7 @@ class resolve_to_this_obj_channel :
   (* Reads from the passed in_obj_channel. If the ~id or ~rid arguments
    * are passed to the object, the created resolver accepts only
    * these IDs (all mentioned private, system, or public IDs). Otherwise 
-   * all IDs are accepted.
+   * all IDs are accepted, even Anonymous.
    *
    * This resolver can only be used once (because the in_obj_channel
    * can only be used once). If it is opened a second time (either
@@ -727,7 +750,8 @@ class resolve_read_this_channel :
 
   (* Reads from the passed channel (it may be even a pipe). If the ~id
    * argument is passed to the object, the created resolver accepts only
-   * this ID. Otherwise all IDs are accepted.
+   * this ID (except Anonymous). Otherwise all IDs are accepted, even
+   * Anonymous.
    * Once the resolver has been cloned, it does not accept any ID. This
    * means that this resolver cannot handle inner references to external
    * entities. Note that you can combine this resolver with another resolver
@@ -829,7 +853,8 @@ class resolve_read_this_string :
 
   (* Reads from the passed string. If the ~id
    * argument is passed to the object, the created resolver accepts only
-   * this ID. Otherwise all IDs are accepted.
+   * this ID (except Anonymous). Otherwise all IDs are accepted, even
+   * Anonymous.
    * Once the resolver has been cloned, it does not accept any ID. This
    * means that this resolver cannot handle inner references to external
    * entities. Note that you can combine this resolver with another resolver
@@ -884,6 +909,9 @@ val lookup_system_id_as_string :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.15  2003/06/21 13:17:30  gerd
+ * 	Fixes regarding Anonymous.
+ *
  * Revision 1.14  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.25 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.26 2003/06/21 13:17:30 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1229,7 +1229,9 @@ let xid_list_of_rid rid =
      | (Some pub, None)     -> [ Public(pub,"") ]
      | (None, Some sys)     -> [ System(sys) ]
      | (None, None)         -> []
-  )
+  ) @ 
+  [ Anonymous ]
+  (* We always append Anonymous, because this xid is included in all rids *)
 ;;
 
 
@@ -1373,6 +1375,9 @@ let lookup_system_id_as_string ?fixenc catalog =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.26  2003/06/21 13:17:30  gerd
+ * 	Fixes regarding Anonymous.
+ *
  * Revision 1.25  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants
