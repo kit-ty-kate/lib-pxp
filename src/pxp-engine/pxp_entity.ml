@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.6 2000/07/14 13:55:00 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.7 2000/09/05 21:52:31 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -907,7 +907,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
       line <- 1;
       column <- 0;
       pos <- 0;
-      last_token <- Eof;
+      last_token <- Bof;       (* CHECK: Is this right? *)
 
 
     method private handle_bof tok =
@@ -1071,6 +1071,16 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.7  2000/09/05 21:52:31  gerd
+ * 	class internal_entity: Previously, the method open_entity
+ * intialized the slot last_token to Eof. This is wrong, because
+ * this causes that handle_bof is never called. The slot last_token
+ * is now initialized to Bof.
+ * 	Critical negative tests: data_jclark_notwf/not-sa/002,
+ * data_jclark_notwf/sa/153.xml, data_jclark_notwf/sa/161.xml. The
+ * error messages of these tests changed (checked; the new messages
+ * are better).
+ *
  * Revision 1.6  2000/07/14 13:55:00  gerd
  * 	Cosmetic changes.
  *
