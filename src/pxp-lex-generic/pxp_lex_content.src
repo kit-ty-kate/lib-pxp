@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.3 2000/08/14 22:18:34 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.4 2000/08/18 20:19:59 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -23,7 +23,7 @@ rule scan_content = parse
   | "<?"
       { raise (WF_error ("Illegal processing instruction")) }
   | "<!--"
-      { tok_Comment__Content_comment }
+      { Comment_begin, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
       { let s = Lexing.lexeme lexbuf in
@@ -88,6 +88,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.4  2000/08/18 20:19:59  gerd
+ * 	Comments return different comment tokens.
+ *
  * Revision 1.3  2000/08/14 22:18:34  gerd
  * 	Bad_character_stream -> Netconversion.Malformed_code
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_document.src,v 1.3 2000/08/14 22:18:34 gerd Exp $
+(* $Id: pxp_lex_document.src,v 1.4 2000/08/18 20:19:59 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -28,7 +28,7 @@ rule scan_document = parse
   | "<!DOCTYPE"
       { tok_Doctype__Document_type }
   | "<!--" 
-      { tok_Comment__Document_comment }
+      { Comment_begin, Document_comment }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -51,6 +51,9 @@ rule scan_document = parse
  * History:
  * 
  * $Log: pxp_lex_document.src,v $
+ * Revision 1.4  2000/08/18 20:19:59  gerd
+ * 	Comments return different comment tokens.
+ *
  * Revision 1.3  2000/08/14 22:18:34  gerd
  * 	Bad_character_stream -> Netconversion.Malformed_code
  *

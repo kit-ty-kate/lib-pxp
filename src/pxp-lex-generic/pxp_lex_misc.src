@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_misc.src,v 1.3 2000/08/14 22:18:34 gerd Exp $
+(* $Id: pxp_lex_misc.src,v 1.4 2000/08/18 20:19:59 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -79,30 +79,30 @@ and scan_for_crlf = parse
 
 and scan_content_comment = parse
     "-->"
-      { tok_Comment__Content }
+      { Comment_end, Content }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
-      { tok_Comment__Content_comment }
+      { Comment_material "-", Content_comment }
   | character_except_minus+
-      (* TODO: We allocate memory for comments here. Try to avoid this. *)
-      { tok_Comment__Content_comment }
+      { Comment_material(Lexing.lexeme lexbuf), Content_comment }
   | eof
       { Eof, Content_comment }
   | _
       { raise Netconversion.Malformed_code }
 
 
+(* In declarations, comments are always thrown away. *)
+
 and scan_decl_comment = parse
     "-->"
-      { tok_Comment__Declaration }
+      { Comment_end, Declaration }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
-      { tok_Comment__Decl_comment }
+      { Comment_material "", Decl_comment }
   | character_except_minus+
-      (* TODO: We allocate memory for comments here. Try to avoid this. *)
-      { tok_Comment__Decl_comment }
+      { Comment_material "", Decl_comment }
   | eof
       { Eof, Decl_comment }
   | _
@@ -111,14 +111,13 @@ and scan_decl_comment = parse
 
 and scan_document_comment = parse
     "-->"
-      { tok_Comment__Document }
+      { Comment_end, Document }
   | "--"
       { raise (WF_error "Double hyphens are illegal inside comments") }
   | "-"
-      { tok_Comment__Document_comment }
+      { Comment_material "-", Document_comment }
   | character_except_minus+
-      (* TODO: We allocate memory for comments here. Try to avoid this. *)
-      { tok_Comment__Document_comment }
+      { Comment_material(Lexing.lexeme lexbuf), Document_comment }
   | eof
       { Eof, Document_comment }
   | _
@@ -128,6 +127,9 @@ and scan_document_comment = parse
  * History:
  * 
  * $Log: pxp_lex_misc.src,v $
+ * Revision 1.4  2000/08/18 20:19:59  gerd
+ * 	Comments return different comment tokens.
+ *
  * Revision 1.3  2000/08/14 22:18:34  gerd
  * 	Bad_character_stream -> Netconversion.Malformed_code
  *
