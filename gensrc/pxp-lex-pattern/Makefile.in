@@ -1,0 +1,50 @@
+TOP_DIR = ../..
+ENC = @ENCNAME@
+INPUT = $(TOP_DIR)/src/pxp-lex-generic-new
+MLL = $(shell echo pxp_lex_$(ENC)_*.mll)
+CMO = $(MLL:.mll=.cmo)
+CMX = $(MLL:.mll=.cmx)
+OCAMLC_OPTIONS = -I $(TOP_DIR)/src/pxp-engine
+OCAMLOPT_OPTIONS = $(OCAMLC_OPTIONS)
+PACKAGES = netstring
+
+include $(TOP_DIR)/Makefile.rules
+
+.PHONY: all opt generate clean CLEAN distclean install uninstall
+
+all: pxp_lex_$(ENC).cma pxp_lex_link_$(ENC).cmo
+
+opt: pxp_lex_$(ENC).cmxa pxp_lex_link_$(ENC).cmx
+
+pxp_lex_$(ENC).cma: $(CMO)
+	$(OCAMLC) -o pxp_lex_$(ENC).cma -a $(CMO)
+
+pxp_lex_$(ENC).cmxa: $(CMX)
+	$(OCAMLOPT) -o pxp_lex_$(ENC).cmxa -a $(CMX)
+
+generate: gen_done
+
+gen_done: $(INPUT)/*.def $(INPUT)/*.src
+	if [ "$(ENC)" = "utf8" ]; then flags="-multiple"; else flags=""; fi; \
+	$(LEXPP) -charclasses "$(INPUT)/char_classes_generic.def" \
+		-lexsrc "$(INPUT)/lex.src" \
+		-linksrc "$(INPUT)/link_generic.src" \
+		-encoding "$(ENC)" \
+		-outlexprefix "pxp_lex_$(ENC)" \
+		-outlinkprefix "pxp_lex_link_$(ENC)" $$flags
+	for mll in *.mll; do echo "Doing $$mll:"; $(OCAMLLEX) $$mll; done
+	touch gen_done
+
+clean:
+	rm -f $(CLEAN_LIST) *.ml *.mll gen_done
+
+CLEAN: clean
+
+distclean: clean
+
+install:
+	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_lex_link_*.cmo pxp_lex_link_*.cmx META` && \
+        $(OCAMLFIND) install pxp-lex-$(ENC) $$files
+
+uninstall:
+	$(OCAMLFIND) remove pxp-lex-$(ENC)

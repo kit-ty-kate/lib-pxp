@@ -1,0 +1,6 @@
+description = "Polymorphic XML parser - Lexical analyzer for @ENCNAME@"
+requires = "pxp-engine"
+version = "@VERSION@"
+
+archive(byte) = "pxp_lex_@ENCNAME@.cma pxp_lex_link_@ENCNAME@.cmo"
+archive(native) = "pxp_lex_@ENCNAME@.cmxa pxp_lex_link_@ENCNAME@.cmx"
