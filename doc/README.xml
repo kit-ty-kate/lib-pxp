@@ -196,6 +196,13 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.99.6:</p>
+	  <p>Implemented a check on deterministic content models. Added
+an alternate validator basing on a DFA. - This means that now all mandatory
+features for an XML-1.0 parser are implemented! The parser is now substantially
+complete.</p>
+	</li>
+	<li>
 	  <p>Changed in 0.99.5:</p>
 	  <p>The handling of ID and IDREF attributes has changed. The
 index of nodes containing an ID attribute is now separated from the document.
