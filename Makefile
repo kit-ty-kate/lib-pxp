@@ -47,7 +47,7 @@ CLEAN: clean
 
 .PHONY: distclean
 distclean:
-	rm -f Makefile.conf
+	rm -f *~ Makefile.conf
 	$(MAKE) -C tools distclean
 	$(MAKE) -C src distclean
 	$(MAKE) -C examples distclean
