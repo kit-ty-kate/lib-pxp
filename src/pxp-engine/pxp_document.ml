@@ -107,10 +107,12 @@ class type [ 'ext ] node =
     method set_comment : string option -> unit
     method comment : string option
     method normprefix : string
+    method display_prefix : string
     method localname : string
     method namespace_uri : string
-    method namespace_info : 'ext namespace_info
-    method set_namespace_info : 'ext namespace_info option -> unit
+    method namespace_scope : namespace_scope
+    method set_namespace_scope : namespace_scope -> unit
+    method namespaces_as_nodes : 'ext node list
     method namespace_manager : namespace_manager
     method dtd : dtd
     method encoding : rep_encoding
@@ -131,6 +133,7 @@ class type [ 'ext ] node =
     method write : ?prefixes:string list -> 
                    ?default:string ->
                    output_stream -> encoding -> unit
+    method display : ?prefixes:(string StringMap.t) -> output_stream -> encoding -> unit
     method internal_adopt : 'ext node option -> int -> unit
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
@@ -141,23 +144,6 @@ class type [ 'ext ] node =
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
     method dump : Format.formatter -> unit
-  end
-
-and ['ext] namespace_info =
-  object
-    method srcprefix : string
-      (* Returns the prefix before it is normalized *)
-
-    method declaration : 'ext node list
-      (* Returns the currently active namespace declaration. The list
-       * enumerates all namespace objects with
-       *   namespace # node_type = T_namespace "srcprefix"
-       * meaning that the srcprefix is declared to correspond to the
-       * namespace URI
-       *   namespace # namespace_uri.
-       * This list always declares the prefix "xml". If there is a default
-       * namespace, it is declared for the prefix "".
-       *)
   end
 ;;
 
@@ -552,13 +538,18 @@ class virtual ['ext] no_validation_feature =
 class virtual ['ext] no_namespace_feature =
   object (self)
     method normprefix : string                    = nsmethod_na "normprefix"
+    method display_prefix : string                = nsmethod_na "display_prefix"
     method localname : string                     = nsmethod_na "localname"
     method namespace_uri : string                 = nsmethod_na "namespace_uri"
-    method namespace_info : 'ext namespace_info   = nsmethod_na "namespace_info"
-    method set_namespace_info (_ : 'ext namespace_info option) : unit 
-            = nsmethod_na "set_namespace_info"
+    method namespace_scope : namespace_scope      = nsmethod_na "namespace_scope"
+    method set_namespace_scope : namespace_scope -> unit
+      = nsmethod_na "set_namespace_scope"
+
+    method namespaces_as_nodes : 'ext node list 
+      = nsmethod_na "namespaces_as_nodes"
+
     method namespace_manager : namespace_manager
-            = nsmethod_na "namespace_manager"
+      = nsmethod_na "namespace_manager"
   end
 ;;
 
@@ -640,6 +631,10 @@ class ['ext] data_impl an_ext : ['ext] node =
       content <- str
 
     method write ?(prefixes = ([]: string list)) ?default os enc =
+      let encoding = self # encoding in
+      write_data_string ~from_enc:encoding ~to_enc:enc os content
+
+    method display ?prefixes os enc =
       let encoding = self # encoding in
       write_data_string ~from_enc:encoding ~to_enc:enc os content
 
@@ -789,6 +784,7 @@ class ['ext] attribute_impl ~element ~name value init_dtd : ['ext] node =
     method create_data _ _ =    method_na "create_data"
     method create_other ?position _ _ =   method_na "create_other"
     method write ?prefixes ?default _ _ = method_na "write"
+    method display ?prefixes _ _        = method_na "display"
   end
 ;;
 
@@ -853,6 +849,9 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
 	  | Some c -> wms c;
       );
       wms ("-->");
+
+    method display ?prefixes os enc =
+      self # write os enc
 
     method dump fmt =
       Format.pp_open_vbox fmt 2;
@@ -989,6 +988,9 @@ class [ 'ext ] pinstr_impl an_ext : ['ext] node =
 	 | _      -> assert false
 
     method write ?prefixes ?default os enc =
+      self # write_pinstr os enc
+
+    method display ?prefixes os enc =
       self # write_pinstr os enc
 
     method dump fmt =
@@ -1799,7 +1801,7 @@ class type [ 'ext ] element_node =
 ;;
 
 
-class [ 'ext ] element_impl an_ext : ['ext] element_node =
+class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
   object(self)
     inherit ['ext] container_features an_ext
     inherit ['ext] pinstr_features
@@ -2556,6 +2558,12 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 
       wms ("</" ^ name' ^ "\n>");
 
+    method display ?prefixes os enc =
+      (* Overriden in namespace_element_impl, so this is only for the
+       * non-namespace case:
+       *)
+      self # write os enc
+
     method internal_init_other new_pos new_dtd new_ntype =
       method_na "internal_init_other"
 
@@ -2635,6 +2643,15 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
 	(fun n -> n # write ?prefixes ?default os enc)
 	(self # sub_nodes);
 
+    method display ?prefixes os enc =
+      let encoding = self # encoding in
+      let wms =
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+      self # write_pinstr os enc;
+      List.iter
+	(fun n -> n # display ?prefixes os enc)
+	(self # sub_nodes);
+
     method create_element ?name_pool_for_attribute_values ?position 
                           ?valcheck ?att_values _ _ _ =
                                 method_na "create_element"
@@ -2668,20 +2685,153 @@ class ['ext] namespace_attribute_impl ~element ~name value dtd =
     method normprefix = normprefix
     method localname = localname
 
+    method display_prefix =
+      self # parent # namespace_scope # display_prefix_of_normprefix normprefix
+      
     method namespace_uri = 
       self # namespace_manager # get_primary_uri normprefix
 
-    method namespace_info =
-      self # parent # namespace_info
+    method namespace_scope =
+      self # parent # namespace_scope
 
-    method set_namespace_info x =
-      method_na "set_namespace_info"
+    method set_namespace_scope x =
+      method_na "set_namespace_scope"
+
+    method namespaces_as_nodes = 
+      []
 
     method namespace_manager =
       self # dtd # namespace_manager
 
   end
 ;;
+
+(**********************************************************************)
+(* namespace_impl                                                     *)
+(**********************************************************************)
+
+class [ 'ext ] namespace_impl srcprefix normprefix init_dtd : ['ext] node =
+  object (self)
+    inherit ['ext] common_node_features
+    inherit ['ext] no_attributes_feature
+    inherit ['ext] no_subnodes_feature
+    inherit ['ext] no_pinstr_feature
+    inherit ['ext] no_comments_feature
+    inherit ['ext] no_validation_feature 
+
+    val normprefix = normprefix
+    val srcprefix = srcprefix
+		       
+    initializer
+      dtd <- Some init_dtd
+
+    method private local_node_path =
+      (* Overrides definition in common_node_features: *)
+      [ -2; self # node_position ]
+      
+    method orphaned_clone =
+      {< parent = None; node_position = -1 >}
+      
+    method orphaned_flat_clone =
+      {< parent = None; node_position = -1 >}
+      
+    method node_type = T_namespace srcprefix
+			 
+    method data = 
+      (self # namespace_manager) # get_primary_uri normprefix
+      
+    method normprefix = 
+      normprefix
+      (* CHECK in the light of new namespace impl *)
+      (* This is a hack to ensure whenever there is no srcprefix we will
+       * not have a normprefix, either.
+       * However, there may be a namespace URI
+       *)
+      (*
+      if srcprefix = "" then
+	""
+      else
+	normprefix
+      *)
+	  
+    method display_prefix =
+      srcprefix
+
+    method namespace_uri = 
+      (* XPath requires this to be null: *)
+      raise Not_found
+	
+    method namespace_manager =
+      self # dtd # namespace_manager
+
+    method namespace_scope =
+      self # parent # namespace_scope
+
+    method namespaces_as_nodes = 
+      []
+
+    method dump fmt =
+      Format.pp_open_vbox fmt 2;
+      Format.pp_print_string fmt "+ T_namespace";
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "normprefix=";
+      Format.pp_print_string fmt (self # normprefix);
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "display prefix=";
+      Format.pp_print_string fmt srcprefix;
+      Format.pp_print_cut fmt ();
+      Format.pp_print_string fmt "uri=";
+      ( try
+	  Format.pp_print_string fmt (self # data);
+	with
+	    Not_found ->
+	      Format.pp_print_string fmt "<Not found>"
+      );
+      Format.pp_close_box fmt ()
+
+    (* Senseless methods: *)
+
+     method position = no_position
+
+    (* Non-applicable methods: *)
+
+     method extension =          method_na "extension"
+     method internal_init _ _ _ _ _ _ _ =   method_na "internal_init"
+     method internal_init_other _ _ _ = method_na "internal_init_other"
+     method set_data _ =         method_na "set_data"
+     method set_namespace_scope _ = method_na "set_namespace_scope"
+     method create_element ?name_pool_for_attribute_values ?position 
+                           ?valcheck ?att_values _ _ _ =
+                                 method_na "create_element"
+     method create_data _ _ =    method_na "create_data"
+     method create_other ?position _ _ = method_na "create_other"
+     method write ?prefixes ?default _ _ = method_na "write"
+     method display ?prefixes _ _        = method_na "display"
+     method localname =          method_na "localname"
+     method previous_node =      method_na "previous_node"
+     method next_node =          method_na "next_node"
+     method remove _ =           method_na "remove"
+  end
+;;
+
+let namespace_normprefix n =
+  match n # node_type with
+      T_namespace _ -> n # normprefix
+    | _ -> invalid_arg "Pxp_document.namespace_normprefix"
+;;
+
+let namespace_display_prefix n =
+  match n # node_type with
+      T_namespace _ -> n # display_prefix
+    | _ -> invalid_arg "Pxp_document.namespace_display_prefix"
+;;
+
+let namespace_uri n =
+  match n # node_type with
+      T_namespace _ -> n # data  (* sic! *)
+    | _ -> invalid_arg "Pxp_document.namespace_uri"
+;;
+
 
 (**********************************************************************)
 (* namespace_element_impl                                             *)
@@ -2696,23 +2846,57 @@ class [ 'ext ] namespace_element_impl an_ext =
 
     val mutable normprefix = ""
     val mutable localname = ""
-    val mutable nsinfo = None
+    val mutable scope = None
+    val mutable nsnodes = None
 
     method normprefix = normprefix
     method localname = localname
     method namespace_uri = 
       self # namespace_manager # get_primary_uri normprefix
 
-    method namespace_info =
-      match nsinfo with
-	  None -> raise Not_found
+    method display_prefix =
+      self # namespace_scope # display_prefix_of_normprefix normprefix
+
+    method namespace_scope =
+      match scope with
+	  None   -> 
+	    ( let empty_scope =
+		new namespace_scope_impl self#namespace_manager None [] in
+	      scope <- Some empty_scope;
+	      empty_scope
+	    )
 	| Some x -> x
 
-    method set_namespace_info x =
-      nsinfo <- x
+    method set_namespace_scope x =
+      let m = self#namespace_manager in
+      if m <> x # namespace_manager then
+	failwith "set_namespace_scope: Invalid namespace manager";
+      scope <- Some x;
+      nsnodes <- None;  (* force recomputation *)
 
     method namespace_manager =
       self # dtd # namespace_manager
+
+    method namespaces_as_nodes =
+      match nsnodes with
+	  None ->
+	    let dtd = self#dtd in
+	    let m = self#namespace_manager in
+	    let s = self#namespace_scope in
+	    let l1 = s#effective_declaration in  (* pairs (dsp_prefix, uri) *)
+	    let l2 = 
+	      List.map
+		(fun (dsp_prefix, uri) ->
+		   let norm_prefix = 
+		     try m#get_normprefix uri 
+		     with Not_found -> "<unknown>" (* CHECK *) in
+		   new namespace_impl dsp_prefix norm_prefix dtd
+		)
+		l1 in
+	    nsnodes <- Some l2;
+	    l2
+	| Some l ->
+	    l
 
     method internal_init new_pos attval_name_pool valcheck_element_exists
                          new_dtd new_name
@@ -2784,167 +2968,88 @@ class [ 'ext ] namespace_element_impl an_ext =
 	       ~name:att_name
 	       value
 	       dtd
-  end
-;;
 
-(**********************************************************************)
-(* namespace_impl                                                     *)
-(**********************************************************************)
-
-class [ 'ext ] namespace_impl srcprefix normprefix init_dtd : ['ext] node =
-  object (self)
-    inherit ['ext] common_node_features
-    inherit ['ext] no_attributes_feature
-    inherit ['ext] no_subnodes_feature
-    inherit ['ext] no_pinstr_feature
-    inherit ['ext] no_comments_feature
-    inherit ['ext] no_validation_feature 
-
-    val normprefix = normprefix
-    val srcprefix = srcprefix
-		       
-    initializer
-      dtd <- Some init_dtd
-
-    method private local_node_path =
-      (* Overrides definition in common_node_features: *)
-      [ -2; self # node_position ]
-      
-    method orphaned_clone =
-      {< parent = None; node_position = -1 >}
-      
-    method orphaned_flat_clone =
-      {< parent = None; node_position = -1 >}
-      
-    method node_type = T_namespace srcprefix
-			 
-    method data = 
-      (self # namespace_manager) # get_primary_uri normprefix
-      
-    method normprefix = 
-      (* This is a hack to ensure whenever there is no srcprefix we will
-       * not have a normprefix, either.
-       * However, there may be a namespace URI
-       *)
-      if srcprefix = "" then
-	""
-      else
-	normprefix
-	  
-    method namespace_uri = 
-      (* XPath requires this to be null: *)
-      raise Not_found
+      method display ?(prefixes = StringMap.empty) os enc =
+	let encoding = self # encoding in
+	let wms =
+	  write_markup_string ~from_enc:encoding ~to_enc:enc os in
 	
-    method namespace_manager =
-      self # dtd # namespace_manager
-
-    method dump fmt =
-      Format.pp_open_vbox fmt 2;
-      Format.pp_print_string fmt "+ T_namespace";
-      Format.pp_print_cut fmt ();
-      Format.pp_print_string fmt "normprefix=";
-      Format.pp_print_string fmt (self # normprefix);
-      Format.pp_print_cut fmt ();
-      Format.pp_print_string fmt "srcprefix=";
-      Format.pp_print_string fmt srcprefix;
-      Format.pp_print_cut fmt ();
-      Format.pp_print_string fmt "uri=";
-      ( try
-	  Format.pp_print_string fmt (self # data);
-	with
-	    Not_found ->
-	      Format.pp_print_string fmt "<Not found>"
-      );
-      Format.pp_close_box fmt ()
-
-    (* Senseless methods: *)
-
-     method position = no_position
-
-    (* Non-applicable methods: *)
-
-     method extension =          method_na "extension"
-     method internal_init _ _ _ _ _ _ _ =   method_na "internal_init"
-     method internal_init_other _ _ _ = method_na "internal_init_other"
-     method set_data _ =         method_na "set_data"
-     method create_element ?name_pool_for_attribute_values ?position 
-                           ?valcheck ?att_values _ _ _ =
-                                 method_na "create_element"
-     method create_data _ _ =    method_na "create_data"
-     method create_other ?position _ _ = method_na "create_other"
-     method write ?prefixes ?default _ _ = method_na "write"
-     method localname =          method_na "localname"
-     method namespace_info =     method_na "namespace_info"
-     method set_namespace_info info =
-                                 method_na "set_namespace_info"
-     method previous_node =      method_na "previous_node"
-     method next_node =          method_na "next_node"
-     method remove _ =           method_na "remove"
-  end
-;;
-
-let namespace_normprefix n =
-  match n # node_type with
-      T_namespace _ -> n # normprefix
-    | _ -> invalid_arg "Pxp_document.namespace_normprefix"
-;;
-
-let namespace_srcprefix n =
-  match n # node_type with
-      T_namespace s -> s
-    | _ -> invalid_arg "Pxp_document.namespace_srcprefix"
-;;
-
-let namespace_uri n =
-  match n # node_type with
-      T_namespace _ -> n # data  (* sic! *)
-    | _ -> invalid_arg "Pxp_document.namespace_uri"
-;;
-
-(**********************************************************************)
-(* namespace_info_impl                                                *)
-(**********************************************************************)
-
-class [ 'ext ] namespace_info_impl 
-                 (srcprefix:string) (element : 'ext node) mapping =
-object
-  val srcprefix = srcprefix
-  val parent = element
-  val mutable src_norm_mapping = mapping
-  val mutable declaration = None
-
-  method srcprefix = srcprefix
-
-  method declaration =
-    match declaration with
-	Some d -> d
-      | None ->
-	  let d = ref [] in
-	  let done_srcprefixes = ref [] in
-	  let dtd = parent # dtd in
-	  let pos = ref 0 in
-	  (* Note: The first pair ("!", s) contains the current default
-	   * namespace. if s = "" there is no such default; otherwise,
-	   * s is the normprefix of the default.
-	   *)
-	  List.iter
-	    (fun (srcprefix, normprefix) -> 
-	       if not (List.mem srcprefix !done_srcprefixes) then begin
-		 let srcprefix' = 
-		   if srcprefix = "!" then "" else srcprefix in
-		 if normprefix <> "" then begin
-		   let nsnode = new namespace_impl srcprefix' normprefix dtd in
-		   nsnode # internal_adopt (Some parent) !pos;
-		   d := nsnode :: !d;
-		 end;
-		 done_srcprefixes := srcprefix :: !done_srcprefixes;
-	       end
+	(* Get the required declarations: *)
+	let scope = self # namespace_scope in
+	let eff_decl = scope # effective_declaration in
+	let eff_decl_to_add =
+	  List.filter
+	    (fun (dp, uri) ->
+	       try
+		 StringMap.find dp prefixes <> uri
+	       with
+		   Not_found -> true
 	    )
-	    src_norm_mapping;
-	  declaration <- Some !d;
-	  src_norm_mapping <- [];     (* save memory *)
-	  !d
-end
+	    eff_decl in
+	let prefixes' =
+	  List.fold_left 
+	    (fun acc (dp, uri) ->
+	       StringMap.add dp uri acc)
+	    prefixes
+	    eff_decl_to_add in
+	
+	let write_att p aname avalue =
+	  match avalue with
+	      Implied_value -> ()
+	    | Value v ->
+		wms ("\n" ^ p ^ aname ^ "=\"");
+		write_data_string ~from_enc:encoding ~to_enc:enc os v;
+		wms "\"";
+	    | Valuelist l ->
+		let v = String.concat " " l in
+		wms ("\n" ^ p ^ aname ^ "=\"");
+		write_data_string ~from_enc:encoding ~to_enc:enc os v;
+		wms "\""
+	in
+	
+	let write_att_remap aname avalue =
+	  let (p,local) = namespace_split aname in
+	  if p = "" then
+	    write_att "" aname avalue
+	  else
+	    let d = 
+	      try scope # display_prefix_of_normprefix p 
+	      with Not_found -> failwith "display: no display prefix found"
+	    in
+	    write_att (d ^ ":") local avalue
+	in
+	
+	let this_display_prefix = 
+	  try self # display_prefix
+	  with Not_found -> failwith "display: no display prefix found" in
+	let this_localname = self # localname in
+	
+	let name =
+	  if this_display_prefix = "" then
+	    this_localname  (* within default namespace *)
+	  else
+	    this_display_prefix ^ ":" ^ this_localname in
+	
+	wms ("<" ^ name);
+	attlist_iter vr write_att_remap attributes;
+	List.iter   
+	  (fun (n,v) -> 
+	     if n = "" then
+	       write_att "" "xmlns" (Value v)
+	     else
+	       write_att "xmlns:" n (Value v))
+	  eff_decl_to_add;
+	wms "\n>";
+	
+	super # write_pinstr os enc;
+	
+	List.iter
+	  (fun n -> n # display ?prefixes:(Some prefixes') os enc)
+	  (self # sub_nodes);
+	
+	wms ("</" ^ name ^ "\n>");
+	
+  end
 ;;
 
 (**********************************************************************)
@@ -3724,6 +3829,34 @@ class ['ext] document ?swarner the_warner enc =
       r # write ?default os enc;
       wms "\n";
 
+    method display ?(prefer_dtd_reference = false) os enc =
+      let encoding = self # encoding in
+      let wms =
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
+      let r = self # root in
+      wms ("<?xml version='1.0' encoding='" ^
+	   Netconversion.string_of_encoding enc ^
+	   "'?>\n");
+
+      begin match dtd with
+	  None -> ()
+	| Some d ->
+	    if prefer_dtd_reference &&
+	      ( match d # id with
+		    Some (External _) -> true
+		  | _ -> false
+	      )
+	    then
+	      d # write_ref os enc
+	    else
+	      d # write os enc true;
+      end;
+
+      self # write_pinstr os enc;
+      r # display os enc;
+      wms "\n";
+
     method dump fmt =
       Format.pp_open_vbox fmt 2;
       Format.pp_print_string fmt "* document";
@@ -3833,7 +3966,7 @@ let build_node_tree cfg dtd spec next_ev =
 	  root_found := true;
 	  pos := None
 
-      | Some (E_ns_start_tag(name,oname,atts,eid)) ->
+      | Some (E_ns_start_tag(name,oname,atts,scope,eid)) ->
 	  check_state "E_ns_start_tag";
 	  if Stack.is_empty stack && !root_found then
 	    failwith "Pxp_document.build_node_tree: More than one root element";
@@ -3846,7 +3979,7 @@ let build_node_tree cfg dtd spec next_ev =
 		     else None)
 		    ?position:!pos
 		    spec dtd name atts' in
-	  (* CHECK: cfg.enable_namespace_info. Currently it is ignored *)
+	  n # set_namespace_scope scope;
 	  ( try
 	      let parent = Stack.top stack in
 	      parent # append_node n

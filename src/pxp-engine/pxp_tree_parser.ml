@@ -245,6 +245,11 @@ object (self)
       early_material <- [];
       (* Move the super root or the emulation to the stack: *)
       stack_push (super_root, "", (self :> entity_id)) elstack;
+      (* Init namespace processing, if necessary: *)
+      ( match config.enable_namespace_processing with
+	    None -> ()
+	  | Some mng -> self # init_ns_processing mng
+      );
       init_done <- true;
     end
 
@@ -311,14 +316,9 @@ object (self)
 		spec dtd norm_name norm_attlist
 	    in
 
-	    if config.enable_namespace_info then begin
-	      let info =
-		new namespace_info_impl
-		      src_prefix
-		      element
-		      ( ("!", default_normprefix) :: src_norm_mapping) in
-	      element # set_namespace_info (Some info);
-	    end;
+	    let scope = match ns_scope with Some s -> s | None -> assert false 
+	    in
+	    element # set_namespace_scope scope;
 
 	    element
 

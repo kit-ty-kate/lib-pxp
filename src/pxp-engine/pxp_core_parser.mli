@@ -66,12 +66,13 @@ object
   val pull_counter_limit : int
   val mutable pull_counter : int
   val mutable p_internal_subset : bool
-  val mutable src_norm_mapping : (string * string ) list
-  val mutable default_normprefix : string
+  val mutable ns_scope : Pxp_dtd.namespace_scope option
 
   method parse : context -> extended_entry -> unit
 
   method private only_whitespace : string -> unit
+
+  method private init_ns_processing : Pxp_dtd.namespace_manager -> unit
 
   method private push_src_norm_mapping : 
                    namespace_manager -> string -> (string * string) list ->

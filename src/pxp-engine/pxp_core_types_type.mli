@@ -10,6 +10,8 @@
  *)
 
 module type CORE_TYPES = sig
+  module StringMap : Map.S with type key = string
+
   type ext_id = Pxp_type_anchor.ext_id =
       System of string
     | Public of (string * string)

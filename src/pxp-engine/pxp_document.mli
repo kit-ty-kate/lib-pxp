@@ -255,7 +255,7 @@ type node_type =
   | T_comment
   | T_none
   | T_attribute of string          (* The string is the name of the attribute *)
-  | T_namespace of string            (* The string is the namespace srcprefix *)
+  | T_namespace of string           (* The string is the namespace normprefix *)
   (* <ID:type-node-type>
    * <TYPE:type>
    * <CALL>   [node_type]
@@ -269,7 +269,7 @@ type node_type =
    *   - [T_comment]: The node is a comment
    *   - [T_attribute name]: The node contains an attribute called [name]
    *   - [T_namespace prefix]: The node identifies a namespace for the
-   *     [prefix]
+   *     normalized [prefix]
    *   - [T_none]: This is a "bottom value" used if there is no reasonable
    *     type.
    *     --
@@ -777,7 +777,7 @@ class type [ 'ext ] node =
        *     target [n]
        *   - [T_super_root]: The node is a super root node
        *   - [T_attribute n]: The node is an attribute with name [n]
-       *   - [T_namespace p]: The node is a namespace with prefix [p]
+       *   - [T_namespace p]: The node is a namespace with normalized prefix [p]
        *     --
        * <DOMAIN> All node types.
        * </ID>
@@ -1149,6 +1149,30 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
+    method display_prefix : string
+      (* <ID:type-node-display-prefix>
+       * <CALL>   obj # [display_prefix]
+       * <SIG>    AUTO
+       * <DESCR>  For namespace-aware implementations of the node class, this
+       *     method returns the display prefix of the element or attribute.
+       *     If the object does not have a prefix, "" will be passed back.
+       *
+       *     The display prefix is the prefix in the XML text. Unlike
+       *     the normprefix, it is not unique in the document.
+       *
+       *     Actually, this method does not return the real display prefix
+       *     that was found in the XML text but the most recently declared
+       *     display prefix bound to the namespace URI of this element or
+       *     attribute, i.e. this method infers the display prefix. The
+       *     result can be a different prefix than the original prefix
+       *     if the same namespace URI is bound several times in the
+       *     current namespace scope.
+       *
+       *     This method is quite slow.
+       * <DOMAIN> Elements and attributes supporting namespaces.
+       * </ID>
+       *)
+
     method localname : string
       (* <ID:type-node-localname>
        * <CALL>   obj # [localname]
@@ -1196,6 +1220,66 @@ class type [ 'ext ] node =
        * </ID>
        *)
 
+    method namespace_scope : namespace_scope
+      (* <ID:type-node-namespace-scope>
+       * <CALL>   obj # [namespace_scope]
+       * <SIG>    AUTO
+       * <DESCR>  Returns additional information about the namespace
+       * structure in the parsed XML text. In particular, the namespace
+       * scope describes the original (unprocessed) namespace prefixes
+       * in the XML text, and how they are mapped to the namespace URIs.
+       *
+       * When printing XML text, the namespace scope may be used
+       * to give the printer hints where to introduce namespaces, and
+       * which namespace prefixes are preferred.
+       * <DOMAIN> Elements and attributes supporting namespaces
+       *)
+
+    method set_namespace_scope : namespace_scope -> unit
+      (* <ID:type-node-set-namespace-scope>
+       * <CALL>   obj # [set_namespace_scope] scope
+       * <SIG>    AUTO
+       * <DESCR>  Sets the namespace scope object. It is required that
+       * this object is connected to the same namespace manager as
+       * the document tree.
+       * <DOMAIN> Elements and attributes supporting namespaces
+       *)
+
+    method namespaces_as_nodes : 'ext node list
+      (* <ID:type-node-namespaces-as-nodes>
+       * <CALL>   obj # [namespaces_as_nodes]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the namespaces found in the [namespace_scope]
+       * object and all parent scope objects (except declarations that
+       * are hidden by more recent declarations). The namespaces are
+       * returned as node objects with type [T_namespace name] where
+       * [name] is the normalized prefix.
+       *
+       * This method should be used if it is required for typing reasons
+       * that the namespaces have also type [node]. A common example
+       * are sets that may both contain elements and namespaces, as they
+       * are used in the XPath language.
+       *
+       * The namespace nodes are read-only; any call to a method
+       * modifying their contents will raise [Method_not_applicable].
+       * See the class [namespace_impl] below for more information 
+       * about the returned nodes.
+       *
+       * The namespace nodes live outside of the regular XML tree, and
+       * they are not considered as children of the element node. However,
+       * the element node is the parent node of the namespace nodes 
+       * (i.e. the children/parent relationship is asymmetric).
+       *
+       * The method [namespaces_as_nodes] computes the list of attribute
+       * nodes when it is first invoked, and it will return the same list
+       * again in subsequent invocations.
+       * <DOMAIN>  This method is only applicable to elements that
+       *   support namespaces.
+       * </ID>
+       *)
+
+(* -- namespace_info is withdrawn
+
     method namespace_info : 'ext namespace_info
       (* <ID:type-node-namespace-info>
        * <CALL>   obj # [namespace_info]
@@ -1215,6 +1299,7 @@ class type [ 'ext ] node =
        * <DOMAIN> Elements supporting namespaces.
        * </ID>
        *)
+*)
 
     method dtd : dtd
       (* <ID:type-node-dtd>
@@ -1436,6 +1521,9 @@ class type [ 'ext ] node =
        *    The output style is rather compact and should not be considered
        *    as "pretty printing".
        *
+       *    The namespace-aware nodes use a notation with normalized
+       *    prefixes. The namespace scope is ignored.
+       *
        *   Option [~prefixes]: The class [namespace_element_impl] interprets 
        *   this option and passes it recursively to subordinate invocations of
        *   [write]. The meaning is that the normprefixes enumerated by this list
@@ -1445,12 +1533,38 @@ class type [ 'ext ] node =
        *
        *   Option [~default]: Specifies the normprefix that becomes the
        *   default namespace in the output.
-       *
-       *   KNOWN BUG: comment nodes are not printed.
        * <DOMAIN> All regular node types (elements, data nodes, comments,
        *   processing instructions, super root nodes).
        * </ID>
        *)
+
+    method display :
+             ?prefixes:string StringMap.t ->
+	      Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+      (* <ID:type-node-write>
+       * <CALL>   obj # [display] ~prefixes stream enc
+       * <SIG>    AUTO
+       * <DESCR>  Write the contents of this node and the subtrees to the passed
+       *    [stream] encoded as [enc]. The generated output is again XML.
+       *    The output style is rather compact and should not be considered
+       *    as "pretty printing".
+       *
+       *    The namespace-aware nodes try to follow the namespace scoping
+       *    found in the nodes. The generated namespace prefixes are
+       *    display prefixes. Note that this method will fail if an element
+       *    or attribute does not have a display prefix!
+       *
+       *   Option [~prefixes]: The class [namespace_element_impl] interprets 
+       *   this option and passes it recursively to subordinate invocations of
+       *   [display]. The mapping contains the declarations currently in
+       *   effect as pairs of [(prefix,uri)]. The option
+       *   defaults to [] forcing the method to output all necessary prefix
+       *   declarations.
+       * <DOMAIN> All regular node types (elements, data nodes, comments,
+       *   processing instructions, super root nodes).
+       * </ID>
+       *)
+
 
     (* ---------------------------------------- *)
     (* internal methods: *)
@@ -1465,37 +1579,12 @@ class type [ 'ext ] node =
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
 
-    method set_namespace_info : 'ext namespace_info option -> unit
-      (* Sets the namespace_info field.
-       * Only the implementation namespace_element_impl supports this
-       * method.
-       *)
-
     method dump : Format.formatter -> unit
 
   end
-
-and ['ext] namespace_info =
-  (* IMPORTANT: namespace_info is very very very very experimental. It is
-   * very likely that the signature will change in the future, or that
-   * the class will be removed.
-   *)
-  object
-    method srcprefix : string
-      (* Returns the prefix before it is normalized *)
-
-    method declaration : 'ext node list
-      (* Returns the currently active namespace declaration. The list
-       * enumerates all namespace objects with
-       *   namespace # node_type = T_namespace "srcprefix"
-       * meaning that the srcprefix is declared to correspond to the
-       * namespace URI
-       *   namespace # data.
-       * This list always declares the prefix "xml". If there is a default
-       * namespace, it is declared for the prefix "".
-       *)
-  end
 ;;
+
+(* class type namespace_info: removed *)
 
 
 class [ 'ext ] data_impl : 'ext -> [ 'ext ] node
@@ -1673,8 +1762,6 @@ val attribute_string_value : 'ext node -> string
    * </ID>
    *)
 
-(* Very experimental namespace support: *)
-
 class [ 'ext ] namespace_element_impl : 'ext -> [ 'ext ] node
   (* <ID:class-namespace-element-impl>
    * <TYPE:class>
@@ -1702,16 +1789,20 @@ class [ 'ext ] namespace_element_impl : 'ext -> [ 'ext ] node
    * It accepts element names of the form "normprefix:localname" where
    * normprefix must be a prefix managed by the namespace_manager. Note
    * that create_element does not itself normalize prefixes; it is expected
-   * that the prefixes are already normalized.
+   * that the prefixes are already normalized. 
    *
-   * Such nodes have a node type T_element "normprefix:localname".
+   * In addition to calling create_element, one can set the namespace scope
+   * after creation (set_namespace_scope) to save the mapping of unprocessed
+   * namespace prefixes to normalized prefixes. This is voluntary.
+   *
+   * Such nodes have the node type T_element "normprefix:localname".
    *
    * Furthermore, this class implements the methods:
    * - normprefix
    * - localname
    * - namespace_uri
-   * - namespace_info
-   * - set_namespace_info
+   * - namespace_scope
+   * - set_namespace_scope
    * - namespace_manager
    *)
 
@@ -1730,29 +1821,19 @@ class [ 'ext ] namespace_attribute_impl :
 
 
 class [ 'ext ] namespace_impl :
-  (* srcprefix: *) string -> (* normprefix: *) string -> dtd -> [ 'ext ] node
+  (* dspprefix: *) string -> (* normprefix: *) string -> dtd -> [ 'ext ] node
 ;;
   (* Namespace objects are only used to represent the namespace declarations
    * occurring in the attribute lists of elements.
-   * They are stored in the namespace_info object if that is requested.
    *)
 
 val namespace_normprefix : 'ext node -> string
-val namespace_srcprefix : 'ext node -> string
+val namespace_display_prefix : 'ext node -> string
 val namespace_uri : 'ext node -> string
-  (* These functions return the normprefix, the srcprefix, and the URI
+  (* These functions return the normprefix, the display prefix, and the URI
    * stored in a namespace object. 
    * If invoked for a different node type, the functions raise Invalid_argument.
    *)
-
-
-class [ 'ext ] namespace_info_impl :
-  (* srcprefix: *) string -> 
-  (* element: *)   'ext node -> 
-  (* src_norm_mapping: *) (string * string) list ->
-     [ 'ext ] namespace_info
-;;
-
 
 (********************************** spec *********************************)
 
@@ -2451,6 +2532,26 @@ class [ 'ext ] document :
        *
        * Option [~default]: Specifies the normprefix that becomes the
        * default namespace in the output.
+       *
+       * Option [~prefer_dtd_reference]: If true, it is tried to print
+       * the DTD as reference, i.e. with SYSTEM or PUBLIC identifier.
+       * This works only if the DTD has an [External] identifier. If
+       * the DTD cannot printed as reference, it is included as text.
+       * The default is not to try DTD references, i.e. to always include
+       * the DTD as text.
+       *)
+
+
+    method display : ?prefer_dtd_reference : bool ->
+                     Pxp_core_types.output_stream -> 
+                     Pxp_core_types.encoding -> 
+                       unit
+      (* Write the document to the passed
+       * output stream; the passed encoding used. The format
+       * is compact (the opposite of "pretty printing").
+       * If a DTD is present, the DTD is included into the internal subset.
+       * In contrast to [write], this method uses the display namespace
+       * prefixes instead of the normprefixes.
        *
        * Option [~prefer_dtd_reference]: If true, it is tried to print
        * the DTD as reference, i.e. with SYSTEM or PUBLIC identifier.

@@ -4,6 +4,7 @@
  *)
 
 open Pxp_aux
+open Pxp_core_types
 
 
 module Graph = struct

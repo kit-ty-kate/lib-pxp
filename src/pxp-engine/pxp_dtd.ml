@@ -27,6 +27,8 @@ type validation_record =
 ;;
 
 
+(* class type? *)
+
 class namespace_manager =
 object (self)
     val uri_of_prefix = Hashtbl.create 10  (* not unique *)
@@ -95,6 +97,91 @@ object (self)
 	(fun p uri -> f p)
 	primary_uri_of_prefix
   end
+;;
+
+
+class type namespace_scope =
+object
+  method namespace_manager : namespace_manager
+  method parent_scope : namespace_scope option
+  method declaration : (string * string) list
+  method effective_declaration : (string * string) list
+  method display_prefix_of_uri : string -> string
+  method display_prefix_of_normprefix : string -> string
+  method uri_of_display_prefix : string -> string
+  method normprefix_of_display_prefix : string -> string
+end
+;;
+
+
+
+module StrSet = Set.Make(String);;
+
+class namespace_scope_impl mng parent_opt decl : namespace_scope =
+object(self)
+  method namespace_manager = mng
+  method parent_scope = parent_opt
+  method declaration = decl
+
+  method effective_declaration =
+    let rec collect visible d s =
+      match d with
+	| ("", "") :: d' ->
+	    if StrSet.mem "" visible then
+	      collect visible d' s  (* no effect *)
+	    else
+	      collect (StrSet.add "" visible) d' s  (* hide inner default *)
+	| (dp, uri) :: d' ->
+	    if StrSet.mem dp visible then
+	      collect visible d' s
+	    else
+	      (dp, uri) :: collect (StrSet.add dp visible) d' s
+	| [] ->
+	    ( match s # parent_scope with
+		  Some s' ->
+		    collect visible s'#declaration s'
+		| None ->
+		    []
+	    )
+    in
+    collect StrSet.empty self#declaration (self : #namespace_scope :> namespace_scope)
+
+  method display_prefix_of_uri uri =
+    try
+      fst(List.find (fun (p,u) -> u = uri) decl)
+    with
+	Not_found ->
+	  ( match parent_opt with
+		Some pa -> pa # display_prefix_of_uri uri
+	      | None    -> raise Not_found
+	  )
+
+  method display_prefix_of_normprefix np =
+    let uris = mng # get_uri_list np in
+    try
+      fst(List.find (fun (p,u) -> List.mem u uris) decl)
+    with
+	Not_found ->
+	  ( match parent_opt with
+		Some pa -> pa # display_prefix_of_normprefix np
+	      | None    -> raise Not_found
+	  )
+
+  method uri_of_display_prefix dp =
+    try
+      List.assoc dp decl
+    with
+	Not_found -> 
+	  ( match parent_opt with
+		Some pa -> pa # uri_of_display_prefix dp
+	      | None    -> raise Not_found
+	  )
+
+  method normprefix_of_display_prefix dp =
+    let uri = self # uri_of_display_prefix dp in
+    mng # get_normprefix uri
+
+end
 ;;
 
 

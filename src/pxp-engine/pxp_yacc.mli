@@ -49,7 +49,6 @@ type config = Pxp_types.config =
       enable_name_pool_for_attribute_values : bool;
       enable_name_pool_for_pinstr_targets   : bool;
       enable_namespace_processing : Pxp_dtd.namespace_manager option;
-      enable_namespace_info : bool;
       escape_contents : 
          (Pxp_lexer_types.token -> Pxp_entity_manager.entity_manager -> 
 		string) option;
@@ -154,7 +153,7 @@ type event = Pxp_types.event =
   | E_end_doc
   | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
   | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_lexer_types.entity_id)
+		       Pxp_dtd.namespace_scope * Pxp_lexer_types.entity_id)
   | E_end_tag   of (string * Pxp_lexer_types.entity_id)
   | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string

@@ -174,14 +174,34 @@ class virtual core_parser
      * by the subclass, but this is completely voluntary
      *)
 
+    val mutable ns_stack = Stack.create()
+      (* Stack of previous ns_scope, ns_cache, ns_default_normprefix *)
+
+    val mutable ns_scope = None
+      (* The current namespace_scope *)
+
+    val mutable ns_cache = StringMap.empty
+      (* The cache mapping display prefixes to normprefixes *)
+
+    val mutable ns_default_normprefix = ""
+      (* The default normprefix, or "" if none *)
+      
+(*
     val mutable src_norm_mapping = [ "xml", "xml" ]
       (* Namespace processing: Contains pairs (srcprefix, normprefix).
        * srcprefix = "!" is used as guard.
        *)
 
     val mutable default_normprefix = ""
-      (* Namespace_processing: The default normprefix, or "" if none *)
+*)
 
+    method private init_ns_processing (mng:namespace_manager) =
+      let scope =
+	new namespace_scope_impl 
+	  mng None [ "xml", mng # get_primary_uri "xml" ] in
+      ns_scope <- Some scope;
+      ns_cache <- StringMap.empty;
+      ns_default_normprefix <- ""
 
     method private push_src_norm_mapping (mng:namespace_manager) name attlist =
       (* [mng]: namespace manager
@@ -189,6 +209,10 @@ class virtual core_parser
        * [attlist]: source attribute list
        * returns quadruple (src_prefix, localname, norm_name, norm_attlist)
        *)
+
+      (* Save state: *)
+      Stack.push (ns_scope, ns_cache, ns_default_normprefix) ns_stack;
+      
       let split_attlist =
 	List.map
 	  (fun (name, value) -> namespace_split name, value)
@@ -211,15 +235,12 @@ class virtual core_parser
 	)
 	split_attlist;
 
-      (* Apply xmlns_attlist: *)
-      src_norm_mapping <- ( "!", default_normprefix ) :: src_norm_mapping;
-                          (* add guard *)
-
+      let mapping = ref [] in
       List.iter
 	(fun (srcprefix, uri) ->
 	   let normprefix =
 	     mng # lookup_or_add_namespace srcprefix uri in
-	   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
+	   mapping := (srcprefix, uri) :: !mapping;
 	)
 	!xmlns_attlist;
 
@@ -228,15 +249,25 @@ class virtual core_parser
 	    None -> ()
 	  | Some "" ->
 	      (* Delete default namespace: *)
-	      default_normprefix <- "";
+	      ns_default_normprefix <- "";
+	      mapping := ("", "") :: !mapping;
 	  | Some uri ->
 	      let normprefix =
 		try mng # get_normprefix uri
 		with Not_found ->
 		  mng # lookup_or_add_namespace "default" uri
 	      in
-	      default_normprefix <- normprefix
+	      ns_default_normprefix <- normprefix;
+	      mapping := ("", uri) :: !mapping;
       );
+
+      (* Create new scope: *)
+      let scope = 
+	if !mapping = [] then
+	  ns_scope
+	else
+	  Some(new namespace_scope_impl mng ns_scope !mapping) in
+      ns_scope <- scope;
 	
       (* Normalize the regular_attlist: *)
       let norm_attlist =
@@ -262,20 +293,12 @@ class virtual core_parser
       (prefix, localname, norm_name, norm_attlist)
 
 
-
     method private pop_src_norm_mapping () =
       (* Pop until the guard is found *)
-      let rec pop m =
-	match m with
-	    [] ->
-	      assert false
-	  | ("!",d)::m' ->
-	      default_normprefix <- d;
-	      src_norm_mapping <- m'
-	  | (_,_)::m' ->
-	      pop m'
-      in
-      pop src_norm_mapping
+      let (scope, cache, default_normprefix) = Stack.pop ns_stack in
+      ns_scope <- scope;
+      ns_cache <- cache;
+      ns_default_normprefix <- default_normprefix
 
 
     method private normalize_namespace_prefix 
@@ -284,18 +307,28 @@ class virtual core_parser
 	raise(Namespace_error("Found several colons in a name"));
       if prefix = "" then begin
 	(* No prefix *)
-	if apply_default && default_normprefix <> "" then
-	  default_normprefix ^ ":" ^ localname
+	if apply_default && ns_default_normprefix <> "" then
+	  ns_default_normprefix ^ ":" ^ localname
 	else
 	  localname
       end
       else begin
 	(* Prefix exists *)
 	let normprefix =
-	  try List.assoc prefix src_norm_mapping
+	  try
+	    StringMap.find prefix ns_cache
 	  with
 	      Not_found ->
-		raise(Namespace_error ("Namespace prefix not declared: " ^ prefix))
+		let scope =
+		  match ns_scope with Some s -> s | None -> assert false in
+		let np = 
+		  try scope # normprefix_of_display_prefix prefix 
+		  with
+		      Not_found ->
+			raise(Namespace_error ("Namespace prefix not declared: " ^ prefix))
+		in
+		ns_cache <- StringMap.add prefix np ns_cache;
+		np
 	in
 	normprefix ^ ":" ^ localname
       end

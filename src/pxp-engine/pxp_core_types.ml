@@ -4,6 +4,8 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
+module StringMap = Map.Make(String);;
+
 type private_id = Pxp_type_anchor.private_id
 
 type ext_id = Pxp_type_anchor.ext_id =

@@ -52,7 +52,7 @@ class namespace_manager :
   (* This class manages mappings from URIs to normalized prefixes. For every
    * namespace a namespace_manager object contains a set of mappings
    * uri1 |-> np, uri2 |-> np, ..., uriN |-> np.
-   * The normalized prefix np is characterical of the namespace, and
+   * The normalized prefix np is characterstic of the namespace, and
    * identifies the namespace uniquely.
    * The first URI uri1 is the primary URI, the other URIs are aliases.
    * The following operations are supported:
@@ -123,6 +123,85 @@ class namespace_manager :
      *)
   end
 ;;
+
+
+(** The recursive class type [namespace_scope] represents the original
+ * namespace declarations found in the XML text. A single [namespace_scope]
+ * object contains a list of declared namespaces
+ * {[ [ (dp1, uri1); (dp2; uri2); ... ] ]}
+ * corresponding to the "xmlns"-type declarations found in a single
+ * XML element:
+ * {[ <element xmlns:dp1="uri1" xmlns:dp2="uri2" ... > ]}
+ * For the declaration of a default namespace [xmlns="uri"] the pair
+ * [("",uri)] must be included in the list. The special pair [("","")]
+ * means that the former default namespace is "undeclared".
+ *
+ * Furthermore, the [namespace_scope] object may have a parent 
+ * [namespace_scope], representing the namespace declarations in the
+ * surrounding XML text.
+ *
+ * The [namespace_scope] objects are connected with the [namespace_manager]
+ * to allow translations from the namespace prefixes found in the XML
+ * text (also called "display prefixes" from now on) to the normalized
+ * prefixes stored in the [namespace_manager], and vice versa.
+ *
+ * The [namespace_scope] objects are intentionally immutable in order to
+ * allow memory sharing.
+ *)
+class type namespace_scope =
+object
+  method namespace_manager : namespace_manager
+    (** Returns the [namespace_manager] to which this scope object is
+     * connected
+     *)
+  method parent_scope : namespace_scope option
+    (** Returns the parent object, if any *)
+  method declaration : (string * string) list
+    (** Returns the list of namespace declarations of this scope (i.e.
+     * the declarations in parent objects are not considered). The
+     * list contains pairs [ (display_prefix, uri) ].
+     *)
+  method effective_declaration : (string * string) list
+    (** Returns the list of namespace declarations of this scope and
+     * all parent scopes. The list contains pairs [ (display_prefix, uri) ].
+     * Prefixes hidden by earlier declarations are suppressed in the list
+     *)
+  method display_prefix_of_uri : string -> string
+    (** Translates the URI to the corresponding display prefix as declared
+     * in this object or any parent object. Raises [Not_found] when the
+     * declaration cannot be found.
+     *)
+  method display_prefix_of_normprefix : string -> string
+    (** Translates the normalized prefix to the corresponding display
+     * prefix as declared in this object or any parent object. Raises
+     * [Not_found] when the declaration cannot be found, or the 
+     * normalized prefix is unknown to the namespace manager.
+     *)
+  method uri_of_display_prefix : string -> string
+    (** Translates the display prefix to the corresponding URI as
+     * declared in this object or any parent object. Raises
+     * [Not_found] when the declaration cannot be found.
+     *)
+  method normprefix_of_display_prefix : string -> string
+    (** Translates the display prefix to the corresponding normalized
+     * prefix as declared in this object or any parent object. Raises
+     * [Not_found] when the declaration cannot be found, or the
+     * namespace manager does not know the namespace.
+     *)
+end
+;;
+
+
+class namespace_scope_impl : 
+        namespace_manager -> 
+	namespace_scope option ->
+	(string * string) list ->
+	  namespace_scope
+   (** An implementation of [namespace_scope]. New scopes are created by
+    * {[ new namespace_scope_impl mng parent_opt decl ]}
+    * where [mng] is the namespace managaer, [parent_opt] is the optional
+    * parent scope, and [decl] is the declaration list.
+    *)
 
 
 class dtd :

@@ -12,6 +12,7 @@ open Pxp_entity_manager
 open Pxp_reader
 open Netchannels
 
+
 type config =
     { warner : collect_warnings;
       swarner : symbolic_warnings option;
@@ -33,7 +34,6 @@ type config =
       (* enable_name_pool_for_notation_names   : bool; *)
       enable_name_pool_for_pinstr_targets   : bool;
       enable_namespace_processing : namespace_manager option;
-      enable_namespace_info : bool;
       escape_contents : 
 	             (Pxp_lexer_types.token -> entity_manager -> string) option;
       escape_attributes : 
@@ -63,7 +63,6 @@ let default_config =
     enable_name_pool_for_pinstr_targets = false;
     enable_name_pool_for_attribute_values = false;
     enable_namespace_processing = None;
-    enable_namespace_info = false;
     escape_contents = None;
     escape_attributes = None;
     debugging_mode = false;
@@ -223,7 +222,7 @@ type event =
   | E_start_tag of (string * (string * string) list * 
 		    Pxp_lexer_types.entity_id)
   | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_lexer_types.entity_id)
+		       namespace_scope * Pxp_lexer_types.entity_id)
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
   | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string

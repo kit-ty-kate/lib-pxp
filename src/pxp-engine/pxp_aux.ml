@@ -23,14 +23,6 @@ end;;
 
 module Str_hashtbl = Hashtbl.Make(HashedString);;
 
-module StringOrd = struct
-  type t = string
-  let compare = (compare : string -> string -> int)
-end;;
-
-module StringMap = Map.Make(StringOrd);;
-  (* 'a StringMap.t: the type of maps (dictionaries) from string to 'a *)
-
 let character ?swarner enc warner k =
   assert (k>=0);
   if (k >= 0xd800 & k < 0xe000) or (k >= 0xfffe & k <= 0xffff) or k > 0x10ffff

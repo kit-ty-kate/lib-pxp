@@ -338,18 +338,6 @@ type config =
 	 *    E_end_tag, respectively.
 	 *)
 
-      enable_namespace_info : bool;
-        (* Whether to set the namespace_info slot of elements. 
-	 * This option has only an effect if enable_namespace_processing is
-	 * non-None.
-	 *
-	 * Warning! This option requires a lot of memory!
-	 *
-	 * Default: false
-	 *
-	 * Event-based parser: this option is ignored.
-	 *)
-
       (* Experimental stuff: *)
 
       escape_contents : 
@@ -654,7 +642,7 @@ type event =
   | E_start_tag of (string * (string * string) list * 
 		    Pxp_lexer_types.entity_id)
   | E_ns_start_tag of (string * string * (string * string * string) list *
-		       Pxp_lexer_types.entity_id)
+		       Pxp_dtd.namespace_scope * Pxp_lexer_types.entity_id)
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
   | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
@@ -673,10 +661,11 @@ type event =
    *    <name attlist>
    *    only used in non-namespace mode
    *
-   * E_ns_start_tag (orig_name, norm_name, attlist, entid)
+   * E_ns_start_tag (orig_name, norm_name, attlist, scope, entid)
    *    only used in namespace mode; orig_name is the element as found
    *    in the XML text; norm_name is the normalized element name;
    *    attlist consists of triples (orig_name, norm_name, value).
+   *    [scope] is the namespace scope object.
    *
    * E_end_tag (name, entid):                 
    *    </name>

@@ -50,6 +50,11 @@ object (self)
 	event_handler (E_start_doc(xml_version,
 				   xml_standalone,
 				   dtd));
+      (* Init namespace processing, if necessary: *)
+      ( match config.enable_namespace_processing with
+	    None -> ()
+	  | Some mng -> self # init_ns_processing mng
+      );
       init_done <- true;
       List.iter event_handler ep_early_events;
       ep_early_events <- [];
@@ -94,6 +99,8 @@ object (self)
 	  (* enabled namespaces *)
 	  let (src_prefix, localname, norm_name, norm_attlist) =
             self # push_src_norm_mapping mng name attlist in
+	  let scope = match ns_scope with Some s -> s | None -> assert false 
+	  in
 	  let mixed_attlist =
 	    List.map (fun (orig_prefix, localname, norm_name, value) ->
 			(if orig_prefix = "" 
@@ -104,7 +111,7 @@ object (self)
 	  if not emptiness then
 	    stack_push (position, name, norm_name, tag_beg_entid) ep_elstack;
 	  event_handler(E_ns_start_tag
-			  (name,norm_name,mixed_attlist,tag_beg_entid));
+			  (name,norm_name,mixed_attlist,scope,tag_beg_entid));
 	  if emptiness then (
 	    self # pop_src_norm_mapping();
 	    event_handler(E_ns_end_tag(name,norm_name,tag_beg_entid));
@@ -477,7 +484,7 @@ let drop_ignorable_whitespace_filter get_ev =
 	  let ign_ws = has_ignorable_ws name in
 	  Stack.push ign_ws elements;
 	  ev
-      | Some(E_ns_start_tag(_,name,_,_)) ->
+      | Some(E_ns_start_tag(_,name,_,_,_)) ->
 	  let ign_ws = has_ignorable_ws name in
 	  Stack.push ign_ws elements;
 	  ev
