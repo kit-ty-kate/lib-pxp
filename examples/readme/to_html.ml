@@ -1,4 +1,4 @@
-(* $Id: to_html.ml,v 1.7 2001/07/02 23:21:11 gerd Exp $
+(* $Id: to_html.ml,v 1.8 2003/03/23 21:28:31 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -59,13 +59,15 @@ class store =
 (*$ readme.code.escape-html *)
 let escape_html s =
   Str.global_substitute
-    (Str.regexp "<\\|>\\|&\\|\"")
+    (Str.regexp "<\\|>\\|&\\|\"\\|@\\|:")
     (fun s ->
       match Str.matched_string s with
         "<" -> "&lt;"
       | ">" -> "&gt;"
       | "&" -> "&amp;"
       | "\"" -> "&quot;"
+      | "@" -> "&#64;"
+      | ":" -> "&#58;"
       | _ -> assert false)
     s
 ;;
@@ -406,6 +408,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.8  2003/03/23 21:28:31  gerd
+ * 	Anti-SPAM escaping
+ *
  * Revision 1.7  2001/07/02 23:21:11  gerd
  * 	Using Pxp_dtd.Entity
  *
