@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.8 2000/08/18 20:14:00 gerd Exp $
+(* $Id: pxp_document.mli,v 1.9 2000/08/26 23:27:53 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -154,8 +154,8 @@ type node_type =
    * Note that the list of virtual node types will be extended if necessary.
    *)
   | T_none
-  | T_attribute
-  | T_namespace
+  | T_attribute of string          (* The string is the name of the attribute *)
+  | T_namespace of string               (* The string is the namespace prefix *)
 ;;
 
 
@@ -210,11 +210,14 @@ class type [ 'ext ] node =
        * The clone has no parent.
        *)
 
-    method add_node : 'ext node -> unit
+    method add_node : ?force:bool -> 'ext node -> unit
       (* Append new sub nodes -- mainly used by the parser itself, but
        * of course open for everybody. If an element is added, it must be
        * an orphan (i.e. does not have a parent node); and after addition
        * *this* node is the new parent.
+       * The method performs some basic validation checks if the current node
+       * has a regular expression as content model, or is EMPTY. You can
+       * turn these checks off by passing ~force:true to the method.
        *)
 
     method add_pinstr : proc_instruction -> unit
@@ -228,6 +231,12 @@ class type [ 'ext ] node =
     method pinstr_names : string list
       (* Get a list of all names of processing instructions *)
 
+    method node_position : int
+      (* Returns the position of this node among all children of the parent
+       * node. Positions are counted from 0.
+       * Raises Not_found if the node does not have a parent. 
+       *)
+
     method sub_nodes : 'ext node list
       (* Get the list of sub nodes *)
 
@@ -237,7 +246,22 @@ class type [ 'ext ] node =
     method iter_nodes_sibl :
       ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
       (* Here every iteration step can also access to the previous and to the
-       * following node if present:
+       * following node if present.
+       *)
+
+    method nth_node : int -> 'ext node
+      (* Returns the n-th sub node of this node, n >= 0. Raises Not_found
+       * if the index is out of the valid range.
+       * Note that the first invocation of this method requires additional
+       * overhead.
+       *)
+
+    method previous_node : 'ext node
+    method next_node : 'ext node
+      (* Return the previous and next nodes, respectively. These methods are
+       * equivalent to 
+       * - parent # nth_node (self # node_position - 1) and
+       * - parent # nth_node (self # node_position + 1), respectively.
        *)
 
     method set_nodes : 'ext node list -> unit
@@ -302,6 +326,14 @@ class type [ 'ext ] node =
 
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
       (* Sets the attributes but does not check whether they match the DTD.
+       *)
+
+    method attributes_as_nodes : 'ext node list
+      (* Experimental feature: Return the attributes as node list. Every node
+       * has type T_attribute n, and contains only the single attribute n.
+       * This node list is computed on demand, so the first invocation of this
+       * method will create the list, and following invocations will only
+       * return the existing list.
        *)
 
     method set_comment : string option -> unit
@@ -373,7 +405,8 @@ class type [ 'ext ] node =
 
     (* ---------------------------------------- *)
     (* internal methods: *)
-    method internal_adopt : 'ext node option -> unit
+    method internal_adopt : 'ext node option -> int -> unit
+    method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
                            dtd -> string -> (string * string) list -> unit
@@ -399,6 +432,23 @@ class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
      *)
 ;;
 
+
+(* Attribute and namespace nodes are experimental: *)
+
+class [ 'ext ] attribute_impl : 
+  element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
+
+    (* Creation:
+     *   new attribute_impl element_name attribute_name attribute_value dtd
+     * Note that attribute nodes do intentionally not have extensions.
+     *)
+
+(* Once namespaces get implemented:
+class [ 'ext ] namespace_impl : 
+  prefix:string -> name:string -> dtd -> [ 'ext ] node
+*)
+
+(********************************** spec *********************************)
 
 type 'ext spec
 constraint 'ext = 'ext node #extension
@@ -426,6 +476,20 @@ val make_spec_from_mapping :
      *   and for processing instructions
      *)
 
+val make_spec_from_alist :
+      ?super_root_exemplar : 'ext node ->
+      ?comment_exemplar : 'ext node ->
+      ?default_pinstr_exemplar : 'ext node ->
+      ?pinstr_alist : (string * 'ext node) list ->
+      data_exemplar: 'ext node ->
+      default_element_exemplar: 'ext node ->
+      element_alist: (string * 'ext node) list -> 
+      unit -> 
+        'ext spec
+    (* This is a convenience function: You can pass the mappings from 
+     * elements and PIs to exemplar by associative lists.
+     *)
+
 val create_data_node : 
       'ext spec -> dtd -> string -> 'ext node
 val create_element_node : 
@@ -447,6 +511,98 @@ val create_pinstr_node :
 val create_no_node : 
        ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
   (* Creates a T_none node with limited functionality *)
+
+(***************************** Iterators ********************************)
+
+val find : ?deeply:bool -> 
+           f:('ext node -> bool) -> 'ext node -> 'ext node
+  (* Searches the first node for which the predicate f is true, and returns
+   * it. Raises Not_found if there is no such node.
+   * By default, ~deeply=false. In this case, only the children of the
+   * passed node are searched.
+   * If passing ~deeply=true, the children are searched recursively
+   * (depth-first search).
+   *)
+
+val find_all : ?deeply:bool ->
+               f:('ext node -> bool) -> 'ext node -> 'ext node list
+  (* Searches all nodes for which the predicate f is true, and returns them.
+   * By default, ~deeply=false. In this case, only the children of the
+   * passed node are searched.
+   * If passing ~deeply=true, the children are searched recursively
+   * (depth-first search).
+   *)
+
+val find_element : ?deeply:bool ->
+                   string -> 'ext node -> 'ext node
+  (* Searches the first element with the passed element type.
+   * By default, ~deeply=false. In this case, only the children of the
+   * passed node are searched.
+   * If passing ~deeply=true, the children are searched recursively
+   * (depth-first search).
+   *)
+
+val find_all_elements : ?deeply:bool ->
+                        string -> 'ext node -> 'ext node list
+  (* Searches all elements with the passed element type.
+   * By default, ~deeply=false. In this case, only the children of the
+   * passed node are searched.
+   * If passing ~deeply=true, the children are searched recursively
+   * (depth-first search).
+   *)
+
+exception Skip
+val map_tree :  pre:('exta node -> 'extb node) ->
+               ?post:('extb node -> 'extb node) ->
+               'exta node -> 
+                   'extb node
+  (* Traverses the passed node and all children recursively. After entering
+   * a node, the function ~pre is called. The result of this function must
+   * be a new node; it must not have children nor a parent (you can simply
+   * pass (fun n -> n # orphaned_flat_clone) as ~pre).
+   * After that, the children are processed in the same way (from left to
+   * right); the results of the transformation will be added to the
+   * new node as new children.
+   * Now, the ~post function is invoked with this node as argument, and
+   * the result is the result of the function (~post should return a root
+   * node, too; if not specified, the identity is the ~post function).
+   * Both ~pre and ~post may raise Skip, which causes that the node is
+   * left out. If the top node is skipped, the exception Not_found is
+   * raised.
+   *)
+
+val map_tree_sibl : 
+        pre: ('exta node option -> 'exta node -> 'exta node option -> 
+                  'extb node) ->
+       ?post:('extb node option -> 'extb node -> 'extb node option -> 
+                  'extb node) ->
+       'exta node -> 
+           'extb node
+   (* Works like map_tree, but the function ~pre and ~post have additional
+    * arguments:
+    * - ~pre l n r: The node n is the node to map, and l is the previous
+    *   node, and r is the next node (both None if not present). l and r
+    *   are both nodes before the transformation.
+    * - ~post l n r: The node n is the node which is the result of ~pre
+    *   plus adding children. l and r are again the previous and the next
+    *   node, respectively, but after being transformed.
+    *)
+
+val iter_tree : ?pre:('ext node -> unit) ->
+                ?post:('ext node -> unit) ->
+                'ext node -> 
+                    unit
+   (* Iterates only instead of mapping the nodes. *)
+
+val iter_tree_sibl :
+       ?pre: ('ext node option -> 'ext node -> 'ext node option -> unit) ->
+       ?post:('ext node option -> 'ext node -> 'ext node option -> unit) ->
+       'ext node -> 
+           unit
+   (* Iterates only instead of mapping the nodes. *)
+
+
+(******************************* document ********************************)
 
 
 class [ 'ext ] document :
@@ -530,6 +686,18 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.9  2000/08/26 23:27:53  gerd
+ * 	New function: make_spec_from_alist.
+ * 	New iterators: find, find_all, find_element, find_all_elements,
+ * map_tree, map_tree_sibl, iter_tree, iter_tree_sibl.
+ * 	New node methods: node_position, nth_node, previous_node,
+ * next_node.
+ * 	Attribute and namespace types have now a string argument:
+ * the name/prefix. I hope this simplifies the handling of view nodes.
+ * 	First implementation of view nodes: attribute_impl. The
+ * method attributes_as_nodes returns the attributes wrapped into
+ * T_attribute nodes which reside outside the document tree.
+ *
  * Revision 1.8  2000/08/18 20:14:00  gerd
  * 	New node_types: T_super_root, T_pinstr, T_comment, (T_attribute),
  * (T_none), (T_namespace).
