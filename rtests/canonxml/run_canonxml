@@ -19,4 +19,4 @@ check_dir () {
 check_dir "data_jclark_valid/sa"
 check_dir "data_jclark_valid/not-sa"
 check_dir "data_jclark_valid/ext-sa"
-
+check_dir "data_valid/conditional"
