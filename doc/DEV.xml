@@ -50,9 +50,13 @@ for PXP; if you are looking for the stable distribution, please go
     <ul>
       <li><p><em>1.0.98.4:</em></p>
 	<p>New support for PUBLIC identifiers in Pxp_reader: The functions
-resolve_public_id_as_file and resolve_public_id_as_string lookup PUBLIC
+lookup_public_id_as_file and lookup_public_id_as_string lookup PUBLIC
 identifiers in a catalog (implemented as associative list). However, there
 is still no way to load a catalog from a file.</p>
+	<p>There are also catalogs for SYSTEM identifiers.</p>
+	<p>The behaviour of Pxp_reader.combine can be better controlled
+by a mode argument.</p>
+	<p>Removed the -p switch from ocamlopt invocations.</p>
       </li>
       <li><p><em>1.0.98.3:</em></p>
 	<p>A single fix (again line numbering) that only applies to the
