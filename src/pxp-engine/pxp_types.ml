@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.17 2003/06/15 18:19:56 gerd Exp $
+(* $Id: pxp_types.ml,v 1.18 2003/06/19 21:10:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -78,7 +78,8 @@ type source = Pxp_dtd.source =
   | XExtID of (ext_id * string option * Pxp_reader.resolver)
 
 
-let from_obj_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
+let from_obj_channel ?(alt = []) ?system_id ?fixenc 
+                     ?id:init_id ?system_encoding ch =
   let channel_id = allocate_private_id() in
   let r = new resolve_to_any_obj_channel
 	    ~channel_of_id:(fun rid ->
@@ -86,7 +87,12 @@ let from_obj_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
 				let active_id =
 				  match init_id with
 				      None -> 
-					None
+					(match system_id with
+					     None -> None
+					   | Some sid ->
+					       Some (resolver_id_of_ext_id
+						       (System sid))
+					)
 				    | Some xid ->
 					Some (resolver_id_of_ext_id xid)
 				in
@@ -111,9 +117,9 @@ let from_obj_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
 ;;
 
 
-let from_channel ?alt ?system_encoding ?id ?fixenc ch =
+let from_channel ?alt ?system_id ?fixenc ?id ?system_encoding ch =
   from_obj_channel 
-    ?alt ?system_encoding ?id ?fixenc 
+    ?alt ?system_id ?system_encoding ?id ?fixenc 
     (new input_channel ch)
 ;;
     
@@ -144,10 +150,27 @@ let from_file ?(alt = []) ?(system_encoding = `Enc_utf8) ?enc utf8_filename =
 ;;
 
 
-let from_string ?fixenc s =
-  let r =
-    new resolve_read_this_string ?fixenc:fixenc s in
-  ExtID(Anonymous, r)
+let from_string ?(alt = []) ?system_id ?fixenc s =
+  let channel_id = allocate_private_id() in
+  let r = new resolve_to_any_obj_channel
+	    ~channel_of_id:(fun rid ->
+			      if rid.rid_private = Some channel_id then begin
+				let active_id =
+				  match system_id with
+				      None -> None
+				    | Some sid ->
+					Some 
+					  (resolver_id_of_ext_id(System sid))
+				in
+				let ch = new input_string s in
+				(ch, fixenc, active_id)
+			      end
+			      else
+				raise Not_competent)
+	    ()
+  in
+  let r_total = new combine ( [r] @ alt ) in
+  ExtID(Private channel_id, r_total)
 ;;
 
 
@@ -194,6 +217,9 @@ type entry =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.18  2003/06/19 21:10:15  gerd
+ * 	Revised the from_* functions.
+ *
  * Revision 1.17  2003/06/15 18:19:56  gerd
  * 	Pxp_yacc has been split up
  *

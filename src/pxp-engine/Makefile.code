@@ -10,10 +10,10 @@ OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
 	pxp_dfa.cmo \
 	pxp_entity.cmo pxp_dtd.cmo pxp_document.cmo \
 	pxp_entity_manager.cmo \
+	pxp_types.cmo \
 	pxp_core_parser.cmo pxp_tree_parser.cmo pxp_ev_parser.cmo \
 	pxp_dtd_parser.cmo \
-	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo \
-	pxp_types.cmo
+	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
 
 XOBJ = $(OBJ:.cmo=.cmx)
@@ -27,5 +27,9 @@ pxp_engine.cma: $(OBJ)
 
 pxp_engine.cmxa: $(XOBJ)
 	$(OCAMLOPT) -o pxp_engine.cmxa -a $(XOBJ)
+
+pxp_lexing.ml: pxp_lexing.mlp
+	$(IFDEF) $(LEXBUF_307) pxp_lexing.mlp
+
 
 include depend

@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.25 2003/06/15 18:19:56 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.26 2003/06/19 21:10:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -74,18 +74,30 @@ type source = Pxp_types.source =
 
 val from_channel : 
       ?alt:Pxp_reader.resolver list ->
-      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
-      in_channel -> source
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      ?id:ext_id -> 
+      ?system_encoding:encoding -> 
+      in_channel -> 
+        source
   (* now defined in Pxp_types *)
 
 val from_string :
-      ?fixenc:encoding -> string -> source
+      ?alt:Pxp_reader.resolver list ->
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      string -> 
+        source
   (* now defined in Pxp_types *)
 
 val from_obj_channel :
       ?alt:Pxp_reader.resolver list ->
-      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
-      Netchannels.in_obj_channel -> source
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      ?id:ext_id -> 
+      ?system_encoding:encoding -> 
+      Netchannels.in_obj_channel -> 
+        source
   (* now defined in Pxp_types *)
 
 
@@ -188,6 +200,9 @@ val create_pull_parser :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.26  2003/06/19 21:10:15  gerd
+ * 	Revised the from_* functions.
+ *
  * Revision 1.25  2003/06/15 18:19:56  gerd
  * 	Pxp_yacc has been split up
  *

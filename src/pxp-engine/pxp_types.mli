@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.18 2003/06/15 18:19:56 gerd Exp $
+(* $Id: pxp_types.mli,v 1.19 2003/06/19 21:10:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -373,104 +373,161 @@ val default_config : config
 val default_namespace_config : config
   (* Same as default_config, but namespace processing is turned on *)
 
+
+(**********************************************************************)
+(*                            sources                                 *)
+(**********************************************************************)
+
+(* Sources specify where the XML text to parse comes from. The type
+ * [source] is often not used directly, but sources are constructed
+ * with the help of the functions [from_channel], [from_obj_channel],
+ * [from_file], and [from_string] (see below).
+ *
+ * The type [source] is an abstraction on top of [resolver] (defined in
+ * module Pxp_reader). The [resolver] is a configurable object that knows 
+ * how to access files that are
+ * - identified by an XML ID (a PUBLIC or SYSTEM name)
+ * - named relative to another file
+ * - referred to by the special PXP IDs "Private" and "Anonymous".
+ * Furthermore, the [resolver] knows a lot about the character encoding
+ * of the files. See Pxp_reader for details.
+ *
+ * A [source] is a resolver that is applied to a certain ID that should
+ * be initially opened.
+ *)
+
+
 type source = Pxp_dtd.source =
     Entity of ((Pxp_dtd.dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (Pxp_core_types.ext_id * Pxp_reader.resolver)
   | XExtID of (Pxp_core_types.ext_id * string option * Pxp_reader.resolver)
-      (* (ext_id, system_base, resolver) *)
+
+(* The three basic flavours of sources:
+ * - Entity(m,r) is a very low-level way of denoting a source. After the
+ *   parser has created the DTD object d, it calls
+ *   e = m d
+ *   and uses the entity object e together with the resolver r. This kind
+ *   of [source] is intended to implement customized versions of the entity
+ *   classes. Use it only if there is a strong need to do so.
+ * - ExtID(xid,r) is the normal way of denoting a source. The external entity
+ *   referred to by the ID [xid] is opened by using the resolver [r].
+ * - XExtID(xid,sys_base,r) is an extension of ExtID. The additional parameter
+ *   [sys_base] is the base URI to assume if [xid] is a relative URI (i.e.
+ *   a SYSTEM ID).
+ *)
+
 
 val from_channel : 
       ?alt:Pxp_reader.resolver list ->
-      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
-      in_channel -> source
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      ?id:ext_id -> 
+      ?system_encoding:encoding -> 
+      in_channel -> 
+        source
+  (* This function creates a source that reads the XML text from the 
+   * passed [in_channel]. By default, this [source] is not able to read
+   * XML text from any other location (you cannot read from files etc.).
+   * The optional arguments allow it to modify this behaviour.
+   *
+   * Keep the following in mind:
+   * - Because this source reads from a channel, it can only be used once.
+   * - The channel will be closed by the parser when the end of the channel
+   *   is reached, or when the parser stops because of another reason.
+   * - Unless the ~alt argument specifies something else, you cannot
+   *   refer to entities by SYSTEM or PUBLIC names (error "no input method
+   *   available")
+   * - To make relative SYSTEM names work you must pass the ~system_id
+   *   argument, so the parser knows relative to which base these names
+   *   must be resolved.
+   *
+   * ~alt: A list of further resolvers. For example, you can pass
+   *    [new Pxp_reader.resolve_as_file()] to enable resolving of
+   *    file names found in SYSTEM IDs.
+   * ~system_id: By default, the XML text found in the [in_channel] does not
+   *    have any ID (to be exact, the [in_channel] has a private ID, but
+   *    this is hidden). Because of this, it is not possible to open
+   *    a second file by using a relative SYSTEM ID. The parameter ~system_id
+   *    assigns the channel a SYSTEM ID that is only used to resolve 
+   *    further relative SYSTEM IDs.
+   *    This parameter must be encoded as UTF-8 string.
+   * ~fixenc: By default, the character encoding of the XML text is 
+   *    determined by looking at the XML declaration. Setting ~fixenc
+   *    forces a certain character encoding. Useful if you can assume
+   *    that the XML text has been recoded by the transmission media.
+   *
+   * THE FOLLOWING OPTIONS ARE DEPRECATED:
+   *
+   * ~id: This parameter assigns the channel an arbitrary ID (like ~system_id,
+   *    but PUBLIC, anonmyous, and private IDs are also possible - although
+   *    not reasonable). Furthermore, setting ~id also enables resolving
+   *    of file names. 
+   *    ~id has higher precedence than ~system_id.
+   * ~system_encoding: (Only useful together with ~id.) The character encoding
+   *    used for file names. (UTF-8 by default.)
+   *)
 
-val from_string :
-      ?fixenc:encoding -> string -> source
 
 val from_obj_channel :
       ?alt:Pxp_reader.resolver list ->
-      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
-      Netchannels.in_obj_channel -> source
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      ?id:ext_id -> 
+      ?system_encoding:encoding -> 
+      Netchannels.in_obj_channel -> 
+        source
+  (* Similar to [from_channel], but reads from a netchannel instead. *)
+
+
+
+val from_string :
+      ?alt:Pxp_reader.resolver list ->
+      ?system_id:string ->
+      ?fixenc:encoding -> 
+      string -> 
+        source
+  (* Similar to [from_channel], but reads from a string.
+   *
+   * Of course, it is possible to parse this source several times, unlike
+   * the channel-based sources.
+   *)
 
 
 val from_file :
        ?alt:Pxp_reader.resolver list ->
        ?system_encoding:encoding -> ?enc:encoding -> string -> source
+  (* The source is the file whose name is passed as string argument. The
+   * filename must be UTF-8-encoded (so it can be correctly rewritten into
+   * a URL).
+   *
+   * This source can open further files by default, and relative URLs
+   * work.
+   *
+   * ~alt: A list of further resolvers, especially useful to open 
+   *    non-SYSTEM IDs, and non-file entities.
+   * ~system_encoding: The character encoding the system uses to represent
+   *    filenames. By default, UTF-8 is assumed.
+   * ~enc: The character encoding of the string argument. As mentioned, this
+   *    is UTF-8 by default.
+   *)
 
-(* Notes on sources (version 2):
- *
- * Sources specify where the XML text to parse comes from. Sources not only
- * represent character streams, but also external IDs (i.e. SYSTEM or PUBLIC
- * names), and they are interpreted as a specific encoding of characters.
- * A source should be associated with an external ID, because otherwise
- * it is not known how to handle relative names.
- *
- * There are two primary sources, Entity and ExtID, and several functions
- * for derived sources. First explanations for the functions:
- *
- * from_channel: The XML text is read from an in_channel. By default, the
- *   channel is not associated with an external ID, and it is impossible
- *   to resolve relative SYSTEM IDs found in the document.
- *   If the ?id argument is passed, it is assumed that the channel has this
- *   external ID. If relative SYSTEM IDs occur in the document, they can
- *   be interpreted; however, it is only possible to read from "file:"
- *   IDs.
- *   By default, the channel automatically detects the encoding. You can
- *   set a fixed encoding by passing the ?fixenc argument.
- *
- * from_string: The XML text is read from a string.
- *   It is impossible to read from any external entity whose reference is found
- *   in the string.
- *   By default, the encoding of the string is detected automatically. You can
- *   set a fixed encoding by passing the ?fixenc argument.
- *
- * from_file: The XML text is read from the file whose file name is
- *   passed to the function.
- *   Relative system IDs can be interpreted by this function.
- *   The ?system_encoding argument specifies the character encoding used
- *   for file names by the system (i.e. which encoding is used for
- *   the names stored on the disks). By default, UTF-8 is assumed.
- *   The ?enc argument specifies the character encoding of the filename
- *   argument (default: UTF-8).
- *
- * ~alt: This parameter may specify alternate resolvers. They are tried
- *   if the default resolving method is not applicable.
- *
- * Examples:
+(*
+ * EXAMPLES:
  *
  * from_file "/tmp/file.xml": 
  *   reads from this file, which is assumed to have the ID 
  *   SYSTEM "file://localhost/tmp/file.xml".
  *
  * let ch = open_in "/tmp/file.xml" in
- * from_channel ~id:(System "file://localhost/tmp/file.xml") ch
- *   This does the same, but uses a channel.
+ * from_channel ~alt:[ new Pxp_reader.resolve_as_file() ] 
+ *              ~system_id:"file://localhost/tmp/file.xml" ch
+ *   This does roughly the same, but uses a channel.
  *
- * from_channel ~id:(System "http://host/file.xml")
- *              ch
- *   reads from the channel ch, and it is assumed that the ID is
- *   SYSTEM "http://host/file.xml". If there is any relative SYSTEM ID,
- *   it will be interpreted relative to this location; however, there is
- *   no way to read via HTTP.
- *   If there is any "file:" SYSTEM ID, it is possible to read the file.
- *
- * The primary sources:
- *
- * - ExtID(x,r): The identifier x (either the SYSTEM or the PUBLIC name) of the
- *   entity to read from is passed to the resolver, and the resolver finds
- *   the entity and opens it.
- *   The intention of this option is to allow customized
- *   resolvers to interpret external identifiers without any restriction.
- *   The Pxp_reader module contains several classes allowing the user to
- *   compose such a customized resolver from predefined components.
- *
- *   ExtID is the interface of choice for own extensions to resolvers.
- *
- * - Entity(m,r): You can implementy every behaviour by using a customized
- *   entity class. Once the DTD object d is known that will be used during
- *   parsing, the entity  e = m d  is determined and used together with the
- *   resolver r.
- *   This is only for hackers.
+ * let cat = new Pxp_reader.lookup_id
+ *                 [ Public("My Public ID",""),"/usr/share/xml/public.xml" ] in
+ * from_file ~alt:[cat] "/tmp/file.xml": 
+ *   Additionally sets that the PUBLIC ID "My Public ID" is mapped to the
+ *   shown file.
  *)
 
 
@@ -522,6 +579,9 @@ type entry =
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.19  2003/06/19 21:10:15  gerd
+ * 	Revised the from_* functions.
+ *
  * Revision 1.18  2003/06/15 18:19:56  gerd
  * 	Pxp_yacc has been split up
  *
