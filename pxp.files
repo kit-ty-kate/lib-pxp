@@ -379,6 +379,7 @@ f rtests/lex/test_lex_utf8.ml
 d tools
 f tools/Makefile
 f tools/collect_files
+f tools/ifdef
 #f tools/insert_variant
 #f tools/m2parsergen
 #f tools/ucs2_to_utf8
