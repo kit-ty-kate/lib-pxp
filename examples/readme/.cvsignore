@@ -1,0 +1,10 @@
+*.cmi
+*.cmo
+*.cma
+*.cmx
+*.o
+*.a
+*.cmxa
+depend
+depend.pkg
+
