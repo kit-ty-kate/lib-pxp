@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.10 2002/08/28 23:54:34 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.11 2002/08/31 23:26:20 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -11,16 +11,14 @@ type lexers =
   | Within_tag
   | Within_tag_entry
   | Declaration
-  | Content_comment
-  | Decl_comment
-  | Document_comment
+  | Comment of lexers
   | Ignored_section
   | Closed
   | Tag_eb
   | Tag_eb_att of bool
 
 
-let string_of_lexers =
+let rec string_of_lexers =
   function
       Document          -> "Document"
     | Document_type     -> "Document_type"
@@ -28,9 +26,7 @@ let string_of_lexers =
     | Within_tag        -> "Within_tag"
     | Within_tag_entry  -> "Within_tag_entry"
     | Declaration       -> "Declaration"
-    | Content_comment   -> "Content_comment"
-    | Decl_comment      -> "Decl_comment"
-    | Document_comment  -> "Document_comment"
+    | Comment lexid     -> ("Comment/" ^ string_of_lexers lexid)
     | Ignored_section   -> "Ignored_section"
     | Closed            -> "Closed"
     | Tag_eb            -> "Tag_eb"
@@ -193,17 +189,17 @@ type lexer_set =
       scan_within_tag      : Lexing.lexbuf -> (token * lexers);
       scan_document_type   : Lexing.lexbuf -> (token * lexers);
       scan_declaration     : Lexing.lexbuf -> (token * lexers);
-      scan_content_comment : Lexing.lexbuf -> (token * lexers);
-      scan_decl_comment    : Lexing.lexbuf -> (token * lexers);
-      scan_document_comment: Lexing.lexbuf -> (token * lexers);
+      scan_comment         : Lexing.lexbuf -> lexers -> (token * lexers);
       scan_ignored_section : Lexing.lexbuf -> (token * lexers);
+      detect_xml_pi        : Lexing.lexbuf -> bool;
       scan_xml_pi          : Lexing.lexbuf -> prolog_token;
+      scan_pi_string       : Lexing.lexbuf -> string option;
       scan_dtd_string      : Lexing.lexbuf -> token;
       scan_content_string  : Lexing.lexbuf -> token;
       scan_name_string     : Lexing.lexbuf -> token;
-      scan_only_xml_decl   : Lexing.lexbuf -> token;
       scan_for_crlf        : Lexing.lexbuf -> token;
       scan_characters      : Lexing.lexbuf -> unit;
+      scan_character       : Lexing.lexbuf -> unit;
       scan_tag_eb          : Lexing.lexbuf -> (token * lexers);
       scan_tag_eb_att      : Lexing.lexbuf -> bool -> (token * lexers);
     }
@@ -212,6 +208,12 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.11  2002/08/31 23:26:20  gerd
+ * 	Instead of three comment lexers for content, decl and document,
+ * there is now only one unified comment lexer.
+ * 	New scanners detect_xml_pi, scan_pi_string, scan_character.
+ * 	Removed the scanner scan_only_xml_decl.
+ *
  * Revision 1.10  2002/08/28 23:54:34  gerd
  * 	Support for new lexer definition style.
  *
