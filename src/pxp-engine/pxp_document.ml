@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.8 2000/07/16 17:50:01 gerd Exp $
+(* $Id: pxp_document.ml,v 1.9 2000/07/16 19:37:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -413,7 +413,6 @@ class ['ext] element_impl an_ext : ['ext] node =
       val mutable nodes = (None : 'c list option)
       val mutable attributes = []
       val pinstr = lazy (Hashtbl.create 10 : (string,proc_instruction) Hashtbl.t)
-      val mutable id_table = None
       val mutable keep_always_whitespace = false
 
       val mutable position = no_position
@@ -421,10 +420,6 @@ class ['ext] element_impl an_ext : ['ext] node =
       method attributes = attributes
 
       method position = position
-
-      method internal_adopt new_parent =
-	super # internal_adopt new_parent;
-	id_table <- None
 
       method add_node n =
 	let only_whitespace s =
@@ -1066,6 +1061,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.9  2000/07/16 19:37:09  gerd
+ * 	Simplification.
+ *
  * Revision 1.8  2000/07/16 17:50:01  gerd
  * 	Fixes in 'write'
  *
