@@ -200,7 +200,7 @@ let parse_term str =
 	  sep :: norm false term'
       | tok :: term' ->
 	  if need_sep then
-	    (`Sep "") :: norm false term'
+	    (`Sep "") :: tok :: norm false term'
 	  else
 	    tok :: norm true term'
       | [] ->
