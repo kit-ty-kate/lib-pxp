@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.2 2000/08/18 20:14:31 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -31,7 +31,9 @@ type entity_id = < >
 type token = 
   | Begin_entity             (* Beginning of entity *)
   | End_entity               (* End of entity *)
-  | Comment                  (* <!-- ... --> *)
+  | Comment_begin            (* <!-- *)
+  | Comment_material of string (* within a comment *)
+  | Comment_end              (* --> *)
   | Ignore                   (* ignored whitespace *)
   | Eq                       (* = *)
   | Rangle                   (* > as tag delimiter *)
@@ -93,7 +95,9 @@ let string_of_tok tok =
   | End_entity -> "End_entity"
   | Doctype _ -> "Doctype"
   | Doctype_rangle _ -> "Doctype_rangle"
-  | Comment -> "Comment"
+  | Comment_begin -> "Comment_begin"
+  | Comment_end -> "Comment_end"
+  | Comment_material _ -> "Comment_material"
   | Rangle -> "Rangle"
   | Rangle_empty -> "Rangle_empty"
   | Ignore -> "Ignore"
@@ -165,6 +169,9 @@ type lexer_set =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.2  2000/08/18 20:14:31  gerd
+ * 	Comment -> Comment_begin, Comment_material, Comment_end.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
