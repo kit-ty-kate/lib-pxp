@@ -4,7 +4,7 @@ include $(TOP_DIR)/Makefile.rules
 all: lexpp$(EXEC_SUFFIX)
 
 DEPOBJS = lexpp_file.ml uni_lexer.ml uni_parser.ml uni_parser.mli \
-	  uni_types.ml ucs2_to_utf8.ml main.ml
+	  uni_types.ml ucs2_to_utf8.ml main.ml mll_lexer.ml
 
 OBJS = uni_types.cmo uni_lexer.cmo uni_parser.cmo lexpp_file.cmo \
 	mll_lexer.cmo \
@@ -12,16 +12,16 @@ OBJS = uni_types.cmo uni_lexer.cmo uni_parser.cmo lexpp_file.cmo \
 
 PACKAGES=netstring
 
-uni_lexer.ml:
+uni_lexer.ml: uni_lexer.mll
 	$(OCAMLLEX) uni_lexer.mll
 
-mll_lexer.ml:
+mll_lexer.ml: mll_lexer.mll
 	$(OCAMLLEX) mll_lexer.mll
 
-uni_parser.ml:
+uni_parser.ml: uni_parser.mly
 	$(OCAMLYACC) uni_parser.mly
 
-uni_parser.mli:
+uni_parser.mli: uni_parser.mly
 	$(OCAMLYACC) uni_parser.mly
 
 depend: $(DEPOBJS)

@@ -8,12 +8,16 @@ open Uni_types
 open Ucs2_to_utf8
 open Printf
 
+type lextool =
+    [ `OCAMLLEX | `WLEX | `ULEX ]
+
 type config =
     { mutable char_classes_file : string;
       mutable encoding : Netconversion.encoding;
       mutable encoding_name : string;
       mutable lex_src_file : string;
       mutable link_src_file : string;
+      mutable out_format : lextool;
       mutable out_multiple : bool;
       mutable out_lex_prefix : string;
       mutable out_link_prefix : string;
@@ -30,33 +34,36 @@ let get_char_classes cfg =
   let cc_sections = Lexpp_file.read_sections filename in
   let type_generic = List.mem_assoc "TYPE_GENERIC" cc_sections in
   let type_wlex = List.mem_assoc "TYPE_WLEX" cc_sections in
-  if not type_generic && not type_wlex then
-    failwith ("File " ^ filename ^ ": type indicator is missing");
-  if type_generic && type_wlex then
-    failwith ("File " ^ filename ^ ": type indicator is ambiguous");
+  ( match type_generic, type_wlex with
+	false, false ->
+	  failwith ("File " ^ filename ^ ": type indicator is missing");
+      | true, false
+      | false, true ->
+	  ()
+      | _, _ ->
+	  failwith ("File " ^ filename ^ ": type indicator is ambiguous");
+  );
 
   let let_section =
     try List.assoc "LET" cc_sections
     with Not_found -> failwith ("File " ^ filename ^ ": no LET section") in
 
-  if type_generic then begin
-    let let_unicode_section =
-      try List.assoc "LET_UNICODE" cc_sections
-      with Not_found -> failwith ("File " ^ filename ^ ": no LET_UNICODE section") in
+  match () with
+      () when type_generic ->
+	let let_unicode_section =
+	  try List.assoc "LET_UNICODE" cc_sections
+	  with Not_found -> failwith ("File " ^ filename ^ ": no LET_UNICODE section") in
 
-    CC_generic(Lexpp_file.parse_char_classes let_unicode_section, let_section);
-  end
-  else begin
-    assert(type_wlex);
-    let classes_section =
-      try List.assoc "CLASSES" cc_sections
-      with Not_found -> failwith ("File " ^ filename ^ ": no CLASSES section")
-    in
-    let let_section =
-      try List.assoc "LET" cc_sections
-      with Not_found -> failwith ("File " ^ filename ^ ": no LET section") in
-    CC_wlex(classes_section, let_section)
-  end
+	CC_generic(Lexpp_file.parse_char_classes let_unicode_section, let_section);
+    | () when type_wlex ->
+	let classes_section =
+	  try List.assoc "CLASSES" cc_sections
+	  with Not_found -> failwith ("File " ^ filename ^ ": no CLASSES section")
+	in
+	CC_wlex(classes_section, let_section)
+
+    | () ->
+	assert false (* programming error *)
 ;;
 
 
@@ -126,7 +133,7 @@ let recode_char_classes_8bit cfg cc =
 
   match cc with
       CC_wlex(_,_) ->
-	cc    (* no recoding necessary *)
+	assert false
     | CC_generic(defs, let_section) ->
 	CC_generic(List.map recode_def defs, let_section)
 ;;
@@ -144,7 +151,7 @@ let recode_char_classes cfg cc =
 	      CC_generic(defs, let_section) ->
 		CC_generic(List.map ucs2_to_utf8 defs, let_section)
 	    | CC_wlex(_,_) ->
-		cc
+		failwith "Char classes of type wlex not compatible with output format"
 	)
     | (`Enc_java | `Enc_utf16 | `Enc_utf16_le | `Enc_utf16_be) ->
 	failwith "This character encoding is not supported!"
@@ -177,6 +184,129 @@ let name_of_rule rule_str =
 
   let words = Netstring_str.split space_re rule_str in
   find_first_word words
+;;
+
+
+
+type mlltok = Mll_lexer.mlltok
+
+
+let parse_term str =
+  let rec norm need_sep term =
+    match term with
+	(`Sep s1) :: (`Sep s2) :: term' ->
+	  norm need_sep (`Sep(s1^s2) :: term')
+      | (`Sep _  as sep) :: term' ->
+	  sep :: norm false term'
+      | tok :: term' ->
+	  if need_sep then
+	    (`Sep "") :: norm false term'
+	  else
+	    tok :: norm true term'
+      | [] ->
+	  []
+  in
+  let rec rem_comments term =
+    match term with
+	`Comment _ :: term' ->
+	  rem_comments term'
+      | tok :: term' ->
+	  tok :: rem_comments term'
+      | [] ->
+	  []
+  in
+  let lexbuf = Lexing.from_string str in
+  let term = Mll_lexer.recurse_until `EOF Mll_lexer.definition lexbuf in
+  norm true (rem_comments term)
+;;
+
+
+let string_of_term (term : mlltok list) =
+  let buf = Buffer.create 1000 in
+
+  let rec print outermost last_tok (term : mlltok list) =
+    match term with
+	tok :: term' ->
+	  ( match tok with
+		`Sep s ->
+		  if not outermost || (last_tok <> `EOF && term' <> []) then
+		    Buffer.add_string buf s
+		      (* don't print at the beginning and at the end *)
+	      | `Comment l ->
+		  Buffer.add_char buf ' '
+	      | `Brace(_,l) ->
+		  Buffer.add_char buf '{';
+		  print false `EOF l;
+		  Buffer.add_char buf '}';
+	      | `Paren l ->
+		  Buffer.add_char buf '(';
+		  print false `EOF l;
+		  Buffer.add_char buf ')'
+	      | `Bracket l ->
+		  Buffer.add_char buf '[';
+		  print false `EOF l;
+		  Buffer.add_char buf ']'
+	      | `Stringliteral s ->
+		  Buffer.add_char buf '"';
+		  Buffer.add_string buf s;
+		  Buffer.add_char buf '"';
+	      | `Charliteral s ->
+		  Buffer.add_char buf '\'';
+		  Buffer.add_string buf s;
+		  Buffer.add_char buf '\'';
+	      | `Char c ->
+		  Buffer.add_char buf c
+	      | `Ident name ->
+		  Buffer.add_string buf name
+	      | `EOF
+	      | `E_Brace
+	      | `E_Bracket
+	      | `E_Comment
+	      | `E_Paren ->
+		  ()
+	  );
+	  print outermost tok term'
+      | [] ->
+	  ()
+  in
+  print true `EOF term;
+  Buffer.contents buf
+;;
+
+
+let transform_let_to_ulex let_str =
+  (* Transforms a regexp "let" definition to ulex syntax *)
+  let term = parse_term let_str in
+  let rec transform term =
+    match term with
+	`Ident "let" :: term' ->
+	  `Sep "\n" :: `Ident "let" :: `Sep " " :: `Ident "regexp" ::
+	  transform term'
+      | tok :: term' ->
+	  tok :: transform term'
+      | [] ->
+	  []
+  in
+  string_of_term (transform term)
+;;
+
+
+let transform_rule_to_ulex rule_str =
+  (* Transforms the rule into ulex syntax *)
+  let term = parse_term rule_str in
+  let rec transform term =
+    match term with
+      | `Ident "parse" :: term' ->
+	  `Ident "lexer" :: transform term'
+      | `Brace (_,l) :: term' ->
+	  `Sep " " :: `Char '-' :: `Char '>' :: `Sep " " :: `Paren l ::
+	  transform term'
+      | tok :: term' ->
+	  tok :: transform term'
+      | [] ->
+	  []
+  in
+  string_of_term (transform term)
 ;;
 
 
@@ -213,27 +343,62 @@ let write_output_files cfg cc =
   let write_header out =
     match cc with
 	CC_generic(defs,let_str) ->
-	  if List.mem_assoc "HEADER" lex_src then
-	    output_string out (List.assoc "HEADER" lex_src);
-	  List.iter (Lexpp_file.print_definition out) defs;
-	  output_string out let_str;
-	  if List.mem_assoc "LET" lex_src then
-	    output_string out (List.assoc "LET" lex_src);
+	  ( match cfg.out_format with
+		`OCAMLLEX ->
+		  if List.mem_assoc "HEADER" lex_src then (
+		    output_string out "{\n";
+		    output_string out (List.assoc "HEADER" lex_src);
+		    output_string out "}\n";
+		  );
+		  List.iter (Lexpp_file.print_definition out) defs;
+		  output_string out let_str;
+		  if List.mem_assoc "LET" lex_src then
+		    output_string out (List.assoc "LET" lex_src);
+	      | `ULEX ->
+		  if List.mem_assoc "HEADER" lex_src then (
+		    output_string out (List.assoc "HEADER" lex_src);
+		  );
+		  List.iter (Lexpp_file.print_ulex_definition out) defs;
+		  output_string out (transform_let_to_ulex let_str);
+		  if List.mem_assoc "LET" lex_src then
+		    let s = List.assoc "LET" lex_src in
+		    output_string out (transform_let_to_ulex s)
+	      | `WLEX ->
+		  failwith "Output format wlex is incompatible with generic char classes"
+	  )
       | CC_wlex(classes_str,let_str) ->
+	  if cfg.out_format <> `WLEX then
+	    failwith "This output format is incompatible with wlex char classes";
 	  output_string out classes_str;
-	  if List.mem_assoc "HEADER" lex_src then
+	  if List.mem_assoc "HEADER" lex_src then (
+	    output_string out "{\n";
 	    output_string out (List.assoc "HEADER" lex_src);
+	    output_string out "}\n";
+	  );
 	  output_string out let_str;
 	  if List.mem_assoc "LET" lex_src then
 	    output_string out (List.assoc "LET" lex_src);
   in
 
   let write_rule out is_first_rule rule_str =
-    if is_first_rule then
-      output_string out "rule "
-    else
-      output_string out "and ";
-    output_string out rule_str
+    match cfg.out_format with
+	`OCAMLLEX
+      | `WLEX ->
+	  if is_first_rule then
+	    output_string out "rule "
+	  else
+	    output_string out "and ";
+	  output_string out rule_str
+      | `ULEX ->
+	  output_string out "\nlet ";
+	  output_string out (transform_rule_to_ulex rule_str)
+  in
+
+  let suffix =
+    match cfg.out_format with
+	`OCAMLLEX
+      | `WLEX     ->  ".mll"
+      | `ULEX     ->  ".ml"
   in
 
   let module_of_rule = Hashtbl.create 10 in
@@ -245,7 +410,7 @@ let write_output_files cfg cc =
 	 let rule_name = name_of_rule rule_str in
 	 let mod_name = sprintf "%s_%02d" cfg.out_lex_prefix !n in
 	 Hashtbl.add module_of_rule rule_name mod_name;
-	 let out = open_out_ann (mod_name ^ ".mll") in
+	 let out = open_out_ann (mod_name ^ suffix) in
 	 write_header out;
 	 write_rule out true rule_str;
 	 close_out out;
@@ -254,7 +419,7 @@ let write_output_files cfg cc =
       (List.filter (fun (name,str) -> name = "RULE") lex_src);
   end
   else begin
-    let out = open_out_ann (cfg.out_lex_prefix ^ "_01.mll") in
+    let out = open_out_ann (cfg.out_lex_prefix ^ "_01" ^ suffix) in
     write_header out;
     let is_first = ref true in
     List.iter
@@ -306,10 +471,19 @@ let main() =
       encoding_name = "iso88591";
       lex_src_file = "lex.src";
       link_src_file = "link.src";
+      out_format = `OCAMLLEX;
       out_multiple = false;
       out_lex_prefix = "out";
       out_link_prefix = "out_link";
     }
+  in
+
+  let pformat s =
+    match s with
+	"ocamllex" -> `OCAMLLEX
+      | "wlex"     -> `WLEX
+      | "ulex"     -> `ULEX
+      | _          -> raise (Arg.Bad ("Unknown output format: " ^ s))
   in
 
   Arg.parse
@@ -325,6 +499,8 @@ let main() =
 				   cfg.encoding_name <- s;
 				),
 	          "<name>        The character encoding";
+	"-outformat", Arg.String (fun s -> cfg.out_format <- pformat s),
+	           "(ocamllex|wlex|ulex) Output format";
 	"-outlexprefix", Arg.String (fun s -> cfg.out_lex_prefix <- s),
 	              "<prefix>  The common prefix of the lexer files";
 	"-outlinkprefix", Arg.String (fun s -> cfg.out_link_prefix <- s),
@@ -336,7 +512,12 @@ let main() =
       "usage: lexpp <options>";
 
   let cc = get_char_classes cfg in
-  let cc' = recode_char_classes cfg cc in
+  let cc' =
+    match cfg.out_format with
+	`OCAMLLEX ->
+	  recode_char_classes cfg cc
+      | _ ->
+	  cc in
   write_output_files cfg cc'
 ;;
 

@@ -1,6 +1,24 @@
 (* $Id$ *)
 
-{ let rec recurse_until stop_tok f lexbuf =
+{
+  type mlltok =
+      [ `Brace of Lexing.position * mlltok list
+      | `Bracket of mlltok list
+      | `Char of char
+      | `Charliteral of string
+      | `Comment of mlltok list
+      | `EOF
+      | `E_Brace
+      | `E_Bracket
+      | `E_Comment
+      | `E_Paren
+      | `Ident of string
+      | `Paren of mlltok list
+      | `Stringliteral of string
+      | `Sep of string  (* "" or white space string *)
+      ]
+
+  let rec recurse_until stop_tok f lexbuf =
     let tok = f lexbuf in
     if tok = stop_tok then
       []
@@ -14,35 +32,29 @@
 let ident_start = [ 'A'-'Z' 'a'-'z' '_' ]
 let ident_rest  = [ 'A'-'Z' 'a'-'z' '_' '\'' '0'-'9' ]
 
-rule definition want_ws = parse
-    [' ' '\013' '\009' '\012' '\010' ]
+rule definition = parse
+    [' ' '\013' '\009' '\012' '\010' ]+
       { let s = Lexing.lexeme lexbuf in
-	if want_ws then
-	  `WS s.[0]
-	else
-	  definition want_ws lexbuf
+	`Sep s
       }
   | "(*"
       { let r =
-	  `Comment (recurse_until `E_Comment (definition true) lexbuf) in
-	if want_ws then
-	  r
-	else
-	  definition want_ws lexbuf
+	  `Comment (recurse_until `E_Comment definition lexbuf) in
+	r
       }
   | "*)"
       { `E_Comment }
   | '{'
       { let p = Lexing.lexeme_start_p lexbuf in
-	`Brace (p, recurse_until `E_Brace (definition true) lexbuf) }
+	`Brace (p, recurse_until `E_Brace definition lexbuf) }
   | '}'
       { `E_Brace }
   | '('
-      { `Paren (recurse_until `E_Paren (definition want_ws) lexbuf) }
+      { `Paren (recurse_until `E_Paren definition lexbuf) }
   | ')'
       { `E_Paren }
   | '['
-      { `Bracket (recurse_until `E_Bracket (definition want_ws) lexbuf) }
+      { `Bracket (recurse_until `E_Bracket definition lexbuf) }
   | ']'
       { `E_Bracket }
   | '"'
@@ -57,6 +69,7 @@ rule definition want_ws = parse
   | '\'' '\\' ( [ 'n' 't' 'b' 'r' '"' '\\' '\'' ] |
 		( ['0'-'9'] ['0'-'9'] ['0'-'9'] ) |
 		( 'x' ['0'-'9' 'a'-'f' 'A'-'F'] ['0'-'9' 'a'-'f' 'A'-'F'] ) )
+    '\''
       { let s = Lexing.lexeme lexbuf in
 	`Charliteral (String.sub s 1 (String.length s - 2))
       }

@@ -103,3 +103,40 @@ let print_definition out { Uni_types.id = id ; Uni_types.rel = rel } =
  output_string out "\n\n"
 ;;
 
+
+(**********************************************************************)
+(* print a definition in the format expected by ulex:                 *)
+(**********************************************************************)
+
+let rec print_ulex_disjunction ?(first = true) out =
+ function
+    [] ->
+      if first then output_string out " ['b'-'a' (*empty*) ] "
+  | he::tl ->
+     if not first then output_string out " | " ;
+     print_ulex_re out he ;
+     print_ulex_disjunction ~first:false out tl
+
+and print_ulex_re out =
+ function
+    Uni_types.Char i -> output_string out (string_of_int i)
+  | Uni_types.Interval (l,u) ->
+      output_string out ("[" ^ string_of_int l ^ "-" ^
+			 string_of_int u ^ "]")
+  | Uni_types.Identifier i -> output_string out i
+  | Uni_types.Concat rell ->
+     let foo rel =
+      if List.length rel > 1 then
+       (output_string out "(" ; print_ulex_disjunction out rel ;
+	output_string out ")")
+      else
+       print_ulex_disjunction out rel
+     in
+      List.iter foo rell
+;;
+
+let print_ulex_definition out { Uni_types.id = id ; Uni_types.rel = rel } =
+ output_string out ("let regexp " ^ id ^ " =\n   ") ;
+ print_ulex_disjunction out rel ;
+ output_string out "\n\n"
+;;
