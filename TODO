@@ -1,21 +1,9 @@
-- QA: Large buffers (> 8MB)
-  DONE
+- Fix: pxp-1.1.4 enthält Datei src/pxp-wlex/pxp_wlex.ml die nicht
+  aktuell ist
+  (auch im release-Skript fixen: pxp_wlex.ml muss aktueller sein als
+  pxp_wlex.mlw)
 
-- Bug: strip_whitespace and xml:space
-  If xml:space="preserve" the sub elements are not visited at all. It is
-  possible, however, that an inner element resets xml:space="default".
-  DONE
-
-- Pxp_marshal: Wenn die mitgeschickte Encoding "Us-AScii" ist, kann der
-  String in jedem Fall eingelesen werden.
-  DONE
-
-- Lexing.ml-Probleme beheben
-  DONE
-
-- Problem with long DTDs: Forming the DFA for a long DTD takes too long.
-  Example: The XHTML-DTD is read in over 10 seconds.
-  DONE
+- Klasse wfdocument
 
 ------------------------------
 

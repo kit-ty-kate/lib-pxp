@@ -235,6 +235,10 @@ and solutions that are detected shortly before or after the release.</p>
     <sect2>
       <title>Recent Changes</title>
       <ul>
+        <li>
+	  <p>Changed in 1.1.5:</p> <p>A packaging error in pxp-wlex has
+been corrected. (This is the only change.)</p>
+	</li>
 	<li>
 	  <p>Changed in 1.1.4:</p> <p>This is a bigger bugfix release
 that addresses the following problems:</p>

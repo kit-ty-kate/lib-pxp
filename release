@@ -5,6 +5,11 @@ set -e
 version=`./configure -version 2>/dev/null`
 destdir="pxp-$version"
 
+test src/pxp-wlex/wlex.ml -nt src/pxp-wlex/wlex.mlw || {
+    echo src/pxp-wlex/wlex.ml is not up-to-date
+    exit 1
+}
+
 mkdir -p packages
 rm -rf "packages/$destdir"
 makepkg -spec pxp.files -intree . -outtree "packages/$destdir"
