@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.13 2001/04/22 14:14:41 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.14 2001/06/28 22:42:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -461,6 +461,8 @@ class virtual entity the_dtd the_name the_warner init_encoding =
 		| IgnoreLineEnd -> Ignore
 		      
           (* These tokens require that the entity_id parameter is set: *)
+		| Comment_begin _ -> Comment_begin(self :> entity_id)
+		| Comment_end _   -> Comment_end  (self :> entity_id)
 		| Doctype _      -> Doctype       (self :> entity_id)
 		| Doctype_rangle _ ->Doctype_rangle(self :> entity_id)
 		| Dtd_begin _    -> Dtd_begin     (self :> entity_id)
@@ -1167,6 +1169,12 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.14  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.13  2001/04/22 14:14:41  gerd
  * 	Updated to support private IDs.
  *

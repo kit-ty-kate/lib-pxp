@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.20 2001/06/27 23:35:43 gerd Exp $
+(* $Id: pxp_document.mli,v 1.21 2001/06/28 22:42:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1014,6 +1014,49 @@ class type [ 'ext ] node =
        * <DOMAIN>   Elements.
        * </ID>
        *)
+
+    method set_attribute : ?force:bool -> string -> Pxp_types.att_value -> unit
+      (* <ID:type-node-set-attribute>
+       * <CALL>   obj # [set_attribute] ~force n v
+       * <SIG>    AUTO
+       * <DESCR>  Sets the attribute [n] of this element to the value [v].
+       *    By default, it is required that the attribute [n] has already
+       *    some value. If you pass ~force:true, the attribute is added
+       *    to the attribute list if it is missing.
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>   Elements.
+       * </ID>
+       *)
+
+    method reset_attribute : string -> unit
+      (* <ID:type-node-reset-attribute>
+       * <CALL>   obj # [reset_attribute] n
+       * <SIG>    AUTO
+       * <DESCR>  If the attribute [n] is a declared attribute, it is set
+       *   to its default value, or to [Implied_value] if there is no default 
+       *   (the latter is performed even if the attribute is [#REQUIRED]).
+       *   If the attribute is an undeclared attribute, it is removed
+       *   from the attribute list.
+       *
+       *   The idea of this method is to simulate what had happened if [n]
+       *   had not been defined in the attribute list of the XML element.
+       *   In validating mode, the parser would have chosen the default
+       *   value if possible, or [Implied_value] otherwise, and in 
+       *   well-formedness mode, the attribute would be simply missing
+       *   in the attribute list.
+       *
+       *   Note: It is intentionally not possible to remove a declared
+       *   attribute. (However, you can remove it by calling
+       *   set_attributes, but this would be very inefficient.)
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>   Elements.
+       * </ID>
+       *)
+
 
     method attributes_as_nodes : 'ext node list
       (* <ID:type-node-attributes-as-nodes>
@@ -2323,7 +2366,7 @@ val validate : 'ext node -> unit
 (******************************* document ********************************)
 
 class [ 'ext ] document :
-  Pxp_types.collect_warnings ->
+  Pxp_types.collect_warnings -> Pxp_types.rep_encoding ->
   object
     (* Documents: These are containers for root elements and for DTDs.
      *
@@ -2410,6 +2453,12 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.21  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.20  2001/06/27 23:35:43  gerd
  * 	Minor fixes: create_other, write.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.24 2001/06/27 23:37:29 gerd Exp $
+(* $Id: pxp_document.ml,v 1.25 2001/06/28 22:42:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -101,6 +101,8 @@ class type [ 'ext ] node =
     method idref_attribute_names : string list
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
     method set_attributes : (string * Pxp_types.att_value) list -> unit
+    method set_attribute : ?force:bool -> string -> Pxp_types.att_value -> unit
+    method reset_attribute : string -> unit
     method attributes_as_nodes : 'ext node list
     method set_comment : string option -> unit
     method comment : string option
@@ -514,6 +516,10 @@ class virtual ['ext] no_attributes_feature =
       method_na "quick_set_attributes"
     method set_attributes (_ : (string * att_value) list) : unit = 
       method_na "set_attributes"
+    method set_attribute ?(force : bool option) (_:string) (_:att_value) : unit=
+      method_na "set_attribute"
+    method reset_attribute (_:string) : unit =
+      method_na "reset_attribute"
 
   end
 ;;
@@ -761,10 +767,12 @@ class ['ext] attribute_impl ~element ~name value init_dtd : ['ext] node =
     (* Non-applicable attribute methods: *)
 
     method quick_set_attributes _ =    method_na "quick_set_attributes"
-    method set_attributes _ =   method_na "set_attributes"
+    method set_attributes _ =          method_na "set_attributes"
+    method set_attribute ?force _ _ =  method_na "set_attribute"
+    method reset_attribute _ =         method_na "reset_attribute"
     method attributes_as_nodes =       method_na "attributes_as_nodes"
-    method id_attribute_name =  method_na "id_attribute_name"
-    method id_attribute_value = method_na "id_attribute_value"
+    method id_attribute_name =         method_na "id_attribute_name"
+    method id_attribute_value =        method_na "id_attribute_value"
     method idref_attribute_names =     method_na "idref_attribute_names"
 
     (* Non-applicable methods: *)
@@ -902,7 +910,7 @@ class virtual [ 'ext ] pinstr_features =
      *)
 
     method add_pinstr pi =
-      if pi # encoding <> self # dtd # encoding then
+      if pi # encoding <> self # encoding then
 	failwith "Pxp_document.pinstr_features # add_pinstr: Inconsistent encodings";
       let name = pi # target in
       let old_list =
@@ -1436,6 +1444,52 @@ let att_assoc vr n l =
 ;;
 
 
+let set_att ?(force=false) vr l n v =
+  (* Does not work with Atts_with_nodes *)
+  match l with
+      No_atts -> 
+	Atts ( [| |], StringMap.add n v StringMap.empty )
+    | Atts_with_nodes(_,_) -> assert false
+    | Atts(a,m) ->
+	try
+	  if a = [| |] then raise Not_found;
+	  let k = Str_hashtbl.find vr.att_lookup n in
+	  a.(k) <- v;
+	  l
+	with
+	    Not_found ->
+	      if not force then
+		( if not(StringMap.mem n m) then
+		    failwith "Pxp_document # set_attribute: no such attribute";
+		);
+	      Atts(a, StringMap.add n v m)
+	  
+;;
+
+
+let reset_att vr l n =
+  (* Does not work with Atts_with_nodes *)
+  match l with
+      No_atts -> 
+	failwith "Pxp_document # reset_attribute: no such attribute";
+    | Atts_with_nodes(_,_) -> assert false
+    | Atts(a,m) ->
+	try
+	  if a = [| |] then raise Not_found;
+	  let k = Str_hashtbl.find vr.att_lookup n in
+	  let (_,v) = vr.init_att_vals.(k) in
+	  a.(k) <- v;
+	  l
+	with
+	    Not_found ->
+	      ( if not(StringMap.mem n m) then
+		  failwith "Pxp_document # reset_attribute: no such attribute";
+	      );
+	      Atts(a, StringMap.remove n m)
+;;
+
+
+
 let stringmap_to_list f m =
   let l = ref [] in
   StringMap.iter
@@ -1942,6 +1996,12 @@ class [ 'ext ] element_impl an_ext : ['ext] element_node =
 
       method set_attributes atts =
 	attributes <- attlist_of_list atts;
+
+      method set_attribute ?force n v =
+	attributes <- set_att  ?force vr (attlist_without_nodes attributes) n v
+
+      method reset_attribute n =
+        attributes <- reset_att vr (attlist_without_nodes attributes) n
 
       method private make_attribute_node element_name att_name value dtd =
 	(* to be overridden *)
@@ -3521,13 +3581,14 @@ let normalize tree =
 (* document                                                           *)
 (**********************************************************************)
 
-class ['ext] document the_warner =
+class ['ext] document the_warner enc =
   object (self)
     inherit ['ext] pinstr_features
 
     val mutable xml_version = "1.0"
     val mutable dtd = (None : dtd option)
     val mutable root = (None : 'ext node option)
+    val encoding = (enc : rep_encoding)
 
     val warner = (the_warner : collect_warnings)
 
@@ -3538,6 +3599,9 @@ class ['ext] document the_warner =
 
     method init_root r =
       let dtd_r = r # dtd in
+      if dtd_r # encoding <> encoding then
+	failwith "Pxp_document.document#init_root: encoding mismatch";
+
       match r # node_type with
 
 	(**************** CASE: We have a super root element ***************)
@@ -3572,7 +3636,7 @@ class ['ext] document the_warner =
 			(Validation_error ("The root element is `" ^
 					   real_root_element_name ^
 					   "' but is declared as `" ^
-					   declared_root_element_name))
+					   declared_root_element_name ^ "'"))
 		| None -> ()
 	    end;
 	    (* All is okay, so store dtd and root node: *)
@@ -3590,7 +3654,7 @@ class ['ext] document the_warner =
 			(Validation_error ("The root element is `" ^
 					   root_element_name ^
 					   "' but is declared as `" ^
-					   declared_root_element_name))
+					   declared_root_element_name ^ "'"))
 		| None ->
 		    (* This may happen if you initialize your DTD yourself.
 		     * The value 'None' means that the method 'set_root' was
@@ -3618,10 +3682,7 @@ class ['ext] document the_warner =
 	  None -> failwith "Pxp_document.document#dtd: Document has no DTD"
 	| Some d -> d
 
-    method encoding =
-      match dtd with
-	  None -> failwith "Pxp_document.document#encoding: Document has no DTD"
-	| Some d -> d # encoding
+    method encoding = encoding
 
     method root =
       match root with
@@ -3679,6 +3740,12 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.25  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.24  2001/06/27 23:37:29  gerd
  * 	Big change: The class structure has been revised. There are now
  * much more classes, many of them are virtual and implement only one

@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.5 2001/06/27 23:33:53 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.6 2001/06/28 22:42:07 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -508,7 +508,7 @@ let document_from_cmd_sequence f config spec =
   if root_type <> "" then dtd # set_root root_type;
   dtd # set_id id;
   dtd # set_standalone_declaration sa;
-  let doc = new Pxp_document.document config.Pxp_yacc.warner in
+  let doc = new Pxp_document.document config.Pxp_yacc.warner rep_enc in
   doc # init_xml_version xml_version;
   let cmd = ref (f()) in
   while !cmd <> Root do
@@ -545,6 +545,12 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.6  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.5  2001/06/27 23:33:53  gerd
  * 	Type output_stream is now a polymorphic variant
  *

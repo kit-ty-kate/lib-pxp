@@ -1,4 +1,4 @@
-(* $Id: pxp_lexer_types.ml,v 1.4 2000/10/01 19:47:53 gerd Exp $
+(* $Id: pxp_lexer_types.ml,v 1.5 2001/06/28 22:42:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -31,9 +31,9 @@ type entity_id = < >
 type token = 
   | Begin_entity             (* Beginning of entity *)
   | End_entity               (* End of entity *)
-  | Comment_begin            (* <!-- *)
+  | Comment_begin of entity_id (* <!-- *)
   | Comment_material of string (* within a comment *)
-  | Comment_end              (* --> *)
+  | Comment_end of entity_id   (* --> *)
   | Ignore                   (* ignored whitespace *)
   | IgnoreLineEnd            (* ignored whitespace (one newline character) *)
   | Eq                       (* = *)
@@ -96,8 +96,8 @@ let string_of_tok tok =
   | End_entity -> "End_entity"
   | Doctype _ -> "Doctype"
   | Doctype_rangle _ -> "Doctype_rangle"
-  | Comment_begin -> "Comment_begin"
-  | Comment_end -> "Comment_end"
+  | Comment_begin _ -> "Comment_begin"
+  | Comment_end _ -> "Comment_end"
   | Comment_material _ -> "Comment_material"
   | Rangle -> "Rangle"
   | Rangle_empty -> "Rangle_empty"
@@ -210,6 +210,12 @@ let sub_lexeme lexbuf k l =
  * History:
  * 
  * $Log: pxp_lexer_types.ml,v $
+ * Revision 1.5  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.4  2000/10/01 19:47:53  gerd
  * 	New functions: sub_lexeme, fast_lexing_from_string,
  * reuse_lexing_from_string.

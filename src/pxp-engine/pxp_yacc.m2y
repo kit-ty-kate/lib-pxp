@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.28 2001/06/09 22:32:24 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.29 2001/06/28 22:42:07 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -224,7 +224,7 @@ let stack_pop st =
 (**********************************************************************)
 
 class ['ext] parser_object
-  init_doc init_dtd init_extend_dtd init_config init_resolver init_spec 
+  (init_doc:'ext document) init_dtd init_extend_dtd init_config init_resolver init_spec 
   init_process_xmldecl transform_dtd id_index
   =
   object (self)
@@ -571,8 +571,8 @@ class ['ext] parser_object
 
 %token Begin_entity
 %token End_entity
-%token Comment_begin
-%token Comment_end
+%token <> Comment_begin
+%token <> Comment_end
 %token Ignore
 %token Eq
 %token Rangle
@@ -832,7 +832,7 @@ doctypedecl_material(doctype_entid):
 	    let r' = resolver # clone in
 	    let pobj =
 	      new parser_object
-		(new document config.warner)
+		(new document config.warner config.encoding)
 		dtd
 		extend_dtd
 		config
@@ -973,11 +973,14 @@ declaration():
     }}
 | Ignore
     {{ () }}
-| Comment_begin Comment_material* ce:Comment_end
-    {{ () }}
+| begin_entid:Comment_begin Comment_material* end_entid:Comment_end
+    {{ 
+       if begin_entid != end_entid then
+	 raise(Validation_error("The first and the last token of comments must be in the same entity"));
+    }}
   ? {{ match !yy_position with
-	   "ce" -> raise(WF_error("`-->' expected"))
-	 | _    -> raise(WF_error("Bad comment"))
+	   "end_entid" -> raise(WF_error("`-->' expected"))
+	 | _           -> raise(WF_error("Bad comment"))
     }}
 | Begin_entity
   $ {{ (* Set 'p_internal_subset' to 'false' until the matching 'end_entity'
@@ -2105,7 +2108,7 @@ pi():
 comment():
   /* Parses <!-- ... -->
    */
-  Comment_begin
+  begin_entid:Comment_begin
   $ {{ 
       let position =
 	if config.enable_comment_nodes && config.store_element_positions then
@@ -2115,8 +2118,10 @@ comment():
       in
     }}
   mat: Comment_material*
-  ce: Comment_end
+  end_entid: Comment_end
     {{
+      if begin_entid != end_entid then
+	raise(Validation_error("The first and the last token of comments must be in the same entity"));
       if config.enable_comment_nodes then begin
 	self # save_data;        (* Save outstanding data material first *)
 	let comment_text = String.concat "" mat in
@@ -2126,8 +2131,8 @@ comment():
       end
     }}
   ? {{ match !yy_position with
-	 | "ce"  -> raise(WF_error("`-->' expected"))
-	 | _     -> raise(WF_error("Bad comment"))
+	 | "end_entid"  -> raise(WF_error("`-->' expected"))
+	 | _            -> raise(WF_error("Bad comment"))
     }}
 
 
@@ -2347,7 +2352,7 @@ let parse_dtd_entity cfg src =
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
-  let doc = new document cfg.warner in
+  let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser 
       ~configuration:cfg 
@@ -2375,7 +2380,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
   (* Parse an element given as separate entity *)
   dtd # validate;            (* ensure that the DTD is valid *)
   if cfg.accept_only_deterministic_models then dtd # only_deterministic_models;
-  let doc = new document cfg.warner in
+  let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser
       ~configuration:cfg 
@@ -2413,7 +2418,7 @@ let parse_wfcontent_entity cfg src spec =
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
-  let doc = new document cfg.warner in
+  let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser
       ~configuration:cfg 
@@ -2461,7 +2466,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
-  let doc = new document cfg.warner in
+  let doc = new document cfg.warner cfg.encoding in
   let pobj =
     call_parser 
       ~configuration:cfg 
@@ -2568,6 +2573,12 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.29  2001/06/28 22:42:07  gerd
+ * 	Fixed minor problems:
+ * 	- Comments must be contained in one entity
+ * 	- Pxp_document.document is now initialized with encoding.
+ *           the DTD encoding may be initialized too late.
+ *
  * Revision 1.28  2001/06/09 22:32:24  gerd
  * 	Fixed the way set_namespace_info is called.
  *
