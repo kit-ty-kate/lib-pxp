@@ -330,3 +330,97 @@ XSLT matching are more difficult to implement efficiently.
 Alain
 
 
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: PXP and XPath/XSLT data model
+Date: Mon, 31 Jul 2000 23:12:48 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10007281253120.10872-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10007281253120.10872-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00073123560802.06276@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Fri, 28 Jul 2000, you wrote:
+>Hello,
+>
+>> I think we should distinguish between two aspects: (1) The actual way the XML
+>> tree is stored, and (2) The view of an application on this tree. These aspects
+>> may but need not be identical.
+>> 
+>> Regarding (1), the main requirement is that there should be no loss of
+>> information. In PXP, processing instructions and comments are reordered or
+>> thrown away; this should be changed such that it is possible to include them
+>> into the XML tree.
+>
+>no loss of information: it depends on what you call information. For
+>instance, the parser expands entities, throws out collapsable spaces,
+>make CDATA sections indistinguishable; the same for attribute delimiters
+>(' or "). It would make sense to ignore comments too.
+>
+>A parser which induces absolutely no loss of information (its output
+>allows to re-build exactly the initial XML document) would be too heavy.
+>So you have to make choice and decides which information to keep.
+
+You are right, "no loss" is too much. But I think there is a rough understanding
+among the XML users which parts of a document are relevant, and which are
+only artistic expression. Of course, there are differences in some points (you
+mentioned them), and a parser (designer) must weigh which features fit into
+the concept and which not. However, some features can be implemented at no
+extra costs, and these should be available.
+
+So the principle is: maximum of information for a given parser concept
+while limiting the extra load coming from more exotic features.
+
+I would describe the concept of PXP as follows: PXP is a validating parser and
+tries to represent the structure of the document as an instance of a DTD. So it
+is clear that CDATA and conditional sections are not represented because their
+structures are not described in the DTD. Comments are ignored because if they
+contained relevant data, one could make them elements. The structure of
+entities is not described in the DTD, too, so their structure can be dropped
+(only the correspondence of entities to real files or file fragments is
+described in the DTD).
+
+This is the starting point; it should be weakened where it does not cost too
+much.
+
+>> >let nodes = XPath.eval context <:xpath<para[5][@type="warning"]>> in
+>> >...
+>> >
+>> 
+>> The notation looks interesting. Do you think it will be fast enough for real
+>> programming? 
+>
+>Oh yes. The quotation expander could actually compile the XPath expression
+>to OCaml code. I didn't study the XPath semantic very carefully, but I
+>think that in most cases, it is possible to detect statically when an
+>expression returns at most one node, in order to manipulate nodes instead
+>of node sets. 
+>
+>The expression could *very* naively compile to something like :  
+>
+>let nl = [context.current_node] in
+>let nl = List.concat (List.map (fun n -> List.filter (fun n -> n # name = 
+>"para") n # element_children) nl) in
+>let nl = [List.nth nl 5] in
+>let nl = List.filter (fun n -> ...
+
+The really difficult aspect is the representation of node sets. Sometimes a
+list is fine, sometimes a balanced tree. The sets can be explicit at any point
+of computation, or only implicit (i.e. it is iterated over a subtree).
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
