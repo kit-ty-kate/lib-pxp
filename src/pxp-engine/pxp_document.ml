@@ -2885,13 +2885,19 @@ class [ 'ext ] namespace_element_impl an_ext =
 	    let m = self#namespace_manager in
 	    let s = self#namespace_scope in
 	    let l1 = s#effective_declaration in  (* pairs (dsp_prefix, uri) *)
+	    let pos = ref 0 in
 	    let l2 = 
 	      List.map
 		(fun (dsp_prefix, uri) ->
 		   let norm_prefix = 
 		     try m#get_normprefix uri 
 		     with Not_found -> "<unknown>" (* CHECK *) in
-		   new namespace_impl dsp_prefix norm_prefix dtd
+		   let n = 
+		     new namespace_impl dsp_prefix norm_prefix dtd in
+		   n # internal_adopt
+		         (Some (self : 'ext #node :> 'ext node)) !pos;
+		   incr pos;
+		   n
 		)
 		l1 in
 	    nsnodes <- Some l2;
