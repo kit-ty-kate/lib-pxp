@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.7 2002/03/13 22:45:45 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.8 2002/08/03 17:56:27 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -53,10 +53,47 @@ rule scan_within_tag = parse
       { raise Netconversion.Malformed_code }
 
 
+(* The following rule is used instead of scan_within_tag if event-based
+ * attribute parsing is enabled. The difference is that more tokens are
+ * generated for attribute values.
+ *)
+
+and scan_tag_eb = parse
+    '\013' '\010'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | '\013'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | '\010'
+      { tok_IgnoreLineEnd__Tag_eb }
+  | [' ' '\t']+
+      { tok_Ignore__Tag_eb }
+  | name
+      { Name (Lexing.lexeme lexbuf ), Tag_eb }
+  | '='
+      { tok_Eq__Tag_eb }
+  | '"' 
+      { tok_DQuote__Tag_eb_att_true }
+  | "'"
+      { tok_SQuote__Tag_eb_att_false }
+  | '>'
+      { tok_Rangle__Content }
+  | "/>"
+      { tok_Rangle_empty__Content }
+  | eof
+      { tok_Eof__Tag_eb }
+  | character
+      { raise (WF_error ("Illegal inside tags")) }
+  | _
+      { raise Netconversion.Malformed_code }
+
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.8  2002/08/03 17:56:27  gerd
+ * 	Support for event-based parsing of attribute values.
+ *
  * Revision 1.7  2002/03/13 22:45:45  gerd
  * 	Improved Pxp_lexing.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex_link.ml,v 1.3 2001/06/14 16:40:14 gerd Exp $
+(* $Id: pxp_wlex_link.ml,v 1.4 2002/08/03 17:56:32 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -212,6 +212,8 @@ let lexer_set_iso88591 =
     scan_name_string     = Pxp_wlex.scan_name_string engine_iso88591;
     scan_only_xml_decl   = Pxp_wlex.scan_only_xml_decl engine_iso88591;
     scan_for_crlf        = Pxp_wlex.scan_for_crlf engine_iso88591;
+    scan_tag_eb          = Pxp_wlex.scan_tag_eb engine_iso88591;
+    scan_tag_eb_att      = Pxp_wlex.scan_tag_eb_att engine_iso88591;
   }
 ;;
 
@@ -243,6 +245,8 @@ let lexer_set_utf8 =
     scan_name_string     = Pxp_wlex.scan_name_string engine_utf8;
     scan_only_xml_decl   = Pxp_wlex.scan_only_xml_decl engine_utf8;
     scan_for_crlf        = Pxp_wlex.scan_for_crlf engine_utf8;
+    scan_tag_eb          = Pxp_wlex.scan_tag_eb engine_utf8;
+    scan_tag_eb_att      = Pxp_wlex.scan_tag_eb_att engine_utf8;
   }
 ;;
 
@@ -255,6 +259,9 @@ Pxp_lexers.init lexer_set_utf8
  * History:
  * 
  * $Log: pxp_wlex_link.ml,v $
+ * Revision 1.4  2002/08/03 17:56:32  gerd
+ * 	Support for event-based parsing of attribute values.
+ *
  * Revision 1.3  2001/06/14 16:40:14  gerd
  * 	Updated
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_link_iso88591.ml,v 1.1 2001/06/14 15:47:39 gerd Exp $
+(* $Id: pxp_lex_link_iso88591.ml,v 1.2 2002/08/03 17:56:29 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -27,6 +27,8 @@ let lexer_set_iso88591 =
     scan_name_string     = Pxp_lex_name_string_iso88591.scan_name_string;
     scan_only_xml_decl   = Pxp_lex_misc_iso88591.scan_only_xml_decl;
     scan_for_crlf        = Pxp_lex_misc_iso88591.scan_for_crlf;
+    scan_tag_eb          = Pxp_lex_within_tag_iso88591.scan_tag_eb;
+    scan_tag_eb_att      = Pxp_lex_content_string_iso88591.scan_tag_eb_att;
   }
 ;;
 
@@ -38,6 +40,9 @@ Pxp_lexers.init lexer_set_iso88591
  * History:
  * 
  * $Log: pxp_lex_link_iso88591.ml,v $
+ * Revision 1.2  2002/08/03 17:56:29  gerd
+ * 	Support for event-based parsing of attribute values.
+ *
  * Revision 1.1  2001/06/14 15:47:39  gerd
  * 	Initial revision.
  *

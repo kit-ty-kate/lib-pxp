@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_aux.ml,v 1.2 2002/07/14 23:06:01 gerd Exp $
+(* $Id: pxp_lex_aux.ml,v 1.3 2002/08/03 17:56:27 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -17,13 +17,16 @@
   let tok_Doctype__Document_type = Doctype dummy_entity, Document_type
   let tok_Ignore__Document       = Ignore, Document
   let tok_Ignore__Within_tag     = Ignore, Within_tag
+  let tok_Ignore__Tag_eb         = Ignore, Tag_eb
   let tok_IgnoreLineEnd__Within_tag = IgnoreLineEnd, Within_tag
+  let tok_IgnoreLineEnd__Tag_eb  = IgnoreLineEnd, Tag_eb
   let tok_Ignore__Document_type  = Ignore, Document_type
   let tok_Ignore__Declaration    = Ignore, Declaration
   let tok_Ignore__Ignored        = Ignore, Ignored_section
   let tok_Eof__Document          = Eof, Document
   let tok_Eof__Content           = Eof, Content
   let tok_Eof__Within_tag        = Eof, Within_tag
+  let tok_Eof__Tag_eb            = Eof, Tag_eb
   let tok_Eof__Document_type     = Eof, Document_type
   let tok_Eof__Declaration       = Eof, Declaration
   let tok_Eof__Ignored           = Eof, Ignored_section
@@ -36,6 +39,7 @@
   let tok_Rcurly__Content        = Rcurly, Content
   let tok_RRcurly__Content       = RRcurly, Content
   let tok_Eq__Within_tag         = Eq, Within_tag
+  let tok_Eq__Tag_eb             = Eq, Tag_eb
   let tok_Rangle__Content        = Rangle, Content
   let tok_Rangle_empty__Content  = Rangle_empty, Content
   let tok_Dtd_begin__Declaration = Dtd_begin dummy_entity, Declaration
@@ -71,6 +75,10 @@
                                            Declaration
   let tok_Decl_rangle__Declaration   = Decl_rangle dummy_entity, Declaration
   let tok_Dtd_end__Document_type     = Dtd_end dummy_entity, Document_type
+  let tok_DQuote__Tag_eb_att_true        = DQuote, (Tag_eb_att true)
+  let tok_DQuote__Tag_eb_att_false       = DQuote, (Tag_eb_att false)
+  let tok_SQuote__Tag_eb_att_true        = SQuote, (Tag_eb_att true)
+  let tok_SQuote__Tag_eb_att_false       = SQuote, (Tag_eb_att false)
 
   (* functions: *)
 
@@ -148,6 +156,9 @@
  * History:
  * 
  * $Log: pxp_lex_aux.ml,v $
+ * Revision 1.3  2002/08/03 17:56:27  gerd
+ * 	Support for event-based parsing of attribute values.
+ *
  * Revision 1.2  2002/07/14 23:06:01  gerd
  * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
  * contents context

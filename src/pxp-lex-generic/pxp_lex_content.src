@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.9 2002/07/14 23:06:01 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.10 2002/08/03 17:56:27 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -27,10 +27,10 @@ rule scan_content = parse
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
 	if Lexing.lexeme_char lexbuf 1 = '/' then
 	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
-	  Within_tag 
+	  Within_tag_entry
 	else
 	  Tag_beg (Pxp_lexing.sub_lexeme lexbuf 1 (l-1), dummy_entity), 
-	  Within_tag 
+	  Within_tag_entry
       }
   | "<![CDATA[" cdata_string "]]>"
       { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
@@ -94,6 +94,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.10  2002/08/03 17:56:27  gerd
+ * 	Support for event-based parsing of attribute values.
+ *
  * Revision 1.9  2002/07/14 23:06:01  gerd
  * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
  * contents context
