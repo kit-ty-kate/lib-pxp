@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.11 2000/10/01 19:49:51 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.12 2001/04/22 12:04:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -826,7 +826,21 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
        *)
       if resolver_is_open then
 	raise(Validation_error("Recursive reference to entity `" ^ v.name ^ "'"));
-      let lex = resolver # open_in ext_id in
+      let lex = 
+	try
+	  resolver # open_in ext_id 
+	with
+	    Pxp_reader.Not_competent ->
+	      raise(Error ("No input method available for this external entity: " ^ 
+			   self # full_name))
+	  | Pxp_reader.Not_resolvable Not_found ->
+	      raise(Error ("Unable to open the external entity: " ^ 
+			   self # full_name))
+	  | Pxp_reader.Not_resolvable e ->
+	      raise(Error ("Unable to open the external entity: " ^ 
+			   self # full_name ^ "; reason: " ^ 
+			   string_of_exn e))
+      in
       resolver_is_open <- true;
       v.lexbuf  <- lex;
       v.prolog  <- None;
@@ -1153,6 +1167,10 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.12  2001/04/22 12:04:55  gerd
+ * 	external_entity, method replacement_text: catches errors
+ * from pxp_reader and transforms them
+ *
  * Revision 1.11  2000/10/01 19:49:51  gerd
  * 	Numerous optimizations in the class "entity".
  *
