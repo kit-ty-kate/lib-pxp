@@ -51,6 +51,19 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
+      <li><p><em>1.1.92:</em> The whole lexing stuff has been
+restructured. There is a new tool, lexpp, that generates the lexers
+from only five files. Furthermore, much more 8 bit character sets
+are now supported as internal encodings. In previous versions of
+PXP, the internal representation of the XML trees was restricted
+to either UTF-8 or ISO-8859-1. Now, a number of additional
+encodings are supported, including the whole ISO-8859 series.
+</p>
+	<p>Bugfix: If the processing instruction &lt;?xml...?&gt;
+occurs in the middle of the XML document, version 1.1.91 will
+immediately stop parsing, and ignore the rest of the file. This
+is now fixed.</p></li>
+
       <li><p><em>1.1.91:</em> The curly braces can now even be used
 inside attributes, and escape from normal XML parsing.</p>
 
