@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.4 2000/05/09 00:03:22 gerd Exp $
+(* $Id: generator.ml,v 1.5 2000/05/14 20:41:58 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -189,10 +189,21 @@ let is_typed tree name =
 let label_of_symbol tree sym =
   match sym with
       U_symbol (tok, lab) -> 
-	if is_typed tree tok then lab else None
+	(* if is_typed tree tok then lab else None *)
+	lab
     | L_symbol (_, _, lab) -> lab
     | L_indirect (_, _, lab) -> lab
 ;;
+
+
+let is_untyped_U_symbol tree sym =
+  match sym with
+      U_symbol (tok, _) -> 
+	not(is_typed tree tok)
+    | L_symbol (_, _, _) -> false
+    | L_indirect (_, _, _) -> false
+;;
+
 
 
 let rec set_of_list l =
@@ -413,18 +424,31 @@ let process_branch b file_name tree branch =
 		end
 	    | Some l ->
 		(* CASE: optional symbol with label *)
-		Buffer.add_string b "let ";
-		Buffer.add_string b l;
-		Buffer.add_string b " = try let yy_tok = Some(";
-		process_symbol pat.pat_symbol previous_was_token true;
-		Buffer.add_string b l;
-		Buffer.add_string b ") in\n";
-
-		if (match pat.pat_symbol with
-			U_symbol(_,_) -> true | _ -> false) then
+		if is_untyped_U_symbol tree pat.pat_symbol then begin
+		  (* SUBCASE: The label becomes a boolean variable *)
+		  Buffer.add_string b "let ";
+		  Buffer.add_string b l;
+		  Buffer.add_string b " = try (";
+		  process_symbol pat.pat_symbol previous_was_token true;
+		  Buffer.add_string b ");\n";
 		  Buffer.add_string b "ignore(yy_get_next());\n";
-
-		Buffer.add_string b "yy_tok with Not_found -> None in\n";
+		  Buffer.add_string b "true with Not_found -> false in\n";
+		end
+		else begin
+		  (* SUBCASE: the symbol has a value *)
+		  Buffer.add_string b "let ";
+		  Buffer.add_string b l;
+		  Buffer.add_string b " = try let yy_tok = Some(";
+		  process_symbol pat.pat_symbol previous_was_token true;
+		  Buffer.add_string b l;
+		  Buffer.add_string b ") in\n";
+		  
+		  if (match pat.pat_symbol with
+			  U_symbol(_,_) -> true | _ -> false) then
+		    Buffer.add_string b "ignore(yy_get_next());\n";
+		  
+		  Buffer.add_string b "yy_tok with Not_found -> None in\n";
+		end
 	  end
       | Repetition ->
 	  begin match label_of_symbol tree pat.pat_symbol with
@@ -471,23 +495,44 @@ let process_branch b file_name tree branch =
 		end
 	    | Some l ->
 		(* CASE: repeated symbol with label *)
-		if previous_was_token then
-		  Buffer.add_string b "ignore(yy_get_next());\n";
-		Buffer.add_string b "let yy_list = ref [] in\n";
-		Buffer.add_string b "( try while true do \n";
-		process_symbol pat.pat_symbol false true;
-		Buffer.add_string b "yy_list := ";
-		Buffer.add_string b l;
-		Buffer.add_string b " :: !yy_list;\n";
-
-		if (match pat.pat_symbol with
-			U_symbol(_,_) -> true | _ -> false) then
-		  Buffer.add_string b "ignore(yy_get_next());\n";
-
-		Buffer.add_string b "done with Not_found -> ());\n";
-		Buffer.add_string b "let ";
-		Buffer.add_string b l;
-		Buffer.add_string b " = List.rev !yy_list in\n";
+		if is_untyped_U_symbol tree pat.pat_symbol then begin
+		  (* SUBCASE: The label becomes an integer variable *)
+		  if previous_was_token then
+		    Buffer.add_string b "ignore(yy_get_next());\n";
+		  Buffer.add_string b "let yy_counter = ref 0 in\n";
+		  Buffer.add_string b "( try while true do \n";
+		  process_symbol pat.pat_symbol false true;
+		  Buffer.add_string b "incr yy_counter;\n";
+		  
+		  if (match pat.pat_symbol with
+			  U_symbol(_,_) -> true | _ -> false) then
+		    Buffer.add_string b "ignore(yy_get_next());\n";
+		  
+		  Buffer.add_string b "done with Not_found -> ());\n";
+		  Buffer.add_string b "let ";
+		  Buffer.add_string b l;
+		  Buffer.add_string b " = !yy_counter in\n";
+		end
+		else begin
+		  (* SUBCASE: the symbol has a value *)
+		  if previous_was_token then
+		    Buffer.add_string b "ignore(yy_get_next());\n";
+		  Buffer.add_string b "let yy_list = ref [] in\n";
+		  Buffer.add_string b "( try while true do \n";
+		  process_symbol pat.pat_symbol false true;
+		  Buffer.add_string b "yy_list := ";
+		  Buffer.add_string b l;
+		  Buffer.add_string b " :: !yy_list;\n";
+		  
+		  if (match pat.pat_symbol with
+			  U_symbol(_,_) -> true | _ -> false) then
+		    Buffer.add_string b "ignore(yy_get_next());\n";
+		  
+		  Buffer.add_string b "done with Not_found -> ());\n";
+		  Buffer.add_string b "let ";
+		  Buffer.add_string b l;
+		  Buffer.add_string b " = List.rev !yy_list in\n";
+		end
 	  end
     end;
 
@@ -838,6 +883,10 @@ exit 0;;
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.5  2000/05/14 20:41:58  gerd
+ * 	x: Token?   means: if Token is detected x=true else x=false.
+ * 	x: Token*   means: x becomes the number of ocurrences of Token.
+ *
  * Revision 1.4  2000/05/09 00:03:22  gerd
  * 	Added [ ml_name ] symbols, where ml_name is an arbitrary
  * OCaml identifier.
