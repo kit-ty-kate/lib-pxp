@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.37 2002/07/14 23:05:01 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.38 2002/07/14 23:46:29 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1192,22 +1192,20 @@ doctypedecl_material(doctype_entid):
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
+	    let mgr = new entity_manager en dtd in
 	    en # open_entity true Declaration;
-	    context.manager # push_entity en;
 	    begin try
-	      let context = make_context context.manager in
-	      (* CHECK: do we need a new context here? *)
+	      let context = make_context mgr in
 	      pobj # parse context Entry_declarations;
-	      if en # is_open then ignore(en # close_entity);
-	      context.manager # pop_entity();
+	      mgr # pop_entity_until en;
 	    with
 		error ->
 		  (* When the error happens, the current entity can be
 		   * different than [en]. So the entity stack is muddled up,
 		   * and we need to pop entites until we find [en] again.
 		   *)
-		  let pos = context.manager # position_string in
-		  context.manager # pop_entity_until en;
+		  let pos = mgr # position_string in
+		  mgr # pop_entity_until en;
 		  raise (At(pos, error))
 	    end;
       end;
@@ -2938,6 +2936,10 @@ let process_entity
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.38  2002/07/14 23:46:29  gerd
+ * 	Fix: Reverting to the old method, and creating a new
+ * entity_manager to read the external DTD subset.
+ *
  * Revision 1.37  2002/07/14 23:05:01  gerd
  * 	Event-based interface.
  *
