@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.4 2000/07/14 21:25:27 gerd Exp $
+(* $Id: pxp_types.mli,v 1.5 2000/07/16 16:34:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -109,6 +109,8 @@ type encoding =
 type rep_encoding =
   (* The subset of 'encoding' that may be used for internal representation
    * of strings.
+   * Note: The following encodings are ASCII-compatible! This is an important
+   * property used throghout the whole PXP code.
    *)
   [ `Enc_utf8       (* UTF-8 *)
   | `Enc_iso88591   (* ISO-8859-1 *)
@@ -171,6 +173,9 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.5  2000/07/16 16:34:21  gerd
+ * 	Updated comments.
+ *
  * Revision 1.4  2000/07/14 21:25:27  gerd
  * 	Simplified the type 'collect_warnings'.
  *
