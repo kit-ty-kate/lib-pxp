@@ -40,8 +40,8 @@ for PXP; if you are looking for the stable distribution, please go
 <a href="&url.pxp-download;">&release.pxp;</a></p>
       </li>
       <li><p><em>Current development version:</em> 
-<!--<a href="&url.pxp-download-dev;">&release.pxp-dev;</a>-->
-There is currently no development version!
+<a href="&url.pxp-download-dev;">&release.pxp-dev;</a>
+<!--There is currently no development version! -->
 </p>
       </li>
     </ul>
@@ -50,6 +50,38 @@ There is currently no development version!
   <sect1>
     <title>Version History</title>
     <ul>
+
+      <li><p><em>1.1.90:</em> This version introduces a new event-based
+interface in Pxp_yacc. For start tags, end tags, data strings, and several
+other things that are found in the XML source so-called events are generated,
+and a user function is called for every event. See the directory
+examples/eventparser for examples.</p>
+	<p>Another innovation is support for curly braces as escape characters.
+Inside elements, the left curly brace escapes from XML parsing and starts
+a foreign parser until the matching right curly brace is found:
+
+<code>
+<![CDATA[<element> ... { foreign syntax } ... </element>]]>
+</code>
+
+The curly braces are borrowed from the XQuery draft standard.
+They cannot yet be used inside attribute values. Curly braces are mostly
+useful in conjunction with event-based parsing, because it is not yet
+possible to include the "value" of the curly brace expression into
+XML trees.</p>
+
+	<p>It is even possible to call the XML parser from the foreign
+parser as subparser. However, there not yet enough entry points for the
+event-based parser (e.g. you cannot parse just the following processing
+instruction, only misc* element misc* or whole documents are possible).
+</p>
+
+	<p>A long-standing bug has been found in the entity layer.
+When an external entity A opens an exteral entity B, and B opens C,
+relative paths of C have been interpreted wrong.</p>
+      </li>
+
+<!--
       <li><p><em>1.1:</em> This is the new stable release!</p></li>
       <li><p><em>1.0.99:</em></p>
 	<p>Again a big change. First of all, the directory hierarchy has
@@ -180,6 +212,7 @@ very quickly.</p>
 
 	<p>Several bug fixes (but no serious bugs have been found yet).</p>
       </li>
+-->
     </ul>
   </sect1>
 </readme>
