@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.2 2000/06/14 22:19:06 gerd Exp $
+(* $Id: pxp_yacc.m2y,v 1.3 2000/07/04 22:15:18 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -33,17 +33,7 @@ type config =
 
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | Channel of in_channel
-  | File of string
-  | Latin1 of string
   | ExtID of (ext_id * Pxp_reader.resolver)
-
-
-type 'ext domspec =
-    { map : (node_type, 'ext node) Hashtbl.t;
-      default_element : 'ext node;
-    }
-    (* specifies which node to use as exemplar for which node type *)
 
 
 type start_symbol =
@@ -78,6 +68,115 @@ let make_context entity_manager =
 ;;
 
 
+let from_channel ?system_encoding ?id:init_id ?fixenc ch =
+
+  (* Reading from a channel works by modifying the algorithm of
+   * resolve_as_file.
+   *)
+
+  let url_syntax =      (* A syntax suitable for "file" URLs *)
+    { Neturl.null_url_syntax with
+	Neturl.url_enable_scheme = Neturl.Url_part_allowed;
+	Neturl.url_enable_host   = Neturl.Url_part_allowed;
+	Neturl.url_enable_path   = Neturl.Url_part_required;
+	Neturl.url_accepts_8bits = true;
+    } 
+  in
+
+  let an_url =
+    Neturl.make_url
+      ~scheme: "file"
+      ~host:   ""
+      ~path:   [ "" ]
+      url_syntax
+  in
+
+  let init_channel_done = ref false in
+    (* Whether the first access to this source has already happened. *)
+
+  let url_of_id xid =
+    if !init_channel_done then begin
+      (* Use the normal way of determining the URL of the ID: *)
+      raise Pxp_reader.Not_competent
+    end
+    else begin
+      match init_id with
+	  None -> 
+	    an_url
+	      (* If the channel is not associated with any URL: Simply pass a 
+	       * dummy value back. It will not be interpreted.
+	       *)
+	| Some the_init_id ->
+	    assert (the_init_id = xid);
+	    raise Pxp_reader.Not_competent
+	      (* If the channel is associated with a URL, the corresponding
+	       * ID must be passed when the first invocation happens.
+	       *)
+    end
+  in
+
+  let channel_of_url url =
+    if !init_channel_done then
+      raise Pxp_reader.Not_competent
+    else begin
+      init_channel_done := true;
+      ch, fixenc
+    end
+  in
+
+  let r =
+    new Pxp_reader.resolve_as_file 
+      ?system_encoding:system_encoding
+      ~url_of_id:url_of_id
+      ~channel_of_url:channel_of_url
+      ()
+  in
+
+  let init_xid =
+    match init_id with
+	None   -> Anonymous
+      | Some id -> 
+	  (* Note: 'id' may be illegal (malformed); in this case, the first
+	   * invocation of url_of_id will raise Not_competent, and the 'open_in'
+	   * method will fail.
+	   *)
+	  id
+  in
+
+  ExtID(init_xid, r)
+;;
+
+
+let from_file ?system_encoding utf8_filename =
+  
+  let r =
+    new Pxp_reader.resolve_as_file 
+      ?system_encoding:system_encoding
+      ()
+  in
+
+  let utf8_abs_filename =
+    if utf8_filename <> "" && utf8_filename.[0] = '/' then
+      utf8_filename
+    else
+      Sys.getcwd() ^ "/" ^ utf8_filename
+  in
+
+  let xid =
+    System ("file://localhost" ^ utf8_abs_filename) in
+    
+
+  ExtID(xid, r)
+;;
+
+
+let from_string ?fixenc s =
+  let r =
+    new Pxp_reader.resolve_read_this_string ?fixenc:fixenc s in
+  ExtID(Anonymous, r)
+;;
+
+
   (* This parser works with side effects. This is not optimal but currently
    * the simplest approach. In order to have better control of the side
    * effects, the parser is artifically turned into an object. This is done
@@ -90,7 +189,7 @@ let make_context entity_manager =
   (**********************************************************************)
 
 class ['ext] parser_object
-  init_doc init_dtd init_extend_dtd init_config init_resolver init_dom 
+  init_doc init_dtd init_extend_dtd init_config init_resolver init_spec 
   init_process_xmldecl
   =
   object (self)
@@ -169,18 +268,11 @@ class ['ext] parser_object
 
     method root = root
 
-    val dom = init_dom
+    val spec = init_spec
         (* A hashtable that contains exemplar objects for the various element
 	 * types. If an element is parsed, the exemplar is looked up and
 	 * "cloned" (by the "create" method)
 	 *)
-
-    val data_exemplar =
-      try
-	Hashtbl.find init_dom.map T_data
-      with
-	  Not_found ->
-	    failwith "Pxp_yacc.parser_object: The initial DOM map does not specify T_data nodes"
 
     method only_whitespace data =
 	(* Checks that the string "data" contains only whitespace. On failure,
@@ -209,22 +301,17 @@ class ['ext] parser_object
 	 *)
       let vr =
 	if config.virtual_root then begin
-	  (* Get the 'exemplar', as usual: *)
-          let exemplar =
-	    try Hashtbl.find dom.map (T_element "-pi")
-	    with Not_found -> dom.default_element in
 	  (* A trick: while the 'vr' is being created, the DTD is
 	   * changed such that this is allowed.
 	   *)
 	  let aa = dtd # arbitrary_allowed in        (* save old state    *)
 	  dtd # allow_arbitrary;
-	  let vroot =
-	    exemplar # create_element dtd (T_element "-vr") [] in
+	  let vroot = create_element_node spec dtd "-vr" [] in
 	  if not aa then dtd # disallow_arbitrary;   (* restore old state *)
 	  vroot
 	end
 	else
-	  dom.default_element
+	  create_element_node spec dtd "-no-vr" []
       in
       (* Move it to the stack: *)
       Stack.push (vr, (self :> entity_id)) elstack;
@@ -550,7 +637,7 @@ doctypedecl_material(doctype_entid):
 		extend_dtd
 		config
 		r'
-		dom
+		spec
 		process_xmldecl
 	    in
 	    let en = new external_entity r' dtd "[dtd]"
@@ -1415,11 +1502,8 @@ start_tag():
 		
       let name, tag_beg_entid = tag in
       let attlist' = List.map (fun (nv,_) -> nv) attlist in
-      let exemplar =
-	try Hashtbl.find dom.map (T_element name)
-	with Not_found -> dom.default_element in
       let d =
-	exemplar # create_element dtd (T_element name) attlist' in
+	create_element_node spec dtd name attlist' in
 
       if n_tags_open = 0 then begin
 	if root = None then begin
@@ -1527,13 +1611,13 @@ char_data():
 	(* only white space is allowed *)
 	self # only_whitespace data
       else
-	self # current # add_node (data_exemplar # create_data dtd data)
+	self # current # add_node (create_data_node spec dtd data)
     }}
 | data:Cdata
     {{ 
       if n_tags_open = 0 then
 	raise (WF_error("CDATA section not allowed here"));
-      self # current # add_node (data_exemplar # create_data dtd data)
+      self # current # add_node (create_data_node spec dtd data)
     }}
 
 cref():
@@ -1544,9 +1628,10 @@ cref():
 	(* No surrounding element: character references are not allowed *)
 	raise(WF_error("Character reference not allowed here"));
       self # current # add_node
-	                 (data_exemplar # create_data
-	                 dtd
-	                 (character config.encoding config.warner code))
+	                 (create_data_node
+			    spec
+	                    dtd
+	                    (character config.encoding config.warner code))
     }}
 
 pi():
@@ -1565,17 +1650,12 @@ pi():
 	 * they are wrapped into artificial "-pi" objects.
 	 *)
 	if config.processing_instructions_inline then begin
-	  (* Get the 'exemplar', as usual: *)
-	  let exemplar =
-	    try Hashtbl.find dom.map (T_element "-pi")
-	    with Not_found -> dom.default_element in
 	  (* A trick: while the 'wrapper' is being created, the DTD is
 	   * changed such that this is allowed.
 	   *)
 	  let aa = dtd # arbitrary_allowed in        (* save old state    *)
 	  dtd # allow_arbitrary;
-	  let wrapper =
-	    exemplar # create_element dtd (T_element "-pi") [] in
+	  let wrapper = create_element_node spec dtd "-pi" [] in
 	  if not aa then dtd # disallow_arbitrary;   (* restore old state *)
 	  (* Put the PI into the 'wrapper' *)
 	  wrapper # add_pinstr 
@@ -1638,13 +1718,15 @@ class default_ext =
 
 let default_extension = new default_ext;;
 
-let default_dom =
-  let d = Hashtbl.create 2 in
-  Hashtbl.add d T_data (new data_impl default_extension "");
-  { map = d;
-    default_element = new element_impl default_extension
-  }
+let default_spec =
+  make_spec_from_mapping
+    ~data_exemplar:            (new data_impl default_extension)
+    ~default_element_exemplar: (new element_impl default_extension)
+    ~element_mapping:          (Hashtbl.create 1)
 ;;
+
+
+
 
 let parse_dtd_entity cfg src =
   (* Parse a DTD given as separate entity. *)
@@ -1653,24 +1735,11 @@ let parse_dtd_entity cfg src =
   let e = cfg.errors_with_line_numbers in
   let r, en =
     match src with
-	Entity(m,r') -> r', m dtd
-      | Channel ch -> let r = new resolve_read_channel ch w cfg.encoding in
-	              r,
-		      new external_entity r dtd "[toplevel dtd]" w (System "")
-			                  false e cfg.encoding
-      | File fname -> let r = new resolve_as_file w cfg.encoding in
-	              r,
-		      new external_entity r dtd "[toplevel dtd]" w (System fname)
-                                          false e cfg.encoding
-      | Latin1 str -> let r = new resolve_read_string str cfg.encoding in
-	              r,
-		      new external_entity r dtd "[toplevel dtd]" w (System "")
-                                          false e cfg.encoding
-      | ExtID(xid,r') -> 
-  	              let r = r' # clone in
-		      r, 
-                      new external_entity r dtd "[toplevel dtd]" w xid false e
-                                          cfg.encoding
+	Entity(m,r')  -> r', m dtd
+      | ExtID(xid,r') -> r', 
+                         new external_entity 
+			   r' dtd "[toplevel dtd]" w xid false e
+                           cfg.encoding
   in
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
@@ -1680,7 +1749,7 @@ let parse_dtd_entity cfg src =
       true
       cfg
       r
-      default_dom
+      default_spec
       false
   in
   let mgr = new entity_manager en in
@@ -1699,31 +1768,18 @@ let parse_dtd_entity cfg src =
 ;;
 
 
-let parse_content_entity cfg src a_dtd dom_exempl =
+let parse_content_entity cfg src a_dtd spec =
   (* Parse an element given as separate entity *)
   a_dtd # validate;            (* ensure that the DTD is valid *)
   let w = cfg.warner in
   let e = cfg.errors_with_line_numbers in
   let r, en =
     match src with
-	Entity(m,r') -> r', m a_dtd
-      | Channel ch -> let r = new resolve_read_channel ch w cfg.encoding in
-	              r,
-		      new external_entity r a_dtd "[toplevel element]" w
-			                  (System "") false e cfg.encoding
-      | File fname -> let r = new resolve_as_file w cfg.encoding in
-	              r,
-		      new external_entity r a_dtd "[toplevel element]" w
-			                  (System fname) false e cfg.encoding
-      | Latin1 str -> let r = new resolve_read_string str cfg.encoding in
-	              r,
-		      new external_entity r a_dtd "[toplevel element]" w
-			                  (System "") false e cfg.encoding
-      | ExtID(xid,r') -> 
-  	              let r = r' # clone in
-		      r, 
-		      new external_entity r a_dtd "[toplevel element]" w xid
-                                          false e cfg.encoding
+	Entity(m,r')  -> r', m a_dtd
+      | ExtID(xid,r') -> r', 
+	                 new external_entity 
+			   r' a_dtd "[toplevel element]" w xid
+                           false e cfg.encoding
   in
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
@@ -1733,7 +1789,7 @@ let parse_content_entity cfg src a_dtd dom_exempl =
       true
       cfg 
       r
-      dom_exempl
+      spec
       false
   in
   let mgr = new entity_manager en in
@@ -1753,7 +1809,7 @@ let parse_content_entity cfg src a_dtd dom_exempl =
 ;;
 
 
-let iparse_document_entity cfg0 src dom_exempl p_wf =
+let iparse_document_entity cfg0 src spec p_wf =
   (* Parse an element given as separate entity *)
   let cfg = { cfg0 with
 		recognize_standalone_declaration = 
@@ -1767,21 +1823,11 @@ let iparse_document_entity cfg0 src dom_exempl p_wf =
   let w = cfg.warner in
   let r, en =
     match src with
-	Entity(m,r') -> r', m a_dtd
-      | Channel ch -> let r = new resolve_read_channel ch w cfg.encoding in
-	              r,
-		      new document_entity r a_dtd "[toplevel document]" w (System "") e cfg.encoding
-      | File fname -> let r = new resolve_as_file w cfg.encoding in
-	              r,
-		      new document_entity r a_dtd "[toplevel document]" w (System fname) e cfg.encoding
-      | Latin1 str -> let r = new resolve_read_string str cfg.encoding in
-	              r,
-		      new document_entity r a_dtd "[toplevel document]" w (System "") e cfg.encoding
-      | ExtID(xid,r') ->
-  	              let r = r' # clone in
-		      r, 
-		      new document_entity r a_dtd "[toplevel document]" w xid e
-                                          cfg.encoding
+	Entity(m,r')  -> r', m a_dtd
+      | ExtID(xid,r') -> r', 
+		         new document_entity 
+			   r' a_dtd "[toplevel document]" w xid e
+                           cfg.encoding
   in
   en # set_debugging_mode (cfg.debugging_mode);
   let pobj =
@@ -1791,12 +1837,12 @@ let iparse_document_entity cfg0 src dom_exempl p_wf =
       (not p_wf)
       cfg 
       r
-      dom_exempl
+      spec
       true          (* TODO: change to 'not p_wf' ? *)
   in
   let mgr = new entity_manager en in
+  en # open_entity true Document;          (* open the entity *)
   try
-    en # open_entity true Document;          (* open the entity *)
     let context = make_context mgr in
     pobj # parse context Ext_document;
     let d = pobj # doc in                    (* get the parsed document *)
@@ -1811,14 +1857,14 @@ let iparse_document_entity cfg0 src dom_exempl p_wf =
 ;;
 
 
-let parse_document_entity cfg src dom_exempl =
-  iparse_document_entity cfg src dom_exempl false;;
-let parse_wf_entity cfg src dom_exempl =
-  iparse_document_entity cfg src dom_exempl true;;
+let parse_document_entity cfg src spec =
+  iparse_document_entity cfg src spec false;;
+let parse_wfdocument_entity cfg src spec =
+  iparse_document_entity cfg src spec true;;
 
 
 let default_config =
-  let w = new collect_warnings in
+  let w = new drop_warnings in
   { warner = w;
     errors_with_line_numbers = true;
     processing_instructions_inline = false;
@@ -1829,10 +1875,26 @@ let default_config =
   }
 
 
+(* XXX *)
+
+let extract_dtd_from_document_entity = ()
+
+let parse_wfcontent_entity = ()
+
+let parse_document_entity_with_dtd _ _ _ _ = failwith "xxx"
+
+
+
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.3  2000/07/04 22:15:18  gerd
+ * 	Change: Using the new resolver capabilities.
+ * 	Still incomplete: the new extraction and parsing functions.
+ *
  * Revision 1.2  2000/06/14 22:19:06  gerd
  * 	Added checks such that it is impossible to mix encodings.
  *
