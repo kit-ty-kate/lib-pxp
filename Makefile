@@ -4,10 +4,10 @@
 # make clean: cleans everything up
 
 # Inclusion of Makefile.conf may fail when cleaning up:
+-include Makefile.conf
 
 NAME=pxp
-
--include Makefile.conf
+TOP_DIR=.
 
 all:
 	$(MAKE) -C tools all
