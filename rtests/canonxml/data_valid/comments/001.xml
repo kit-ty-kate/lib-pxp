@@ -1,0 +1,13 @@
+<!DOCTYPE a [
+<!ELEMENT a ANY>
+<!-- Comment 0 -->
+]>
+<!-- Comment 1 -->
+<a>
+  <!-- Comment -2 -->
+  <a>
+    <!-- Comment 3 -->
+  </a>
+  <!-- Comment 4 -->
+</a>
+<!-- Comment 5 -->
