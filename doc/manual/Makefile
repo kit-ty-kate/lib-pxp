@@ -27,6 +27,7 @@ html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	rm -f *.htm*; \
 	jade -t sgml -D$(DOCBOOK_HTML) -D$(SRC) -ihtml markup.sgml; \
 	true
+	touch html/TIMESTAMP
 
 html/pic/done: src/pic/*.fig
 	mkdir -p html/pic
