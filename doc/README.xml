@@ -68,54 +68,35 @@ almost everything.
 
   <sect1>
     <title>Description</title>
-    <p><em>Warning! The following description is out-of-date.</em></p>
-
     <p>
-<em>PXP</em> is an experimental validating XML parser for <a
+<em>PXP</em> is a validating XML parser for <a
 href="&url.ocaml;">O'Caml</a>. It is designed such that all of the requirements
 that the <a href="&url.xml-spec;">w3c demands of an XML parser</a> can be
-fulfilled, but this is not yet the case.
+fulfilled, but this is not yet the case for the latest release; however,
+the parser is already very close to the standard.
 </p>
-    
-    <p>
-Beginning with the positive properties of this package, the current release can
-parse all valid XML documents and DTDs as long as they use only ISO-8859-1
-characters, and it rejects most invalid or non-well-formed documents.  This has
-been tested with lots of test documents, including all of James Clark's <a
-href="&url.jclark-xmltdata;">test records</a><footnote>The parser is able to
-read all positive test records with the exception of "valid/sa/051.xml" and
-"valid/sa/063.xml" which contain non-ISO-8859-1 characters within names. The
-parser rejects all negative test records with the exception of
-"not-wf/sa/141.xml" which uses non-ISO-8859-1 characters in a way the parser
-cannot deal with.</footnote>.
-</p>
+
+    <p>The parser is simple to call, usually only one statement (function
+call) is sufficient to parse an XML document and to represent it as object
+tree.</p>
 
     <p>
 Once the document is parsed, it can be accessed using a class interface.
 This interface is still under development and subject to future changes.
-The interface allows arbitrary access including transformations. It has a
-so-called "extension", i.e. every element of the document has a main
-object and the extension. Although there is a default, the extension is
-thought as the changeable part of the element class, i.e. you can provide
-your own extension and add further properties to the elements.
+The interface allows arbitrary access including transformations. One of
+the features of the document representation is its polymorphic nature;
+it is simple to add custom methods to the document classes. Furthermore,
+the parser can be configured such that different XML elements are represented
+by objects created from different classes. This is a very powerful feature,
+because it simplifies the structure of programs processing XML documents.
 </p>
 
     <p>
 Note that the class interface does not comply to the DOM standard. I think
 that DOM is not applicable to O'Caml. Of course, my interface has a
-similar task.
+similar task at all.
 </p>
 
-    <p>
-Another design feature is that you can configure the parser such that it
-uses a different class for every element type. As classes are not
-first-order objects in O'Caml, this is done by an exemplar/instance
-scheme. A hashtable stores for every element type the exemplar which is
-simply an object of the class to be used. If the parser reads an element,
-it looks up the exemplar by the type of the element, and forms a clone of
-it. -- This way, it is possible to group the processing code for the
-elements as classes which seems to be very natural.
-</p>
     <sect2>
       <title>Code examples</title>
       <p>
@@ -143,16 +124,6 @@ XML style, and how data records can be stored using XML.
 
     <sect2>
       <title>Restrictions</title>
-    <p><em>Warning! The following restrictions are out-of-date. Especially,
-the parser has now full support for UTF-8!</em></p>
-      <p>
-The following list of restrictions seems to be rather long, but it is actually
-not compared with the much longer list of XML features that have been
-implemented. I enumerate the restrictions here to make clear that
-<em>PXP</em> is currently under development, and although it is stable
-enough to be useable it should be taken with some care.
-</p>
-
       <p>
 As the parser is validating, it should be able to report all violations
 against the XML rules. This is currently not the case. Mainly the
@@ -160,22 +131,6 @@ following restrictions apply:
 </p>
 
       <ul>
-	<li>
-	  <p>
-The parser can only handle ISO-8859-1 characters. It can read files
-  that are encoded as "UTF-8", "UTF-16", and "ISO-8859-1", but only the
-  characters 0 to 255 are understood.
-  --> This restriction will NOT be dropped in the near future, as Unicode
-  support is a matter of the core O'Caml language.
-</p>
-	</li>
-
-	<li>
-	  <p>
-The "standalone=yes" attribute is not checked.
-</p>
-	</li>
-
 	<li>
 	  <p>
 That IDs are unique, and that IDREFs reference only existing IDs, are
@@ -240,6 +195,15 @@ There is currently no "early parser hook", i.e. a possibility to throw
     <sect2>
       <title>Recent Changes</title>
       <ul>
+	<li>
+	  <p>Changed in 0.99.4:</p>
+	  <p>The module Pxp_reader has been modernized. The resolver classes
+are simpler to use. There is now support for URLs.</p>
+	  <p>The interface of Pxp_yacc has been improved: The type 'source'
+is now simpler. The type 'domspec' has gone; the new 'spec' is opaque and
+performs better. There are some new parsing modes.</p>
+	  <p>Many smaller changes.</p>
+	</li>
 	<li>
 	  <p>Changed in 0.99.3:</p>
 	  <p>The markup_* modules have been renamed to pxp_*. There is a new
