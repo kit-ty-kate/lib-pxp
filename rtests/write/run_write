@@ -1,0 +1,17 @@
+#! /bin/bash
+
+test_sample () {
+    file="$1"
+    echo -n "Testing $file... "
+    ./test_write -in "$file" >out1
+    ./test_write -in out1    >out2
+    ./test_write -in out2    >out3
+    if cmp out1 out3; then
+	echo "OK"
+    else
+	echo "FAILED"
+    fi
+}
+
+
+test_sample "sample001.xml"
