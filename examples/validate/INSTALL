@@ -1,0 +1,22 @@
+This release of the pxpvalidate tool contains a bytecode executable.
+It can be run an all systems on which the Objective Caml Runtime
+Environment (ocamlre) is installed, the bytecode interpreter. You 
+need EXACTLY ocamlre version 3.01.
+
+To install pxpvalidate, just become root on your system and start
+./setup.sh, an interactive installation script. (If you don't like
+interactive setup programs, you can also run ./setup.sh -help to
+get the options, and start ./setup.sh -batch options...)
+
+For usage instructions, see pxpvalidate(1).
+
+Where to get ocamlre:
+   http://www.ocaml-programming.de/packages/ocamlre/
+
+Some information about O'Caml bytecode:
+   http://www.ocaml-programming.de/programming/download-bytecode.html
+
+Where to get the full sources of PXP:
+   http://www.ocaml-programming.de/packages/download-caml.html
+
+   
