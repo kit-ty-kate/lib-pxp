@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.9 2000/09/09 16:38:47 gerd Exp $
+(* $Id: pxp_types.mli,v 1.10 2001/02/01 20:37:38 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -19,7 +19,6 @@ type ext_id =
    *
    * Encoding: The identifiers are _always_ encoded as UTF8 strings,
    * regardless of whether another encoding is configured for the parser.
-   * TODO: umsetzen
    *)
 
 
@@ -35,7 +34,7 @@ type content_model_type =
 			      *)
   | Empty                    (* Nothing is allowed as content *)
   | Any                      (* Everything is allowed as content *)
-  | Mixed of mixed_spec list (* The contents consist of elements and PCDATA 
+  | Mixed of mixed_spec list (* The contents consist of elements and PCDATA
 			      * in arbitrary order. What is allowed in
 			      * particular is given as mixed_spec.
 			      *)
@@ -87,7 +86,7 @@ type att_value =
 
 
 class type collect_warnings =
-  object 
+  object
     method warn : string -> unit
   end
 ;;
@@ -148,7 +147,7 @@ val write : output_stream -> string -> int -> int -> unit
   (* write os s pos len: Writes the string to the buffer/channel/stream *)
 
 
-type pool 
+type pool
 
 val make_probabilistic_pool : ?fraction:float -> int -> pool
   (* A probalistic string pool tries to map strings to pool strings in order
@@ -163,15 +162,18 @@ val make_probabilistic_pool : ?fraction:float -> int -> pool
    *)
 
 val pool_string : pool -> string -> string
-  (* Tries to find the passed string in the pool; if the string is in the 
+  (* Tries to find the passed string in the pool; if the string is in the
    * pool, the pool string is returned. Otherwise, the function tries to
    * add the passed string to the pool, and the passed string is returned.
    *)
 
 (* ======================================================================
  * History:
- * 
+ *
  * $Log: pxp_types.mli,v $
+ * Revision 1.10  2001/02/01 20:37:38  gerd
+ * 	Changed comment.
+ *
  * Revision 1.9  2000/09/09 16:38:47  gerd
  * 	New type 'pool'.
  *
@@ -241,5 +243,5 @@ val pool_string : pool -> string -> string
  * Revision 1.1  1999/08/10 00:35:52  gerd
  * 	Initial revision.
  *
- * 
+ *
  *)
