@@ -20,7 +20,7 @@ depend: *.ml
 	ocamldep *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_wlex.ml
+	rm -f $(CLEAN_LIST) pxp_wlex.ml META
 
 CLEAN: clean
 
@@ -30,3 +30,10 @@ CLEAN: clean
 distclean:
 	test -f pxp_wlex.ml
 	rm -f $(CLEAN_LIST)
+
+install:
+	files=`$(COLLECT_FILES) *.cmi *.cma *.cmxa *.a pxp_wlex_link.cmo pxp_wlex_link.cmx  pxp_wlex_link.o META` && \
+	$(OCAMLFIND) install pxp-wlex $$files
+
+uninstall:
+	$(OCAMLFIND) remove pxp-wlex
