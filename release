@@ -18,5 +18,6 @@ make -q -C gensrc/pxp-wlex-utf8 || {
 mkdir -p packages
 rm -rf "packages/$destdir"
 makepkg -spec pxp.files -intree . -outtree "packages/$destdir"
+touch "packages/$destdir/gensrc/pxp-wlex-utf8/gen_done"
 (cd packages; tar czf "$destdir.tar.gz" "$destdir")
 
