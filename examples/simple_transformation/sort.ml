@@ -1,4 +1,4 @@
-(* $Id: sort.ml,v 1.3 2000/08/30 16:05:44 gerd Exp $
+(* $Id: sort.ml,v 1.4 2001/06/29 11:13:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -53,7 +53,7 @@ let main() =
       parse_content_entity default_config (from_channel stdin) dtd default_spec
     in
     print_endline "<?xml encoding='ISO-8859-1'?>";
-    (sort !criterion tree) # write (Out_channel stdout) `Enc_iso88591
+    (sort !criterion tree) # write (`Out_channel stdout) `Enc_iso88591
   with
       x ->
 	prerr_endline(string_of_exn x);
@@ -67,6 +67,9 @@ main();;
  * History:
  * 
  * $Log: sort.ml,v $
+ * Revision 1.4  2001/06/29 11:13:44  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.3  2000/08/30 16:05:44  gerd
  * 	Minor update
  *

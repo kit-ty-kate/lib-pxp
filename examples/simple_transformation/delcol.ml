@@ -1,4 +1,4 @@
-(* $Id: delcol.ml,v 1.2 2000/08/24 09:42:52 gerd Exp $
+(* $Id: delcol.ml,v 1.3 2001/06/29 11:13:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -42,7 +42,7 @@ let main() =
       parse_content_entity default_config (from_channel stdin) dtd default_spec
     in
     print_endline "<?xml encoding='ISO-8859-1'?>";
-    (delcol !column tree) # write (Out_channel stdout) `Enc_iso88591
+    (delcol !column tree) # write (`Out_channel stdout) `Enc_iso88591
   with
       x ->
 	prerr_endline(string_of_exn x);
@@ -56,6 +56,9 @@ main();;
  * History:
  * 
  * $Log: delcol.ml,v $
+ * Revision 1.3  2001/06/29 11:13:44  gerd
+ * 	Out_channel -> `Out_channel
+ *
  * Revision 1.2  2000/08/24 09:42:52  gerd
  * 	Updated a comment.
  *
