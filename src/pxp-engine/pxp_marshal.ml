@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.10 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.11 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -644,7 +644,8 @@ let document_from_cmd_sequence f config spec =
   if root_type <> "" then dtd # set_root (recode root_type);
   dtd # set_id id;
   dtd # set_standalone_declaration sa;
-  let doc = new Pxp_document.document config.Pxp_yacc.warner config.encoding in
+  let doc = new Pxp_document.document 
+	      ?swarner:config.swarner config.warner config.encoding in
   doc # init_xml_version xml_version;
   let cmd = ref (f()) in
   while !cmd <> Root do
@@ -763,7 +764,9 @@ let relocate_document (doc : 'ext document) new_conf new_spec =
   let new_root = relocate_subtree doc#root new_dtd new_spec in
 
   (* Create a new document containing the new DTD and the new XML tree: *)
-  let new_doc = new document new_conf.warner new_conf.encoding in
+  let new_doc = new document 
+		  ?swarner:new_conf.swarner 
+		  new_conf.warner new_conf.encoding in
   new_doc # init_xml_version (doc # xml_version);
   let root_name = match new_dtd # root with
       Some rn -> rn 
@@ -779,6 +782,10 @@ let relocate_document (doc : 'ext document) new_conf new_spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.11  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.10  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.24 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_document.mli,v 1.25 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -2375,6 +2375,7 @@ val validate : 'ext node -> unit
 (******************************* document ********************************)
 
 class [ 'ext ] document :
+  ?swarner:Pxp_core_types.symbolic_warnings ->
   Pxp_core_types.collect_warnings -> Pxp_core_types.rep_encoding ->
   object
     (* Documents: These are containers for root elements and for DTDs.
@@ -2477,6 +2478,10 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.25  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.24  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

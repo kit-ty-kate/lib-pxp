@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.ml,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_ev_parser.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -170,7 +170,7 @@ end
 (* event-based interface *)
 
 let create_entity_manager ?(is_document=true) cfg src =
-  let dtd = new dtd cfg.warner cfg.encoding in
+  let dtd = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
   dtd # add_pinstr               (* select well-formedness mode *)
     (new proc_instruction
        "pxp:dtd"
@@ -369,6 +369,10 @@ let create_pull_parser
  * History:
  * 
  * $Log: pxp_ev_parser.ml,v $
+ * Revision 1.2  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

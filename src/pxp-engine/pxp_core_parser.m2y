@@ -1,4 +1,4 @@
-(* $Id: pxp_core_parser.m2y,v 1.1 2003/06/15 18:18:34 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_core_parser.m2y,v 1.2 2003/06/20 15:14:13 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -762,7 +762,7 @@ doctypedecl_material(doctype_entid):
 	      (context.manager # current_resolver # active_id).rid_system in
 	    let pobj = self # sub_parser() in
 	    let en = new Pxp_entity.external_entity resolver dtd "[dtd]"
-		         config.warner id system_base false
+		         config.swarner config.warner id system_base false
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
@@ -1219,8 +1219,8 @@ attlistdecl():
 	      Not_found ->  (* already added *)
 		let old_el = dtd # element el_name in
 		if old_el # attribute_names <>  [] then
-		  config.warner # warn ("More than one ATTLIST declaration for element type `" ^
-					el_name ^ "'");
+		  warn config.swarner config.warner 
+		       (`W_multiple_ATTLIST_declarations el_name);
 		old_el
 	in
 	List.iter
@@ -1383,7 +1383,7 @@ defaultdecl():
     {{ D_implied }}
 | Fixed ws:Ignore Ignore* str:Unparsed_string
     {{ D_fixed
-	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
+	 (expand_attvalue reused_lexbuf lexerset dtd str false) }}
   ? {{ match !yy_position with
 	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
 	 | "str" -> raise(WF_error("String literal expected"))
@@ -1391,7 +1391,7 @@ defaultdecl():
     }}
 | str:Unparsed_string
     {{ D_default
-	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
+	 (expand_attvalue reused_lexbuf lexerset dtd str false) }}
 
 
 /**************************** ENTITY DECLARATION ***********************/
@@ -1419,14 +1419,15 @@ entitydecl(decl_entity_entid):
          *)
 	match material with
 	    (Some s, None,     None)   ->
-	      new Pxp_entity.internal_entity dtd name config.warner s
-		  p_internal_subset false config.encoding
+	      new Pxp_entity.internal_entity dtd name config.swarner 
+	          config.warner s p_internal_subset false config.encoding
 	  | (None,   Some xid, None)   ->
 	      let resolver = 
 		context.manager # current_resolver # clone in
 	      let system_base = 
 		(context.manager # current_resolver # active_id).rid_system in
-	      new Pxp_entity.external_entity resolver dtd name config.warner
+	      new Pxp_entity.external_entity resolver dtd name config.swarner
+		                  config.warner
                                   xid system_base false
 		                  config.encoding
 
@@ -1461,14 +1462,15 @@ entitydecl(decl_entity_entid):
 	(* Distinguish between internal and external entities *)
 	match material with
 	    (Some s, None)   ->
-	      new Pxp_entity.internal_entity dtd name config.warner s
-  		  p_internal_subset true config.encoding
+	      new Pxp_entity.internal_entity dtd name config.swarner 
+	          config.warner s p_internal_subset true config.encoding
 	  | (None,   Some xid)   ->
 	      let resolver = 
 		context.manager # current_resolver # clone in
 	      let system_base = 
 		(context.manager # current_resolver # active_id).rid_system in
-	      new Pxp_entity.external_entity resolver dtd name config.warner
+	      new Pxp_entity.external_entity resolver dtd name config.swarner
+		                  config.warner
                                   xid system_base true
 		                  config.encoding
 	  | _ -> assert false
@@ -1821,9 +1823,9 @@ attribute(attlist,attspace):
 
 attval():
   v:Attval
-    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner true }}
+    {{ expand_attvalue reused_lexbuf lexerset dtd v true }}
 | v:Attval_nl_normalized
-    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner false }}
+    {{ expand_attvalue reused_lexbuf lexerset dtd v false }}
 
 /* The following rules are only used if event-based attribute parsing
  * is enabled. In this case, neither Attval nor Attval_nl_normalized,
@@ -1845,12 +1847,13 @@ attval_squote_token(attpos):
        let etext = "&" ^ name ^ ";" in
        let s = 
 	 Pxp_aux.expand_attvalue 
-	   reused_lexbuf lexerset dtd etext config.warner false in
+	   reused_lexbuf lexerset dtd etext false in
        attpos := !attpos + String.length s;
        s
      }}
 | code:CRef
-    {{ let s = Pxp_aux.character config.encoding config.warner code in
+    {{ let s = Pxp_aux.character 
+		 ?swarner:config.swarner config.encoding config.warner code in
        attpos := !attpos + String.length s;
        s
     }}
@@ -1893,12 +1896,13 @@ attval_dquote_token(attpos):
     {{ 
        let etext = "&" ^ name ^ ";" in
        let s = Pxp_aux.expand_attvalue 
-		 reused_lexbuf lexerset dtd etext config.warner false in
+		 reused_lexbuf lexerset dtd etext false in
        attpos := !attpos + String.length s;
        s
      }}
 | code:CRef
-    {{ let s = Pxp_aux.character config.encoding config.warner code in
+    {{ let s = Pxp_aux.character 
+		 ?swarner:config.swarner config.encoding config.warner code in
        attpos := !attpos + String.length s;
        s
      }}
@@ -1994,7 +1998,8 @@ cref():
        if n_tags_open = 0 then
 	 (* No surrounding element: character references are not allowed *)
 	 raise(WF_error("Character reference not allowed here"));
-       self # event_char_data (character config.encoding config.warner code)
+       self # event_char_data 
+	 (character ?swarner:config.swarner config.encoding config.warner code)
     }}
 
 pi():
@@ -2086,6 +2091,10 @@ end
  * History:
  * 
  * $Log: pxp_core_parser.m2y,v $
+ * Revision 1.2  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

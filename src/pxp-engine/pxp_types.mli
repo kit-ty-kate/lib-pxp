@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.19 2003/06/19 21:10:15 gerd Exp $
+(* $Id: pxp_types.mli,v 1.20 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -22,6 +22,8 @@ include Pxp_core_types_type.CORE_TYPES
    * type att_value
    * class type collect_warnings
    * class drop_warnings
+   * class type symbolic_warnings
+   * type warning
    * type encoding
    * type rep_encoding
    * exception Validation_error
@@ -48,6 +50,13 @@ include Pxp_core_types_type.CORE_TYPES
 type config =
     { warner : collect_warnings;
          (* An object that collects warnings. *)
+
+      swarner : symbolic_warnings option;
+         (* Another object getting warnings expressed as polymorphic
+	  * variants. This is especially useful to turn warnings into
+	  * errors. If defined, the [swarner] gets the warning
+	  * first before it is sent to the classic [warner].
+	  *)
 
       (* errors_with_line_numbers : bool;
 	 -- This option is no longer necessary due to code optimizations *)
@@ -579,6 +588,10 @@ type entry =
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.20  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.19  2003/06/19 21:10:15  gerd
  * 	Revised the from_* functions.
  *

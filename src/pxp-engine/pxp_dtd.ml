@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.24 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.25 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -98,13 +98,14 @@ object (self)
 ;;
 
 
-class dtd  the_warner init_encoding =
+class dtd  ?swarner the_warner init_encoding =
   object (self)
     val mutable root = (None : string option)
     val mutable id =   (None : dtd_id option)
     val mutable mng =  (None : namespace_manager option)
 
     val warner       = (the_warner : collect_warnings)
+    val swarner      = (swarner : symbolic_warnings option)
     val encoding     = init_encoding
     val lexerset     = Pxp_lexers.get_lexer_set init_encoding
 
@@ -127,25 +128,27 @@ class dtd  the_warner init_encoding =
     initializer
     let w = new drop_warnings in
     self # add_gen_entity 
-      (new internal_entity self "lt"   w "&#38;#60;" false false encoding)
+      (new internal_entity self "lt"   None w "&#38;#60;" false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "gt"   w "&#62;"     false false encoding)
+      (new internal_entity self "gt"   None w "&#62;"     false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "amp"  w "&#38;#38;" false false encoding)
+      (new internal_entity self "amp"  None w "&#38;#38;" false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "apos" w "&#39;"     false false encoding)
+      (new internal_entity self "apos" None w "&#39;"     false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "quot" w "&#34;"     false false encoding)
+      (new internal_entity self "quot" None w "&#34;"     false false encoding)
       false;
 
 
     method encoding = encoding
 
     method warner = warner
+
+    method swarner = swarner
 
     method set_root r =
       if root = None then
@@ -189,7 +192,7 @@ class dtd  the_warner init_encoding =
       (* raises Not_found if 'el' has already been added *)
       (* Note: 'el' is encoded in the same way as 'self'! *)
       let name = el # name in
-      check_name warner name;
+      check_name ?swarner warner name;
       if Str_hashtbl.mem elements name then
 	raise Not_found;
       Str_hashtbl.add elements name el;
@@ -207,7 +210,7 @@ class dtd  the_warner init_encoding =
       if en # encoding <> encoding then
 	failwith "Pxp_dtd.dtd # add_gen_entity: Inconsistent encodings";
       let name = en # name in
-      check_name warner name;
+      check_name ?swarner warner name;
       if Str_hashtbl.mem gen_entities name then begin
 	if List.mem name [ "lt"; "gt"; "amp"; "quot"; "apos" ] then begin
 	  (* These are allowed to be declared several times *)
@@ -231,7 +234,7 @@ class dtd  the_warner init_encoding =
 					"' redeclared"))
 	end
 	else
-	  warner # warn ("Entity `" ^ name ^ "' declared twice")
+	  warn swarner warner (`W_entity_declared_twice name)
       end
       else begin
 	Str_hashtbl.add gen_entities name (en, extdecl);
@@ -243,13 +246,13 @@ class dtd  the_warner init_encoding =
       if en # encoding <> encoding then
 	failwith "Pxp_dtd.dtd # add_par_entity: Inconsistent encodings";
       let name = en # name in
-      check_name warner name;
+      check_name ?swarner warner name;
       if not (Str_hashtbl.mem par_entities name) then begin
 	Str_hashtbl.add par_entities name en;
 	par_entity_names <- name :: par_entity_names
       end
       else
-	warner # warn ("Entity `" ^ name ^ "' declared twice")
+	warn swarner warner (`W_entity_declared_twice name)
 
 
     method add_notation no =
@@ -257,7 +260,7 @@ class dtd  the_warner init_encoding =
       if no # encoding <> encoding then
 	failwith "Pxp_dtd.dtd # add_notation: Inconsistent encodings";
       let name = no # name in
-      check_name warner name;
+      check_name ?swarner warner name;
       if Str_hashtbl.mem notations name then
 	raise (Validation_error("Notation `" ^ name ^ "' declared twice"));
       Str_hashtbl.add notations name no;
@@ -268,7 +271,7 @@ class dtd  the_warner init_encoding =
       if pi # encoding <> encoding then
 	failwith "Pxp_dtd.dtd # add_pinstr: Inconsistent encodings";
       let name = pi # target in
-      check_name warner name;
+      check_name ?swarner warner name;
 
       if String.length name >= 4 && String.sub name 0 4 = "pxp:" then begin
 	match name with
@@ -655,11 +658,12 @@ and dtd_element the_dtd the_name =
     method arbitrary_allowed = allow_arbitrary
 
     method add_attribute aname t d extdecl =
+      let swarner = dtd#swarner 
+      and warner = dtd#warner in
       if aname <> "xml:lang" & aname <> "xml:space" then
-	check_name (dtd#warner) aname;
+	check_name ?swarner warner aname;
       if List.mem_assoc aname attributes then
-	dtd # warner # warn ("More than one declaration for attribute `" ^
-			     aname ^ "' of element type `" ^ name ^ "'")
+	warn swarner warner (`W_multiple_attribute_declarations(name,aname))
       else begin
 	begin match aname with
 	    "xml:space" ->
@@ -1042,7 +1046,8 @@ and dtd_element the_dtd the_name =
        *)
       match content_model with
 	  Unspecified ->
-	    dtd # warner # warn ("Element type `" ^ name ^ "' mentioned but not declared");
+	    warn (dtd#swarner) (dtd#warner)
+ 	         (`W_element_mentioned_but_not_declared name);
 	    ()
 	| Empty -> ()
 	| Any -> ()
@@ -1169,18 +1174,18 @@ module Entity = struct
   let get_notation ent =
     if ent # is_ndata then Some (ent # notation) else None
   let create_internal_entity ~name ~value dtd =
-    new internal_entity dtd name (dtd # warner) value false false 
-        (dtd # encoding)
+    new internal_entity dtd name (dtd # swarner) (dtd # warner) value 
+        false false (dtd # encoding)
   let create_ndata_entity ~name ~xid ~notation dtd =
     new ndata_entity name xid notation dtd#encoding
   let create_external_entity ?(doc_entity = false) ?system_base 
                              ~name ~xid ~resolver dtd =
     if doc_entity then
-      new document_entity resolver dtd name dtd#warner xid system_base 
-	                  dtd#encoding
+      new document_entity resolver dtd name dtd#swarner dtd#warner xid
+	                  system_base dtd#encoding
     else
-      new external_entity resolver dtd name dtd#warner xid system_base 
-	                  false dtd#encoding
+      new external_entity resolver dtd name dtd#swarner dtd#warner xid
+	                  system_base false dtd#encoding
   let from_external_source ?doc_entity ~name dtd src =
     match src with
 	ExtID(xid,resolver) -> 
@@ -1197,6 +1202,10 @@ end
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.25  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.24  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.18 2003/06/19 21:10:15 gerd Exp $
+(* $Id: pxp_types.ml,v 1.19 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -14,6 +14,7 @@ open Netchannels
 
 type config =
     { warner : collect_warnings;
+      swarner : symbolic_warnings option;
       enable_pinstr_nodes : bool;
       enable_super_root_node : bool;
       enable_comment_nodes : bool;
@@ -44,6 +45,7 @@ type config =
 let default_config =
   let w = new drop_warnings in
   { warner = w;
+    swarner = None;
     enable_pinstr_nodes = false;
     enable_super_root_node = false;
     enable_comment_nodes = false;
@@ -176,30 +178,31 @@ let from_string ?(alt = []) ?system_id ?fixenc s =
 
 let open_source cfg src use_document_entity dtd =
   let w = cfg.warner in
+  let sw = cfg.swarner in
   let r, en =
     match src with
 	Entity(m,r')  -> r', m dtd
       | ExtID(xid,r') -> r',
 	                 if use_document_entity then
                            new document_entity
-			     r' dtd "[toplevel]" w xid None
+			     r' dtd "[toplevel]" sw w xid None
                              cfg.encoding
 			 else
                            new external_entity
-			     r' dtd "[toplevel]" w xid None false
+			     r' dtd "[toplevel]" sw w xid None false
                              cfg.encoding
       | XExtID(xid,sysbase,r') -> r',
 	                          if use_document_entity then
 				    new document_entity
-				      r' dtd "[toplevel]" w xid sysbase
+				      r' dtd "[toplevel]" sw w xid sysbase
 				      cfg.encoding
 				  else
 				    new external_entity
-				      r' dtd "[toplevel]" w xid sysbase false
-				      cfg.encoding
+				      r' dtd "[toplevel]" sw w xid sysbase 
+				      false cfg.encoding
   in
   r # init_rep_encoding cfg.encoding;
-  r # init_warner w;
+  r # init_warner sw w;
   en # set_debugging_mode (cfg.debugging_mode);
   (r, en)
 ;;
@@ -217,6 +220,10 @@ type entry =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.19  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.18  2003/06/19 21:10:15  gerd
  * 	Revised the from_* functions.
  *

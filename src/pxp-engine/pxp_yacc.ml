@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.ml,v 1.1 2003/06/15 18:18:34 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -17,6 +17,7 @@ open Netchannels
 
 type config = Pxp_types.config =
     { warner : collect_warnings;
+      swarner : symbolic_warnings option;
       enable_pinstr_nodes : bool;
       enable_super_root_node : bool;
       enable_comment_nodes : bool;
@@ -116,6 +117,10 @@ let create_pull_parser = Pxp_ev_parser.create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.ml,v $
+ * Revision 1.2  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

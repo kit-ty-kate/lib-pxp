@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.22 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.23 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -72,6 +72,7 @@ end
 type 'entity entity_variables = 
     { mutable dtd : 'entity preliminary_dtd;
       mutable name : string;
+      mutable swarner : symbolic_warnings option;
       mutable warner : collect_warnings;
       
       mutable encoding : rep_encoding;
@@ -139,11 +140,12 @@ type 'entity entity_variables =
 ;;
 
 
-let make_variables the_dtd the_name the_warner init_encoding =
+let make_variables the_dtd the_name the_swarner the_warner init_encoding =
   let ls = Pxp_lexers.get_lexer_set init_encoding in
   { dtd = (the_dtd : 'entity #preliminary_dtd :> 'entity preliminary_dtd);
     name = the_name;
     warner = the_warner;
+    swarner = the_swarner;
     
     encoding = init_encoding;
     lexerset = ls;
@@ -232,13 +234,14 @@ let update_other_lines v tok =
 ;;
 
 
-class virtual entity the_dtd the_name the_warner init_encoding =
+class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
   object (self)
     (* This class prescribes the type of all entity objects. Furthermore,
      * the default 'next_token' mechanism is implemented.
      *)
 
-    val v = make_variables the_dtd the_name the_warner init_encoding
+    val v = make_variables 
+	      the_dtd the_name the_swarner the_warner init_encoding
 
     method is_ndata = false
       (* Returns if this entity is an NDATA (unparsed) entity *)
@@ -771,14 +774,15 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
   end
 ;;
 
-class external_entity the_resolver the_dtd the_name the_warner the_ext_id
+class external_entity the_resolver the_dtd the_name the_swarner the_warner 
+                      the_ext_id
                       the_system_base
                       the_p_special_empty_entities
 		      init_encoding
   =
   object (self)
     inherit entity
-              the_dtd the_name the_warner 
+              the_dtd the_name the_swarner the_warner 
 	      init_encoding
             as super
 
@@ -981,7 +985,9 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	  | CRef(-1) -> "\n" ^ scan_and_expand()
 	  | CRef(-2) -> "\n" ^ scan_and_expand()
 	  | CRef(-3) -> "\n" ^ scan_and_expand()
-	  | CRef k -> character v.encoding v.warner k ^ scan_and_expand()
+	  | CRef k -> 
+	      character 
+	        ?swarner:v.swarner v.encoding v.warner k ^ scan_and_expand()
 	  | CharData x -> x ^ scan_and_expand()
 	  | PERef n ->
 	      let en = v.dtd # par_entity n in
@@ -1003,12 +1009,14 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 ;;
 
 
-class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
+class document_entity  the_resolver the_dtd the_name the_swarner the_warner
+                       the_ext_id
                        the_system_base
 		       init_encoding
   =
   object (self)
-    inherit external_entity  the_resolver the_dtd the_name the_warner
+    inherit external_entity  the_resolver the_dtd the_name the_swarner 
+                             the_warner
                              the_ext_id the_system_base false 
 			     init_encoding
 
@@ -1027,7 +1035,7 @@ class document_entity  the_resolver the_dtd the_name the_warner the_ext_id
 ;;
 
 
-class internal_entity the_dtd the_name the_warner the_literal_value
+class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
                       the_p_internal_subset 
                       init_is_parameter_entity
 		      init_encoding
@@ -1044,7 +1052,7 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 
   object (self)
     inherit entity
-              the_dtd the_name the_warner 
+              the_dtd the_name the_swarner the_warner 
 	      init_encoding
 	    as super
 
@@ -1066,7 +1074,9 @@ class internal_entity the_dtd the_name the_warner the_literal_value
 	| CRef(-1) -> "\r\n" ^ scan_and_expand()
 	| CRef(-2) -> "\r" ^ scan_and_expand()
 	| CRef(-3) -> "\n" ^ scan_and_expand()
-	| CRef k -> character v.encoding v.warner k ^ scan_and_expand()
+	| CRef k -> 
+	    character 
+	      ?swarner:v.swarner v.encoding v.warner k ^ scan_and_expand()
 	| CharData x -> x ^ scan_and_expand()
 	| PERef n ->
 	    if p_internal_subset then
@@ -1307,6 +1317,10 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.23  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.22  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

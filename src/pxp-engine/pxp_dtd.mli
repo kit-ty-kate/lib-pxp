@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.18 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.19 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -131,6 +131,7 @@ class dtd :
    * creates a new, empty DTD object without any declaration, without a root
    * element, without an ID.
    *)
+  ?swarner:Pxp_core_types.symbolic_warnings ->
   Pxp_core_types.collect_warnings -> 
   Pxp_core_types.rep_encoding ->
   object
@@ -312,6 +313,8 @@ class dtd :
     method invalidate : unit
       (* INTERNAL METHOD *)
     method warner : Pxp_core_types.collect_warnings
+      (* INTERNAL METHOD *)
+    method swarner : Pxp_core_types.symbolic_warnings option
       (* INTERNAL METHOD *)
   end
 
@@ -611,6 +614,10 @@ end
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.19  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.18  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

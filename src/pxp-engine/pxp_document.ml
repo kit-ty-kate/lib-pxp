@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.32 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_document.ml,v 1.33 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -3592,7 +3592,7 @@ let normalize tree =
 (* document                                                           *)
 (**********************************************************************)
 
-class ['ext] document the_warner enc =
+class ['ext] document ?swarner the_warner enc =
   object (self)
     inherit ['ext] pinstr_features
 
@@ -3602,10 +3602,11 @@ class ['ext] document the_warner enc =
     val encoding = (enc : rep_encoding)
 
     val warner = (the_warner : collect_warnings)
+    val swarner = (swarner : symbolic_warnings option)
 
     method init_xml_version s =
       if s <> "1.0" then
-	warner # warn ("XML version '" ^ s ^ "' not supported");
+	warn swarner warner (`W_XML_version_not_supported s);
       xml_version <- s
 
     method init_root r real_root_element_name =
@@ -3755,6 +3756,10 @@ let print_doc (n : 'ext document) =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.33  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.32  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

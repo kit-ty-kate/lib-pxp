@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types_type.mli,v 1.3 2003/06/19 22:07:19 gerd Exp $
+(* $Id: pxp_core_types_type.mli,v 1.4 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -145,6 +145,32 @@ module type CORE_TYPES = sig
   class drop_warnings : collect_warnings
 
 
+  type warning =
+      [ `W_code_point_cannot_be_represented of int
+      | `W_name_is_reserved_for_extensions of string
+      | `W_multiple_ATTLIST_declarations of string
+      | `W_multiple_attribute_declarations of string * string
+      | `W_element_mentioned_but_not_declared of string
+      | `W_entity_declared_twice of string
+      | `W_XML_version_not_supported of string
+      ]
+
+
+  class type symbolic_warnings =
+  object
+    method warn : warning -> unit
+  end
+
+
+  val string_of_warning : warning -> string
+    (* Turn the warning into a human-readable message *)
+
+  val warn : symbolic_warnings option -> collect_warnings -> warning -> unit
+    (* Send a warning to the [symbolic_warnings] object, and then to the
+     * [collect_warnings] object.
+     *)
+
+
   type encoding = Netconversion.encoding
     (* We accept all encodings for character sets which are defined in
      * Netconversion (package netstring).
@@ -281,6 +307,10 @@ end (* of CORE_TYPES *)
  * History:
  * 
  * $Log: pxp_core_types_type.mli,v $
+ * Revision 1.4  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.3  2003/06/19 22:07:19  gerd
  * 	New: `Out_netchannel
  *

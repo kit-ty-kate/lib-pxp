@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_tree_parser.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -468,7 +468,7 @@ object (self)
   method private sub_parser () =
     let pobj =
       new tree_parser
-	(new document config.warner config.encoding)
+	(new document ?swarner:config.swarner config.warner config.encoding)
 	dtd
 	config
 	spec
@@ -628,7 +628,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
   (* Parse an element given as separate entity *)
   dtd # validate;            (* ensure that the DTD is valid *)
   if cfg.accept_only_deterministic_models then dtd # only_deterministic_models;
-  let doc = new document cfg.warner cfg.encoding in
+  let doc = new document ?swarner:cfg.swarner cfg.warner cfg.encoding in
   let pobj =
     call_tree_parser
       ~configuration:cfg
@@ -649,7 +649,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
 
 
 let parse_wfcontent_entity cfg src spec =
-  let dtd = new dtd cfg.warner cfg.encoding in
+  let dtd = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
   (* Instead of dtd # allow_arbitrary, because the processing instruction
    * survives marshalling:
    *)
@@ -662,7 +662,7 @@ let parse_wfcontent_entity cfg src spec =
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
-  let doc = new document cfg.warner cfg.encoding in
+  let doc = new document ?swarner:cfg.swarner cfg.warner cfg.encoding in
   let pobj =
     call_tree_parser
       ~configuration:cfg
@@ -691,7 +691,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 		recognize_standalone_declaration =
                    cfg0.recognize_standalone_declaration && (not p_wf)
             } in
-  let dtd = new dtd cfg.warner cfg.encoding in
+  let dtd = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
   if p_wf then begin
     (* Instead of dtd # allow_arbitrary, because the processing instruction
      * survives marshalling:
@@ -706,7 +706,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 	Some mng -> dtd # set_namespace_manager mng
       | None     -> ()
   );
-  let doc = new document cfg.warner cfg.encoding in
+  let doc = new document ?swarner:cfg.swarner cfg.warner cfg.encoding in
   let entry_flags =
     (if p_wf then [] else [`Extend_dtd_fully]) @
     [`Parse_xml_decl]
@@ -772,6 +772,10 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_tree_parser.ml,v $
+ * Revision 1.2  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

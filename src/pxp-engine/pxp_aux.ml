@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.16 2003/06/15 12:23:21 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.17 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -31,7 +31,7 @@ end;;
 module StringMap = Map.Make(StringOrd);;
   (* 'a StringMap.t: the type of maps (dictionaries) from string to 'a *)
 
-let character enc warner k =
+let character ?swarner enc warner k =
   assert (k>=0);
   if (k >= 0xd800 & k < 0xe000) or (k >= 0xfffe & k <= 0xffff) or k > 0x10ffff
      or (k < 8) or (k = 11) or (k = 12) or (k >= 14 & k <= 31)
@@ -43,18 +43,17 @@ let character enc warner k =
     makechar (enc : rep_encoding :> encoding) k
   with
       Not_found ->
-	warner # warn ("Code point cannot be represented in internal encoding: "
-		       ^ string_of_int k);
+	warn swarner warner (`W_code_point_cannot_be_represented k);
 	""
 ;;
 
 
-let check_name warner name =
+let check_name ?swarner warner name =
   (* produces a warning for names beginning with "xml". *)
   if String.length name >= 3 then begin
     match String.sub name 0 3 with
 	("xml" | "xmL" | "xMl" | "xML" | "Xml" | "XmL" | "XMl" | "XML") ->
-	  warner # warn ("Name is reserved for future extensions: " ^ name)
+	  warn swarner warner (`W_name_is_reserved_for_extensions name)
       | _ ->
 	  ()
   end
@@ -77,7 +76,7 @@ let tokens_of_content_string lexerset s =
 
 exception Quick_exit;;
 
-let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities norm_crlf =
+let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd entities norm_crlf =
   (* recursively expands general entities and character entities;
    * checks "standalone" document declaration;
    * normalizes whitespace
@@ -101,25 +100,25 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities nor
 	    expand_attvalue_with_rec_check
 	      (Pxp_lexing.from_string_inplace rtext)
 	      (String.length rtext)
-	      lexerset dtd warner (n :: entities) false
+	      lexerset dtd (n :: entities) false
 	  with
 	      Quick_exit -> [rtext]
 	  in
 	  l' @ expand_attvalue_with_rec_check
-	         lexbuf l lexerset dtd warner entities norm_crlf
+	         lexbuf l lexerset dtd entities norm_crlf
     | CRef(-1) ->
 	if norm_crlf then begin
 	  " " :: expand_attvalue_with_rec_check
-	             lexbuf l lexerset dtd warner entities norm_crlf
+	             lexbuf l lexerset dtd entities norm_crlf
 	end
 	else begin
 	  "  " :: expand_attvalue_with_rec_check
- 	              lexbuf l lexerset dtd warner entities norm_crlf
+ 	              lexbuf l lexerset dtd entities norm_crlf
 	end
     | CRef n ->
-	(character lexerset.lex_encoding warner n) ::
+	(character ?swarner:dtd#swarner lexerset.lex_encoding dtd#warner n) ::
 	expand_attvalue_with_rec_check
- 	    lexbuf l lexerset dtd warner entities norm_crlf
+ 	    lexbuf l lexerset dtd entities norm_crlf
     | CharData _  ->
 	if Lexing.lexeme_char lexbuf 0 = '<' then
 	  raise
@@ -131,12 +130,12 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd warner entities nor
 	else
 	  let x = Lexing.lexeme lexbuf in
 	  x :: expand_attvalue_with_rec_check
- 	           lexbuf l lexerset dtd warner entities norm_crlf
+ 	           lexbuf l lexerset dtd entities norm_crlf
     | _ -> assert false
 ;;
 
 
-let expand_attvalue lexbuf lexerset dtd s warner norm_crlf =
+let expand_attvalue lexbuf lexerset dtd s norm_crlf =
   (* norm_crlf: whether the sequence CRLF is recognized as one character or
    * not (i.e. two characters).
    * lexbuf: must result from a previous Lexing.from_string
@@ -145,7 +144,7 @@ let expand_attvalue lexbuf lexerset dtd s warner norm_crlf =
     Pxp_lexing.from_another_string_inplace lexbuf s;
     let l =
       expand_attvalue_with_rec_check
-	lexbuf (String.length s) lexerset dtd warner [] norm_crlf in
+	lexbuf (String.length s) lexerset dtd [] norm_crlf in
     String.concat "" l
   with
       Quick_exit ->
@@ -789,6 +788,10 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.17  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.16  2003/06/15 12:23:21  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

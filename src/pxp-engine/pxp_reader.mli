@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.13 2003/06/19 21:51:12 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.14 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -150,7 +150,7 @@ class type resolver =
      * original resolver.
      *)
     method init_rep_encoding : rep_encoding -> unit
-    method init_warner : collect_warnings -> unit
+    method init_warner : symbolic_warnings option -> collect_warnings -> unit
 
     method rep_encoding : rep_encoding
 
@@ -884,6 +884,10 @@ val lookup_system_id_as_string :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.14  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.13  2003/06/19 21:51:12  gerd
  * 	Removed the close_all method. It is no longer necessary, because
  * we have now the entity_manager.

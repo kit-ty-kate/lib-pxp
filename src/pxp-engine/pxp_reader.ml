@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.24 2003/06/19 21:51:12 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.25 2003/06/20 15:14:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -13,7 +13,7 @@ exception Not_resolvable of exn;;
 class type resolver =
   object
     method init_rep_encoding : rep_encoding -> unit
-    method init_warner : collect_warnings -> unit
+    method init_warner : symbolic_warnings option -> collect_warnings -> unit
     method rep_encoding : rep_encoding
     method open_in : ext_id -> Lexing.lexbuf
     method open_rid : resolver_id -> Lexing.lexbuf
@@ -44,6 +44,7 @@ class virtual resolve_general
     val mutable active_id = null_resolver
 
     val mutable warner = new drop_warnings
+    val mutable swarner = None
 
     val mutable enc_initialized = false
     val mutable wrn_initialized = false
@@ -56,8 +57,9 @@ class virtual resolve_general
       internal_encoding <- e;
       enc_initialized <- true;
 
-    method init_warner w =
+    method init_warner sw w =
       warner <- w;
+      swarner <- sw;
       wrn_initialized <- true;
 
     method rep_encoding = (internal_encoding :> rep_encoding)
@@ -76,7 +78,7 @@ class virtual resolve_general
        *)
 	if k < 0xd800 or (k >= 0xe000 & k <= 0xfffd) or
 	   (k >= 0x10000 & k <= 0x10ffff) then begin
-	     warner # warn ("Code point cannot be represented: " ^ string_of_int k);
+	     warn swarner warner (`W_code_point_cannot_be_represented k);
 	   end
 	else
 	  raise (WF_error("Code point " ^ string_of_int k ^
@@ -269,7 +271,7 @@ object(self)
       let c = new resolve_to_any_obj_channel
 		?close:(Some close) ~channel_of_id:f_open () in
       c # init_rep_encoding internal_encoding;
-      c # init_warner warner;
+      c # init_warner swarner warner;
       (* clones <- c :: clones; *)
       (c :> resolver)
 
@@ -425,7 +427,7 @@ class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
 		?id:fixid ?rid:fixrid ?fixenc:fixenc ?close:(Some close) fixch
       in
       c # init_rep_encoding internal_encoding;
-      c # init_warner warner;
+      c # init_warner swarner warner;
       (* clones <- c :: clones; *)
       (c :> resolver)
 
@@ -658,12 +660,14 @@ class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
     val cat = catalog
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
+    val mutable swarner = None
     val mutable active_resolver = None
 
     method init_rep_encoding enc =
       internal_encoding <- enc
 
-    method init_warner w =
+    method init_warner sw w =
+      swarner <- sw;
       warner <- w;
 
     method rep_encoding = internal_encoding
@@ -689,7 +693,7 @@ class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
 
       let r' = r # clone in
       r' # init_rep_encoding internal_encoding;
-      r' # init_warner warner;
+      r' # init_warner swarner warner;
       let lb = r' # open_rid rid in   (* may raise Not_competent *)
       active_resolver <- Some (selected_xid,r');
       lb
@@ -737,7 +741,7 @@ class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
     method clone =
       let c = new lookup_id_nonorm cat in
       c # init_rep_encoding internal_encoding;
-      c # init_warner warner;
+      c # init_warner swarner warner;
       c
   end : resolver )
 ;;
@@ -848,6 +852,7 @@ class combine ?prefer ?mode rl =
     val resolvers = (rl : resolver list)
     val mutable internal_encoding = `Enc_utf8
     val mutable warner = new drop_warnings
+    val mutable swarner = None
     val mutable active_resolver = None
 
 (*  (* needed to support close_all: *)
@@ -860,10 +865,11 @@ class combine ?prefer ?mode rl =
 	rl;
       internal_encoding <- enc
 
-    method init_warner w =
+    method init_warner sw w =
       List.iter
-	(fun r -> r # init_warner w)
+	(fun r -> r # init_warner sw w)
 	rl;
+      swarner <- sw;
       warner <- w;
 
     method rep_encoding = internal_encoding
@@ -955,7 +961,7 @@ class combine ?prefer ?mode rl =
 		   resolvers)
       in
       c # init_rep_encoding internal_encoding;
-      c # init_warner warner;
+      c # init_warner swarner warner;
       (* clones <- c :: clones; *)
       c
   end
@@ -984,8 +990,8 @@ object(self)
   method init_rep_encoding enc =
     subresolver # init_rep_encoding enc
 
-  method init_warner w =
-    subresolver # init_warner w
+  method init_warner sw w =
+    subresolver # init_warner sw w;
 
   method rep_encoding =
     subresolver # rep_encoding
@@ -1367,6 +1373,10 @@ let lookup_system_id_as_string ?fixenc catalog =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.25  2003/06/20 15:14:14  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.24  2003/06/19 21:51:12  gerd
  * 	Removed the close_all method. It is no longer necessary, because
  * we have now the entity_manager.

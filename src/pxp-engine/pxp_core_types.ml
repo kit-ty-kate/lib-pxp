@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types.ml,v 1.3 2003/06/19 22:07:19 gerd Exp $
+(* $Id: pxp_core_types.ml,v 1.4 2003/06/20 15:14:13 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -110,6 +110,52 @@ class drop_warnings =
   object 
     method warn (w:string) = ()
   end
+;;
+
+type warning =
+    [ `W_code_point_cannot_be_represented of int
+    | `W_name_is_reserved_for_extensions of string
+    | `W_multiple_ATTLIST_declarations of string
+    | `W_multiple_attribute_declarations of string * string
+    | `W_element_mentioned_but_not_declared of string
+    | `W_entity_declared_twice of string
+    | `W_XML_version_not_supported of string
+    ]
+
+
+class type symbolic_warnings =
+object
+  method warn : warning -> unit
+end
+	  
+
+let string_of_warning : warning -> string =
+  function
+      `W_code_point_cannot_be_represented n ->
+	"Code point cannot be represented: " ^ string_of_int n
+    | `W_name_is_reserved_for_extensions name ->
+	"Name is reserved for future extensions: " ^ name
+    | `W_multiple_ATTLIST_declarations name ->
+	"More than one ATTLIST declaration for element type `" ^ name ^ "'"
+    | `W_multiple_attribute_declarations(elname,attname) ->
+	"More than one declaration for attribute `" ^ attname ^ 
+	"' of element type `" ^ elname ^ "'"
+    | `W_element_mentioned_but_not_declared name ->
+	"Element type `" ^ name ^ "' mentioned but not declared"
+    | `W_entity_declared_twice name ->
+	"Entity `" ^ name ^ "' declared twice"
+    | `W_XML_version_not_supported v ->
+	"XML version '" ^ v ^ "' not supported"
+;;
+
+
+let warn swarner warner warning =
+  ( match swarner with
+	Some sw -> sw # warn warning
+      | None -> ()
+  );
+  let msg = string_of_warning warning in
+  warner # warn msg
 ;;
 
 
@@ -240,6 +286,10 @@ let pool_string = Pxp_type_anchor.pool_string
  * History:
  * 
  * $Log: pxp_core_types.ml,v $
+ * Revision 1.4  2003/06/20 15:14:13  gerd
+ * 	Introducing symbolic warnings, expressed as polymorphic
+ * variants
+ *
  * Revision 1.3  2003/06/19 22:07:19  gerd
  * 	New: `Out_netchannel
  *
