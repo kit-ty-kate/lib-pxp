@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.19 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_types.ml,v 1.20 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -216,10 +216,31 @@ type entry =
     ]
 
 
+type event =
+  | E_start_doc of (string * bool * dtd)
+  | E_end_doc
+  | E_start_tag of (string * (string * string) list * 
+		    Pxp_lexer_types.entity_id)
+  | E_ns_start_tag of (string * string * (string * string * string) list *
+		       Pxp_lexer_types.entity_id)
+  | E_end_tag    of (string * Pxp_lexer_types.entity_id)
+  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
+  | E_char_data of  string
+  | E_pinstr of (string * string)
+  | E_comment of string
+  | E_position of (string * int * int)
+  | E_error of exn
+  | E_end_of_stream
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.20  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.19  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.3 2003/06/20 19:41:39 gerd Exp $
+(* $Id: pxp_tree_parser.ml,v 1.4 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -288,7 +288,7 @@ object (self)
 	    (* If namespace processing is enabled, preprocess the attribute
 	     * list:
 	     *)
-	    let (src_prefix, localname, norm_name0, norm_attlist) =
+	    let (src_prefix, localname, norm_name0, norm_attlist0) =
 	      self # push_src_norm_mapping mng name attlist in
 
 	    let norm_name =
@@ -296,6 +296,11 @@ object (self)
 	      then make_pool_string norm_name0
 	      else norm_name0 in
 	    
+	    let norm_attlist =
+	      List.map (fun (orig_prefix, localname, norm_name, value) ->
+			  (norm_name, value)
+		       ) norm_attlist0 in
+
 	    let element =
 	      create_element_node
                 ?name_pool_for_attribute_values:
@@ -773,6 +778,10 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_tree_parser.ml,v $
+ * Revision 1.4  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.3  2003/06/20 19:41:39  gerd
  * 	Added ~transform_dtd to parse_wfdocument_entity.
  *

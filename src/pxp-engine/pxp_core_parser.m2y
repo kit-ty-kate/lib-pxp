@@ -1,4 +1,4 @@
-(* $Id: pxp_core_parser.m2y,v 1.2 2003/06/20 15:14:13 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_core_parser.m2y,v 1.3 2003/06/20 21:00:33 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -242,7 +242,9 @@ class virtual core_parser
       let norm_attlist =
 	List.map
 	  (fun (prefix, localname, value) ->
-	     (self # normalize_namespace_prefix prefix localname,
+	     (prefix,
+	      localname,
+	      self # normalize_namespace_prefix prefix localname,
 	      value
 	     )
 	  )
@@ -2091,6 +2093,10 @@ end
  * History:
  * 
  * $Log: pxp_core_parser.m2y,v $
+ * Revision 1.3  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.2  2003/06/20 15:14:13  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.mli,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_ev_parser.mli,v 1.2 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -8,40 +8,6 @@ open Pxp_types
 open Pxp_dtd
 
 (******************* Event-based interface **************************)
-
-type event =
-  | E_start_doc of (string * bool * dtd)
-  | E_end_doc
-  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
-  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
-  | E_char_data of  string
-  | E_pinstr of (string * string)
-  | E_comment of string
-  | E_position of (string * int * int)
-  | E_error of exn
-  | E_end_of_stream
-  (* may be extended in the future *)
-
-  (* The type of XML events:
-   * E_start_doc (xmlversion,standalone,dtd)
-   * E_end_doc
-   * E_start_tag (name, attlist, entid):      <name attlist>
-   * E_end_tag (name, entid):                 </name>
-   * E_char_data data:                        data
-   * E_pinstr (target,value):                 <?target value?>
-   * E_comment value:                         <!--value-->
-   * E_position(entity,line,col):             (position of next event)
-   * E_end_of_stream:                         always the last event
-   *
-   * E_position events are only created if the next event will be
-   * E_start_tag, E_empty_tag, E_pinstr, or E_comment, and if
-   * the configuration option store_element_position is true.
-   *
-   * The parser usually generates several E_char_data events for a
-   * longer section of character data.
-   *
-   * MAYBE TODO: Events with preprocessed namespaces
-   *)
 
 val create_entity_manager :
       ?is_document:bool ->       (* default: true *)
@@ -100,8 +66,7 @@ val process_entity :
    * - enable_comment_nodes
    * - store_element_positions
    * - name_pool and all name pool options
-   * 
-   * In the future, enable_namespace_processing might be interpreted, too.
+   * - enable_namespace_processing
    *
    * If an error happens, the callback function is invoked exactly once
    * with the E_error event. The error is additionally passed to the caller
@@ -181,6 +146,10 @@ val create_pull_parser :
  * History:
  * 
  * $Log: pxp_ev_parser.mli,v $
+ * Revision 1.2  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *

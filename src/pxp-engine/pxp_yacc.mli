@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.28 2003/06/20 19:41:39 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.29 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -149,11 +149,14 @@ val parse_dtd_entity : config -> source -> dtd
 val extract_dtd_from_document_entity : config -> source -> dtd
   (* now defined in Pxp_dtd_parser *)
 
-type event = Pxp_ev_parser.event =
+type event = Pxp_types.event =
   | E_start_doc of (string * bool * dtd)
   | E_end_doc
   | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
+  | E_ns_start_tag of (string * string * (string * string * string) list *
+		       Pxp_lexer_types.entity_id)
   | E_end_tag   of (string * Pxp_lexer_types.entity_id)
+  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
   | E_pinstr of (string * string)
   | E_comment of string
@@ -202,6 +205,10 @@ val create_pull_parser :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.29  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.28  2003/06/20 19:41:39  gerd
  * 	Added ~transform_dtd to parse_wfdocument_entity.
  *

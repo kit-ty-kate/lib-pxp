@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.20 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_types.mli,v 1.21 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -84,6 +84,8 @@ type config =
 	  *     type T_element "-pi" instead of T_pinstr.
 	  * (2) The T_pinstr nodes are created from the pinstr exemplars
 	  *     in your spec
+	  * (3) Event-based parser: This flag controls whether E_pinstr
+	  *     events are generated or not.
 	  *)
 
       enable_super_root_node : bool;
@@ -124,6 +126,7 @@ type config =
 	  *     T_element "-vr" instead of T_super_root.
 	  * (2) The T_super_root node is created from the super root exemplar
 	  *     in your spec.
+	  * (3) Event-based parser: no effect
 	  *)
 
       enable_comment_nodes : bool;
@@ -144,6 +147,9 @@ type config =
 	  *
 	  * The nodes of type T_comment are created from the comment exemplars
 	  * in your spec.
+	  *
+	  * Event-based parser: This flag controls whether E_comment events
+	  * are generated.
 	  *)
 
       drop_ignorable_whitespace : bool;
@@ -178,6 +184,9 @@ type config =
 	 * Note that this option supersedes the effect of the method
 	 * keep_always_whitespace_mode which was defined for document
 	 * nodes in PXP 1.0.
+	 *
+	 * Event-based parser: ignored. (Maybe there will be a stream filter
+	 * with the same effect if I find time to program it.)
 	 *)
 
       encoding : rep_encoding;
@@ -204,6 +213,10 @@ type config =
 	 * is no element instance where these attributes are omitted - the
 	 * parser would return the default value but this requires access to
 	 * the external DTD subset.
+	 *
+	 * Event-based parser: The option has an effect if the `Parse_xml_decl
+	 *   entry flag is set. In this case, it is passed to the DTD whether
+	 *   there is a standalone declaration, ... and the rest is unclear.
 	 *)
 
       store_element_positions : bool;
@@ -217,6 +230,9 @@ type config =
 	 * For all other node types, no position is stored.
 	 *
 	 * You can access positions by the method "position" of nodes.
+	 *
+	 * Event-based parser: If true, the E_position events will be 
+	 *   generated.
 	 *)
 
       idref_pass : bool;
@@ -229,6 +245,8 @@ type config =
 	 * "Second pass" does not mean that the XML text is again parsed;
 	 * only the existing document tree is traversed, and the check
 	 * on bad IDREF/IDREFS attributes is performed for every node.
+	 *
+	 * Event-based parser: this option is ignored.
 	 *)
 
       validate_by_dfa : bool;
@@ -245,10 +263,16 @@ type config =
 	 *
 	 * I strongly recommend using DFAs; however, there are examples
 	 * for which validation by backtracking is faster.
+	 *
+	 * Event-based parser: this option is ignored.
 	 *)
 
       accept_only_deterministic_models : bool;
-        (* Whether only deterministic content models are accepted in DTDs. *)
+        (* Whether only deterministic content models are accepted in DTDs.
+	 *
+	 * Event-based parser: this option is ignored.
+	 *)
+
 
       disable_content_validation : bool;
         (* When set to 'true', content validation is disabled; however,
@@ -259,6 +283,8 @@ type config =
 	 * Do not forget to set accept_only_deterministic_models to false
 	 * to save maximum time (or DFAs will be computed which is rather
 	 * expensive).
+	 *
+	 * Event-based parser: this option is ignored.
 	 *)
 
       name_pool : Pxp_core_types.pool;
@@ -271,6 +297,9 @@ type config =
 	 * the same value share the same block of memory.
 	 * Enabling the name pool saves memory, but makes the parser
 	 * slower.
+	 *
+	 * Event-based parser: As far as I remember, some of the pool
+	 *   options are honoured, but not all.
 	 *)
 
       enable_namespace_processing : Pxp_dtd.namespace_manager option;
@@ -299,9 +328,14 @@ type config =
 	 *
 	 * This forces that elements with the mentioned URI are rewritten
 	 * to a form using the normprefix "html". For instance, "html:table" 
-	 * always refers to the table construct.
+	 * always refers to the HTML table construct, independently of the
+	 * prefix used in the parsed XML text.
 	 *
 	 * By default, namespace processing is turned off.
+	 *
+	 * Event-based parser: If true, the events E_ns_start_tag and
+	 *    E_ns_end_tag are generated instead of E_start_tag, and
+	 *    E_end_tag, respectively.
 	 *)
 
       enable_namespace_info : bool;
@@ -312,6 +346,8 @@ type config =
 	 * Warning! This option requires a lot of memory!
 	 *
 	 * Default: false
+	 *
+	 * Event-based parser: this option is ignored.
 	 *)
 
       (* Experimental stuff: *)
@@ -330,6 +366,8 @@ type config =
 	 * token Rcurly, and "}}" is the token RRcurly.
 	 *
 	 * Default: None
+	 *
+	 * Event-based parser: this option works.
 	 *)
 
       escape_attributes : 
@@ -355,6 +393,8 @@ type config =
 	 * See also [escape_contents].
 	 *
 	 * Default: None
+	 *
+	 * Event-based parser: this option works.
 	 *)
 
 
@@ -584,10 +624,77 @@ type entry =
     *)
 
 
+type event =
+  | E_start_doc of (string * bool * Pxp_dtd.dtd)
+  | E_end_doc
+  | E_start_tag of (string * (string * string) list * 
+		    Pxp_lexer_types.entity_id)
+  | E_ns_start_tag of (string * string * (string * string * string) list *
+		       Pxp_lexer_types.entity_id)
+  | E_end_tag    of (string * Pxp_lexer_types.entity_id)
+  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
+  | E_char_data of  string
+  | E_pinstr of (string * string)
+  | E_comment of string
+  | E_position of (string * int * int)
+  | E_error of exn
+  | E_end_of_stream
+  (* may be extended in the future *)
+
+  (* The type of XML events:
+   * E_start_doc (xmlversion,standalone,dtd)
+   * E_end_doc
+   *
+   * E_start_tag (name, attlist, entid):
+   *    <name attlist>
+   *    only used in non-namespace mode
+   *
+   * E_ns_start_tag (orig_name, norm_name, attlist, entid)
+   *    only used in namespace mode; orig_name is the element as found
+   *    in the XML text; norm_name is the normalized element name;
+   *    attlist consists of triples (orig_name, norm_name, value).
+   *
+   * E_end_tag (name, entid):                 
+   *    </name>
+   *    only used in non-namespace mode
+   *
+   * E_ns_end_tag (orig_name, norm_name, entid):
+   *    only used in namespace mode
+   *
+   * E_char_data data:
+   *     The parser usually generates several E_char_data events for a
+   *     longer section of character data.
+   *
+   * E_pinstr (target,value):                 
+   *     <?target value?>
+   *
+   * E_comment value:
+   *     <!--value-->
+   *
+   * E_position(entity,line,col):
+   *    these events are only created if the next event will be
+   *    E_start_tag, E_pinstr, or E_comment, and if
+   *    the configuration option store_element_position is true.
+   *
+   * E_end_of_stream:                         
+   *    this last event indicates that the parser has terminated without
+   *    error
+   *
+   * E_error(exn):
+   *    this last event indicates that the parser has terminated with
+   *    error
+   *)
+
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.21  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.20  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

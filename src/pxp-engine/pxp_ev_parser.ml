@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_ev_parser.ml,v 1.3 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,20 +12,6 @@ open Pxp_dtd
 open Pxp_core_parser
 open Pxp_aux
 
-
-type event =
-  | E_start_doc of (string * bool * dtd)
-  | E_end_doc
-  | E_start_tag of (string * (string * string) list * entity_id)
-  | E_end_tag   of (string * entity_id)
-  | E_char_data of  string
-  | E_pinstr of (string * string)
-  | E_comment of string
-  | E_position of (string * int * int)
-  | E_error of exn
-  | E_end_of_stream
-
-(**********************************************************************)
 
 (* The subclass event_parser for the event-based interface: *)
 
@@ -45,7 +31,7 @@ object (self)
   val mutable xml_standalone = false
 
   val mutable ep_root_element_seen = false
-  val mutable ep_elstack = stack_create (None,"",new any_entity_id)
+  val mutable ep_elstack = stack_create (None,"","",new any_entity_id)
   val mutable ep_early_events = []
 
 
@@ -95,43 +81,79 @@ object (self)
 	raise(WF_error("Document must consist of only one toplevel element"));
       ep_root_element_seen <- true;
     end;
-    if not emptiness then
-      stack_push (position, name, tag_beg_entid) ep_elstack;
 
-    event_handler(E_start_tag(name,attlist,tag_beg_entid));
-    if emptiness then
-      event_handler(E_end_tag(name,tag_beg_entid))
+    match config.enable_namespace_processing with
+	None ->
+	  (* no namespaces *)
+	  if not emptiness then
+	    stack_push (position, name, "", tag_beg_entid) ep_elstack;
+	  event_handler(E_start_tag(name,attlist,tag_beg_entid));
+	  if emptiness then
+	    event_handler(E_end_tag(name,tag_beg_entid))
+      | Some mng ->
+	  (* enabled namespaces *)
+	  let (src_prefix, localname, norm_name, norm_attlist) =
+            self # push_src_norm_mapping mng name attlist in
+	  let mixed_attlist =
+	    List.map (fun (orig_prefix, localname, norm_name, value) ->
+			(orig_prefix ^ ":" ^ localname,
+			 norm_name,
+			 value)) norm_attlist in
+	  if not emptiness then
+	    stack_push (position, name, norm_name, tag_beg_entid) ep_elstack;
+	  event_handler(E_ns_start_tag
+			  (name,norm_name,mixed_attlist,tag_beg_entid));
+	  if emptiness then (
+	    self # pop_src_norm_mapping();
+	    event_handler(E_ns_end_tag(name,norm_name,tag_beg_entid));
+	  )
 
-  method event_end_tag name tag_end_entid =
-    ( try
-	let x_pos, x_name, tag_beg_entid = stack_pop ep_elstack in
-	if name <> x_name then begin
-	  let where = 
-	    match x_pos with
-	      | None -> ""
-	      | Some (_, 0, _) -> ""
-	      | Some (x_entname, x_line, x_col) ->
-		  " (was at line " ^ string_of_int x_line ^
-		  ", position " ^ string_of_int x_col ^ ")" 
-	  in
-	  raise(WF_error("End tag `" ^ name ^
-			 "' does not match start tag `" ^ x_name ^ "'" ^
-			 where))
-	end;
-	if tag_beg_entid != tag_end_entid then
-	  raise(WF_error("End tag `" ^ name ^
-			 "' not in the same entity as the start tag `" ^
-			 x_name ^ "'"));
-      with
-	  Stack.Empty ->
-	    assert false;   (* because n_tags_open = 0 is checked *)
-    );
-    event_handler(E_end_tag(name,tag_end_entid))
 
-  method event_char_data data =
+  method private event_end_tag name tag_end_entid =
+    let norm_name =  
+      (* only used in namespace mode, else "" *)
+      ( try
+	  let x_pos, x_name, x_norm_name, tag_beg_entid = 
+	    stack_pop ep_elstack in
+	  if name <> x_name then begin
+	    let where = 
+	      match x_pos with
+		| None -> ""
+		| Some (_, 0, _) -> ""
+		| Some (x_entname, x_line, x_col) ->
+		    " (was at line " ^ string_of_int x_line ^
+		    ", position " ^ string_of_int x_col ^ ")" 
+	    in
+	    raise(WF_error("End tag `" ^ name ^
+			   "' does not match start tag `" ^ x_name ^ "'" ^
+			   where))
+	  end;
+	  if tag_beg_entid != tag_end_entid then
+	    raise(WF_error("End tag `" ^ name ^
+			   "' not in the same entity as the start tag `" ^
+			   x_name ^ "'"));
+	  x_norm_name
+	with
+	    Stack.Empty ->
+	      assert false;   (* because n_tags_open = 0 is checked *)
+      ) in
+
+    match config.enable_namespace_processing with
+	None ->
+	  (* no namespaces *)
+	  event_handler(E_end_tag(name,tag_end_entid))
+
+      | Some mng ->
+	  (* namespaces *)
+	  self # pop_src_norm_mapping();
+	  event_handler(E_ns_end_tag(name,norm_name,tag_end_entid))
+	  
+
+  method private event_char_data data =
     event_handler(E_char_data(data))
 
-  method event_pinstr position target value =
+
+  method private event_pinstr position target value =
     if config.enable_pinstr_nodes then begin
       let ev_list = 
 	(match position with
@@ -145,7 +167,8 @@ object (self)
 	ep_early_events <- ep_early_events @ ev_list
     end
 
-  method event_comment position mat =
+
+  method private event_comment position mat =
     if config.enable_comment_nodes then begin
       let ev_list = 
 	(match position with
@@ -159,7 +182,8 @@ object (self)
 	ep_early_events <- ep_early_events @ ev_list
     end
 
-  method sub_parser () =
+
+  method private sub_parser () =
     let pobj = new event_parser dtd config event_handler false (-1) in
     (pobj :> core_parser)
 
@@ -369,6 +393,10 @@ let create_pull_parser
  * History:
  * 
  * $Log: pxp_ev_parser.ml,v $
+ * Revision 1.3  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.2  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

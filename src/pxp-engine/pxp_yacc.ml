@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.ml,v 1.2 2003/06/20 15:14:14 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.ml,v 1.3 2003/06/20 21:00:33 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -91,10 +91,14 @@ let extract_dtd_from_document_entity =
   Pxp_dtd_parser.extract_dtd_from_document_entity
 
 
-type event = Pxp_ev_parser.event =
+type event = Pxp_types.event =
   | E_start_doc of (string * bool * dtd)
   | E_end_doc
-  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
+  | E_start_tag of (string * (string * string) list * Pxp_lexer_types.entity_id)
+  | E_ns_start_tag of (string * string * (string * string * string) list *
+		       Pxp_lexer_types.entity_id)
+  | E_end_tag   of (string * Pxp_lexer_types.entity_id)
+  | E_ns_end_tag of (string * string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
   | E_pinstr of (string * string)
   | E_comment of string
@@ -117,6 +121,10 @@ let create_pull_parser = Pxp_ev_parser.create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.ml,v $
+ * Revision 1.3  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.2  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

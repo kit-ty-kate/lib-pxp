@@ -1,4 +1,4 @@
-(* $Id: pxp_core_parser.mli,v 1.1 2003/06/15 18:18:34 gerd Exp $
+(* $Id: pxp_core_parser.mli,v 1.2 2003/06/20 21:00:33 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -75,7 +75,8 @@ object
 
   method private push_src_norm_mapping : 
                    namespace_manager -> string -> (string * string) list ->
-		     (string * string * string * (string * string) list)
+		     (string * string * string * 
+		      (string * string * string * string) list)
 
   method private pop_src_norm_mapping : unit -> unit
 
@@ -120,6 +121,10 @@ end
  * History:
  * 
  * $Log: pxp_core_parser.mli,v $
+ * Revision 1.2  2003/06/20 21:00:33  gerd
+ * 	Moved events to Pxp_types.
+ * 	Implementation of namespaces in event-based parsers.
+ *
  * Revision 1.1  2003/06/15 18:18:34  gerd
  * 	Initial revision
  *
