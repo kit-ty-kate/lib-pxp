@@ -236,6 +236,18 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
         <li>
+	  <p>Changed in 0.99.2:</p>
+	  <p>Added checks for the constraints about the standalone
+declaration.</p>
+	  <p>Added regression tests about attribute normalization, 
+attribute checks, standalone checks.</p>
+	  <p>Fixed some minor errors of the attribute normalization
+function.</p>
+	  <p>The bytecode/native archives are now separated in
+a general part, in a ISO-8859-1-relevant part, and a UTF-8-relevant
+part. The parser can again be compiled with ocamlopt.</p>
+	</li>
+        <li>
 	  <p>Changed in 0.99.1:</p>
 	  <p>In general, this release is an early pre-release of the
 next stable version 1.00. I do not recommend to use it for serious

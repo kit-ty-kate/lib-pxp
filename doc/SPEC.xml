@@ -116,4 +116,111 @@ starting &lt;![ token.</p>
   </sect1>
 
 
+  <sect1>
+    <title>Standalone documents and attribute normalization</title>
+    
+    <p>
+If a document is declared as stand-alone, a restriction on the effect of
+attribute normalization takes effect for attributes declared in external
+entities. Normally, the parser knows the type of the attribute from
+the ATTLIST declaration, and it can normalize attribute values depending
+on their types. For example, an NMTOKEN attribute can be written with
+leading or trailing spaces, but the parser returns always the nmtoken
+without such added spaces; in contrast to this, a CDATA attribute is
+not normalized in this way. For stand-alone document the type information is
+not available if the ATTLIST declaration is located in an external
+entity. Because of this, the XML spec demands that attribute values must
+be written in their normal form in this case, i.e. without additional
+spaces.
+</p>
+    <p>This parser interprets this restriction as follows. Obviously, 
+the substitution of character and entity references is not considered
+as a "change of the value" as a result of the normalization, because
+these operations will be performed identically if the ATTLIST declaration
+is not available. The same applies to the substitution of TABs, CRs, 
+and LFs by space characters. Only the removal of spaces depending on
+the type of the attribute changes the value if the ATTLIST is not
+available.
+</p>
+    <p>This means in detail: CDATA attributes never violate the
+stand-alone status. ID, IDREF, NMTOKEN, ENTITY, NOTATION and enumerator
+attributes must not be written with leading and/or trailing spaces. IDREF,
+ENTITIES, and NMTOKENS attributes must not be written with extra spaces at the
+beginning or at the end of the value, or between the tokens of the list.
+</p>
+    <p>The whole check is dubious, because the attribute type expresses also a
+semantical constraint, not only a syntactical one. At least this parser
+distinguishes strictly between single-value and list types, and returns the
+attribute values differently; the first are represented as Value s (where s is
+a string), the latter are represented as Valuelist [s1; s2; ...; sN]. The
+internal representation of the value is dependent on the attribute type, too,
+such that even normalized values are processed differently depending on
+whether the attribute has list type or not. For this parser, it makes still a
+difference whether a value is normalized and processed as if it were CDATA, or
+whether the value is processed according to its declared type.
+</p>
+    <p>The stand-alone check is included to be able to make a statement 
+whether other, well-formedness parsers can process the document. Of course,
+these parsers always process attributes as CDATA, and the stand-alone check
+guarantees that these parsers will always see the normalized values.
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Standalone documents and the restrictions on entity
+references</title>
+    <p>
+Stand-alone documents must not refer to entities which are declared in an
+external entity. This parser applies this rule only: to general and NDATA
+entities when they occur in the document body (i.e. not in the DTD); and to
+general and NDATA entities occuring in default attribute values declared in the
+internal subset of the DTD.
+</p>
+    <p>
+Parameter entities are out of discussion for the stand-alone property. If there
+is a parameter entity reference in the internal subset which was declared in an
+external entity, it is not available in the same way as the external entity is
+not available that contains its declaration. Because of this "equivalence",
+parameter entity references are not checked on violations against the
+stand-alone declaration. It simply does not matter. - Illustration:
+</p>
+
+    <p>
+Main document:
+
+    <code><![CDATA[
+<!ENTITY % ext SYSTEM "ext">
+%ext;
+%ent;
+]]></code>
+
+"ext" contains:
+
+    <code><![CDATA[
+<!ENTITY % ent "<!ELEMENT el (other*)>">
+]]></code>
+</p>
+
+    <p>Here, the reference %ent; would be illegal if the standalone
+declaration is strictly interpreted. This parser handles the references
+%ent; and %ext; equivalently which means that %ent; is allowed, but the
+element type "el" is treated as externally declared.
+</p>
+
+    <p>
+General entities can occur within the DTD, but they can only be contained in
+the default value of attributes, or in the definition of other general
+entities. The latter can be ignored, because the check will be repeated when
+the entities are expanded. Though, general entities occuring in default
+attribute values are actually checked at the moment when the default is
+used in an element instance.
+</p>
+    <p>
+General entities occuring in the document body are always checked.</p>
+    <p>
+NDATA entities can occur in ENTITY attribute values; either in the element
+instance or in the default declaration. Both cases are checked.
+</p>
+  </sect1>
+
 </readme>

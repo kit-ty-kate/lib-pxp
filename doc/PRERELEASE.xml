@@ -49,6 +49,8 @@ using UTF-8 or ISO-8859-1 strings. This was only possible
 because Claudio Sacerdoti Coen  contributed a special lexer preprocessor
 hiding the details of the UTF-8 encoding.
 </p>
+
+	<p>The current pre-release can now check the standalone declaration.</p>
       </li>
 
       <li><p><em>Correctness of validation:</em> The well-formedness
@@ -82,8 +84,8 @@ for programs transforming XML trees.</p>
     <title>Download the PXP pre-release</title>
 
     <p>The current pre-release is available under 
-<a href="&url.gps-ocaml-download;/pxp-pre-0.99.1.tar.gz">
-&url.gps-ocaml-download;/pxp-pre-0.99.1.tar.gz</a>. There is currently no
+<a href="&url.gps-ocaml-download;/pxp-pre-0.99.2.tar.gz">
+&url.gps-ocaml-download;/pxp-pre-0.99.2.tar.gz</a>. There is currently no
 documentation for this version of the software; it is recommended to use the <a
 href="&url.markup-manual;">Markup manual</a> and compare it with the current
 module interfaces.</p>
@@ -91,11 +93,10 @@ module interfaces.</p>
     <p>Please note that this is work in progress; it contains bugs
 and irregularities.</p>
 
-    <p>Note that the current version can only be compiled with the
-bytecode compiler of O'Caml 3.00.</p>
+    <p>The parser works only with OCaml-3.</p>
 
     <p>I am very interested in your opinion to PXP; please <a
-href="&person.gps.mail;">contact me</a>.</p>
+href="mailto:&person.gps.mail;">contact me</a>.</p>
   </sect1>
 
   <sect1>
