@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.17 2000/09/21 21:30:46 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.18 2000/10/01 19:49:04 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -26,7 +26,6 @@ end
 
 type config =
     { warner : collect_warnings;
-      errors_with_line_numbers : bool;
       enable_pinstr_nodes : bool;
       enable_super_root_node : bool;
       enable_comment_nodes : bool;
@@ -224,6 +223,58 @@ let from_string ?fixenc s =
 ;;
 
 
+(* An array based stack implementation. Advantage: Constant memory 
+ * consumption.
+ *)
+
+type 't array_stack =
+    { mutable stack_array : 't array;
+      mutable stack_top : int;
+      mutable stack_null : 't;
+    }
+;;
+
+
+let stack_create null =
+  (* null: a dummy element *)
+  { stack_array = Array.create 100 null;
+    stack_top = -1;
+    stack_null = null;
+  }
+;;
+
+
+let stack_push x st =
+  let top = st.stack_top + 1 in
+  if top >= Array.length st.stack_array then
+    st.stack_array <- Array.append 
+                        st.stack_array (Array.create 100 st.stack_null);
+  st.stack_array.(top) <- x;
+  st.stack_top <- top
+;;
+
+
+let stack_top st =
+  let top = st.stack_top in
+  if top >= 0 then
+    st.stack_array.(top)
+  else
+    raise Stack.Empty
+;;
+
+
+let stack_pop st =
+  let top = st.stack_top in
+  if top >= 0 then begin
+    let x = st.stack_array.(top) in
+    st.stack_array.(top) <- st.stack_null;
+    st.stack_top <- top-1;
+    x
+  end
+  else
+    raise Stack.Empty
+;;
+
 (**********************************************************************)
 
 class ['ext] parser_object
@@ -269,7 +320,11 @@ class ['ext] parser_object
     val config = init_config
         (* The current configuration *)
 
-    val elstack = (Stack.create() : ('ext node * entity_id) Stack.t)
+    val elstack = 
+      let null_node = get_data_exemplar init_spec in
+      let null_id = (null_node :> entity_id) in
+      let null = (null_node, null_id) in
+      (stack_create null : ('ext node * entity_id) array_stack)
        (* The element stack containing all open elements, i.e. elements that
 	* have begun by a start tag but that have not been finished (end tag).
 	* If the parser sees a start tag, it creates the element and pushes it
@@ -286,7 +341,7 @@ class ['ext] parser_object
     method current =
         (* Get the top element of the element stack *)
         try
-          fst(Stack.top elstack)
+          fst(stack_top elstack)
 	with
 	    Stack.Empty -> assert false
 		(* Not possible, because the super root is always the element 
@@ -320,10 +375,14 @@ class ['ext] parser_object
 	 *)
 
     val mutable current_data = []
-	(* Collects character data. *)
+    val mutable current_string = ""
+	(* Collect character data. *)
 
     method collect_data s =
         (* Collects the character material 's' *)
+      if String.length current_string = 0 then 
+	current_string <- s
+      else
         current_data <- s :: current_data
 
     method save_data =
@@ -332,33 +391,40 @@ class ['ext] parser_object
        *)
       match current_data with
 	  [] ->
-	    ()
+	    if String.length current_string > 0 then
+	      self # current # add_node 
+		                     (create_data_node spec dtd current_string);
+	    current_string <- "";
 	| [ str ] ->
-	    if str <> "" then
-	      self # current # add_node (create_data_node spec dtd str);
+	    self # current # add_node (create_data_node spec dtd 
+					   (current_string ^ str));
+	    current_string <- "";
 	    current_data <- []
 	| _ ->
-	    let count = List.fold_left 
-			  (fun acc s -> acc + String.length s) 
-			  0
-			  current_data in
-	    let str = String.create count in
-	    let pos = ref count in
+	    let accu = ref (String.length current_string) in
+	    List.iter (fun s -> accu := !accu + String.length s) current_data;
+	    let str = String.create !accu in
+	    let pos = ref (!accu) in
 	    List.iter
 	      (fun s ->
 		 let l = String.length s in
 		 pos := !pos - l;
 		 String.blit
-		 ~src:s
-		 ~src_pos:0
-		 ~dst:str
-		 ~dst_pos:(!pos)
-		 ~len:l
+		   ~src:s
+		   ~src_pos:0
+		   ~dst:str
+		   ~dst_pos:(!pos)
+		   ~len:l
 	      )
 	      current_data;
-	    assert(!pos = 0);
-	    if str <> "" then
-	      self # current # add_node (create_data_node spec dtd str);
+	    String.blit
+	      ~src:current_string
+	      ~src_pos:0
+	      ~dst:str
+	      ~dst_pos:0
+	      ~len:(String.length current_string);
+	    self # current # add_node (create_data_node spec dtd str);
+	    current_string <- "";
 	    current_data <- []
 	      
 
@@ -366,12 +432,7 @@ class ['ext] parser_object
 	(* Checks that the string "data" contains only whitespace. On failure,
 	 * Validation_error is raised.
 	 *)
-      let lexbuf = Lexing.from_string data in
-      let t1 = lexerset.scan_name_string lexbuf in
-      if t1 <> Ignore then
-	raise(WF_error("Data not allowed here"));
-      let t2 = lexerset.scan_name_string lexbuf in
-      if t2 <> Eof then
+      if not (Pxp_lib.only_whitespace data) then
 	raise(WF_error("Data not allowed here"));
       ()
 
@@ -389,7 +450,7 @@ class ['ext] parser_object
 	  create_no_node spec dtd
       in
       (* Move the super root or the emulation to the stack: *)
-      Stack.push (super_root, (self :> entity_id)) elstack;
+      stack_push (super_root, (self :> entity_id)) elstack;
 
 
 
@@ -467,7 +528,23 @@ class ['ext] parser_object
 
 
 	let make_pool_string = pool_string config.name_pool in
-	
+(*	
+	let rec start_tag_check_attlist al =
+	  match al with
+	      (nv1, num1) :: al' ->
+		if not num1 && al' <> [] then begin
+		  match al with
+		      ((n1,_),_) :: ((n2,_),_) :: _ ->
+			raise(WF_error("Whitespace is missing between attributes `" ^
+				       n1 ^ "' and `" ^ n2 ^ "'"))
+		    | _ -> assert false
+		end;
+		start_tag_check_attlist al'
+	    | [] -> ()
+	in
+*)
+
+	let reused_lexbuf = Lexing.from_string "" in
 %%
 
 /* The following grammar looks similar to ocamlyacc grammars, but 
@@ -762,7 +839,7 @@ doctypedecl_material(doctype_entid):
 		None
 	    in
 	    let en = new external_entity r' dtd "[dtd]"
-		         config.warner id false config.errors_with_line_numbers
+		         config.warner id false 
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
@@ -1371,14 +1448,16 @@ defaultdecl():
 | Implied
     {{ D_implied }}
 | Fixed ws:Ignore Ignore* str:Unparsed_string
-    {{ D_fixed (expand_attvalue lexerset dtd str config.warner false) }}
+    {{ D_fixed 
+	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
   ? {{ match !yy_position with
 	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
 	 | "str" -> raise(WF_error("String literal expected"))
 	 | _     -> raise(WF_error("Bad #FIXED default value"))
     }}
 | str:Unparsed_string
-    {{ D_default (expand_attvalue lexerset dtd str config.warner false) }}
+    {{ D_default 
+	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
 
 
 /**************************** ENTITY DECLARATION ***********************/
@@ -1407,10 +1486,10 @@ entitydecl(decl_entity_entid):
 	match material with
 	    (Some s, None,     None)   ->
 	      new internal_entity dtd name config.warner s p_internal_subset
-		  config.errors_with_line_numbers false config.encoding
+		  false config.encoding
 	  | (None,   Some xid, None)   ->
 	      new external_entity (resolver # clone) dtd name config.warner
-                                  xid false config.errors_with_line_numbers
+                                  xid false 
 		                  config.encoding
 
 	  | (None,   Some xid, Some n) ->
@@ -1444,10 +1523,10 @@ entitydecl(decl_entity_entid):
 	match material with
 	    (Some s, None)   ->
 	      new internal_entity dtd name config.warner s p_internal_subset
-  		  config.errors_with_line_numbers true config.encoding
+  		  true config.encoding
 	  | (None,   Some xid)   ->
 	      new external_entity (resolver # clone) dtd name config.warner
-                                  xid true config.errors_with_line_numbers
+                                  xid true 
 		                  config.encoding
 	  | _ -> assert false
       in
@@ -1673,36 +1752,22 @@ start_tag():
 	   else
 	     None
 	 in
+	 let attlist = ref [] in
+	 let attspace = ref true in
        }}
   ws:         Ignore? Ignore*
-  attlist:    attribute()* 
+              attribute(attlist,attspace)* 
   emptiness:  start_tag_rangle()
   /* Note: it is guaranteed that there is whitespace between Tag_beg and
    * the name of the first attribute, because there must be some separator.
    * So we need not to check ws!
    */
     {{ 
-      let rec check_attlist al =
-	match al with
-	    (nv1, num1) :: al' ->
-	      if not num1 && al' <> [] then begin
-		match al with
-		    ((n1,_),_) :: ((n2,_),_) :: _ ->
-		      raise(WF_error("Whitespace is missing between attributes `" ^
-				     n1 ^ "' and `" ^ n2 ^ "'"))
-		  | _ -> assert false
-	      end;
-	      check_attlist al'
-	  | [] -> ()
-      in
-      check_attlist attlist;
-		
       let name0, tag_beg_entid = tag in
       let name =
 	if config.enable_name_pool_for_element_types 
 	then make_pool_string name0 
 	else name0 in
-      let attlist' = List.map (fun (nv,_) -> nv) attlist in
       let d =
 	create_element_node 
           ?name_pool_for_attribute_values:
@@ -1710,7 +1775,7 @@ start_tag():
 	      then Some config.name_pool
 	      else None)
           ?position:position 
-          spec dtd name attlist' in
+          spec dtd name !attlist in
 
       begin match id_index with
 	  None -> ()
@@ -1765,33 +1830,37 @@ start_tag():
       end
       else begin
 	(* A non-empty tag. *)
-	Stack.push (d, tag_beg_entid) elstack;
+	stack_push (d, tag_beg_entid) elstack;
 	n_tags_open <- n_tags_open + 1;
       end;
     }}
   ? {{ match !yy_position with
-	   "attlist"   -> raise(WF_error("Bad attribute list"))
 	 | "emptiness" -> raise(WF_error("`>' or `/>' expected"))
 	 | _           -> raise(WF_error("Bad start tag"))
     }}
 
 
-attribute():
+attribute(attlist,attspace):
   /* Parses name="value"  */
   n0:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
-    {{ let n =
+    {{ if not !attspace then
+	 raise(WF_error("Whitespace is missing before attribute `" ^
+			n0 ^ "'"));
+       let n =
 	 if config.enable_name_pool_for_attribute_names 
 	 then make_pool_string n0
 	 else n0 in
-       (n,v), ws 
+       attlist := (n,v) :: !attlist;
+       attspace := ws;
+       ()
      }}
 
 
 attval():
   v:Attval
-    {{ expand_attvalue lexerset dtd v config.warner true }}
+    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner true }}
 | v:Attval_nl_normalized
-    {{ expand_attvalue lexerset dtd v config.warner false }}
+    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner false }}
 
 
 start_tag_rangle():
@@ -1811,7 +1880,7 @@ end_tag():
 
        self # save_data;        (* Save outstanding data material first *)
 
-       let x, tag_beg_entid = Stack.pop elstack in
+       let x, tag_beg_entid = stack_pop elstack in
        let x_name =
 	 match x # node_type with
 	   | T_element n -> n
@@ -2074,7 +2143,6 @@ let call_parser ~configuration:cfg
 		~use_document_entity
                 ~entry 
 		~init_lexer =
-  let e = cfg.errors_with_line_numbers in
   let w = cfg.warner in
   let r, en =
     match src with
@@ -2082,11 +2150,11 @@ let call_parser ~configuration:cfg
       | ExtID(xid,r') -> r', 
 	                 if use_document_entity then
                            new document_entity 
-			     r' dtd "[toplevel]" w xid e
+			     r' dtd "[toplevel]" w xid
                              cfg.encoding
 			 else
                            new external_entity 
-			     r' dtd "[toplevel]" w xid false e
+			     r' dtd "[toplevel]" w xid false
                              cfg.encoding
   in
   r # init_rep_encoding cfg.encoding;
@@ -2307,7 +2375,6 @@ let extract_dtd_from_document_entity cfg src =
 let default_config =
   let w = new drop_warnings in
   { warner = w;
-    errors_with_line_numbers = true;
     enable_pinstr_nodes = false;
     enable_super_root_node = false;
     enable_comment_nodes = false;
@@ -2348,6 +2415,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.18  2000/10/01 19:49:04  gerd
+ * 	Many small optimizations, espcially in attribute parsing.
+ * 	New type array_stack.
+ *
  * Revision 1.17  2000/09/21 21:30:46  gerd
  * 	New option: disable_content_validation
  *
