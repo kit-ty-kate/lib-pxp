@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.7 2000/07/09 15:32:01 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.8 2000/07/16 18:31:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -64,7 +64,8 @@ class virtual resolve_general
 	     warner # warn ("Code point cannot be represented: " ^ string_of_int k);
 	   end
 	else
-	  raise (Illegal_character 0)
+	  raise (WF_error("Code point " ^ string_of_int k ^ 
+		    " outside the accepted range of code points"))
 
 
     method private autodetect s =
@@ -667,6 +668,9 @@ class combine ?prefer rl =
  * History:
  * 
  * $Log: pxp_reader.ml,v $
+ * Revision 1.8  2000/07/16 18:31:09  gerd
+ * 	The exception Illegal_character has been dropped.
+ *
  * Revision 1.7  2000/07/09 15:32:01  gerd
  * 	Fix in resolve_this_channel, resolve_this_string
  *

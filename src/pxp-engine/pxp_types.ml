@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.4 2000/07/14 21:25:27 gerd Exp $
+(* $Id: pxp_types.ml,v 1.5 2000/07/16 18:31:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -122,9 +122,6 @@ let string_of_encoding (e : encoding) =
 ;;
 
 
-exception Illegal_character of int
-  (* at this position relative to the current lexeme *)
-
 exception Validation_error of string
 
 exception WF_error of string
@@ -145,8 +142,6 @@ let rec string_of_exn x0 =
   match x0 with
       At (s, x) ->
         s ^ string_of_exn x
-    | Illegal_character i ->
-        "ERROR: Illegal character"
     | Validation_error s ->
         "ERROR (Validity constraint): "  ^ s
     | WF_error s ->
@@ -184,6 +179,9 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.5  2000/07/16 18:31:09  gerd
+ * 	The exception Illegal_character has been dropped.
+ *
  * Revision 1.4  2000/07/14 21:25:27  gerd
  * 	Simplified the type 'collect_warnings'.
  *

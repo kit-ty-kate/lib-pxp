@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.3 2000/07/16 16:33:57 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.4 2000/07/16 18:31:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -19,7 +19,8 @@ let character enc warner k =
   if (k >= 0xd800 & k < 0xe000) or (k >= 0xfffe & k <= 0xffff) or k > 0x10ffff
      or (k < 8) or (k = 11) or (k = 12) or (k >= 14 & k <= 31)
   then
-    raise (Illegal_character 0);
+    raise (WF_error("Code point " ^ string_of_int k ^ 
+		    " outside the accepted range of code points"));
 
   try
     Pxp_encoding.makechar enc k
@@ -519,6 +520,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.4  2000/07/16 18:31:09  gerd
+ * 	The exception Illegal_character has been dropped.
+ *
  * Revision 1.3  2000/07/16 16:33:57  gerd
  * 	New function write_markup_string: Handles the encoding
  * of the string.

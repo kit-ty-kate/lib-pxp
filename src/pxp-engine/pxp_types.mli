@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.5 2000/07/16 16:34:21 gerd Exp $
+(* $Id: pxp_types.mli,v 1.6 2000/07/16 18:31:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -129,9 +129,6 @@ val string_of_encoding : encoding -> string;;
 
 
 
-exception Illegal_character of int
-  (* at this position relative to the current lexeme *)
-
 exception Validation_error of string
   (* Violation of a validity constraint *)
 
@@ -173,6 +170,9 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.6  2000/07/16 18:31:09  gerd
+ * 	The exception Illegal_character has been dropped.
+ *
  * Revision 1.5  2000/07/16 16:34:21  gerd
  * 	Updated comments.
  *
