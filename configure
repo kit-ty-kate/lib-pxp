@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# $Id: configure,v 1.7 2001/12/19 21:11:04 gerd Exp $
+# $Id: configure,v 1.8 2002/03/13 22:46:01 gerd Exp $
 
 # defaults:
 with_lex_iso88591=1
@@ -128,6 +128,26 @@ if [ $with_wlex -gt 0 ]; then
 fi
 
 ######################################################################
+# Check Lexing module
+
+printf "%s" "Checking Lexing.lexbuf type... "
+
+cat <<EOF >.testscript
+open Lexing;;
+let f b = b.lex_buffer_len;;
+EOF
+
+ocaml .testscript >.testout 2>&1
+
+if [ -s .testout ]; then
+    echo "new style"
+    lex_buffer_len=lex_buffer_end
+else
+    echo "old style (up to O'Caml 3.04)"
+    lex_buffer_len=lex_buffer_len
+fi
+
+######################################################################
 # Check cygwin
 
 printf "%s" "Checking for cygwin... "
@@ -190,6 +210,7 @@ cat <<_EOF_ >Makefile.conf
 VERSION = $version
 PKGLIST = $pkglist
 EXEC_SUFFIX = $exec_suffix
+LEX_BUFFER_LEN = $lex_buffer_len
 _EOF_
 
 ######################################################################
