@@ -1,0 +1,2093 @@
+(* $Id: pxp_core_parser.m2y,v 1.1 2003/06/15 18:18:34 gerd Exp $ -*- tuareg -*-
+ * ----------------------------------------------------------------------
+ * PXP: The polymorphic XML parser for Objective Caml.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
+ *)
+
+open Pxp_types
+open Pxp_lexers
+open Pxp_lexer_types
+open Pxp_entity_manager
+open Pxp_dtd
+open Pxp_aux
+
+type context =
+    { mutable current : unit -> token;  (* get the current token *)
+      mutable get_next : unit -> token; (* go on to the next token; return it *)
+      mutable current_token : token;    (* This is the current token *)
+      mutable manager : entity_manager; (* The entity manager *)
+    }
+
+type continuation_state =
+  { cont_context : context;
+    cont_extend_dtd : bool;
+    cont_process_xmldecl : bool;
+  }
+
+exception End_of_parsing
+  (* One way to signal that parsing is done *)
+
+exception Interrupt_parsing of continuation_state
+  (* Interrupt the parsing loop to process pull-style events *)
+
+
+let make_context ?first_token entity_manager =
+  let c =
+    { current = (fun _ -> assert false);
+      get_next = (fun _ -> assert false);
+      current_token = Eof;
+      manager = entity_manager;
+    }
+  in
+  (* Note that the function which is stored in get_next_ref can be changed
+   * as a side-effect when an entity is opened or closed. The function in
+   * c.get_next must be programmed such that always the current "get_next"
+   * function is executed.
+   *)
+  let get_next_ref = entity_manager # yy_get_next_ref in
+  c.current  <- (fun () -> c.current_token);
+  c.get_next <- (fun () -> let tok = !get_next_ref() in
+		           c.current_token <- tok;
+		           tok);
+  ( match first_token with
+	Some tok -> 
+	  c.current_token <- tok
+      | None ->
+	  ignore(c.get_next());
+  );
+  c
+;;
+
+
+type extended_entry =
+  [ entry
+  | `Entry_continuation of continuation_state
+  ]
+
+(**********************************************************************)
+
+(* An array based stack implementation. Advantage: Constant memory
+ * consumption.
+ *)
+
+type 't array_stack =
+    { mutable stack_array : 't array;
+      mutable stack_top : int;
+      mutable stack_null : 't;
+    }
+;;
+
+
+let stack_create null =
+  (* null: a dummy element *)
+  { stack_array = Array.create 100 null;
+    stack_top = -1;
+    stack_null = null;
+  }
+;;
+
+
+let stack_push x st =
+  let top = st.stack_top + 1 in
+  if top >= Array.length st.stack_array then
+    st.stack_array <- Array.append
+                        st.stack_array (Array.create 100 st.stack_null);
+  st.stack_array.(top) <- x;
+  st.stack_top <- top
+;;
+
+
+let stack_top st =
+  let top = st.stack_top in
+  if top >= 0 then
+    st.stack_array.(top)
+  else
+    raise Stack.Empty
+;;
+
+
+let stack_pop st =
+  let top = st.stack_top in
+  if top >= 0 then begin
+    let x = st.stack_array.(top) in
+    st.stack_array.(top) <- st.stack_null;
+    st.stack_top <- top-1;
+    x
+  end
+  else
+    raise Stack.Empty
+;;
+
+
+(**********************************************************************)
+
+class virtual core_parser
+  init_dtd init_config init_pull_counter
+  =
+  let make_pool_string = pool_string init_config.name_pool in
+  object (self)
+
+    val mutable dtd = init_dtd
+	(* The DTD being parsed; or the DTD currently assumed *)
+
+    val lexerset = Pxp_lexers.get_lexer_set (init_config.encoding)
+
+    val config = init_config
+        (* The current configuration *)
+
+    val mutable n_tags_open = 0
+	(* Number of begin tags that have been parsed and whose corresponding
+	 * end tags have not yet been parsed
+	 *)
+
+    val mutable n_entities_open = 0
+        (* Number of open Begin_entity tokens. If this number decreases to 0
+	 * the parser will terminate.
+	 *)
+
+    val pull_counter_limit = init_pull_counter
+    val mutable pull_counter = init_pull_counter
+        (* If < 0, pull parsing is disabled.
+         * If >= 0: pull_counter is decreased for every parsing loop. If
+	 * zero, pull_counter is reinitialized to pull_counter_limit, and
+	 * an Interrupt_parsing exception is raised.
+         *)
+
+    val mutable p_internal_subset = false
+        (* true while parsing the internal subset - there are some additional
+	 * constraints for internal subsets, and because of this it must
+	 * be known whether the current declaration is contained in the
+	 * internal or external subset of the DTD.
+	 *)
+
+    method private only_whitespace data =
+      (* Checks that the string "data" contains only whitespace. On failure,
+       * Validation_error is raised.
+       *)
+      if not (Pxp_lib.only_whitespace data) then
+	raise(WF_error("Data not allowed here"));
+      ()
+
+    (************************************************************************)
+
+    (* Namespace processing: The following values and methods MAY be used
+     * by the subclass, but this is completely voluntary
+     *)
+
+    val mutable src_norm_mapping = [ "xml", "xml" ]
+      (* Namespace processing: Contains pairs (srcprefix, normprefix).
+       * srcprefix = "!" is used as guard.
+       *)
+
+    val mutable default_normprefix = ""
+      (* Namespace_processing: The default normprefix, or "" if none *)
+
+
+    method private push_src_norm_mapping (mng:namespace_manager) name attlist =
+      (* [mng]: namespace manager
+       * [name]: source name of element
+       * [attlist]: source attribute list
+       * returns quadruple (src_prefix, localname, norm_name, norm_attlist)
+       *)
+      let split_attlist =
+	List.map
+	  (fun (name, value) -> namespace_split name, value)
+	  attlist
+	  (* TODO: Check that localname matches NCName *)
+      in
+      let xmlns_attlist = ref [] in
+      let xmlns_default = ref None in
+      let regular_attlist = ref [] in
+
+      List.iter
+	(fun ((prefix, localname), value) ->
+	   if prefix = "" && localname = "xmlns" then
+	     xmlns_default := Some value
+	   else
+	     if prefix = "xmlns" then
+	       xmlns_attlist := (localname, value) :: !xmlns_attlist
+	     else
+	       regular_attlist := (prefix, localname,value) :: !regular_attlist
+	)
+	split_attlist;
+
+      (* Apply xmlns_attlist: *)
+      src_norm_mapping <- ( "!", default_normprefix ) :: src_norm_mapping;
+                          (* add guard *)
+
+      List.iter
+	(fun (srcprefix, uri) ->
+	   let normprefix =
+	     mng # lookup_or_add_namespace srcprefix uri in
+	   src_norm_mapping <- (srcprefix, normprefix) :: src_norm_mapping;
+	)
+	!xmlns_attlist;
+
+      (* Apply xmlns_default: *)
+      ( match !xmlns_default with
+	    None -> ()
+	  | Some "" ->
+	      (* Delete default namespace: *)
+	      default_normprefix <- "";
+	  | Some uri ->
+	      let normprefix =
+		try mng # get_normprefix uri
+		with Not_found ->
+		  mng # lookup_or_add_namespace "default" uri
+	      in
+	      default_normprefix <- normprefix
+      );
+	
+      (* Normalize the regular_attlist: *)
+      let norm_attlist =
+	List.map
+	  (fun (prefix, localname, value) ->
+	     (self # normalize_namespace_prefix prefix localname,
+	      value
+	     )
+	  )
+	  !regular_attlist
+      in
+
+      (* Normalize the element name: *)
+      let prefix, localname = namespace_split name in
+      (* TODO: Check that localname matches NCName *)
+
+      let norm_name =
+	self # normalize_namespace_prefix
+	  ~apply_default:true prefix localname in
+
+      (prefix, localname, norm_name, norm_attlist)
+
+
+
+    method private pop_src_norm_mapping () =
+      (* Pop until the guard is found *)
+      let rec pop m =
+	match m with
+	    [] ->
+	      assert false
+	  | ("!",d)::m' ->
+	      default_normprefix <- d;
+	      src_norm_mapping <- m'
+	  | (_,_)::m' ->
+	      pop m'
+      in
+      pop src_norm_mapping
+
+
+    method private normalize_namespace_prefix 
+                     ?(apply_default = false) prefix localname =
+      if String.contains localname ':' then
+	raise(Namespace_error("Found several colons in a name"));
+      if prefix = "" then begin
+	(* No prefix *)
+	if apply_default && default_normprefix <> "" then
+	  default_normprefix ^ ":" ^ localname
+	else
+	  localname
+      end
+      else begin
+	(* Prefix exists *)
+	let normprefix =
+	  try List.assoc prefix src_norm_mapping
+	  with
+	      Not_found ->
+		raise(Namespace_error ("Namespace prefix not declared: " ^ prefix))
+	in
+	normprefix ^ ":" ^ localname
+      end
+
+
+
+    method private virtual sub_parser : unit -> core_parser
+
+    (************************************************************************)
+
+    (* Events. The parser calls these methods, and the subclass must
+     * define them
+     *)
+
+    method private virtual init_for_xml_body : unit -> unit
+
+    method private virtual event_document_xmldecl : 
+                             Pxp_lexer_types.prolog_token list -> unit
+
+    method private virtual event_start_tag : 
+                             (string*int*int) option ->
+			     string ->
+			     (string * string) list ->
+			     bool ->
+			     entity_id ->
+			       unit
+
+    method private virtual event_end_tag :
+                             string ->
+			     entity_id ->
+			       unit
+
+    method private virtual event_char_data : string -> unit
+
+    method private virtual event_pinstr : 
+                             (string*int*int) option ->
+			     string ->
+			     string ->
+			       unit
+
+    method private virtual event_comment : 
+                             (string*int*int) option ->
+			     string list ->
+			       unit
+	       
+    (************************************************************************)
+
+    initializer
+      (* CHECKS: *)
+      if config.encoding <> dtd # encoding then
+	failwith("Encoding mismatch");
+
+    (********* Here the method "parse" begins. The grammar below is
+     *         transformed to a local function of this method
+     *)
+
+    method parse context (start_symbol : extended_entry) =
+	(* extend_dtd:
+	 * Whether the DTD should be extended by ELEMENT, ATTLIST, and
+	 * NOTATION declarations or not. (True for validating mode,
+	 * false for well-formedness mode.)
+	 *)
+
+	let extend_dtd =
+	  match start_symbol with
+	      `Entry_document flags ->
+		List.mem `Extend_dtd_fully flags
+	    | `Entry_declarations flags ->
+		List.mem `Extend_dtd_fully flags
+	    | `Entry_continuation st ->
+		st.cont_extend_dtd
+	    | _ -> false
+	in
+
+        (* process_xmldecl:
+	 * Whether the XML declaration is parsed and the found XML version
+	 * and standalone declaration are passed to 'doc'.
+	 *)
+
+	let process_xmldecl =
+	  match start_symbol with
+	      `Entry_document flags ->
+		List.mem `Parse_xml_decl flags
+	    | `Entry_continuation st ->
+		st.cont_process_xmldecl
+	    | _ -> false
+	in
+
+	let parse_ignored_section yy_current yy_get_next =
+	  (* A special parser which should be used after <![IGNORE[.
+	   * It parses until the corresponding ]]> is found.
+	   *)
+
+          while yy_current() = Ignore do
+	    ignore(yy_get_next());
+	  done;
+
+	  ( match yy_current() with
+	      Conditional_body _ -> ()
+	    | _                  -> raise Parsing.Parse_error;
+	  );
+
+	  let en = context.manager # current_entity in
+	  let llev = ref 1 in
+	  while !llev >= 1 do
+	    let igntok = en # next_ignored_token in
+	    (* next_ignored_token: uses a special lexer that only
+	     * recognizes Conditional_begin and Conditional_end;
+	     * other character combinations are ignored.
+	     *)
+	    (* NOTE: next_ignored_token works much like yy_get_next,
+	     * but it does not set the current token!
+	     *)
+	    match igntok with
+		Conditional_begin _ ->
+		  llev := !llev + 1
+	      | Conditional_end _ ->
+		  llev := !llev - 1;
+		  (* Because the loop may be exited now: *)
+		  context.current_token <- igntok;
+	      | (End_entity | Eof) ->
+		  raise Parsing.Parse_error
+	      | _ ->
+		  ()
+	  done;
+
+	in
+
+	let recode_utf8 s =
+	  (* Recode 's' to UTF-8 *)
+	  if config.encoding = `Enc_utf8 then
+	    s   (* No recoding necessary *)
+	  else
+	    Netconversion.recode_string
+	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
+	in
+
+	let process_curly_brace tok =
+	  let s =
+	    match config.escape_contents with
+		None -> 
+		  ( match tok with
+			Lcurly -> "{"
+		      | LLcurly -> "{{"
+		      | Rcurly -> "}"
+		      | RRcurly -> "\125\125"
+		   | _ -> assert false
+		  )
+	      | Some f -> 
+		  f tok context.manager
+	  in
+	  if s <> "" then begin
+	    if n_tags_open = 0 then 
+	      self # only_whitespace s
+	    else
+	      self # event_char_data s
+	  end
+	in
+
+        let process_attribute_event tok pos =
+          match config.escape_attributes with
+              None -> assert false
+            | Some f ->
+		f tok pos context.manager
+	in
+
+	let reused_lexbuf = Pxp_lexing.from_string "" in
+%%
+
+/* The following grammar looks similar to ocamlyacc grammars, but
+ * ocamlyacc is actually not used to transform the grammar into a parser.
+ * Instead, the parser generator m2parsergen is applied.
+ *
+ * The format of the grammar is different (see m2parsergen/README),
+ * but I hope that you can understand most features immediately.
+ *
+ * The type of the parser is different: m2parsergen creates a top-down
+ * parser while ocamlyacc generates a LALR-1 parser.
+ *
+ * The way the generated code is called is different: ocamlyacc produces
+ * lots of top-level definitions whereas m2parsergen generates only
+ * a local let-in-phrase. This is explained in the already mentioned
+ * README file.
+ */
+
+/* See Pxp_core_types.ml for comments to the various tokens */
+
+%token Begin_entity
+%token End_entity
+%token <> Comment_begin
+%token <> Comment_end
+%token Ignore
+%token Eq
+%token Rangle
+%token Rangle_empty
+%token <> Conditional_begin
+%token <> Conditional_body
+%token <> Conditional_end
+%token Percent
+%token Plus
+%token Star
+%token Bar
+%token Comma
+%token Qmark
+%token Pcdata
+%token Required
+%token Implied
+%token Fixed
+%token Eof
+
+%token Lcurly
+%token LLcurly
+%token Rcurly
+%token RRcurly
+
+%token SQuote
+%token DQuote
+
+%token <> Comment_material
+%token <> Doctype
+%token <> Doctype_rangle
+%token <> Dtd_begin
+%token <> Dtd_end
+%token <> Decl_element
+%token <> Decl_attlist
+%token <> Decl_entity
+%token <> Decl_notation
+%token <> Decl_rangle
+%token <> Lparen
+%token <> Rparen
+%token <> RparenPlus
+%token <> RparenStar
+%token <> RparenQmark
+
+%token <> Tag_beg
+%token <> Tag_end
+
+%token <> PI
+%token <> PI_xml
+%token <> Cdata
+%token <> CRef
+%token <> ERef
+%token <> ERef_att
+%token <> PERef
+%token <> CharData
+%token <> LineEnd
+%token <> Name
+%token <> Nametoken
+%token <> Attval
+%token <> Attval_nl_normalized
+%token <> Unparsed_string
+
+/* START SYMBOLS:
+ *
+ * "entry_document":       parses a complete XML document (i.e. containing a
+ *                         <!DOCTYPE..> and an element)
+ * "entry_declarations":   parses an "external DTD subset", i.e. a sequence
+ *                         of declarations
+ * "entry_content":        parses a single element (no <!DOCTYPE...> allowed);
+ *                         the element needs not to be the root element of the
+ *                         DTD
+ *
+ * The functions corresponding to these symbols return always () because
+ * they only have side-effects.
+ */
+
+/* SOME GENERAL COMMENTS:
+ *
+ * The parser does not get its tokens from the lexers directly. Instead of
+ * this, there is an entity object between the parser and the lexers. This
+ * object already handles:
+ *
+ * - References to general and parameter entities. The token stream is
+ *   modified such that tokens automatically come from the referenced entities.
+ *   External parameter entities and all general entities are embraced by
+ *   the two special tokens Begin_entity and End_entity. The parser must
+ *   check that these braces are correctly nested.
+ */
+
+%%
+
+
+entry_document():
+  Begin_entity
+  $ {{ n_entities_open <- n_entities_open + 1; }}
+  doc_xmldecl_then_misc_then_prolog_then_rest()
+    {{
+      (* Note: In pull parsing mode, the following code won't be executed! *)
+      ()
+    }}
+
+
+/* In the following rule, we must find out whether there is an XML declaration
+ * or not, and directly after that either "process_xmldecl" or
+ * "process_missing_xmldecl" of the current entity must be called.
+ * AND IT MUST BE DIRECTLY! Because of this, the invocation is carried out
+ * in the "$" clause immediately following the first token.
+ *
+ * TODO: This is not enough. The first token may be a tag, and the tag
+ * may already contain non-ASCII characters. (But in this case, the resolvers
+ * assume UTF8, and they are right...)
+ */
+
+doc_xmldecl_then_misc_then_prolog_then_rest():
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl;
+       if process_xmldecl then self # event_document_xmldecl pl;
+    }}
+  misc()* doc_prolog_then_rest()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  misc() misc()* doc_prolog_then_rest()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  doctypedecl() misc()* contents_start()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  contents_start()
+    {{ () }}
+
+
+doc_prolog_then_rest():
+  doctypedecl() misc()* contents_start()
+    {{ () }}
+| contents_start()
+    {{ () }}
+
+
+entry_content():
+  Begin_entity 
+  $ {{ n_entities_open <- n_entities_open + 1; }}
+  el_xmldecl_then_misc_then_rest() 
+    {{
+      (* Note: In pull parsing mode the following code won't be executed! *)
+      ()
+    }}
+
+
+/* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
+
+el_xmldecl_then_misc_then_rest():
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl; }}
+  misc()* contents_start()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  misc() misc()* contents_start()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  contents_start()
+    {{ () }}
+
+
+entry_declarations():
+  /* Parses a sequence of declarations given by an entity. As side-effect,
+   * the parsed declarations are put into the dtd object.
+   *
+   * Note: The following Begin_entity is not counted because this entity
+   * will certainly be closed when pull parsing mode is entered.
+   */
+  Begin_entity decl_xmldecl_then_rest()
+   {{ () }}
+| Eof
+   {{ () }}
+
+
+decl_xmldecl_then_rest():
+  /* Note: This rule is also called from declaration()! */
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl;
+    }}
+  declaration()* End_entity
+   {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  declaration() declaration()* End_entity
+   {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  End_entity
+   {{ () }}
+
+
+misc():
+  pi()
+    {{ () }}
+| data: CharData
+    /* In this context, the lexers sometimes do not recognize white space;
+     * instead CharData tokens containing white space are delivered.
+     */
+    {{ self # only_whitespace data }}
+| Ignore
+    {{ () }}
+| comment()
+    {{ () }}
+
+
+/********************* DOCUMENT TYPE DECLARATION *************************/
+
+doctypedecl():
+  /* parses from <!DOCTYPE to >. As side-effect, first the declarations of
+   * the internal DTD (if any) are put into !!on_dtd, then the declarations
+   * of the external DTD (if any) are put into this DTD object.
+   */
+  doctype_entid:  Doctype
+             ws:  Ignore Ignore*
+                  doctypedecl_material (doctype_entid)
+    {{ () }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after `DOCTYPE'"))
+	 | _    -> raise(WF_error("Bad DOCTYPE declaration"))
+     }}
+
+
+/* TRICK:
+ *   ws: Ignore? Ignore*
+ * is meant seriously. The effect is that ws becomes a boolean variable
+ * which is true if there is an Ignore token and false otherwise.
+ * This construct is faster than just
+ *   ws: Ignore*
+ * in which case ws becomes an integer variable containing the number of
+ * Ignore tokens. Counting the number of tokens is slower than only checking
+ * the existence.
+ *
+ * We need the information whether there is an Ignore token (representing
+ * white space), because white space is only obligatory if also an identifier
+ * for the external subset is parsed; this conditional syntax constraint is
+ * simply programmed in the body of the grammar rule.
+ */
+
+doctypedecl_material(doctype_entid):
+  root_name:             Name
+  ws:                    Ignore? Ignore*
+  external_subset:       external_id()?
+                         Ignore*
+  internal_subset:       internal_dtd()?
+                         Ignore*
+  doctype_rangle_entid:  Doctype_rangle
+    {{
+      if doctype_entid != doctype_rangle_entid then
+	raise (Validation_error("Entities not properly nested with DOCTYPE declaration"));
+      dtd # set_root root_name;
+      begin match external_subset, internal_subset with
+	  None, None      -> ()         (* no DTD means no ID *)
+	| None, Some _    -> dtd # set_id Internal
+	| Some id, None   -> dtd # set_id (External id)
+	| Some id, Some _ -> dtd # set_id (Derived id)
+      end;
+      (* Get now the external doctype declaration. Note that the internal
+       * subset has precedence and must be read first.
+       *)
+      begin match external_subset with
+	  None -> ()
+	| Some id ->
+	    if not ws then
+	      raise(WF_error("Whitespace is missing after `DOCTYPE " ^
+			     root_name ^ "'"));
+	    let resolver = 
+	      context.manager # current_resolver # clone in
+	    let system_base =
+	      (context.manager # current_resolver # active_id).rid_system in
+	    let pobj = self # sub_parser() in
+	    let en = new Pxp_entity.external_entity resolver dtd "[dtd]"
+		         config.warner id system_base false
+		         config.encoding
+	    in
+	    en # set_debugging_mode (config.debugging_mode);
+	    let mgr = new entity_manager en dtd in
+	    en # open_entity true Declaration;
+	    begin try
+	      let context = make_context mgr in
+	      let flags =
+		(if extend_dtd then [`Extend_dtd_fully] else []) in
+	      pobj # parse context (`Entry_declarations flags);
+	      mgr # pop_entity_until en;
+	      if en # is_open then ignore(en # close_entity);
+	    with
+		error ->
+		  (* When the error happens, the current entity can be
+		   * different than [en]. So the entity stack is muddled up,
+		   * and we need to pop entites until we find [en] again.
+		   *)
+		  let pos = mgr # position_string in
+		  mgr # pop_entity_until en;
+		  if en # is_open then ignore(en # close_entity);
+		  raise (At(pos, error))
+	    end;
+      end;
+      dtd # validate
+    }}
+  ? {{
+       match !yy_position with
+	   "doctype_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                      -> raise(WF_error("Bad DOCTYPE declaration"))
+    }}
+
+/* Note that there are no keywords for SYSTEM or PUBLIC, as these would
+ * be difficult to recognize in the lexical contexts. Because of this,
+ * SYSTEM/PUBLIC is parsed as name, and the rule for everything after
+ * SYSTEM/PUBLIC is computed dynamically.
+ */
+
+external_id():
+  tok:Name
+  $ {{
+       let followup =
+	 match tok with
+	     "SYSTEM" -> parse_system_id
+                           (* Apply the rule system_id (below) to parse the
+			    * rest of the ID
+			    *)
+	   | "PUBLIC" -> parse_public_id
+                           (* Apply the rule public_id (below) to parse the
+			    * rest of the ID
+			    *)
+	   | _        -> raise(WF_error("SYSTEM or PUBLIC expected"))
+       in
+     }}
+  ws:Ignore Ignore*
+  r:[followup]()
+    {{ r }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after " ^ tok))
+	 | _    -> raise(WF_error("Bad SYSTEM or PUBLIC identifier"))
+    }}
+
+
+system_id():
+  str:Unparsed_string
+    {{ System (recode_utf8 str) }}
+
+
+public_id():
+  str1: Unparsed_string
+    ws: Ignore Ignore*
+  str2: Unparsed_string
+    {{ check_public_id str1;
+       Public(recode_utf8 str1, recode_utf8 str2)
+    }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing between the literals of the PUBLIC identifier"))
+	 | _    -> raise(WF_error("Bad PUBLIC identifier"))
+    }}
+
+
+/* The internal subset: "[" declaration* "]". While parsing the declarations
+ * the object variable p_internal_subset must be true; however, if there
+ * are entity references, this variable must be reset to false during
+ * the entity. (See the rule for "declaration" below.)
+ */
+
+internal_dtd():
+  dtd_begin_entid:    internal_dtd_begin()
+                      declaration()*
+  dtd_end_entid:      internal_dtd_end()
+    {{
+      if dtd_begin_entid != dtd_end_entid then
+	raise(Validation_error("Entities not properly nested with internal DTD subset"))
+    }}
+  ? {{ match !yy_position with
+	   "dtd_end_entid" -> raise(WF_error("`]' expected"))
+	 | _               -> raise(WF_error("Bad internal DTD subset"))
+    }}
+
+
+internal_dtd_begin():
+  Dtd_begin
+    {{ assert (not p_internal_subset);
+       p_internal_subset <- true }}
+
+
+internal_dtd_end():
+  Dtd_end
+    {{ assert p_internal_subset;
+       p_internal_subset <- false }}
+
+
+declaration():
+  /* Parses a single declaration (or processing instruction). As side-effect
+   * the parsed declaration is stored into the dtd object.
+   */
+  elementdecl()
+    {{ () }}
+| attlistdecl()
+    {{ () }}
+| entid:Decl_entity ws:Ignore Ignore* e:entitydecl(entid)
+    {{ () }}
+  ? {{ match !yy_position with
+	   "ws" -> raise(WF_error("Whitespace is missing after ENTITY"))
+	 | "e"  -> raise(WF_error("Name or `%' expected"))
+	 | _    -> raise(WF_error("Bad entity declaration"))
+    }}
+| notationdecl()
+    {{ () }}
+| pi: PI
+    {{ let target, value = pi in
+       let pi = new proc_instruction target value config.encoding in
+       dtd # add_pinstr pi
+    }}
+| Ignore
+    {{ () }}
+| begin_entid:Comment_begin Comment_material* end_entid:Comment_end
+    {{
+       if begin_entid != end_entid then
+	 raise(Validation_error("The first and the last token of comments must be in the same entity"));
+    }}
+  ? {{ match !yy_position with
+	   "end_entid" -> raise(WF_error("`-->' expected"))
+	 | _           -> raise(WF_error("Bad comment"))
+    }}
+| Begin_entity
+  $ {{ (* Set 'p_internal_subset' to 'false' until the matching 'end_entity'
+	* rule is parsed. This allows unrestricted usage of parameter entities
+	* within declarations of internal entities.
+	*)
+       let old_p_internal_subset = p_internal_subset in
+       p_internal_subset <- false;
+    }}
+  decl_xmldecl_then_rest()
+    {{ (* Restore the old value of 'p_internal_subset'. *)
+       p_internal_subset <- old_p_internal_subset;
+       ()
+    }}
+| begin_entid:Conditional_begin
+  $ {{ (* Check whether conditional sections are allowed at this position. *)
+       if p_internal_subset then
+	 raise(WF_error("Restriction of the internal subset: Conditional sections not allowed"));
+     }}
+  Ignore*
+  cond:conditional_section()  end_entid:Conditional_end
+    {{ (* Check whether Conditional_begin and Conditional_end are in the same
+	* entity. (This restriction is explained in the file SPECS.)
+	*)
+       if begin_entid != end_entid then
+	 raise(Validation_error("The first and the last token of conditional sections must be in the same entity (additional restriction of this parser)"));
+    }}
+  ? {{ match !yy_position with
+	   "end_entid" -> raise(WF_error("`>]>' expected"))
+	 | "cond"      -> raise(WF_error("INCLUDE or IGNORE expected"))
+	 | _           -> raise(WF_error("Bad conditional section"))
+    }}
+
+/* The tokens INCLUDE/IGNORE are scanned as names, and the selection of the
+ * right parsing rule is dynamic.
+ * Note that parse_ignored_section is not defined by a grammar rule but
+ * by a conventional let-binding above.
+ */
+
+conditional_section():
+  include_or_ignore:Name
+  $ {{ let parsing_function =
+	 match include_or_ignore with
+	     "INCLUDE"  -> parse_included_section
+                           (* invoke rule "included_section" below *)
+	   | "IGNORE"   -> parse_ignored_section
+                           (* invoke function "parse_ignored_section" *)
+	   | _          -> raise(WF_error("INCLUDE or IGNORE expected"))
+       in
+    }}
+  [ parsing_function ] ()
+    {{ () }}
+  ? {{ raise(WF_error("Bad conditional section")) }}
+
+included_section():
+  Conditional_body declaration()*
+    {{ () }}
+| Ignore Ignore* Conditional_body declaration()*
+    {{ () }}
+
+
+/*************************** ELEMENT DECLARATIONS ********************/
+
+elementdecl():
+  /* parses <!ELEMENT ... >. Puts the parsed element type as side-effect into
+   * dtd.
+   */
+  decl_element_entid:      Decl_element
+  $ {{ let extdecl = context.manager # current_entity_counts_as_external in
+     }}
+  ws1:                     Ignore Ignore*
+  name:                    Name
+  ws2:                     Ignore Ignore*
+  content_model:           contentspec()
+                           Ignore*
+  decl_rangle_entid:       Decl_rangle
+    {{
+      if decl_element_entid != decl_rangle_entid then
+	raise (Validation_error "Entities not properly nested with ELEMENT declaration");
+      if extend_dtd then begin
+	let el = new dtd_element dtd name in
+	(* It is allowed that an <!ATTLIST...>  precedes the corresponding
+	 * <!ELEMENT...>. Because of this it is possible that there is already
+	 * an element called 'name' in the DTD, and we only must set the content
+	 * model of this element.
+	 *)
+	try
+	  dtd # add_element el;
+	  el # set_cm_and_extdecl content_model extdecl;
+	with
+	    Not_found ->  (* means: there is already an element 'name' *)
+	      let el' = dtd # element name in
+	      el' # set_cm_and_extdecl content_model extdecl;
+              (* raises Validation_error if el' already has a content model *)
+      end
+    }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2")   -> raise(WF_error("Whitespace is missing"))
+	 | "name"          -> raise(WF_error("The name of the element is expected here"))
+	 | "content_model" -> raise(WF_error("Content model expression expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad element type declaration"))
+    }}
+
+contentspec():
+  /* parses a content model and returns it (type content_model_type) */
+  name: Name   /* EMPTY or ANY */
+    {{ match name with
+	  "EMPTY" -> Empty
+	| "ANY"   -> Any
+	| _       -> raise(WF_error("EMPTY, ANY, or a subexpression expected"))
+    }}
+| entid:Lparen  Ignore*  term:mixed_or_regexp(entid)
+    {{ term }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+
+
+/* Many of the following rules have an lparen_entid argument. This is the
+ * internal ID of the entity containing the corresponding left parenthesis;
+ * by comparing it with the ID of the entity of the right parenthesis the
+ * contraint is implemented that both parentheses must be in the same entity.
+ */
+
+mixed_or_regexp(lparen_entid):
+  re: choice_or_seq(lparen_entid)
+    {{ Regexp re }}
+| m: mixed(lparen_entid)
+    {{ m }}
+
+
+multiplier():
+  /* returns one of the multiplier symbols (?,*,+) */
+  Plus
+    {{ Plus }}
+| Star
+    {{ Star }}
+| Qmark
+    {{ Qmark }}
+
+
+mixed (lparen_entid) :
+                   Pcdata
+                   Ignore*
+  material:        mixed_alternatives_top()
+    {{
+      let rest, rparen_entid = material in
+      if lparen_entid != rparen_entid then
+	raise (Validation_error "Entities not properly nested with parentheses");
+      Mixed (MPCDATA :: rest)
+    }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+
+
+mixed_alternatives_top():
+  entid: Rparen
+    {{ [], entid }}
+| entid: RparenStar
+    {{ [], entid }}
+| Bar Ignore* name:Name Ignore* names:mixed_alternative()* entid:RparenStar
+    {{
+       (MChild name :: names), entid
+    }}
+  ? {{ match !yy_position with
+	   "name"  -> raise(WF_error("Name expected"))
+	 | "entid" -> raise(WF_error("`)*' expected"))
+	 | _       -> raise(WF_error("Bad content model expression"))
+    }}
+
+
+mixed_alternative() :
+  Bar Ignore* name:Name Ignore*
+    {{ MChild name }}
+  ? {{ match !yy_position with
+	   "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad content model expression"))
+    }}
+
+
+
+choice_or_seq (lparen_entid):
+  /* parses either a regular expression, or a mixed expression. Returns
+   * Mixed spec or Regexp spec (content_model_type).
+   * Which kind of expression (regexp or mixed) is being read is recognized
+   * after the first subexpression has been parsed; the other subexpressions
+   * must be of the same kind.
+   */
+  re:     cp()
+          Ignore*
+  factor: choice_or_seq_factor()
+    {{
+      let (finalmark,subexpr), rparen_entid = factor in
+      if lparen_entid != rparen_entid then
+	raise (Validation_error "Entities not properly nested with parentheses");
+      (* Check that the other subexpressions are "regexp", too, and
+       * merge them with the first.
+       *)
+      let re' =
+	match subexpr with
+	    Alt []  ->  re
+	  | Alt alt -> Alt (re :: alt)
+	  | Seq seq -> Seq (re :: seq)
+	  | _       -> assert false
+      in
+      (* Interpret the finalmark. *)
+      match finalmark with
+	  Ignore -> re'
+	| Plus   -> Repeated1 re'
+	| Star   -> Repeated re'
+	| Qmark  -> Optional re'
+	| _      -> assert false
+    }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+
+choice_or_seq_factor():
+  /* Parses "|<subexpr>|...)" or ",<subexpr>,...)", both forms optionally
+   * followed by ?, *, or +.
+   * Returns ((finalmark, expr), rparen_entid), where
+   * - finalmark is the character after the right parenthesis or Ignore
+   * - expr is either
+   *   Alt []              meaning that only ")" has been found
+   *   Alt non_empty_list  meaning that the subexpressions are separated by '|'
+   *   Seq non_empty_list  meaning that the subexpressions are separated by ','
+   */
+  entid:Rparen
+    {{ (Ignore, Alt []), entid }}
+| entid:RparenPlus
+    {{ (Plus, Alt []), entid }}
+| entid:RparenStar
+    {{ (Star, Alt []), entid }}
+| entid:RparenQmark
+    {{ (Qmark, Alt []), entid }}
+| Bar Ignore* re:cp() Ignore* factor:choice_or_seq_factor()
+    {{
+      let (finalmark, subexpr), rparen_entid = factor in
+      begin match subexpr with
+	  Alt []  -> (finalmark, (Alt [re])), rparen_entid
+	| Alt alt -> (finalmark, (Alt (re :: alt))), rparen_entid
+	| _       -> raise(WF_error("It is not allowed to mix alternatives and sequences"))
+      end
+    }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+| Comma Ignore* re:cp() Ignore* factor:choice_or_seq_factor()
+    {{
+      let (finalmark, subexpr), rparen_entid = factor in
+      begin match subexpr with
+	  Alt []  -> (finalmark, (Seq [re])), rparen_entid
+	| Seq seq -> (finalmark, (Seq (re :: seq))), rparen_entid
+	| _       -> raise(WF_error("It is not allowed to mix alternatives and sequences"))
+      end
+    }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+
+cp():
+  /* parse either a name, or a parenthesized subexpression "(...)"  */
+  name:Name  m:multiplier()?
+    {{ match m with
+	  None       -> Child name
+	| Some Plus  -> Repeated1 (Child name)
+	| Some Star  -> Repeated  (Child name)
+	| Some Qmark -> Optional  (Child name)
+	| _          -> assert false
+    }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+| entid:Lparen Ignore* m:choice_or_seq(entid)
+    {{ m }}
+  ? {{ raise(WF_error("Bad content model expression")) }}
+
+
+/********************* ATTRIBUTE LIST DECLARATION ***********************/
+
+attlistdecl():
+  /* parses <!ATTLIST ... >. Enters the attribute list in dtd as side-
+   * effect.
+   */
+  decl_attlist_entid: Decl_attlist
+  $ {{ let extdecl = context.manager # current_entity_counts_as_external in
+    }}
+  ws1:                Ignore Ignore*
+  el_name:            Name
+  ws:                 Ignore? Ignore*
+  factor:             attdef_factor()
+    {{
+      let at_list, decl_rangle_entid = factor in
+
+      if decl_attlist_entid != decl_rangle_entid then
+	raise (Validation_error "Entities not properly nested with ATTLIST declaration");
+
+      if not ws && at_list <> [] then begin
+	match at_list with
+	    (name,_,_) :: _ ->
+	      (* This is normally impossible, because the lexer demands
+	       * some other token between two names.
+	       *)
+	      raise(WF_error("Whitespace is missing before `" ^ name ^ "'"));
+	  | _ -> assert false
+      end;
+
+      if extend_dtd then begin
+	let new_el = new dtd_element dtd el_name in
+	(* Note that it is allowed that <!ATTLIST...> precedes the corresponding
+	 * <!ELEMENT...> declaration. In this case we add the element declaration
+	 * already to the DTD but leave the content model unspecified.
+	 *)
+	let el =
+	  try
+	    dtd # add_element new_el;
+	    new_el
+	  with
+	      Not_found ->  (* already added *)
+		let old_el = dtd # element el_name in
+		if old_el # attribute_names <>  [] then
+		  config.warner # warn ("More than one ATTLIST declaration for element type `" ^
+					el_name ^ "'");
+		old_el
+	in
+	List.iter
+	  (fun (a_name, a_type, a_default) ->
+	     el # add_attribute a_name a_type a_default extdecl)
+	  at_list
+      end
+    }}
+  ? {{ match !yy_position with
+	   "ws1"     -> raise(WF_error("Whitespace is missing after ATTLIST"))
+	 | "el_name" -> raise(WF_error("The name of the element is expected here"))
+	 | "factor"  -> raise(WF_error("Another attribute name or `>' expected"))
+	 | _         -> raise(WF_error("Bad attribute declaration"))
+    }}
+
+
+attdef_factor():
+  /* parses a list of triples <name> <type> <default value> and returns the
+   * list as (string * att_type * att_default) list.
+   */
+  attdef:attdef()   ws:Ignore?   Ignore*   factor:attdef_factor()
+    {{
+      let attdef_rest, decl_rangle_entid = factor in
+      if not ws && attdef_rest <> [] then begin
+	match attdef_rest with
+	    (name,_,_) :: _ ->
+	      raise(WF_error("Missing whitespace before `" ^ name ^ "'"));
+	  | _ -> assert false
+      end;
+      (attdef :: attdef_rest), decl_rangle_entid }}
+  ? {{ match !yy_position with
+	 | "factor"  -> raise(WF_error("Another attribute name or `>' expected"))
+	 | _         -> raise(WF_error("Bad attribute declaration"))
+    }}
+| entid:Decl_rangle
+    {{ [], entid }}
+
+
+attdef():
+  /* Parses a single triple */
+  name:     Name
+  ws1:      Ignore Ignore*
+  tp:       atttype()
+  ws2:      Ignore Ignore*
+  default:  defaultdecl()
+    {{ (name,tp,default) }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2") -> raise(WF_error("Whitespace is missing"))
+	 | "tp"          -> raise(WF_error("Type of attribute or `(' expected"))
+	 | "default"     -> raise(WF_error("#REQUIRED, #IMPLIED, #FIXED or a string literal expected"))
+	 | _             -> raise(WF_error("Bad attribute declaration"))
+    }}
+
+atttype():
+  /* Parses an attribute type and returns it as att_type. */
+  name:      Name
+  $ {{ let followup =
+	 if name = "NOTATION" then
+	   parse_notation
+	 else
+	   parse_never
+       in
+     }}
+  nota:      [followup]()?
+    {{
+       match name with
+	  "CDATA"    -> A_cdata
+	| "ID"       -> A_id
+	| "IDREF"    -> A_idref
+	| "IDREFS"   -> A_idrefs
+	| "ENTITY"   -> A_entity
+	| "ENTITIES" -> A_entities
+	| "NMTOKEN"  -> A_nmtoken
+	| "NMTOKENS" -> A_nmtokens
+	| "NOTATION" ->
+	    (match nota with
+		 None   -> raise(WF_error("Error in NOTATION type (perhaps missing whitespace after NOTATION?)"))
+	       | Some n -> n
+            )
+	| _          -> raise(WF_error("One of CDATA, ID, IDREF, IDREFS, ENTITY, ENTITIES, NMTOKEN, NMTOKENS, NOTATION, or a subexpression expected"))
+    }}
+  ? {{ raise(WF_error("Bad attribute declaration (perhaps missing whitespace after NOTATION)")) }}
+
+|         Lparen
+          Ignore*
+  name:   name_or_nametoken()
+          Ignore*
+  names:  nmtoken_factor()*
+  rp:     Rparen
+    /* Enumeration */
+    {{ A_enum(name :: names) }}
+  ? {{ match !yy_position with
+	   "name"  -> raise(WF_error("Name expected"))
+	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | _       -> raise(WF_error("Bad enumeration type"))
+    }}
+
+
+never():
+  /* The always failing rule */
+  $ {{ raise Not_found; }}
+  Doctype   /* questionable */
+    {{ A_cdata    (* Does not matter *)
+    }}
+
+
+notation():
+         Ignore Ignore*
+  lp:    Lparen
+         Ignore*
+  name:  Name
+         Ignore*
+  names: notation_factor()*
+  rp:    Rparen
+    {{ A_notation(name :: names) }}
+  ? {{ match !yy_position with
+	   "lp"    -> raise(WF_error("`(' expected"))
+	 | "name"  -> raise(WF_error("Name expected"))
+	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | _       -> raise(WF_error("Bad NOTATION type"))
+    }}
+
+
+notation_factor():
+  /* Parse "|<name>" and return the name */
+  Bar Ignore* name:Name Ignore*
+    {{ name }}
+  ? {{ match !yy_position with
+	   "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad NOTATION type"))
+    }}
+
+nmtoken_factor():
+  /* Parse "|<nmtoken>" and return the nmtoken */
+  Bar Ignore* n:name_or_nametoken() Ignore*
+    {{ n }}
+  ? {{ match !yy_position with
+	   "n" -> raise(WF_error("Nametoken expected"))
+	 | _   -> raise(WF_error("Bad enumeration type"))
+    }}
+
+
+name_or_nametoken():
+  n:Name      {{ n }}
+| n:Nametoken {{ n }}
+
+
+/* The default values must be expanded and normalized. This has been implemented
+ * by the function expand_attvalue.
+ */
+
+
+defaultdecl():
+  /* Parse the default value for an attribute and return it as att_default */
+  Required
+    {{ D_required }}
+| Implied
+    {{ D_implied }}
+| Fixed ws:Ignore Ignore* str:Unparsed_string
+    {{ D_fixed
+	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
+  ? {{ match !yy_position with
+	   "ws"  -> raise(WF_error("Whitespace is missing after #FIXED"))
+	 | "str" -> raise(WF_error("String literal expected"))
+	 | _     -> raise(WF_error("Bad #FIXED default value"))
+    }}
+| str:Unparsed_string
+    {{ D_default
+	 (expand_attvalue reused_lexbuf lexerset dtd str config.warner false) }}
+
+
+/**************************** ENTITY DECLARATION ***********************/
+
+entitydecl(decl_entity_entid):
+  /* parses everything _after_ <!ENTITY until the matching >. The parsed
+   * entity declaration is entered into the dtd object as side-effect.
+   */
+  name:               Name
+  $ {{ let extdecl = context.manager # current_entity_counts_as_external in
+    }}
+  ws:                 Ignore Ignore*
+  material:           entitydef()
+                      Ignore*
+  decl_rangle_entid:  Decl_rangle
+    /* A general entity */
+    {{
+       if decl_entity_entid != decl_rangle_entid then
+	 raise (Validation_error "Entities not properly nested with ENTITY declaration");
+      let en =
+	(* Distinguish between
+         * - internal entities
+         * - external entities
+         * - NDATA (unparsed) entities
+         *)
+	match material with
+	    (Some s, None,     None)   ->
+	      new Pxp_entity.internal_entity dtd name config.warner s
+		  p_internal_subset false config.encoding
+	  | (None,   Some xid, None)   ->
+	      let resolver = 
+		context.manager # current_resolver # clone in
+	      let system_base = 
+		(context.manager # current_resolver # active_id).rid_system in
+	      new Pxp_entity.external_entity resolver dtd name config.warner
+                                  xid system_base false
+		                  config.encoding
+
+	  | (None,   Some xid, Some n) ->
+	      (new Pxp_entity.ndata_entity name xid n config.encoding 
+	       :> Pxp_entity.entity)
+	  | _ -> assert false
+      in
+      dtd # add_gen_entity en extdecl
+    }}
+  ? {{ match !yy_position with
+	   "ws"                -> raise(WF_error("Whitespace is missing"))
+	 | "material"          -> raise(WF_error("String literal or identifier expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad entity declaration"))
+    }}
+
+|                     Percent
+  $ {{ let extdecl = context.manager # current_entity_counts_as_external in
+    }}
+  ws1:                Ignore Ignore*
+  name:               Name
+  ws2:                Ignore Ignore*
+  material:           pedef()
+                      Ignore*
+  decl_rangle_entid:  Decl_rangle
+    /* A parameter entity */
+    {{
+      if decl_entity_entid != decl_rangle_entid then
+	 raise (Validation_error "Entities not properly nested with ENTITY declaration");
+      let en =
+	(* Distinguish between internal and external entities *)
+	match material with
+	    (Some s, None)   ->
+	      new Pxp_entity.internal_entity dtd name config.warner s
+  		  p_internal_subset true config.encoding
+	  | (None,   Some xid)   ->
+	      let resolver = 
+		context.manager # current_resolver # clone in
+	      let system_base = 
+		(context.manager # current_resolver # active_id).rid_system in
+	      new Pxp_entity.external_entity resolver dtd name config.warner
+                                  xid system_base true
+		                  config.encoding
+	  | _ -> assert false
+      in
+
+      (* The following two lines force that even internal entities count
+       * as external (for the standalone check) if the declaration of
+       * the internal entity occurs in an external entity.
+       *)
+      if extdecl then
+	en # set_counts_as_external;
+
+      dtd # add_par_entity en;
+    }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2")       -> raise(WF_error("Whitespace is missing"))
+	 | "material"          -> raise(WF_error("String literal or identifier expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad entity declaration"))
+    }}
+
+
+entitydef():
+  /* parses the definition value of a general entity. Returns either:
+   * - (Some s, None,   None)    meaning the definition of an internal entity
+   *                               with (literal) value s has been found
+   * - (None,   Some x, None)    meaning that an external parsed entity with
+   *                               external ID x has been found
+   * - (None,   Some x, Some n)  meaning that an unparsed entity with
+   *                               external ID x and notations n has been found
+   */
+  str:Unparsed_string
+    {{ Some str, None, None }}
+| id:external_id()   ws:Ignore?  Ignore*  decl:ndatadecl()?
+    {{  if not ws  && decl <> None then
+	  raise(WF_error("Whitespace missing before `NDATA'"));
+	None, Some id, decl
+    }}
+
+
+pedef():
+  /* parses the definition value of a parameter entity. Returns either:
+   * - (Some s, None)     meaning that the definition of an internal entity
+   *                        with (literal) value s has been found
+   * - (None,   Some x)   meaning that an external ID x has been found
+   */
+  str:Unparsed_string
+    {{ Some str, None }}
+| id:external_id()
+    {{ None, Some id }}
+
+
+ndatadecl():
+  /* Parses either NDATA "string" or the empty string; returns Some "string"
+   * in the former, None in the latter case.
+   */
+  ndata:Name ws:Ignore Ignore* name:Name
+    {{ if ndata = "NDATA" then
+	name
+      else
+	raise(WF_error("NDATA expected"))
+    }}
+  ? {{ match !yy_position with
+	   "ws"   -> raise(WF_error("Whitespace is missing after NDATA"))
+	 | "name" -> raise(WF_error("Name expected"))
+	 | _      -> raise(WF_error("Bad NDATA declaration"))
+    }}
+
+/**************************** NOTATION DECLARATION *******************/
+
+notationdecl():
+  /* parses <!NOTATION ... > and enters the notation declaration into the
+   * dtd object as side-effect
+   */
+  decl_notation_entid: Decl_notation
+  ws1:                 Ignore Ignore*
+  name:                Name
+  ws2:                 Ignore Ignore*
+  sys_or_public:       Name /* SYSTEM or PUBLIC */
+  ws3:                 Ignore Ignore*
+  str1:                Unparsed_string
+  ws:                  Ignore? Ignore*
+  str2:                Unparsed_string?
+                       Ignore*
+  decl_rangle_entid:   Decl_rangle
+    {{
+      if decl_notation_entid != decl_rangle_entid then
+	raise (Validation_error "Entities not properly nested with NOTATION declaration");
+      let xid =
+	(* Note that it is allowed that PUBLIC is only followed by one
+	 * string literal
+	 *)
+	match sys_or_public with
+	    "SYSTEM" ->
+	      if str2 <> None then raise(WF_error("SYSTEM must be followed only by one argument"));
+	      System (recode_utf8 str1)
+	  | "PUBLIC" ->
+	      begin match str2 with
+		  None ->
+		    check_public_id str1;
+		    Public(recode_utf8 str1,"")
+		| Some p ->
+		    if not ws then
+		      raise(WF_error("Missing whitespace between the string literals of the `PUBLIC' id"));
+		    check_public_id str1;
+		    Public(recode_utf8 str1, recode_utf8 p)
+	      end
+	  | _ -> raise(WF_error("PUBLIC or SYSTEM expected"))
+      in
+      if extend_dtd then begin
+	let no = new dtd_notation name xid config.encoding in
+	dtd # add_notation no
+      end
+    }}
+  ? {{ match !yy_position with
+	   ("ws1"|"ws2"|"ws3") -> raise(WF_error("Whitespace is missing"))
+	 | "name"              -> raise(WF_error("Name expected"))
+	 | "sys_or_public"     -> raise(WF_error("SYSTEM or PUBLIC expected"))
+	 | ("str1"|"str2")     -> raise(WF_error("String literal expected"))
+	 | "decl_rangle_entid" -> raise(WF_error("`>' expected"))
+	 | _                   -> raise(WF_error("Bad NOTATION declaration"))
+    }}
+
+/****************************** ELEMENTS **************************/
+
+/* In the following rules, the number of error rules is reduced to
+ * improve the performance of the parser.
+ */
+
+
+contents_start():
+  /* parses <element>...</element> misc*, i.e. exactly one element followed
+   * optionally by white space or processing instructions.
+   * The element is entered into the global variables as follows:
+   * - If elstack is non-empty, the parsed element is added as new child to
+   *   the top element of the stack.
+   * - If elstack is empty, the root_examplar object is modified rather than
+   *   that a new element is created. If additionally the variable root is
+   *   None, it is assigned Some root_examplar.
+   * Note that the modification of the root_exemplar is done by the method
+   * internal_init.
+   * The reason why the root element is modified rather than newly created
+   * is a typing requirement. It must be possible that the class of the root
+   * is derived from the original class element_impl, i.e. the user must be
+   * able to add additional methods. If we created a new root object, we
+   * would have to denote to which class the new object belongs; the root
+   * would always be an 'element_impl' object (and not a derived object).
+   * If we instead cloned an  exemplar object and modified it by the
+   * "create" method, the root object would belong to the same class as the
+   * exemplar (good), but the type of the parsing function would always
+   * state that an 'element_impl' was created (because we can pass the new
+   * object only back via a global variable). The only solution is to
+   * modify the object that has been passed to the parsing function directly.
+   */
+  $ {{ self # init_for_xml_body(); 
+       let parse_fn = 
+	 if pull_counter < 0 then 
+	   parse_content_push
+	 else 
+	   parse_content_pull in
+    }}
+  start_tag() [parse_fn]()
+    {{ () }}
+
+
+entry_expr():
+  $ {{ self # init_for_xml_body(); }}
+  entry_expr_content()
+    {{ () }}
+
+entry_expr_content():
+  start_tag() 
+  $ {{ begin try
+         while n_tags_open > 0 do 
+	   parse_content yy_current yy_get_next
+         done
+       with Not_found ->
+         yy_position := "expr";
+	 raise Parsing.Parse_error
+       end;
+     }}
+    {{ () }}
+  ? {{ match !yy_position with
+         "expr" -> raise(WF_error("Unexpected token"))
+       | _      -> raise(WF_error("Syntax error"))
+    }}
+| pi()
+    {{ () }}
+| comment()
+    {{ () }}
+| entry_expr_space()
+    {{ () }}
+| CRef
+    {{ raise(WF_error("Character entity not allowed here")) }}
+| Begin_entity entry_expr() entry_expr_space()* End_entity
+    {{ () }}
+
+
+entry_expr_space():
+  data:CharData
+    {{
+       self # only_whitespace data
+     }}
+
+
+content_push():
+  content() content()*
+    {{ () }}
+
+
+content_pull():
+  content()
+  $ {{ pull_counter <- pull_counter - 1;
+       if pull_counter <= 0 then begin
+	 pull_counter <- pull_counter_limit;
+	 let state = { cont_context = context;
+	               cont_extend_dtd = extend_dtd;
+		       cont_process_xmldecl = process_xmldecl;
+		     } in
+         raise(Interrupt_parsing state)
+       end;
+    }}
+  content_pull()
+    {{ () }}
+
+content():
+  /* parses: start tags, end tags, content, or processing
+   * instructions. That the tags are properly nested is dynamically checked.
+   * As result, recognized elements are added to their parent elements,
+   * content is added to the element containing it, and processing instructions
+   * are entered into the element embracing them. (All as side-effects.)
+   */
+  start_tag()
+    {{ () }}
+| end_tag()
+    {{ () }}
+| char_data()
+    {{ () }}
+| cref()
+    {{ () }}
+| pi()
+    {{ () }}
+| comment()
+    {{ () }}
+| Begin_entity
+  $ {{ if n_tags_open = 0 then
+	 raise(WF_error("Entity reference not allowed here"));
+       n_entities_open <- n_entities_open + 1;
+    }}
+  init_inner_entity()
+    {{ () }}
+| End_entity
+    {{ n_entities_open <- n_entities_open - 1;
+       if n_entities_open = 0 then begin
+         if n_tags_open <> 0 then raise(WF_error("Missing end tag"));
+         raise End_of_parsing
+       end;
+    }}
+
+
+/* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
+
+init_inner_entity():
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl;
+    }}
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  content()
+    {{ () }}
+
+
+start_tag():
+  /* parses <element attribute-values> or <element attribute-values/>.
+   *
+   * EFFECT: If elstack is non-empty, the element is added to the
+   * top element of the stack as new child, and the element
+   * is pushed on the stack. If elstack is empty, the root_exemplar is
+   * modified and gets the parsed name and attribute list. The root_exemplar
+   * is pushed on the stack. If additionally the variable root is empty, too,
+   * this variable is initialized.
+   * If the <element ... /> form has been parsed, no element is pushed
+   * on the stack.
+   */
+  /* TODO: Support for namespaces. xmlns attributes must be identified.
+   * These atts are not added to the regular attribute list, but the
+   * contained namespace information is interpreted.
+   *   We need a stack tracking namespace declarations (PUSH for every
+   * start tag; POP for every end tag). Element names and attribute names
+   * are splitted into src_prefix and localname. The src_prefix is mapped
+   * to norm_prefix using the mentioned stack. The element and attributes
+   * are created with names "norm_prefix:localname".
+   *   If configured, the namespace_info field of elements is set from
+   * the current contents of the namespace stack.
+   *   New config options:
+   * - namespace_manager = None or Some mng
+   * - namespace_objects = true or false
+   */
+  tag:        Tag_beg
+    $ {{ let position =
+	   if config.store_element_positions then
+	     Some(context.manager # position)
+	   else
+	     None
+	 in
+	 let attlist = ref [] in
+	 let attspace = ref true in
+       }}
+  ws:         Ignore? Ignore*
+              attribute(attlist,attspace)*
+  emptiness:  start_tag_rangle()
+  /* Note: it is guaranteed that there is whitespace between Tag_beg and
+   * the name of the first attribute, because there must be some separator.
+   * So we need not to check ws!
+   */
+    {{
+      let name0, tag_beg_entid = tag in
+      let name =
+	if config.enable_name_pool_for_element_types
+	then make_pool_string name0
+	else name0 in
+
+      self # event_start_tag position name !attlist emptiness tag_beg_entid;
+      
+      if not emptiness then
+	n_tags_open <- n_tags_open + 1;
+    }}
+  ? {{ match !yy_position with
+	 | "emptiness" -> raise(WF_error("`>' or `/>' expected"))
+	 | _           -> raise(WF_error("Bad start tag"))
+    }}
+
+
+attribute(attlist,attspace):
+  /* Parses name="value"  */
+  n0:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
+    {{ if not !attspace then
+	 raise(WF_error("Whitespace is missing before attribute `" ^
+			n0 ^ "'"));
+       let n =
+	 if config.enable_name_pool_for_attribute_names
+	 then make_pool_string n0
+	 else n0 in
+       attlist := (n,v) :: !attlist;
+       attspace := ws;
+       ()
+     }}
+
+
+attval():
+  v:Attval
+    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner true }}
+| v:Attval_nl_normalized
+    {{ expand_attvalue reused_lexbuf lexerset dtd v config.warner false }}
+
+/* The following rules are only used if event-based attribute parsing
+ * is enabled. In this case, neither Attval nor Attval_nl_normalized,
+ * but SQuote, DQuote and attribute tokens are scanned.
+ */
+| SQuote 
+  $ {{ let attpos = ref 0 in }} 
+  sl:attval_squote_token(attpos)* SQuote
+    {{ String.concat "" sl }}
+| DQuote
+  $ {{ let attpos = ref 0 in }} 
+  sl:attval_dquote_token(attpos)* DQuote
+    {{ String.concat "" sl }}
+
+
+attval_squote_token(attpos):
+  name:ERef_att
+    {{ 
+       let etext = "&" ^ name ^ ";" in
+       let s = 
+	 Pxp_aux.expand_attvalue 
+	   reused_lexbuf lexerset dtd etext config.warner false in
+       attpos := !attpos + String.length s;
+       s
+     }}
+| code:CRef
+    {{ let s = Pxp_aux.character config.encoding config.warner code in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| data:CharData
+    {{ 
+       if data.[0] = '<' then  (* '<' is always a separate token *)
+	 raise
+           (WF_error ("Attribute value contains character '<' literally"))
+       else (
+	 attpos := !attpos + String.length data;
+	 data
+       )
+     }}
+| LLcurly
+    {{ let s = process_attribute_event LLcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Lcurly
+    {{ let s = process_attribute_event Lcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| RRcurly
+    {{ let s = process_attribute_event RRcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Rcurly
+    {{ let s = process_attribute_event Rcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| DQuote
+    {{ incr attpos; "\"" }}
+
+
+attval_dquote_token(attpos):
+  name:ERef_att
+    {{ 
+       let etext = "&" ^ name ^ ";" in
+       let s = Pxp_aux.expand_attvalue 
+		 reused_lexbuf lexerset dtd etext config.warner false in
+       attpos := !attpos + String.length s;
+       s
+     }}
+| code:CRef
+    {{ let s = Pxp_aux.character config.encoding config.warner code in
+       attpos := !attpos + String.length s;
+       s
+     }}
+| data:CharData
+    {{ 
+       if data.[0] = '<' then  (* '<' is always a separate token *)
+	 raise
+           (WF_error ("Attribute value contains character '<' literally"))
+       else (
+	 attpos := !attpos + String.length data;
+	 data
+       )
+     }}
+| LLcurly
+    {{ let s = process_attribute_event LLcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Lcurly
+    {{ let s = process_attribute_event Lcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| RRcurly
+    {{ let s = process_attribute_event RRcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| Rcurly
+    {{ let s = process_attribute_event Rcurly !attpos in
+       attpos := !attpos + String.length s;
+       s
+    }}
+| SQuote
+    {{ incr attpos; "'" }}
+
+
+start_tag_rangle():
+  Rangle       {{ false }}
+| Rangle_empty {{ true }}
+
+
+end_tag():
+  /* parses </element>.
+   * Pops the top element from the elstack and checks if it is the same
+   * element.
+   */
+  tag:Tag_end  Ignore*  Rangle
+    {{ let name, tag_end_entid = tag in
+       if n_tags_open = 0 then
+	 raise(WF_error("End-tag without start-tag"));
+
+       self # event_end_tag name tag_end_entid;
+
+       n_tags_open <- n_tags_open - 1;
+       assert (n_tags_open >= 0);
+
+    }}
+
+char_data():
+  /* Parses any literal characters not otherwise matching, and adds the
+   * characters to the top element of elstack.
+   * If elstack is empty, it is assumed that there is no surrounding
+   * element, and any non-white space character is forbidden.
+   */
+  data:CharData
+    {{
+      if n_tags_open = 0 then
+	(* only white space is allowed *)
+	self # only_whitespace data
+      else
+	self # event_char_data data
+    }}
+| Lcurly
+    {{ process_curly_brace Lcurly }}
+| LLcurly
+    {{ process_curly_brace LLcurly }}
+| Rcurly
+    {{ process_curly_brace Rcurly }}
+| RRcurly
+    {{ process_curly_brace RRcurly }}
+| data:Cdata
+    {{
+      if n_tags_open = 0 then
+	raise (WF_error("CDATA section not allowed here"));
+       self # event_char_data data
+    }}
+
+cref():
+  /* Parses &#...; and adds the character to the top element of elstack. */
+  code:CRef
+    {{
+       if n_tags_open = 0 then
+	 (* No surrounding element: character references are not allowed *)
+	 raise(WF_error("Character reference not allowed here"));
+       self # event_char_data (character config.encoding config.warner code)
+    }}
+
+pi():
+  /* Parses <?...?> (but not <?xml white-space ... ?>).
+   * If there is a top element in elstack, the processing instruction is added
+   * to this element.
+   */
+  pi: PI
+    {{
+      let position =
+	if config.store_element_positions then
+	  Some(context.manager # position)
+	else
+	  None
+      in
+      let target0,value = pi in
+      let target =
+	if config.enable_name_pool_for_pinstr_targets
+	then make_pool_string target0
+	else target0 in
+
+      self # event_pinstr position target value
+    }}
+
+
+comment():
+  /* Parses <!-- ... -->
+   */
+  begin_entid:Comment_begin
+  $ {{
+       let position =
+	if config.enable_comment_nodes && config.store_element_positions then
+	  Some(context.manager # position)
+	else
+	  None
+      in
+    }}
+  mat: Comment_material*
+  end_entid: Comment_end
+    {{
+      if begin_entid != end_entid then
+	raise(Validation_error("The first and the last token of comments must be in the same entity"));
+      self # event_comment position mat
+    }}
+  ? {{ match !yy_position with
+	 | "end_entid"  -> raise(WF_error("`-->' expected"))
+	 | _            -> raise(WF_error("Bad comment"))
+    }}
+
+
+%%
+   (* The method "parse" continues here... *)
+
+   try
+     begin match start_symbol with
+	 `Entry_document flags ->
+	   parse_entry_document context.current context.get_next
+       | `Entry_declarations flags ->
+	   parse_entry_declarations context.current context.get_next
+       | `Entry_content flags ->
+	   parse_entry_content context.current context.get_next
+       | `Entry_expr flags ->
+	   parse_entry_expr context.current context.get_next
+       | `Entry_continuation _ ->
+	   parse_content_pull context.current context.get_next
+     end;
+     raise End_of_parsing
+   with
+       Not_found ->
+	 raise Parsing.Parse_error
+     | End_of_parsing ->
+	 if n_entities_open > 0 then
+	   raise(WF_error("Illegal token"));
+	 ()
+     (* The exception Interrupt_parsing is not caught here, but by the
+      * caller
+      *)
+
+  (*********** The method "parse" ends here *************)
+
+
+(**********************************************************************)
+
+(* Here ends the class definition: *)
+end
+;;
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: pxp_core_parser.m2y,v $
+ * Revision 1.1  2003/06/15 18:18:34  gerd
+ * 	Initial revision
+ *
+ * 
+ *)
