@@ -3,13 +3,15 @@ include $(TOP_DIR)/Makefile.rules
 
 PACKAGES = netstring
 
-OBJ =   pxp_lexing.cmo \
+OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
         pxp_core_types.cmo pxp_lexer_types.cmo \
 	pxp_lex_aux.cmo pxp_lexers.cmo \
 	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
 	pxp_dfa.cmo \
 	pxp_entity.cmo pxp_dtd.cmo pxp_document.cmo \
 	pxp_entity_manager.cmo \
+	pxp_core_parser.cmo pxp_tree_parser.cmo pxp_ev_parser.cmo \
+	pxp_dtd_parser.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo \
 	pxp_types.cmo
 

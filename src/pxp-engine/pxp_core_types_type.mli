@@ -1,4 +1,4 @@
-(* $Id: pxp_core_types_type.mli,v 1.1 2003/06/15 12:22:41 gerd Exp $
+(* $Id: pxp_core_types_type.mli,v 1.2 2003/06/15 18:19:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -10,13 +10,13 @@
  *)
 
 module type CORE_TYPES = sig
-  type ext_id =
+  type ext_id = Pxp_type_anchor.ext_id =
       System of string
     | Public of (string * string)
     | Anonymous
     | Private of private_id
 	
-  and private_id
+  and private_id = Pxp_type_anchor.private_id
 
   (* External identifiers are either "system identifiers" (filenames or URLs),
    * or "public identifiers" Public(id,sysid) where "id" is the representation
@@ -38,7 +38,7 @@ module type CORE_TYPES = sig
   val allocate_private_id : unit -> private_id
     (* Get a new unique private ID *)
 
-  type resolver_id =
+  type resolver_id = Pxp_type_anchor.resolver_id =
       { rid_private: private_id option;
 	rid_public:  string option;
 	rid_system:  string option;
@@ -61,12 +61,12 @@ module type CORE_TYPES = sig
      *)
 
 
-  type dtd_id =
+  type dtd_id = Pxp_type_anchor.dtd_id =
       External of ext_id       (* DTD is completely external *)
     | Derived of ext_id        (* DTD is derived from an external DTD *)
     | Internal                 (* DTD is completely internal *)
 
-  type content_model_type =
+  type content_model_type = Pxp_type_anchor.content_model_type =
       Unspecified              (* A specification of the model has not yet been
 				* found
 				*)
@@ -80,11 +80,11 @@ module type CORE_TYPES = sig
 				* regular expression
 				*)
 
-  and mixed_spec =
+  and mixed_spec = Pxp_type_anchor.mixed_spec =
       MPCDATA                  (* PCDATA children are allowed *)
     | MChild of string         (* This kind of Element is allowed *)
 
-  and regexp_spec =
+  and regexp_spec = Pxp_type_anchor.regexp_spec =
       Optional of regexp_spec  (* subexpression? *)
     | Repeated of regexp_spec  (* subexpression* *)
     | Repeated1 of regexp_spec (* subexpression+ *)
@@ -93,7 +93,7 @@ module type CORE_TYPES = sig
     | Child of string          (* This kind of Element is allowed here *)
 
 
-  type att_type =
+  type att_type = Pxp_type_anchor.att_type =
       A_cdata                    (* CDATA *)
     | A_id                       (* ID *)
     | A_idref                    (* IDREF *)
@@ -106,14 +106,14 @@ module type CORE_TYPES = sig
     | A_enum of string list      (* (name1 | name2 | ... | nameN) *)
 
 
-  type att_default =
+  type att_default = Pxp_type_anchor.att_default =
       D_required           (* #REQUIRED *)
     | D_implied            (* #IMPLIED *)
     | D_default of string  (* <value> -- The value is already expanded *)
     | D_fixed of string    (* FIXED <value> -- The value is already expanded *)
   
 
-  type att_value =
+  type att_value = Pxp_type_anchor.att_value =
       Value of string
     | Valuelist of string list
     | Implied_value
@@ -254,7 +254,7 @@ module type CORE_TYPES = sig
 	(* write os s pos len: Writes the string to the buffer/channel/stream *)
 
 
-  type pool
+  type pool = Pxp_type_anchor.pool
 
   val make_probabilistic_pool : ?fraction:float -> int -> pool
 	(* A probalistic string pool tries to map strings to pool strings in order
@@ -280,6 +280,9 @@ end (* of CORE_TYPES *)
  * History:
  * 
  * $Log: pxp_core_types_type.mli,v $
+ * Revision 1.2  2003/06/15 18:19:56  gerd
+ * 	Pxp_yacc has been split up
+ *
  * Revision 1.1  2003/06/15 12:22:41  gerd
  * 	Initial revision
  *

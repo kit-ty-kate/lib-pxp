@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.16 2003/06/15 12:23:22 gerd Exp $
+(* $Id: pxp_types.ml,v 1.17 2003/06/15 18:19:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -6,13 +6,197 @@
 
 include Pxp_core_types
 
+open Pxp_entity
+open Pxp_dtd
+open Pxp_entity_manager
+open Pxp_reader
+open Netchannels
 
+type config =
+    { warner : collect_warnings;
+      enable_pinstr_nodes : bool;
+      enable_super_root_node : bool;
+      enable_comment_nodes : bool;
+      drop_ignorable_whitespace : bool;
+      encoding : rep_encoding;
+      recognize_standalone_declaration : bool;
+      store_element_positions : bool;
+      idref_pass : bool;
+      validate_by_dfa : bool;
+      accept_only_deterministic_models : bool;
+      disable_content_validation : bool;
+      name_pool : pool;
+      enable_name_pool_for_element_types    : bool;
+      enable_name_pool_for_attribute_names  : bool;
+      enable_name_pool_for_attribute_values : bool;
+      (* enable_name_pool_for_notation_names   : bool; *)
+      enable_name_pool_for_pinstr_targets   : bool;
+      enable_namespace_processing : namespace_manager option;
+      enable_namespace_info : bool;
+      escape_contents : 
+	             (Pxp_lexer_types.token -> entity_manager -> string) option;
+      escape_attributes : 
+	             (Pxp_lexer_types.token -> int -> entity_manager -> string)
+	             option;
+      debugging_mode : bool;
+    }
+
+let default_config =
+  let w = new drop_warnings in
+  { warner = w;
+    enable_pinstr_nodes = false;
+    enable_super_root_node = false;
+    enable_comment_nodes = false;
+    drop_ignorable_whitespace = true;
+    encoding = `Enc_iso88591;
+    recognize_standalone_declaration = true;
+    store_element_positions = true;
+    idref_pass = false;
+    validate_by_dfa = true;
+    accept_only_deterministic_models = true;
+    disable_content_validation = false;
+    name_pool = make_probabilistic_pool 10;
+    enable_name_pool_for_element_types = false;
+    enable_name_pool_for_attribute_names = false;
+    enable_name_pool_for_pinstr_targets = false;
+    enable_name_pool_for_attribute_values = false;
+    enable_namespace_processing = None;
+    enable_namespace_info = false;
+    escape_contents = None;
+    escape_attributes = None;
+    debugging_mode = false;
+  }
+
+let default_namespace_config =
+  { default_config with
+      enable_namespace_processing = Some (new namespace_manager)
+  }
+
+type source = Pxp_dtd.source =
+    Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
+  | ExtID of (ext_id * Pxp_reader.resolver)
+  | XExtID of (ext_id * string option * Pxp_reader.resolver)
+
+
+let from_obj_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
+  let channel_id = allocate_private_id() in
+  let r = new resolve_to_any_obj_channel
+	    ~channel_of_id:(fun rid ->
+			      if rid.rid_private = Some channel_id then begin
+				let active_id =
+				  match init_id with
+				      None -> 
+					None
+				    | Some xid ->
+					Some (resolver_id_of_ext_id xid)
+				in
+				(ch, fixenc, active_id)
+			      end
+			      else
+				raise Not_competent)
+	    ()
+  in
+  let r_total = new combine 
+		  ( [r] @
+		    (if init_id <> None then 
+		       [ new resolve_as_file 
+			   ?system_encoding 
+			   ~base_url_defaults_to_cwd:false
+			   ()
+		       ] 
+		     else
+		       []) @
+		    alt) in
+  ExtID(Private channel_id, r_total)
+;;
+
+
+let from_channel ?alt ?system_encoding ?id ?fixenc ch =
+  from_obj_channel 
+    ?alt ?system_encoding ?id ?fixenc 
+    (new input_channel ch)
+;;
+    
+
+let from_file ?(alt = []) ?(system_encoding = `Enc_utf8) ?enc utf8_filename =
+  let r =
+    new resolve_as_file
+      ~system_encoding
+      ~base_url_defaults_to_cwd:false
+      ()
+  in
+
+  let url = make_file_url
+	      ~system_encoding
+	      ?enc
+	      utf8_filename in
+
+  let xid = System (Neturl.string_of_url url) in
+
+  let sysbase =
+    let cwd = Sys.getcwd() in
+    let cwd_slash = if cwd = "/" then cwd else cwd ^ "/" in
+    let sysbase_url = make_file_url 
+			~system_encoding ~enc:system_encoding cwd_slash in
+    Some(Neturl.string_of_url sysbase_url) 
+  in
+  XExtID(xid, sysbase, new combine (r :: alt))
+;;
+
+
+let from_string ?fixenc s =
+  let r =
+    new resolve_read_this_string ?fixenc:fixenc s in
+  ExtID(Anonymous, r)
+;;
+
+
+let open_source cfg src use_document_entity dtd =
+  let w = cfg.warner in
+  let r, en =
+    match src with
+	Entity(m,r')  -> r', m dtd
+      | ExtID(xid,r') -> r',
+	                 if use_document_entity then
+                           new document_entity
+			     r' dtd "[toplevel]" w xid None
+                             cfg.encoding
+			 else
+                           new external_entity
+			     r' dtd "[toplevel]" w xid None false
+                             cfg.encoding
+      | XExtID(xid,sysbase,r') -> r',
+	                          if use_document_entity then
+				    new document_entity
+				      r' dtd "[toplevel]" w xid sysbase
+				      cfg.encoding
+				  else
+				    new external_entity
+				      r' dtd "[toplevel]" w xid sysbase false
+				      cfg.encoding
+  in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
+  en # set_debugging_mode (cfg.debugging_mode);
+  (r, en)
+;;
+
+
+type entry =
+    [ `Entry_document     of [ `Extend_dtd_fully | `Parse_xml_decl ] list
+    | `Entry_declarations of [ `Extend_dtd_fully ] list
+    | `Entry_content      of [ `Dummy ] list
+    | `Entry_expr         of [ `Dummy ] list
+    ]
 
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.17  2003/06/15 18:19:56  gerd
+ * 	Pxp_yacc has been split up
+ *
  * Revision 1.16  2003/06/15 12:23:22  gerd
  * 	Moving core type definitions to Pxp_core_types
  *

@@ -13,14 +13,14 @@ opt:
 	$(MAKE) depend
 	$(MAKE) -f Makefile.code opt
 
-generate: pxp_yacc.ml 
+generate: pxp_core_parser.ml 
 
 .PHONY: depend
 depend: 
 	$(OCAMLDEP) *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_yacc.ml pxp_lib.ml
+	rm -f $(CLEAN_LIST) pxp_core_parser.ml pxp_lib.ml
 
 CLEAN: clean
 
