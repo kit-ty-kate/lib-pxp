@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.8 2000/07/09 17:52:45 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.9 2000/07/14 13:57:29 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -14,6 +14,16 @@ open Pxp_aux
 
 (* Some types from the interface definition: *)
 
+exception ID_not_unique
+
+class type [ 'ext ] index =
+object 
+  constraint 'ext = 'ext node #extension
+  method add : string -> 'ext node -> unit
+  method find : string -> 'ext node
+end
+
+
 type config =
     { warner : collect_warnings;
       errors_with_line_numbers : bool;
@@ -22,6 +32,7 @@ type config =
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;
       store_element_positions : bool;
+      idref_pass : bool;
       debugging_mode : bool;
     }
 
@@ -175,7 +186,7 @@ let from_string ?fixenc s =
 
 class ['ext] parser_object
   init_doc init_dtd init_extend_dtd init_config init_resolver init_spec 
-  init_process_xmldecl transform_dtd
+  init_process_xmldecl transform_dtd id_index
   =
   object (self)
 
@@ -193,6 +204,9 @@ class ['ext] parser_object
 
     val transform_dtd = transform_dtd
         (* A function transforming the DTD *)
+
+    val id_index = (id_index : 'ext index option)
+        (* The ID index or None *)
 
     val process_xmldecl = init_process_xmldecl
         (* Whether the XML declaration is parsed and the found XML version
@@ -675,6 +689,7 @@ doctypedecl_material(doctype_entid):
 		spec
 		process_xmldecl
 		(fun x -> x)
+		None
 	    in
 	    let en = new external_entity r' dtd "[dtd]"
 		         config.warner id false config.errors_with_line_numbers
@@ -1548,6 +1563,23 @@ start_tag():
       let d =
 	create_element_node ?position:position spec dtd name attlist' in
 
+      begin match id_index with
+	  None -> ()
+	| Some idx ->
+	    (* Put the ID attribute into the index, if present *)
+	    begin try 
+	      let v = d # id_attribute_value in  (* may raise Not_found *)
+	      idx # add v d                      (* may raise ID_not_unique *)
+	    with
+		Not_found ->
+		  (* No ID attribute *)
+		  ()
+	      | ID_not_unique ->
+		  (* There is already an ID with the same value *)
+		  raise(Validation_error("ID not unique"))
+	    end
+      end;
+
       if n_tags_open = 0 then begin
 	if root = None then begin
 	  (* We have found the begin tag of the root element. *)
@@ -1768,6 +1800,54 @@ let default_spec =
     ~element_mapping:          (Hashtbl.create 1)
 ;;
 
+
+let idref_pass id_index root =
+  let error t att value =
+    let name =
+      match t # node_type with
+	  T_element name -> name
+	| T_data -> assert false
+    in
+    let text =
+      "Attribute `" ^ att ^ "' of element `" ^ name ^ 
+      "' refers to unknown ID `" ^ value ^ "'" in
+    let pos_ent, pos_line, pos_col = t # position in
+    if pos_line = 0 then
+      raise(Validation_error text)
+    else
+      raise(At("In entity " ^ pos_ent ^ " at line " ^
+	       string_of_int pos_line ^ ", position " ^ string_of_int pos_col ^
+	       ":\n",
+	       Validation_error text))
+  in
+    
+  let rec check_tree t =
+    let idref_atts = t # idref_attribute_names in
+    List.iter
+      (fun att ->
+	 match t # attribute att with
+	     Value s ->
+	       begin try ignore(id_index # find s) with
+		   Not_found ->
+		     error t att s
+	       end
+	   | Valuelist l ->
+	       List.iter
+		 (fun s ->
+		    try ignore(id_index # find s) with
+			Not_found ->
+			  error t att s
+		 )
+		 l
+	   | Implied_value -> ()
+      )
+      idref_atts;
+    List.iter check_tree (t # sub_nodes)
+  in
+  check_tree root
+;;
+
+
 exception Return_DTD of dtd;;
 
 let call_parser ~configuration:cfg 
@@ -1778,6 +1858,7 @@ let call_parser ~configuration:cfg
 		~specification:spec 
 		~process_xmldecl 
 		~transform_dtd
+                ~(id_index : 'ext #index option)
 		~use_document_entity
                 ~entry 
 		~init_lexer =
@@ -1809,14 +1890,14 @@ let call_parser ~configuration:cfg
       spec
       process_xmldecl
       transform_dtd
+      (id_index :> 'ext index option)
   in
   let mgr = new entity_manager en in
   en # open_entity true init_lexer;
-  try
+  begin try
     let context = make_context mgr in
     pobj # parse context entry;
     ignore(en # close_entity);
-    pobj
   with
       Return_DTD d ->
 	ignore(en # close_entity);
@@ -1826,7 +1907,18 @@ let call_parser ~configuration:cfg
 	r # close_all;
 	let pos = mgr # position_string in
 	raise (At(pos, error))
-
+  end;
+  if cfg.idref_pass then begin
+    match id_index with
+	None -> ()
+      | Some idx ->
+	  ( match pobj # root with
+		None -> ()
+	      | Some root ->
+		  idref_pass idx root;
+	  )
+  end;
+  pobj
 
 
 let parse_dtd_entity cfg src =
@@ -1845,6 +1937,7 @@ let parse_dtd_entity cfg src =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~id_index: None
       ~use_document_entity:false
       ~entry:Ext_declarations      (* Entry point of the grammar *)
       ~init_lexer:Declaration      (* The initially used lexer *)
@@ -1854,7 +1947,7 @@ let parse_dtd_entity cfg src =
 ;;
 
 
-let parse_content_entity cfg src dtd spec =
+let parse_content_entity ?id_index cfg src dtd spec =
   (* Parse an element given as separate entity *)
   dtd # validate;            (* ensure that the DTD is valid *)
   let doc = new document cfg.warner in
@@ -1870,6 +1963,7 @@ let parse_content_entity cfg src dtd spec =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:false
       ~entry:Ext_element           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
@@ -1896,6 +1990,7 @@ let parse_wfcontent_entity cfg src spec =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~id_index:None
       ~use_document_entity:false
       ~entry:Ext_element           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
@@ -1906,7 +2001,9 @@ let parse_wfcontent_entity cfg src spec =
 ;;
 
 
-let iparse_document_entity ?(transform_dtd = (fun x -> x)) cfg0 src spec p_wf =
+let iparse_document_entity ?(transform_dtd = (fun x -> x)) 
+                           ?id_index
+                           cfg0 src spec p_wf =
   (* Parse an element given as separate entity *)
   (* p_wf: 'true' if in well-formedness mode, 'false' if in validating mode *)
   let cfg = { cfg0 with
@@ -1930,6 +2027,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x)) cfg0 src spec p_wf =
       ~process_xmldecl:true        (* The XML declaration is processed *)
                                    (* TODO: change to 'not p_wf' ? *)
       ~transform_dtd:transform_dtd
+      ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:true
       ~entry:Ext_document          (* Entry point of the grammar *)
       ~init_lexer:Document         (* The initially used lexer *)
@@ -1938,8 +2036,13 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x)) cfg0 src spec p_wf =
 ;;
 
 
-let parse_document_entity ?(transform_dtd = (fun x -> x)) cfg src spec =
-  iparse_document_entity ~transform_dtd:transform_dtd cfg src spec false;;
+let parse_document_entity ?(transform_dtd = (fun x -> x)) 
+                          ?id_index
+                          cfg src spec =
+  iparse_document_entity 
+    ~transform_dtd:transform_dtd 
+    ?id_index:(id_index : 'ext #index option :> 'ext index option)
+    cfg src spec false;;
 
 let parse_wfdocument_entity cfg src spec =
   iparse_document_entity cfg src spec true;;
@@ -1970,14 +2073,35 @@ let default_config =
     encoding = `Enc_iso88591;
     recognize_standalone_declaration = true;
     store_element_positions = true;
+    idref_pass = false;
     debugging_mode = false;
   }
+
+
+class  [ 'ext ] hash_index =
+object 
+  constraint 'ext = 'ext node #extension
+  val ht = (Hashtbl.create 100 : (string, 'ext node) Hashtbl.t)
+  method add s n =
+    try
+      ignore(Hashtbl.find ht s);
+      raise ID_not_unique
+    with
+	Not_found ->
+	  Hashtbl.add ht s n
+
+  method find s = Hashtbl.find ht s
+  method index = ht
+end
 
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.9  2000/07/14 13:57:29  gerd
+ * 	Added the id_index feature.
+ *
  * Revision 1.8  2000/07/09 17:52:45  gerd
  * 	New implementation for current_data.
  * 	The position of elements is stored on demand.
