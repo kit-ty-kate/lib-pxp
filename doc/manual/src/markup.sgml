@@ -2486,7 +2486,7 @@ class type [ 'ext ] node =
     method delete_nodes : ?pos:int -&gt; ?len:int -&gt; unit -&gt; unit
     method set_nodes : 'ext node list &fun; unit
     method set_attributes : (string * Pxp_types.att_value) list &fun; unit
-    method set_attribute : (string * Pxp_types.att_value) list -> unit
+    method set_attribute : ?force:bool &fun; string &fun; Pxp_types.att_value &fun; unit
     method reset_attribute : string -> unit
     method set_comment : string option &fun; unit
     method set_data : string -&gt; unit
