@@ -1,5 +1,3 @@
-OCAMLPATH=../../src
-
 sample.cma: expr.ml exprlex.ml sample.ml
 	ocamlfind ocamlc -a -o sample.cma -package "pxp" \
 		expr.mli expr.ml exprlex.ml sample.ml
