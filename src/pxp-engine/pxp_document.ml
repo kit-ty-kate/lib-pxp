@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.7 2000/07/16 16:34:41 gerd Exp $
+(* $Id: pxp_document.ml,v 1.8 2000/07/16 17:50:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1040,7 +1040,7 @@ class ['ext] document the_warner =
 
       let r = self # root in
       wms ("<?xml version='1.0' encoding='" ^ string_of_encoding enc ^ 
-	   "'?>");
+	   "'?>\n");
       ( match self # dtd # root with
 	    None ->
 	      self # dtd # write os enc false
@@ -1053,6 +1053,7 @@ class ['ext] document the_warner =
 	)
 	(Lazy.force pinstr);
       r # write os enc;
+      wms "\n";
 	    
     method write_compact_as_latin1 os =
       self # write os `Enc_iso88591
@@ -1065,6 +1066,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.8  2000/07/16 17:50:01  gerd
+ * 	Fixes in 'write'
+ *
  * Revision 1.7  2000/07/16 16:34:41  gerd
  * 	New method 'write', the successor of 'write_compact_as_latin1'.
  *

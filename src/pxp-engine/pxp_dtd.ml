@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.6 2000/07/16 16:34:41 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.7 2000/07/16 17:50:01 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -258,6 +258,14 @@ class dtd  the_warner init_encoding =
     method write os enc doctype = 
       let wms = 
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
+      let write_sysid s =
+	if String.contains s '"' then
+	  wms ("'" ^ s ^ "'")
+	else
+	  wms ("\"" ^ s ^ "\"");
+      in
+
       if doctype then begin
 	wms "<!DOCTYPE ";
 	( match root with
@@ -266,18 +274,60 @@ class dtd  the_warner init_encoding =
 	);
 	wms " [\n";
       end;
-      Hashtbl.iter
-	(fun name notation ->
+
+      (* Notations: *)
+      List.iter
+	(fun name ->
+	   let notation = 
+	     try Hashtbl.find notations name with Not_found -> assert false in
 	   notation # write os enc)
-	notations;
-      Hashtbl.iter
-	(fun name element ->
+	(List.sort compare notation_names);
+
+      (* Unparsed entities: *)
+      List.iter
+	(fun name ->
+	   let ent,_ = 
+	     try Hashtbl.find gen_entities name with Not_found -> assert false 
+	   in
+	   if ent # is_ndata then begin
+	     let xid = ent # ext_id in
+	     let notation = ent # notation in
+	     wms ("<!ENTITY " ^ name ^ " " );
+	     ( match xid with
+		   System s ->
+		     wms "SYSTEM ";
+		     write_sysid s;
+		 | Public (p,s) ->
+		     wms "PUBLIC ";
+		     write_sysid p;
+		     if (s <> "") then begin
+		       wms " ";
+		       write_sysid s;
+		     end;
+		 | Anonymous ->
+		     failwith "#write: External ID Anonymous cannot be represented"
+	     );
+	     wms (" NDATA " ^ notation ^ ">\n");
+	   end
+	)
+	(List.sort compare gen_entity_names);
+
+      (* Elements: *)
+      List.iter
+	(fun name ->
+	   let element = 
+	     try Hashtbl.find elements name with Not_found -> assert false in
 	   element # write os enc)
-	elements;
-      Hashtbl.iter
-	(fun name pi ->
+	(List.sort compare element_names);
+
+      (* Processing instructions: *)
+      List.iter
+	(fun name ->
+	   let pi = 
+	     try Hashtbl.find pinstr name with Not_found -> assert false in
 	   pi # write os enc)
-	pinstr;
+	(List.sort compare pinstr_names);
+
       if doctype then 
 	wms "]>\n";
 
@@ -800,6 +850,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.7  2000/07/16 17:50:01  gerd
+ * 	Fixes in 'write'
+ *
  * Revision 1.6  2000/07/16 16:34:41  gerd
  * 	New method 'write', the successor of 'write_compact_as_latin1'.
  *
