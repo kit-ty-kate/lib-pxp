@@ -267,6 +267,12 @@ module type CORE_TYPES = sig
      * (New in PXP 1.1)
      *)
 
+  exception Not_competent
+    (* The resolver cannot open this kind of entity ID *)
+
+  exception Not_resolvable of exn
+    (* While opening the entity, the nested exception occurred *)
+
   val string_of_exn : exn -> string
 	(* Converts a PXP exception into a readable string *)
 

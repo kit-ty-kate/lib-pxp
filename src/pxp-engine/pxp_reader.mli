@@ -350,6 +350,7 @@ class resolve_as_file :
   ?map_private_id:  (private_id -> Neturl.url) ->
   ?open_private_id: (private_id -> in_channel * encoding option) ->
   ?base_url_defaults_to_cwd: bool ->
+  ?not_resolvable_if_not_found:bool ->
   unit ->
   resolver;;
 
@@ -387,13 +388,16 @@ class resolve_as_file :
    * from and to get the character encoding. The URL is taken into account
    * when subsequently relative SYSTEM IDs must be resolved.
    *
-   * Option ~base_url_defaults_to_cwd: If true (the default), relative URLs
+   * Option ~base_url_defaults_to_cwd: If true, relative URLs
    * are interpreted relative to the current working directory at the time
    * the class is instantiated, but only if there is no parent URL, i.e.
-   * rid_system_base=None. If false, such URLs cannot be resolved. This 
-   * option is selected by default because of backward compatibility. 
+   * rid_system_base=None. If false (the default), such URLs cannot be resolved.
    * In general, it is better to set this option to false, and to
    * initialize rid_system_base properly.
+   *
+   * Option ~not_resolvable_if_not_found: If true (the default), 
+   * "File not found" errors stop the resolution process. If false,
+   * "File not found" is treated as [Not_competent].
    *)
 
 val make_file_url :
@@ -428,6 +432,9 @@ class lookup_id :
   (* The general catalog class. The catalog argument specifies pairs (xid,r)
    * mapping external IDs xid to subresolvers r. The subresolver is invoked
    * if an entity with the corresponding xid is to be opened.
+   *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
    *)
 
 
@@ -439,6 +446,9 @@ class lookup_id_as_file :
   (* The catalog argument specifies pairs (xid,file) mapping external IDs xid
    * to files. The file is read  if an entity with the corresponding xid is
    * to be opened.
+   *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
    *
    * ~fixenc: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
@@ -453,6 +463,9 @@ class lookup_id_as_string :
   (* The catalog argument specifies pairs (xid,s) mapping external IDs xid
    * to strings s. The string is read if an entity with the corresponding
    * xid is to be opened.
+   *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
    *)
 
 
@@ -463,6 +476,7 @@ class lookup_public_id :
   (* This is the generic builder for PUBLIC id catalog resolvers: The catalog 
    * argument specifies pairs (pubid, r) mapping PUBLIC identifiers to
    * subresolvers.
+   *
    * The subresolver is invoked if an entity with the corresponding PUBLIC
    * id is to be opened.
    *)
@@ -478,6 +492,13 @@ class lookup_public_id_as_file :
    * pairs (pubid, filename) mapping PUBLIC identifiers to filenames. The
    * filenames must already be encoded in the character set the system uses
    * for filenames.
+   *
+   * Note: This class does not enable the resolution of inner IDs of PUBLIC
+   * entities by relative SYSTEM names. To get this effect, use
+   * the class lookup_id, and feed it with combined 
+   * Public(pubid,sysid) identifiers. In this case, the entity has both
+   * a PUBLIC and a SYSTEM ID, and resolution of inner relative SYSTEM
+   * names works.
    *
    * ~fixenc: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
@@ -510,7 +531,10 @@ class lookup_system_id :
    * Important note: Two SYSTEM IDs are considered as equal if they are
    * equal in their string representation. (This may not what you want
    * and may cause trouble... However, I currently do not know how to
-   * implement a "semantic" comparison logic.)
+   * implement a "semantical" comparison logic.)
+   *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
    *)
 
 
@@ -523,6 +547,9 @@ class lookup_system_id_as_file :
    * pairs (sysid, filename) mapping SYSTEM identifiers to filenames. The
    * filenames must already be encoded in the character set the system uses
    * for filenames.
+   *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
    *
    * ~fixenc: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
@@ -538,6 +565,9 @@ class lookup_system_id_as_string :
    * pairs (sysid, text) mapping SYSTEM identifiers to XML text (which must
    * begin with <?xml ...?>).
    *
+   * Note: SYSTEM IDs are simply compared literally, without making
+   * relative IDs absolute. See norm_system_id below for this function.
+   *
    * ~fixenc: Overrides the encoding of the strings.
    *)
 
@@ -549,7 +579,7 @@ class norm_system_id : resolver -> resolver
    * Normalization includes:
    * - Relative URLs are made absolute. If this fails, the problematic
    *   relative URL will be rejected.
-   * - .. and . and // are removed 
+   * - .. and . and // in the middle of URLs are removed 
    * - Escaping of reserved characters is normalized
    *
    * Normalization is recommended for catalogs, e.g.
@@ -590,7 +620,8 @@ class rewrite_system_id :
    * The class normalizes URLs as norm_system_id does, before the match
    * is tried.
    *
-   * By default, URLs that do not match any pattern are rejected.
+   * By default, URLs that do not match any pattern are rejected
+   * (Not_competent).
    *
    * The rewritten URL is only visible within the passed subresolver.
    * If the opened entity accesses other entities by relative URLs,
@@ -628,7 +659,6 @@ type combination_mode =
 
 
 class combine : 
-        ?prefer:resolver -> 
 	?mode:combination_mode ->
 	resolver list -> 
 	  resolver;;
@@ -652,8 +682,6 @@ class combine :
    * resolvers are cloned and again combined. If the 'clone' method is
    * invoked after 'open_rid' (i.e. while the resolver is open), only the
    * active resolver is cloned.
-   *
-   * ~prefer: This is an internally used option.
    *)
 
 

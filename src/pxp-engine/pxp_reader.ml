@@ -7,8 +7,8 @@
 open Pxp_core_types;;
 open Netchannels;;
 
-exception Not_competent;;
-exception Not_resolvable of exn;;
+exception Not_competent = Pxp_core_types.Not_competent;;
+exception Not_resolvable (* of exn *) = Pxp_core_types.Not_resolvable;;
 
 type lexer_source =
     { lsrc_lexbuf : Lexing.lexbuf Lazy.t;
@@ -703,7 +703,8 @@ class resolve_as_file
   ?(system_encoding = `Enc_utf8)
   ?(map_private_id = (fun _ -> raise Not_competent))
   ?(open_private_id = (fun _ -> raise Not_competent))
-  ?(base_url_defaults_to_cwd = true)
+  ?(base_url_defaults_to_cwd = false)
+  ?(not_resolvable_if_not_found = true)
   ()
   =
 
@@ -813,6 +814,9 @@ class resolve_as_file
 	    ~out_enc: system_encoding
 	    path_utf8 in
             (* May raise Malformed_code *)
+
+	if (not not_resolvable_if_not_found) && not(Sys.file_exists path) then
+	  raise Not_competent;
 	      
 	(new input_channel(open_in_bin path), None, None)
 	(* May raise Sys_error *)
@@ -1045,9 +1049,8 @@ type combination_mode =
 ;;
 
 
-class combine ?prefer ?mode rl =
+class combine ?mode rl =
   object (self)
-    val prefered_resolver = prefer
     val mode = mode
     val resolvers = (rl : resolver list)
     val mutable internal_encoding = `Enc_utf8
@@ -1117,9 +1120,7 @@ class combine ?prefer ?mode rl =
 
       if active_resolver <> None then failwith "Pxp_reader.combine # open_rid";
       let r, lb =
-	match prefered_resolver with
-	    None ->   find_competent_resolver resolvers
-	  | Some r -> find_competent_resolver (r :: resolvers)
+	find_competent_resolver resolvers
       in
       active_resolver <- Some r;
       lb
@@ -1149,12 +1150,11 @@ class combine ?prefer ?mode rl =
       let c =
 	match active_resolver with
 	    None   ->
-	      new combine ?prefer:None ?mode
+	      new combine ?mode
                           (List.map (fun q -> q # clone) resolvers)
 	  | Some r ->
 	      let r' = r # clone in
 	      new combine
-		?prefer:(Some r')
 		?mode
 		(List.map
 		   (fun q -> if q == r then r' else q # clone)

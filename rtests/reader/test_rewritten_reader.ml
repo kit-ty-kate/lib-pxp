@@ -458,6 +458,272 @@ let t025 () =
 	true
 ;;
 
+
+(**********************************************************************)
+(* t03X: Combination *)
+
+let t030() =
+  (* Combine a catalog SYSTEM ID with "resolve_as_file" *)
+  let file_pwd = "file://" ^ Sys.getcwd() ^ "/" in
+
+  let res_a = 
+    new lookup_system_id_as_file
+      [ "foo", "t_a.dat" ] in
+
+  let res_b =
+    new resolve_as_file
+      ~base_url_defaults_to_cwd:false
+      () in
+
+  let res_c =
+    new combine [ res_a; res_b ] in
+
+  res_c # init_rep_encoding `Enc_iso88591;
+  res_c # init_warner None (new drop_warnings);
+
+  let lex_c1_src = res_c # open_rid { null_rid with
+					rid_system = Some "foo";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c1 = Lazy.force lex_c1_src.lsrc_lexbuf in
+  assert(nextchar lex_c1 = Some 'a');
+
+  (* The following works because catalogs ignore system_base: *)
+  let res_c' = res_c # clone in
+  let lex_c1'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+  assert(nextchar lex_c1' = Some 'a');
+  res_c' # close_in;
+
+  (* But this does not work, because system_base is not absolute: *)
+  ( try
+      let res_c' = res_c # clone in
+      let lex_c1'_src = res_c' # open_rid { null_rid with
+					      rid_system = Some "t_b.dat";
+					      rid_system_base = 
+					        res_c#active_id.rid_system;
+					  } in
+      let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+      res_c' # close_in;
+      assert false
+    with
+	Not_resolvable Neturl.Malformed_URL -> ()
+  );
+
+  res_c # close_in;
+
+  let lex_c2_src = res_c # open_rid { null_rid with
+					rid_system = Some "t_b.dat";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c2 = Lazy.force lex_c2_src.lsrc_lexbuf in
+  assert(nextchar lex_c2 = Some 'b');
+
+  (* The following works because catalogs ignore system_base: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "t_a.dat";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  res_c # close_in;
+
+  true
+;;
+
+
+let t031() =
+  (* Combine a catalog PUBLIC ID with "resolve_as_file" *)
+  let file_pwd = "file://" ^ Sys.getcwd() ^ "/" in
+
+  let res_a = 
+    new lookup_public_id_as_file
+      [ "foo", "t_a.dat" ] in
+
+  let res_b =
+    new resolve_as_file
+      ~base_url_defaults_to_cwd:false
+      () in
+
+  let res_c =
+    new combine [ res_a; res_b ] in
+
+  res_c # init_rep_encoding `Enc_iso88591;
+  res_c # init_warner None (new drop_warnings);
+
+  let lex_c1_src = res_c # open_rid { null_rid with
+					rid_public = Some "foo";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c1 = Lazy.force lex_c1_src.lsrc_lexbuf in
+  assert(nextchar lex_c1 = Some 'a');
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c1'_src = res_c' # open_rid { null_rid with
+					  rid_public = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+  assert(nextchar lex_c1' = Some 'a');
+  res_c' # close_in;
+
+  (* But this does not work, because system_base is None: *)
+  ( try
+      let res_c' = res_c # clone in
+      let lex_c1'_src = res_c' # open_rid { null_rid with
+					      rid_system = Some "t_b.dat";
+					      rid_system_base = 
+					        res_c#active_id.rid_system;
+					  } in
+      let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+      res_c' # close_in;
+      assert false
+    with
+	Not_resolvable Not_found -> ()
+  );
+
+  res_c # close_in;
+
+  let lex_c2_src = res_c # open_rid { null_rid with
+					rid_system = Some "t_b.dat";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c2 = Lazy.force lex_c2_src.lsrc_lexbuf in
+  assert(nextchar lex_c2 = Some 'b');
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_public = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "t_a.dat";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  res_c # close_in;
+
+  true
+;;
+
+
+let t032() =
+  (* Combine a mixed PUBLIC/SYSTEM ID catalog with "resolve_as_file" *)
+  let file_pwd = "file://" ^ Sys.getcwd() ^ "/" in
+
+  let res_a = 
+    new lookup_id_as_file
+      [ Public("foo", file_pwd ^ "foo"), "t_a.dat" ] in
+
+  let res_b =
+    new resolve_as_file
+      ~base_url_defaults_to_cwd:false
+      () in
+
+  let res_c =
+    new norm_system_id
+      (new combine [ res_a; res_b ]) in
+
+  res_c # init_rep_encoding `Enc_iso88591;
+  res_c # init_warner None (new drop_warnings);
+
+  let lex_c1_src = res_c # open_rid { null_rid with
+					rid_public = Some "foo";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c1 = Lazy.force lex_c1_src.lsrc_lexbuf in
+  assert(nextchar lex_c1 = Some 'a');
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c1'_src = res_c' # open_rid { null_rid with
+					  rid_public = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+  assert(nextchar lex_c1' = Some 'a');
+  res_c' # close_in;
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c1'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "t_b.dat";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c1' = Lazy.force lex_c1'_src.lsrc_lexbuf in
+  res_c' # close_in;
+
+  res_c # close_in;
+
+  let lex_c2_src = res_c # open_rid { null_rid with
+					rid_system = Some "t_b.dat";
+					rid_system_base = Some file_pwd;
+				   } in
+  let lex_c2 = Lazy.force lex_c2_src.lsrc_lexbuf in
+  assert(nextchar lex_c2 = Some 'b');
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_public = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  (* This is expected to work: *)
+  let res_c' = res_c # clone in
+  let lex_c2'_src = res_c' # open_rid { null_rid with
+					  rid_system = Some "foo";
+					  rid_system_base = 
+					    res_c#active_id.rid_system;
+				      } in
+  let lex_c2' = Lazy.force lex_c2'_src.lsrc_lexbuf in
+  assert(nextchar lex_c2' = Some 'a');
+  res_c' # close_in;
+
+  res_c # close_in;
+
+  true
+;;
+
 (**********************************************************************)
 
 let test f n =
@@ -482,3 +748,7 @@ test t022 "022";;
 test t023 "023";;
 test t024 "024";;
 test t025 "025";;
+test t030 "030";;
+test t031 "031";;
+test t032 "032";;
+

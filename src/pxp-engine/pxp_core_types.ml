@@ -232,6 +232,10 @@ exception Method_not_applicable of string
 
 exception Namespace_method_not_applicable of string
 
+exception Not_competent
+
+exception Not_resolvable of exn
+
 let rec string_of_exn x0 =
   match x0 with
       At (s, x) ->
@@ -252,6 +256,10 @@ let rec string_of_exn x0 =
 	"INTERNAL ERROR (method `" ^ mname ^ "' not applicable)"
     | Parsing.Parse_error ->
 	"SYNTAX ERROR"
+    | Not_competent ->
+	"NO COMPETENT RESOLVER FOUND"
+    | Not_resolvable x ->
+	"NOT RESOLVABLE: " ^ string_of_exn x
     | _ ->
         "Other exception: " ^ Printexc.to_string x0
 ;;
