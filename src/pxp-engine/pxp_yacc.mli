@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.12 2001/04/24 21:07:13 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.13 2001/05/17 21:39:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -229,6 +229,48 @@ type config =
 	 * slower.
 	 *)
 
+      enable_namespace_processing : Pxp_document.namespace_manager option;
+        (* Setting this option to a namespace_manager enables namespace
+	 * processing. This works only if the namespace-aware implementation
+	 * namespace_element_impl of element nodes is used in the spec;
+	 * otherwise you will get error messages complaining about missing
+	 * methods.
+	 *
+	 * Note that PXP uses a technique called "prefix normalization" to
+	 * implement namespaces on top of the plain document model. This means
+	 * that the namespace prefixes of elements and attributes are changed
+	 * to unique prefixes if they are ambiguous, and that these 
+	 * "normprefixes" are actually stored in the document tree. Furthermore,
+	 * the normprefixes are used for validation.
+	 * 
+	 * Every normprefix corresponds uniquely to a namespace URI, and 
+	 * this mapping is controlled by the namespace_manager. It is possible
+	 * to fill the namespace_manager before parsing starts such that
+	 * the programmer knows which normprefix is used for which namespace
+	 * URI. Example:
+	 *
+	 * let mng = new namespace_manager in
+	 * mng # add "html" "http://www.w3.org/1999/xhtml";
+	 * ...
+	 *
+	 * This forces that elements with the mentioned URI are rewritten
+	 * to a form using the normprefix "html". For instance, "html:table" 
+	 * always refers to the table construct.
+	 *
+	 * By default, namespace processing is turned off.
+	 *)
+
+      enable_namespace_info : bool;
+        (* Whether to set the namespace_info slot of elements. 
+	 * This option has only an effect if enable_namespace_processing is
+	 * non-None.
+	 *
+	 * Warning! This option requires a lot of memory!
+	 *
+	 * Default: false
+	 *)
+
+
       (* The following options are not implemented, or only for internal
        * use.
        *)
@@ -341,6 +383,7 @@ val default_config : config
    * - The IDREF pass is left out
    * - If available, DFAs are used for validation
    * - Only deterministic content models are accepted
+   * - Namespace processing is turned off
    *) 
 
 val default_extension : ('a node extension) as 'a
@@ -415,6 +458,9 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.13  2001/05/17 21:39:15  gerd
+ * 	New options: enable_namespace_processing, enable_namespace_info.
+ *
  * Revision 1.12  2001/04/24 21:07:13  gerd
  * 	New option ~alt in from_channel and from_file.
  *
