@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd" [
+
+<!ENTITY % common SYSTEM "common.xml">
+%common;
+
+<!-- Special HTML config: -->
+<!ENTITY % readme:html:up '<a href="../..">up</a>'>
+
+<!ENTITY % config SYSTEM "config.xml">
+%config;
+
+]>
+
+<readme title="Notes on the XML specification">
+
+  <sect1>
+    <title>This document</title>
+    <p>There are some points in the XML specification which are ambiguous.
+The following notes discuss these points, and describe how this parser
+behaves.</p>
+  </sect1>
+
+  <sect1>
+    <title>Conditional sections and the token ]]&gt;</title>
+
+    <p>It is unclear what happens if an ignored section contains the
+token ]]&gt; at places where it is normally allowed, i.e. within string
+literals and comments, e.g.
+
+<code>
+&lt;![IGNORE[ &lt;!-- ]]&gt; --&gt; ]]&gt;
+</code>
+
+On the one hand, the production rule of the XML grammar does not treat such 
+tokens specially. Following the grammar, already the first ]]&gt; ends
+the conditional section
+
+<code>
+&lt;![IGNORE[ &lt;!-- ]]&gt;
+</code>
+
+and the other tokens are included into the DTD.</p>
+
+<p>On the other hand, we can read: "Like the internal and external DTD subsets,
+a conditional section may contain one or more complete declarations, comments,
+processing instructions, or nested conditional sections, intermingled with
+white space" (XML 1.0 spec, section 3.4). Complete declarations and comments
+may contain ]]&gt;, so this is contradictory to the grammar.</p>
+
+<p>The intention of conditional sections is to include or exclude the section 
+depending on the current replacement text of a parameter entity. Almost
+always such sections are used as in
+
+<code>
+&lt;!ENTITY % want.a.feature.or.not "INCLUDE"&gt;   (or "IGNORE")
+&lt;![ %want.a.feature.or.not; [ ... ]]&gt;
+</code>
+
+This means that if it is possible to include a section it must also be
+legal to ignore the same section. This is a strong indication that 
+the token ]]&gt; must not count as section terminator if it occurs
+in a string literal or comment.</p>
+
+<p>This parser implements the latter.</p>
+
+  </sect1>
+
+  <sect1>
+    <title>Conditional sections and the inclusion of parameter entities</title>
+
+    <p>It is unclear what happens if an ignored section contains a reference
+to a parameter entity. In most cases, this is not problematic because 
+nesting of parameter entities must respect declaration braces. The
+replacement text of parameter entities must either contain a <em>whole</em>
+number of declarations or only inner material of one declaration. Almost always
+it does not matter whether these references are resolved or not
+(the section is ignored).</p>
+
+    <p>But there is one case which is not explicitly specified: Is it allowed
+that the replacement text of an entity contains the end marker ]]&gt; 
+of an ignored conditional section? Example:
+
+<code>
+&lt;!ENTITY % end "]]&gt;"&gt;
+&lt;![ IGNORE [ %end;
+</code>
+
+We do not find the statement in the XML spec that the ]]&gt; must be contained
+in the same entity as the corresponding &lt;![ (as for the tokens &lt;! and
+&gt; of declarations). So it is possible to conclude that ]]&gt; may be in
+another entity.</p>
+
+    <p>Of course, there are many arguments not to allow such constructs: The
+resulting code is incomprehensive, and parsing takes longer (especially if the
+entities are external). I think the best argument against this kind of XML
+is that the XML spec is not detailed enough, as it contains no rules where
+entity references should be recognized and where not. For example:
+
+<code>
+&lt;!ENTITY % y "]]&gt;"&gt;
+&lt;!ENTITY % x "&lt;!ENTITY z '&lt;![CDATA[some text%y;'&gt;"&gt;
+&lt;![ IGNORE [ %x; ]]&gt;
+</code>
+
+Which token ]]&gt; counts? From a logical point of view, the ]]&gt; in the
+third line ends the conditional section. As already pointed out, the XML spec
+permits the interpretation that ]]&gt; is recognized even in string literals,
+and this may be also true if it is "imported" from a separate entity; and so
+the first ]]&gt; denotes the end of the section.</p>
+
+    <p>As a practical solution, this parser does not expand parameter entities
+in ignored sections. Furthermore, it is also not allowed that the ending ]]&gt;
+of ignored or included sections is contained in a different entity than the
+starting &lt;![ token.</p>
+  </sect1>
+
+
+</readme>
