@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.8 2000/08/14 22:24:55 gerd Exp $
+(* $Id: pxp_types.mli,v 1.9 2000/09/09 16:38:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -147,10 +147,34 @@ type output_stream =
 val write : output_stream -> string -> int -> int -> unit
   (* write os s pos len: Writes the string to the buffer/channel/stream *)
 
+
+type pool 
+
+val make_probabilistic_pool : ?fraction:float -> int -> pool
+  (* A probalistic string pool tries to map strings to pool strings in order
+   * to make it more likely that equal strings are stored in the same memory
+   * block.
+   * The int argument is the size of the pool; this is the number of entries
+   * of the pool. However, not all entries of the pool are used; the ~fraction
+   * argument (default: 0.3) determines the fraction of the actually used
+   * entries. The higher the fraction is, the more strings can be managed
+   * at the same time; the lower the fraction is, the more likely it is that
+   * a new string can be added to the pool.
+   *)
+
+val pool_string : pool -> string -> string
+  (* Tries to find the passed string in the pool; if the string is in the 
+   * pool, the pool string is returned. Otherwise, the function tries to
+   * add the passed string to the pool, and the passed string is returned.
+   *)
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.9  2000/09/09 16:38:47  gerd
+ * 	New type 'pool'.
+ *
  * Revision 1.8  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.

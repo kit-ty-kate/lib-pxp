@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.7 2000/08/14 22:24:55 gerd Exp $
+(* $Id: pxp_types.ml,v 1.8 2000/09/09 16:38:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -142,10 +142,133 @@ let write os str pos len =
     | Out_function f -> f str pos len
 ;;
 
+
+type pool =
+    { mutable pool_start : pool_node;
+      mutable pool_end   : pool_node;
+      mutable pool_array : pool_node_record array;
+      mutable pool_count : int;
+      mutable pool_max   : int;
+    }
+and pool_node =
+    No_node
+  | Pool_node of pool_node_record
+and pool_node_record =
+    { mutable previous_pool_node : pool_node;
+      mutable next_pool_node : pool_node;
+      mutable pool_string : string option;
+    }
+;;
+
+
+let make_probabilistic_pool ?(fraction = 0.3) size =
+  let make_node _ =
+    { previous_pool_node = No_node;
+      next_pool_node = No_node;
+      pool_string = None;
+    }
+  in
+  let m = truncate (fraction *. float size) in
+  if size < 0 || m < 1 || m > size then
+    invalid_arg "make_probabilistic_pool";
+  { pool_start = No_node;
+    pool_end = No_node;
+    pool_array = Array.init size make_node;
+    pool_count = 0;
+    pool_max = m;
+  }
+;;
+
+
+let pool_string p s =
+  let size = Array.length p.pool_array in
+  let h = Hashtbl.hash s mod size in
+  let n =  p.pool_array.(h) in
+  match n.pool_string with
+      None ->
+	(* The pool node is free. We occupy the node, and insert it at the
+	 * beginning of the node list. 
+	 *)
+	n.pool_string <- Some s;
+	n.previous_pool_node <- No_node;
+	n.next_pool_node <- p.pool_start;
+	begin match p.pool_start with
+	    No_node -> ()
+	  | Pool_node start ->
+	      start.previous_pool_node <- Pool_node n
+	end;
+	p.pool_start <- Pool_node n;
+	if p.pool_end = No_node then p.pool_end <- Pool_node n;
+	p.pool_count <- p.pool_count + 1;
+	(* If the node list is longer than pool_max, the last node of the
+	 * list is deleted.
+	 *)
+	if p.pool_count > p.pool_max then begin
+	  (* ==> p.pool_count >= 2 *)
+	  let last = 
+	    match p.pool_end with
+		No_node -> assert false
+	      | Pool_node x -> x in
+	  let last' =
+	    match last.previous_pool_node with
+		No_node -> assert false
+	      | Pool_node x -> x in
+	  last'.next_pool_node <- No_node;
+	  p.pool_end <- Pool_node last';
+	  p.pool_count <- p.pool_count - 1;
+	end;
+	s
+
+    | Some s' ->
+	if s = s' then begin
+	  (* We have found the pool string. To make it more unlikely that n
+	   * is removed from the pool, n is moved to the beginning of the
+	   * node list.
+	   *)
+	  begin match n.previous_pool_node with
+	      No_node ->
+		(* n is already at the beginning *)
+		()
+	    | Pool_node n_pred ->
+		n_pred.next_pool_node <- n.next_pool_node;
+		begin match n.next_pool_node with
+		    No_node ->
+		      (* n is at the end of the list *)
+		      p.pool_end <- Pool_node n_pred;
+		  | Pool_node n_succ ->
+		      n_succ.previous_pool_node <- Pool_node n_pred
+		end;
+		(* Now n is deleted from the list. Insert n again at the
+		 * beginning of the list.
+		 *)
+		n.previous_pool_node <- No_node;
+		n.next_pool_node <- p.pool_start;
+		begin match p.pool_start with
+		    No_node -> ()
+		  | Pool_node start ->
+		      start.previous_pool_node <- Pool_node n
+		end;
+		p.pool_start <- Pool_node n;
+	  end;
+	  (* Return the found pool string: *)
+	  s'             
+	end
+	else begin
+	  (* n contains a different string which happened to have the same
+	   * hash index.
+	   *)
+	  s
+	end
+;;
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.8  2000/09/09 16:38:47  gerd
+ * 	New type 'pool'.
+ *
  * Revision 1.7  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.
