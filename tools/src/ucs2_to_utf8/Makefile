@@ -3,14 +3,13 @@
 #(*                   14/05/2000                       *)
 #(******************************************************)
 
-OCAMLC = ocamlc 
-OCAMLOPT = ocamlopt 
-OCAMLDEP = ocamldep
-OCAMLLEX = ocamllex
-OCAMLYACC = ocamlyacc
+# [14-Jun-2001] Modified by Gerd Stolpmann
 
-all: ucs2_to_utf8
-opt: ucs2_to_utf8.opt
+TOP_DIR = ../../..
+include $(TOP_DIR)/Makefile.rules
+
+all: ucs2_to_utf8$(EXEC_SUFFIX)
+opt: ucs2_to_utf8.opt$(EXEC_SUFFIX)
 
 DEPOBJS = ucs2_to_utf8.ml lexer.ml parser.ml parser.mli types.ml
 
@@ -29,22 +28,18 @@ parser.mli:
 depend: lexer.ml parser.ml parser.mli
 	$(OCAMLDEP) $(DEPOBJS) > depend
  
-ucs2_to_utf8: $(UCS2_TO_UTF8OBJS)
-	$(OCAMLC) -o ucs2_to_utf8 $(UCS2_TO_UTF8OBJS)
+ucs2_to_utf8$(EXEC_SUFFIX): $(UCS2_TO_UTF8OBJS)
+	$(OCAMLC) -o ucs2_to_utf8$(EXEC_SUFFIX) $(UCS2_TO_UTF8OBJS)
 
-ucs2_to_utf8.opt: $(UCS2_TO_UTF8OPTOBJS)
-	$(OCAMLOPT) -o ucs2_to_utf8.opt $(UCS2_TO_UTF8OPTOBJS)
-
-.SUFFIXES: .ml .mli .cmo .cmi .cmx
-.ml.cmo:
-	$(OCAMLC) -c $<
-.mli.cmi:
-	$(OCAMLC) -c $<
-.ml.cmx:
-	$(OCAMLOPT) -c $<
+ucs2_to_utf8.opt$(EXEC_SUFFIX): $(UCS2_TO_UTF8OPTOBJS)
+	$(OCAMLOPT) -o ucs2_to_utf8.opt$(EXEC_SUFFIX) $(UCS2_TO_UTF8OPTOBJS)
 
 clean:
-	rm -f *.cm[iox] *.o lexer.ml parser.ml parser.mli \
-	ucs2_to_utf8 ucs2_to_utf8.opt
+	rm -f $(CLEAN_LIST) lexer.ml parser.ml parser.mli \
+	ucs2_to_utf8$(EXEC_SUFFIX) ucs2_to_utf8.opt$(EXEC_SUFFIX)
+
+CLEAN: clean
+
+distclean: clean
 
 include depend

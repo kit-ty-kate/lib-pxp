@@ -4,59 +4,34 @@
 
 #----------------------------------------------------------------------
 
+TOP_DIR = ../../..
+include $(TOP_DIR)/Makefile.rules
+
 SRC = ast.ml lexer.ml parser.ml generator.ml
 OBJ = $(SRC:.ml=.cmo)
 
 #----------------------------------------------------------------------
 
-
 .PHONY: all
-all: m2parsergen
+all: m2parsergen$(EXEC_SUFFIX)
 
 .PHONY: clean
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa lexer.ml parser.ml \
-	      parser.mli
+	rm -f $(CLEAN_LIST) lexer.ml parser.ml parser.mli
+	rm -f depend m2parsergen$(EXEC_SUFFIX) a.out x.ml
 
 .PHONY: CLEAN
 CLEAN: clean
 
 .PHONY: distclean
 distclean: clean
-	rm -f *~ depend depend.pkg m2parsergen a.out x.ml
-
-#----------------------------------------------------------------------
-# general rules:
-
-OPTIONS   =
-OCAMLC    = ocamlc -g $(OPTIONS) $(ROPTIONS)
-OCAMLOPT  = ocamlopt -p $(OPTIONS) $(ROPTIONS)
-OCAMLDEP  = ocamldep $(OPTIONS)
-OCAMLFIND = ocamlfind
-
-#----------------------------------------------------------------------
 
 depend: $(SRC) 
 	$(OCAMLDEP) $(SRC) >depend
 
-m2parsergen: $(OBJ)
-	$(OCAMLC) -o m2parsergen $(OBJ)
+m2parsergen$(EXEC_SUFFIX): $(OBJ)
+	$(OCAMLC) -o m2parsergen$(EXEC_SUFFIX) $(OBJ)
 
-.SUFFIXES: .cmo .cmi .cmx .ml .mli .mll .mly
-
-.ml.cmx:
-	$(OCAMLOPT) -c $<
-
-.ml.cmo:
-	$(OCAMLC) -c $<
-
-.mli.cmi:
-	$(OCAMLC) -c $<
-
-.mll.ml:
-	ocamllex $<
-
-.mly.ml:
-	ocamlyacc $<
+# Include dependencies:
 
 include depend

@@ -14,7 +14,7 @@ type token =
 
 r():
   one:s()
-  {{ }}
+  $ {{ }}
   b:B
   two:B?
   three:s()
@@ -23,13 +23,13 @@ r():
 
 s():
   A 
-  {{ }}
+  $ {{ }}
   {{ prerr_endline "A"; 0 }}
 | B 
-  {{ }}
+  $ {{ }}
   {{ prerr_endline "B"; 0 }}
 | n:C
-  {{ }}
+  $ {{ }}
   {{ prerr_endline ("C: " ^ string_of_int n); n }}
 %%
 

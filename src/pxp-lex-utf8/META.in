@@ -4,3 +4,5 @@ version = "@VERSION@"
 
 archive(byte) = "pxp_lex_utf8.cma pxp_lex_link_utf8.cmo"
 archive(native) = "pxp_lex_utf8.cmxa pxp_lex_link_utf8.cmx"
+archive(byte,pxp_without_utf8) = ""
+archive(native,pxp_without_utf8) = ""

@@ -57,6 +57,7 @@ clean:
 	rm -f pxp_lex_aux_utf8.ml
 	rm -f insertion_done
 	rm -f pxp_lex_defs_utf8.def
+	rm -f META
 
 CLEAN: clean
 
@@ -69,3 +70,10 @@ depend: *.ml
 pxp_lex_defs_utf8.def: pxp_lex_defs_generic.def pxp_lex_defs_drv_utf8.def
 	$(UCS2_TO_UTF8) pxp_lex_defs_generic.def pxp_lex_defs_utf8.def
 	cat pxp_lex_defs_drv_utf8.def >>pxp_lex_defs_utf8.def
+
+install:
+	files=`$(COLLECT_FILES) *.cmi *.cma *.cmxa *.a pxp_lex_link_utf8.cmo pxp_lex_link_utf8.cmx  pxp_lex_link_utf8.o META` && \
+	$(OCAMLFIND) install pxp-lex-utf8 $$files
+
+uninstall:
+	$(OCAMLFIND) remove pxp-lex-utf8
