@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.22 2003/06/29 15:44:30 gerd Exp $
+(* $Id: pxp_types.mli,v 1.23 2003/10/20 20:35:24 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -323,7 +323,7 @@ type config =
 	 * URI. Example:
 	 *
 	 * let mng = new namespace_manager in
-	 * mng # add "html" "http://www.w3.org/1999/xhtml";
+	 * mng # add_namespace "html" "http://www.w3.org/1999/xhtml";
 	 * ...
 	 *
 	 * This forces that elements with the mentioned URI are rewritten
@@ -715,6 +715,9 @@ type event =
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.23  2003/10/20 20:35:24  gerd
+ * 	Updated docs (zack 2003-10-20)
+ *
  * Revision 1.22  2003/06/29 15:44:30  gerd
  * 	New entry flag: `Val_mode_dtd
  *
