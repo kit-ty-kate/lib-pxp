@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.13 2001/04/22 14:16:48 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.14 2001/06/14 23:28:02 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -855,10 +855,8 @@ class combine ?prefer ?(mode = Public_before_system) rl =
 			      find_competent_resolver_for(Public(pubid,"")) rl
 		      )
 	      )
-	  | System(sysid) ->
-	      find_competent_resolver_for(System sysid) rl
-	  | _ ->
-	      raise Not_competent
+	  | other ->
+	      find_competent_resolver_for other rl
       in
 
       if active_resolver <> None then failwith "Pxp_reader.combine # open_in";
@@ -911,6 +909,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.14  2001/06/14 23:28:02  gerd
+ * 	Fix: class combine works now with private IDs.
+ *
  * Revision 1.13  2001/04/22 14:16:48  gerd
  * 	resolve_as_file: you can map private IDs to arbitrary channels.
  * 	resolve_read_url_channel: changed type of the channel_of_url
