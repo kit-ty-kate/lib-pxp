@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mlp,v 1.3 2002/03/13 22:45:42 gerd Exp $
+(* $Id: pxp_lexing.mlp,v 1.4 2002/03/15 16:14:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -39,6 +39,10 @@ let lex_refill read_fun aux_buffer lexbuf =
       (* Allocate a bigger buffer *)
       let oldlen = String.length lexbuf.lex_buffer in
       let newlen = max (oldlen * 2) (n + efflen) in
+      let newlen = 
+	if newlen > Sys.max_string_length && n+efflen <= Sys.max_string_length
+	then Sys.max_string_length
+	else newlen in
       let newbuf = String.create newlen in
       String.(*unsafe_*)blit lexbuf.lex_buffer s newbuf 0 efflen;
       lexbuf.lex_buffer <- newbuf;
@@ -127,6 +131,9 @@ let sub_lexeme lexbuf k l =
  * History:
  * 
  * $Log: pxp_lexing.mlp,v $
+ * Revision 1.4  2002/03/15 16:14:40  gerd
+ * 	Fixed the max_string_length bug.
+ *
  * Revision 1.3  2002/03/13 22:45:42  gerd
  * 	Improved Pxp_lexing.
  *
