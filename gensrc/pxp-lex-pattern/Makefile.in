@@ -43,7 +43,7 @@ CLEAN: clean
 distclean: clean
 
 install:
-	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_lex_link_*.cmo pxp_lex_link_*.cmx META` && \
+	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_lex_link_*.cmo pxp_lex_link_*.cmx pxp_lex_link_*.o META` && \
         $(OCAMLFIND) install pxp-lex-$(ENC) $$files
 
 uninstall:
