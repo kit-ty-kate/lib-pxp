@@ -1,4 +1,4 @@
-(* $Id: ds_style.ml,v 1.2 2000/06/04 20:29:19 gerd Exp $
+(* $Id: ds_style.ml,v 1.3 2000/07/08 22:03:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -720,42 +720,43 @@ class button =
 open Pxp_yacc
 
 let tag_map =
-  { map =
-      (let m = Hashtbl.create 50 in
-       Hashtbl.add m (T_element "application")
-		     (new element_impl (new application));
-       Hashtbl.add m (T_element "sequence")
-		     (new element_impl (new sequence));
-       Hashtbl.add m (T_element "mask")
-		     (new element_impl (new mask));
-       Hashtbl.add m (T_element "vbox")
-		     (new element_impl (new vbox));
-       Hashtbl.add m (T_element "hbox")
-		     (new element_impl (new hbox));
-       Hashtbl.add m (T_element "vspace")
-		     (new element_impl (new vspace));
-       Hashtbl.add m (T_element "hspace")
-		     (new element_impl (new hspace));
-       Hashtbl.add m (T_element "label")
-		     (new element_impl (new label));
-       Hashtbl.add m (T_element "entry")
-		     (new element_impl (new entry));
-       Hashtbl.add m (T_element "textbox")
-		     (new element_impl (new textbox));
-       Hashtbl.add m (T_element "button")
-		     (new element_impl (new button));
-
-       Hashtbl.add m T_data
-	             (new data_impl (new default) "");
-       m);
-    default_element = new element_impl (new default);
-  }
+  make_spec_from_mapping
+    ~data_exemplar:(new data_impl (new default))
+    ~default_element_exemplar:(new element_impl (new default))
+    ~element_mapping:
+       (let m = Hashtbl.create 50 in
+	Hashtbl.add m "application"
+	 	      (new element_impl (new application));
+	Hashtbl.add m "sequence"
+		      (new element_impl (new sequence));
+	Hashtbl.add m "mask"
+		      (new element_impl (new mask));
+	Hashtbl.add m "vbox"
+	              (new element_impl (new vbox));
+	Hashtbl.add m "hbox"
+		      (new element_impl (new hbox));
+	Hashtbl.add m "vspace"
+		      (new element_impl (new vspace));
+	Hashtbl.add m "hspace"
+		      (new element_impl (new hspace));
+	Hashtbl.add m "label"
+		      (new element_impl (new label));
+	Hashtbl.add m "entry"
+		      (new element_impl (new entry));
+	Hashtbl.add m "textbox"
+		      (new element_impl (new textbox));
+	Hashtbl.add m "button"
+		      (new element_impl (new button));
+	m)
 ;;
 
 (* ======================================================================
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.3  2000/07/08 22:03:11  gerd
+ * 	Updates because of PXP interface changes.
+ *
  * Revision 1.2  2000/06/04 20:29:19  gerd
  * 	Updates because of renamed PXP modules.
  *

@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.4 2000/06/04 20:29:19 gerd Exp $
+(* $Id: ds_app.ml,v 1.5 2000/07/08 22:03:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -35,7 +35,7 @@ let edit filename cmd =
   let style =
     parse_document_entity
       default_config
-      (File !style_sysid)
+      (from_file !style_sysid)
       tag_map
   in
   let root = style # root in
@@ -44,7 +44,7 @@ let edit filename cmd =
   let obj_dtd =
     parse_dtd_entity
       default_config
-      (File object_dtd_sysid)
+      (from_file object_dtd_sysid)
   in
   obj_dtd # set_root object_dtd_root;
 
@@ -78,6 +78,9 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.5  2000/07/08 22:03:11  gerd
+ * 	Updates because of PXP interface changes.
+ *
  * Revision 1.4  2000/06/04 20:29:19  gerd
  * 	Updates because of renamed PXP modules.
  *

@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.3 2000/06/04 20:29:19 gerd Exp $
+(* $Id: ds_context.ml,v 1.4 2000/07/08 22:03:11 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -8,7 +8,7 @@ open Pxp_document
 open Pxp_yacc
 
 let empty_record = new element_impl (Pxp_yacc.default_extension);;
-let empty_dnode = new data_impl Pxp_yacc.default_extension "";;
+let empty_dnode = new data_impl Pxp_yacc.default_extension;;
 
 class context the_filename the_obj_dtd the_root the_topframe =
   object (self)
@@ -115,9 +115,9 @@ class context the_filename the_obj_dtd the_root the_topframe =
       if Sys.file_exists filename then begin
 	obj <- parse_content_entity
 	  default_config
-	  (File filename)
+	  (from_file filename)
 	  obj_dtd
-	  default_dom
+	  default_spec
       end
       else begin
 	print_string "New file!\n";
@@ -183,6 +183,9 @@ class context the_filename the_obj_dtd the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.4  2000/07/08 22:03:11  gerd
+ * 	Updates because of PXP interface changes.
+ *
  * Revision 1.3  2000/06/04 20:29:19  gerd
  * 	Updates because of renamed PXP modules.
  *
