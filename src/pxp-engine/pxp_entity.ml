@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.2 2000/07/04 22:12:47 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.3 2000/07/08 16:28:05 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -657,8 +657,15 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	  resolver # open_in ext_id 
 	with
 	    Pxp_reader.Not_competent ->
-	      failwith ("PXP: No working input method found for this external entity: " ^ 
-			self # full_name)
+	      raise(Error ("No input method available for this external entity: " ^ 
+			self # full_name))
+	  | Pxp_reader.Not_resolvable Not_found ->
+	      raise(Error ("Unable to open the external entity: " ^ 
+			   self # full_name))
+	  | Pxp_reader.Not_resolvable e ->
+	      raise(Error ("Unable to open the external entity: " ^ 
+			   self # full_name ^ "; reason: " ^ 
+			   string_of_exn e))
       in
       resolver_is_open <- true;
       lexbuf  <- lex;
@@ -1043,6 +1050,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.3  2000/07/08 16:28:05  gerd
+ * 	Updated: Exception 'Not_resolvable' is taken into account.
+ *
  * Revision 1.2  2000/07/04 22:12:47  gerd
  * 	Update: Case ext_id = Anonymous.
  * 	Update: Handling of the exception Not_competent when reading
