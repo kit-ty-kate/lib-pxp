@@ -16,6 +16,7 @@ clean:
 CLEAN: clean
 
 distclean: clean
+	rm -f META
 
 install:
 	$(OCAMLFIND) install pxp-wlex META
