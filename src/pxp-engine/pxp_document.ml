@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.13 2000/08/26 23:29:10 gerd Exp $
+(* $Id: pxp_document.ml,v 1.14 2000/08/30 15:47:52 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -48,6 +48,7 @@ class type [ 'ext ] node =
     method pinstr : string -> proc_instruction list
     method pinstr_names : string list
     method node_position : int
+    method node_path : int list
     method sub_nodes : 'ext node list
     method iter_nodes : ('ext node -> unit) -> unit
     method iter_nodes_sibl :
@@ -351,6 +352,18 @@ class virtual ['ext] node_impl an_ext =
       if node_position >= 0 then node_position else
 	raise Not_found
 
+    method node_path =
+      let rec collect n path =
+	try
+	  let p = n # node_position in
+	  collect (n # parent) (p :: path)
+	with
+	    Not_found -> 
+	      (* n is the root *)
+	      path
+      in
+      collect (self : 'ext #node :> 'ext node) []
+
     method previous_node =
       self # parent # nth_node (self # node_position - 1)
 
@@ -633,6 +646,8 @@ class ['ext] attribute_impl ~element ~name value dtd =
        failwith "Pxp_document.attribute_impl#delete: not applicable"
      method node_position =
        failwith "Pxp_document.attribute_impl#node_position: not applicable"
+     method node_path =
+       failwith "Pxp_document.attribute_impl#node_path: not applicable"
      method previous_node = 
        failwith "Pxp_document.attribute_impl#previous_node: not applicable"
      method next_node = 
@@ -1610,6 +1625,44 @@ let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
 ;;
 
 
+let compare a b =
+  let rec cmp p1 p2 =
+    match p1, p2 with
+	[], []         -> 0
+      | [], _          -> -1
+      | _, []          -> 1
+      | x::p1', y::p2' -> if x = y then cmp p1' p2' else x - y
+  in
+
+  let a_path = a # node_path in
+  let b_path = b # node_path in
+
+  cmp a_path b_path
+;;
+
+
+type 'ext ord_index = ('ext node, int) Hashtbl.t;;
+
+let create_ord_index base =
+  let n = ref 0 in
+  iter_tree ~pre:(fun _ -> incr n) base;
+  let idx = Hashtbl.create !n in
+  let k = ref 0 in
+  iter_tree ~pre:(fun node -> Hashtbl.add idx node !k; incr k) base;
+  idx
+;;
+
+
+let ord_number idx node =
+  Hashtbl.find idx node
+;;
+
+let ord_compare idx a b =
+  let ord_a = Hashtbl.find idx a in
+  let ord_b = Hashtbl.find idx b in
+  ord_a - ord_b
+;;
+
 class ['ext] document the_warner =
   object (self)
     val mutable xml_version = "1.0"
@@ -1770,6 +1823,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.14  2000/08/30 15:47:52  gerd
+ * 	Implementation of pxp_document.mli rev 1.10.
+ *
  * Revision 1.13  2000/08/26 23:29:10  gerd
  * 	Implementations for the changed in rev 1.9 of pxp_document.mli.
  *
