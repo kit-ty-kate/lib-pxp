@@ -26,7 +26,7 @@
 	<authorblurb>
 	  <para>
         <address>
-          <email>Gerd.Stolpmann@darmstadt.netsurf.de</email>
+          <email>gerd@gerd-stolpmann.de</email>
         </address>
       </para>
 	</authorblurb>
@@ -47,8 +47,8 @@ written entirely and from scratch in Objective Caml.
 	<title>Download &markup;: </title>
 	<para>
 The free &markup; library can be downloaded at
-<ulink URL="http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml">
-http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml
+<ulink URL="http://www.ocaml-programming.de/packages/">
+http://www.ocaml-programming.de/packages/
 </ulink>. The user's guide is included.
 Newest releases of &markup; will be announced in
 <ulink URL="http://www.npc.de/ocaml/linkdb/">The OCaml Link
@@ -3512,9 +3512,10 @@ There are the following main modes of invoking the parser:
 
           <itemizedlist mark="bullet" spacing="compact">
 	    <listitem>
-	      <para>You want to parse a complete and closed document consisting
-of a DTD and the document body; the body is validated against the DTD. This
-mode is interesting if you have a file
+	      <para><emphasis>parse_document_entity:</emphasis> You want to
+parse a complete and closed document consisting of a DTD and the document body;
+the body is validated against the DTD. This mode is interesting if you have a
+file
 
 <programlisting><![CDATA[
 <!DOCTYPE root ... [ ... ] > <root> ... </root>
@@ -3524,46 +3525,49 @@ and you can accept any DTD that is included in the file.
 </para>
 	    </listitem>
 	    <listitem>
-	      <para>You want to parse a complete and closed document consisting
-of a DTD and the document body; but the body is not validated, only checked
-for well-formedness. This mode is preferred if validation costs too much time.
+	      <para><emphasis>parse_wf_entity:</emphasis> You want to
+parse a complete and closed document consisting of a DTD and the document body;
+but the body is not validated, only checked for well-formedness. This mode is
+preferred if validation costs too much time.
 </para>
 	    </listitem>
 	    <listitem>
-	      <para>You want only to parse an entity (file) containing the
-whole DTD or only a part of it. Sometimes it is interesting to read a DTD
-without document, for example to compare it with the DTD included in a 
-document, or to apply the next mode:
+	      <para><emphasis>parse_dtd_entity:</emphasis> You want only to
+parse an entity (file) containing the whole DTD or only a part of it. Sometimes
+it is interesting to read a DTD without document, for example to compare it
+with the DTD included in a document, or to apply the next mode:
 </para>
 	    </listitem>
 	    <listitem>
-	      <para>You want only to parse an entity (file) containing a
-fragment of a document body; this fragment is validated against the DTD you
-pass to the parser. Especially, the fragment must not have a <literal>
-&lt;!DOCTYPE&gt;</literal> clause, and must directly begin with an element.
-The element is validated against the DTD (note that it is possible to 
-create a "DTD" that matches everything, i.e. you can turn off validation).
-This mode is interesting if you want to check documents against a fixed,
-immutable DTD.
+	      <para><emphasis>parse_content_entity:</emphasis> You want only to
+parse an entity (file) containing a fragment of a document body; this fragment
+is validated against the DTD you pass to the parser. Especially, the fragment
+must not have a <literal> &lt;!DOCTYPE&gt;</literal> clause, and must directly
+begin with an element.  The element is validated against the DTD (note that it
+is possible to create a "DTD" that matches everything, i.e. you can turn off
+validation).  This mode is interesting if you want to check documents against a
+fixed, immutable DTD.
 </para>
 	    </listitem>
 	  </itemizedlist>
 </para>
 
 <para>
-There are a number of variations of these modes. One important application
-of a parser is to check documents of an untrusted source against a fixed
-DTD. One solution is to not allow the <literal>&lt;!DOCTYPE&gt;</literal>
-clause in these documents, and treat the document like a fragment (mode
-4). This is very simple, but inflexible; users of such a system cannot even
-define additional entities to abbreviate frequent phrases of their text.
+There are a number of variations of these modes. One important application of a
+parser is to check documents of an untrusted source against a fixed DTD. One
+solution is to not allow the <literal>&lt;!DOCTYPE&gt;</literal> clause in
+these documents, and treat the document like a fragment (using mode
+<emphasis>parse_content_entity</emphasis>). This is very simple, but
+inflexible; users of such a system cannot even define additional entities to
+abbreviate frequent phrases of their text.
 </para>
 
 <para>
-It may be necessary to have a more intelligent checker. For example, it is
-also possible to parse the document to check fully, i.e. with DTD, and to
-compare this DTD with the prescribed one. In order to fully parse the document,
-mode 1 is applied, and to get the DTD to compare with mode 3 can be used.
+It may be necessary to have a more intelligent checker. For example, it is also
+possible to parse the document to check fully, i.e. with DTD, and to compare
+this DTD with the prescribed one. In order to fully parse the document, mode
+<emphasis>parse_document_entity</emphasis> is applied, and to get the DTD to
+compare with mode <emphasis>parse_dtd_entity</emphasis> can be used.
 </para>
 
 <para>
@@ -3649,13 +3653,159 @@ relatively simple to provide such a resolver.
 
       <sect1>
 	<title>Resolvers and sources</title>
-	<para><emphasis>Sorry, not yet written.</emphasis></para>
+	
+	<sect2>
+	  <title>Using the built-in resolvers</title>
+
+	  <para>The type <literal>source</literal> enumerates the various
+possibilities where the document to parse comes from.
+
+<programlisting>
+type source =
+    Entity of ((dtd -&gt; Markup_entity.entity) * Markup_reader.resolver)
+  | Channel of in_channel
+  | File of string
+  | Latin1 of string
+  | ExtID of (ext_id * Markup_reader.resolver)
+</programlisting>
+
+
+            <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para><literal>File s</literal>: The document is read from file
+<literal>s</literal>, you may specify absolute or relative path
+names. <emphasis>This <literal>source</literal> has the advantage that it is
+able to resolve inner external entities; i.e. if your document includes data
+from another file (using the <literal>SYSTEM</literal> attribute), this mode
+will find that file.</emphasis> This mode cannot resolve
+<literal>PUBLIC</literal> identifiers.
+</para>
+		<para>This mode is able to read UTF-8, UTF-16, and
+ISO-8859-1-encoded data.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>Channel ch</literal>: The document is read from
+the channel <literal>ch</literal>. This mode is not able to interpret
+file names of <literal>SYSTEM</literal> clauses, nor it can look up
+<literal>PUBLIC</literal> identifiers. </para>
+		<para>This mode is able to read UTF-8, UTF-16, and
+ISO-8859-1-encoded data.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>Latin1 s</literal>: The string
+<literal>s</literal> is the document to parse. This mode is not able to
+interpret file names of <literal>SYSTEM</literal> clauses, nor it can look up
+<literal>PUBLIC</literal> identifiers. </para> 
+
+		<para>This mode is only able to read ISO-8859-1-encoded
+data.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>ExtID (id, r)</literal>: The document to parse
+is denoted by the identifier <literal>id</literal> (either a
+<literal>SYSTEM</literal> or <literal>PUBLIC</literal> clause), and this
+identifier is interpreted by the resolver <literal>r</literal>. Use this mode
+if you have written your own resolver.</para>
+		<para>Which character sets are possible depends on the passed
+resolver <literal>r</literal>.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>Entity (get_entity, r)</literal>: The document
+to parse is returned by the function invocation <literal>get_entity
+dtd</literal>, where <literal>dtd</literal> is the DTD object to use (it may be
+empty). Inner external references occuring in this entity are resolved using
+the resolver <literal>r</literal>.</para>
+		<para>Which character sets are possible depends on the passed
+resolver <literal>r</literal>.</para>
+	      </listitem>
+	    </itemizedlist></para>
+	</sect2>
+
+
+	<sect2>
+	  <title>The resolver API</title>
+
+	  <para>A resolver is an object that can be opened like a file, but you
+do not pass the file name to the resolver, but the XML identifier of the entity
+to read from (either a <literal>SYSTEM</literal> or <literal>PUBLIC</literal>
+clause). If opened, the resolver must return the
+<literal>Lexing.lexbuf</literal> that reads the characters.  The resolver can
+be closed, and it can be cloned. Furthermore, it is possible to tell the
+resolver which character set it should assume. (Note: Markup works internally
+with ISO-8859-1, so the resolver must recode the characters into this character
+set.)
+
+<programlisting><![CDATA[
+class type resolver =
+  object
+    method open_in : ext_id -> Lexing.lexbuf
+    method close_in : unit
+    method change_encoding : string -> unit
+    method clone : resolver
+  end
+]]></programlisting>
+
+The resolver object must work as follows:</para>
+
+<para>
+            <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>If the parser wants to read from the resolver, it invokes
+the method <literal>open_in</literal>. Either the resolver succeeds, in which
+case the <literal>Lexing.lexbuf</literal> reading from the file or stream must
+be returned, or opening fails. In the latter case the method implementation
+should raise an exception.</para>
+	      </listitem>
+	      <listitem>
+		<para>If the parser finishes reading, it calls the
+<literal>close_in</literal> method.</para>
+	      </listitem>
+	      <listitem>
+		<para>If the parser finds a reference to another external
+entitiy in the input stream, it calls <literal>clone</literal> to get a second
+resolver which must be closed (not yet connected with an input stream). 
+The parser then invokes <literal>open_in</literal> and the other methods as
+described.</para>
+	      </listitem>
+	      <listitem>
+		<para>If you already know the character set of the input
+stream, you should recode it to ISO-8859-1, and define the method
+<literal>change_encoding</literal> as an empty method.</para>
+	      </listitem>
+	      <listitem>
+		<para>If you want to support multiple character sets, the object
+must follow a much more complicated protocol. Directly after
+<literal>open_in</literal> has been called, the resolver must return a lexical
+buffer that only reads one byte at a time. This is only possible if you create
+the lexical buffer with <literal>Lexing.from_function</literal>; the function
+must then always return 1 if the EOF is not yet reached, and 0 if EOF is
+reached. If the parser has read the first line of the document, it will invoke
+<literal>change_encoding</literal> to tell the resolver which character set to
+assume. From this moment, the object can return more than one byte at once. The
+argument of <literal>change_encoding</literal> is either the parameter of the
+"encoding" attribute of the XML declaration, or the empty string if there is not
+any XML declaration or if the declaration does not contain an encoding
+attribute. </para>
+
+		<para>At the beginning the resolver must only return one
+character every time something is read from the lexical buffer. The reason for
+this is that you otherwise would not exactly know at which position in the
+input stream the character set changes.</para>
+
+		<para>If you want automatic recognition of the character set,
+it is up to the resolver object to implement this.</para>
+	      </listitem>
+	    </itemizedlist></para>
+	<para>Example: How to define a resolver that is equivalent to
+Latin1.</para>
+
+	</sect2>
+
       </sect1>
 
       <sect1>
-	<title>The DTD classes</title>
-	<para><emphasis>Sorry, not yet written. Perhaps the interface
-definition of Markup_dtd expresses the same:
+	<title>The DTD classes</title> <para><emphasis>Sorry, not yet
+written. Perhaps the interface definition of Markup_dtd expresses the same:
 </emphasis></para>
 	<para>
 <programlisting>&markup-dtd1.mli;&markup-dtd2.mli;</programlisting>
