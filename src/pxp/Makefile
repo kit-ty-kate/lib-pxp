@@ -6,11 +6,11 @@ all:
 opt:
 
 clean:
-	rm -f META
 
 CLEAN: clean
 
 distclean:
+	rm -f META
 
 install:
 	$(OCAMLFIND) install pxp META

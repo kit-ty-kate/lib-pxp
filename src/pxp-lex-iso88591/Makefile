@@ -56,11 +56,11 @@ clean:
 	rm -f $(FROM_GENERIC)
 	rm -f pxp_lex_aux_iso88591.ml
 	rm -f insertion_done
-	rm -f META
 
 CLEAN: clean
 
 distclean: clean
+	rm -f META
 
 depend: *.ml
 	$(OCAMLDEP) *.ml >depend

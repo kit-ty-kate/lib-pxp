@@ -21,7 +21,7 @@ depend: *.ml
 	ocamldep *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) pxp_wlex.ml META
+	rm -f $(CLEAN_LIST) pxp_wlex.ml
 
 CLEAN: clean
 

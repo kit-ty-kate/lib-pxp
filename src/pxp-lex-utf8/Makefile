@@ -57,11 +57,11 @@ clean:
 	rm -f pxp_lex_aux_utf8.ml
 	rm -f insertion_done
 	rm -f pxp_lex_defs_utf8.def
-	rm -f META
 
 CLEAN: clean
 
 distclean: clean
+	rm -f META
 
 depend: *.ml
 	$(OCAMLDEP) *.ml >depend

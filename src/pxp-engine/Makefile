@@ -24,11 +24,12 @@ depend:
 	$(OCAMLDEP) *.ml *.mli >depend
 
 clean:
-	rm -f $(CLEAN_LIST) META pxp_lexing.ml pxp_yacc.ml
+	rm -f $(CLEAN_LIST) pxp_lexing.ml pxp_yacc.ml
 
 CLEAN: clean
 
 distclean: clean
+	rm -f META
 
 install:
 	files=`$(COLLECT_FILES) *.mli *.cmi *.cma *.cmxa *.a pxp_top.cmo META` && \
