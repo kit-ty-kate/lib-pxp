@@ -14,11 +14,11 @@ ps: ps/markup.ps ps/pic/done
 src/readme.ent: ../../examples/readme/to_html.ml
 	src/getcode.ml <../../examples/readme/to_html.ml >src/readme.ent
 
-src/yacc.mli.ent: ../../markup_yacc_shadow.mli
-	src/getcode.ml <../../markup_yacc_shadow.mli >src/yacc.mli.ent
+src/yacc.mli.ent: ../../pxp_yacc.mli
+	src/getcode.ml <../../pxp_yacc.mli >src/yacc.mli.ent
 
-src/dtd.mli.ent: ../../markup_dtd.mli
-	src/getcode.ml <../../markup_dtd.mli >src/dtd.mli.ent
+src/dtd.mli.ent: ../../pxp_dtd.mli
+	src/getcode.ml <../../pxp_dtd.mli >src/dtd.mli.ent
 
 html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	mkdir -p html

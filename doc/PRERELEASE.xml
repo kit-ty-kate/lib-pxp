@@ -88,8 +88,8 @@ module interfaces.</p>
     <p>Please note that this is work in progress; it may still contain bugs
 and irregularities.</p>
 
-    <p>The parser works only with OCaml-3. Since 0.99.4, the parser needs
-the <a href="&url.netstring-project;">netstring package</a>.
+    <p>The parser works only with OCaml-3. The parser needs the <a
+href="&url.netstring-project;">netstring package</a>, at least version 0.9.1.
 </p>
 
     <p>I am very interested in your opinion to PXP; please <a

@@ -156,6 +156,19 @@ myself or by contributors (who are invited to do so).</p>
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.99.8:</p>
+	  <p>Several fixes of bugs reported by Haruo Hosoya and Alain
+Frisch.</p>
+	  <p>The class type "node" has been extended: you can go directly to
+the next and previous nodes in the list; you can refer to nodes by
+position.</p>
+	  <p>There are now some iterators for nodes: find, find_all,
+find_element, find_all_elements, map_tree, iter_tree.</p>
+	  <p>Experimental support for viewing attributes as nodes; I hope that
+helps Alain writing his XPath evaluator.</p>
+	  <p>The user's manual has been revised and is almost up to date.</p>
+	</li>
+	<li>
 	  <p>Changed in 0.99.7:</p>
 	  <p>There are now additional node types T_super_root, T_pinstr and
 T_comment, and the parser is able to create the corresponding nodes.</p>

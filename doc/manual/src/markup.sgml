@@ -1,5 +1,6 @@
 <!DOCTYPE book PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
-<!ENTITY markup "<acronym>Markup</acronym>">
+<!ENTITY markup "<acronym>PXP</acronym>">
+<!ENTITY pxp "<acronym>PXP</acronym>">
 <!ENTITY % readme.code.to-html SYSTEM "readme.ent">
 <!ENTITY apos "&#39;">
 <!ENTITY percent "&#37;">
@@ -16,7 +17,7 @@
 
 <book>
 
-  <title>The Markup user's guide</title>
+  <title>The PXP user's guide</title>
   <bookinfo>
     <!-- <bookbiblio> -->
     <authorgroup>
@@ -34,14 +35,14 @@
     </authorgroup>
     
     <copyright>
-      <year>1999</year><holder>Gerd Stolpmann</holder>
+      <year>1999, 2000</year><holder>Gerd Stolpmann</holder>
     </copyright>
     <!-- </bookbiblio> -->
 
     <abstract>
       <para>
 &markup; is a validating parser for XML-1.0 which has been
-written entirely and from scratch in Objective Caml.
+written entirely in Objective Caml.
 </para>
       <formalpara>
 	<title>Download &markup;: </title>
@@ -49,7 +50,7 @@ written entirely and from scratch in Objective Caml.
 The free &markup; library can be downloaded at
 <ulink URL="http://www.ocaml-programming.de/packages/">
 http://www.ocaml-programming.de/packages/
-</ulink>. The user's guide is included.
+</ulink>. This user's guide is included.
 Newest releases of &markup; will be announced in
 <ulink URL="http://www.npc.de/ocaml/linkdb/">The OCaml Link
 Database</ulink>.
@@ -111,8 +112,10 @@ structured, but not how the document can be processed. For example, if you want
 to publish a book that uses XML markup, you will need a processor that converts
 the XML file into a printable format such as Postscript. On the one hand, the
 structure of XML documents is configurable; on the other hand, there is no
-longer a canonical interpretation of the elements of the document, i.e. for
-every DTD a new formatter is required.
+longer a canonical interpretation of the elements of the document; for example
+one XML DTD might want that paragraphes are delimited by
+<literal>para</literal> tags, and another DTD expects <literal>p</literal> tags
+for the same purpose. As a result, for every DTD a new processor is required.
 </para>
 
 	<para>
@@ -158,10 +161,10 @@ that sections consist of paragraphs, and that paragraphs contain plain text:
 </programlisting>
 
 	<para>As in HTML (and, of course, in grand-father SGML), the "pieces" of
-the document are denoted by element braces, i.e. such a piece begins with
+the document are delimited by element braces, i.e. such a piece begins with
 <literal>&lt;name-of-the-type-of-the-piece&gt;</literal> and ends with
 <literal>&lt;/name-of-the-type-of-the-piece&gt;</literal>, and the pieces are
-called <emphasis>elements</emphasis>. Unlike HTML and SGML, both begin tags and
+called <emphasis>elements</emphasis>. Unlike HTML and SGML, both start tags and
 end tags (i.e. the delimiters written in angle brackets) can never be left
 out. For example, HTML calls the paragraphs simply <literal>p</literal>, and
 because paragraphs never contain paragraphs, a sequence of several paragraphs
@@ -175,6 +178,13 @@ This is not possible in XML; continuing our example above we must always write
 <programlisting><![CDATA[<paragraph>First paragraph</paragraph>
 <paragraph>Second paragraph</paragraph>]]></programlisting>
 
+The rationale behind that is to (1) simplify the development of XML parsers
+(you need not convert the DTD into a deterministic finite automaton which is
+required to detect omitted tags), and to (2) make it possible to parse the
+document independent of whether the DTD is known or not.
+</para>
+
+<para>
 The first line of our sample document,
 
 <programlisting>
@@ -187,9 +197,11 @@ encoded using characters from the ISO-8859-1 character set (often known as
 "Latin 1", mostly used in Western Europe). Although the XML declaration is not
 mandatory, it is good style to include it; everybody sees at the first glance
 that the document uses XML markup and not the similar-looking HTML and SGML
-markup languages. You must include an XML declaration if the document does not
-encode its characters in UTF-8 or UTF-16 (these are Unicode formats), but in a
-different character set.
+markup languages. If you omit the XML declaration, the parser will assume
+that the document is encoded as UTF-8 or UTF-16 (there is a rule that makes
+it possible to distinguish between UTF-8 and UTF-16 automatically); these
+are encodings of Unicode's universal character set. (Note that &pxp;, unlike its
+predecessor "Markup", fully supports Unicode.)
 </para>
 
 <para>
@@ -211,7 +223,7 @@ interpreted as URLs; for instance this would be legal:
 <![CDATA[<!DOCTYPE document SYSTEM "http://host/location/simple.dtd">]]>
 </programlisting>
 
-Please note that &markup; cannot interpret URL identifiers by default, but it is
+Please note that &pxp; cannot interpret HTTP identifiers by default, but it is
 possible to change the interpretation of system identifiers.
 </para>
 
@@ -227,7 +239,7 @@ delimited by <literal>&lt;document&gt;</literal> and
 	<para>
 The DTD consists of three declarations for element types:
 <literal>document</literal>, <literal>section</literal>, and
-<literal>paragraph</literal>. Such a declaration has three parts:
+<literal>paragraph</literal>. Such a declaration has two parts:
 
 <programlisting>
 &lt;!ELEMENT <replaceable>name</replaceable> <replaceable>content-model</replaceable>&gt;
@@ -260,19 +272,18 @@ brackets, that for every start tag there must be a corresponding end tag and so
 on. A document respecting these rules is
 <emphasis>well-formed</emphasis>. Second, the document must match the DTD in
 which case the document is <emphasis>valid</emphasis>. Many parsers check only
-on well-formedness and ignore the DTD; &markup; is designed such that it can
-validate the document (this is not yet fully implemented, but the parser is
-already very close to completely validating the documents).
+on well-formedness and ignore the DTD; &pxp; is designed such that it can
+even validate the document.
 </para>
 
 	  <para>
-A parser does not make up a useable application, it only reads XML
+A parser does not make a sensible application, it only reads XML
 documents. The whole application working with XML-formatted data is called an
 <emphasis>XML processor</emphasis>. Often XML processors convert documents into
 another format, such as HTML or Postscript. Sometimes processors extract data
 of the documents and output the processed data again XML-formatted. The parser
 can help the application processing the document; for example it can provide
-means to access the document in a specific manner. &markup; supports an
+means to access the document in a specific manner. &pxp; supports an
 object-oriented access layer specially.
 </para>
 	</sect2>
@@ -427,9 +438,9 @@ the same name. This looks as follows:
 	  <para>
 The XML declaration (the string beginning with <literal>&lt;?xml</literal> and
 ending at <literal>?&gt;</literal>) should specify the encoding of the
-file. Common values are ISO-8859-1, and UTF-8. Note that every file parsed by
-the XML processor can begin with an XML declaration and that every file may
-have its own encoding.
+file. Common values are UTF-8, and the ISO-8859 series of character sets. Note
+that every file parsed by the XML processor can begin with an XML declaration
+and that every file may have its own encoding.
 </para>
 
 	  <para>
@@ -507,6 +518,12 @@ In the scope of declarations, the character % is no longer free. To include it
 as character, you must use the notations <literal>&amp;#37;</literal> or
 <literal>&amp;#x25;</literal>.
 </para>
+
+	  <para>Note that besides &amp;lt;, &amp;gt;, &amp;amp;,
+&amp;apos;, and &amp;quot; there are no predefines character entities. This is
+different from HTML which defines a list of characters that can be referenced
+by name (e.g. &amp;auml; for ä); however, if you prefer named characters, you
+can declare such entities yourself (see below).</para>
 	</sect2>
 
 
@@ -668,24 +685,54 @@ elements; note that it is not allowed to include <literal>#PCDATA</literal>.
 </para>
 
 	  <para>
-Please note that the exact syntax of the regular expressions is rather
-strange. The outermost expression must not be a plain element name, as in
-<literal>&lt;!ELEMENT x y&gt;</literal>; but a sequence or alternative with n=1
-is allowed: <literal>&lt;!ELEMENT x (y)&gt;</literal> is correct. Similarly, it
-is not allowed that the outermost expression is a repeated or optional element;
-again additional parantheses solve the problem. This means that if you have
-trouble with the syntax of regular expressions, try to add further
-parantheses. Another strange feature is where spaces are allowed and where
-not. You can put additional spaces everywhere, but not between a closing
-parenthesis and <literal>*</literal>, <literal>+</literal>, or
-<literal>?</literal>.
+The exact syntax of the regular expressions is rather strange. This can be
+explained best by a list of constraints:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+The outermost expression must not be
+<literal><replaceable>element-name</replaceable></literal>. 
+</para>
+		<para><emphasis>Illegal:</emphasis> 
+<literal><![CDATA[<!ELEMENT x y>]]></literal>; this must be written as
+<literal><![CDATA[<!ELEMENT x (y)>]]></literal>.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+For the unary operators <literal><replaceable>subexpr</replaceable>*</literal>,
+<literal><replaceable>subexpr</replaceable>+</literal>, and
+<literal><replaceable>subexpr</replaceable>?</literal>, the
+<literal><replaceable>subexpr</replaceable></literal> must not be again an
+unary operator.
+</para>
+		<para><emphasis>Illegal:</emphasis> 
+<literal><![CDATA[<!ELEMENT x y**>]]></literal>; this must be written as
+<literal><![CDATA[<!ELEMENT x (y*)*>]]></literal>.</para>
+      </listitem>
+	      <listitem>
+		<para>
+Between <literal>)</literal> and one of the unary operatory
+<literal>*</literal>, <literal>+</literal>, or <literal>?</literal>, there must
+not be whitespace.</para>
+		<para><emphasis>Illegal:</emphasis> 
+<literal><![CDATA[<!ELEMENT x (y|z) *>]]></literal>; this must be written as
+<literal><![CDATA[<!ELEMENT x (y|z)*>]]></literal>.</para>
+	      </listitem>
+	      <listitem><para>There is the additional constraint that the
+right parenthsis must be contained in the same entity as the left parenthesis;
+see the section about parsed entities below.</para>
+	      </listitem>
+	    </itemizedlist>
+
 </para>
 
-	  <para>
+<para>
 Note that there is another restriction on regular expressions which must be
 deterministic. This means that the parser must be able to see by looking at the
 next token which alternative is actually used, or whether the repetition
-stops. The reason for this is simply compatability with SGML.
+stops. The reason for this is simply compatability with SGML (there is no
+intrinsic reason for this rule; XML can live without this restriction).
 </para>
 
 	  <blockquote>
@@ -705,6 +752,9 @@ This is a legal instance:
 <programlisting>
 <![CDATA[<q><r>Some characters</r><s/></q>]]>
 </programlisting>
+
+(Note: <literal>&lt;s/&gt;</literal> is an abbreviation for
+<literal>&lt;s&gt;&lt;/s&gt;</literal>.)
 
 It would be illegal to leave <literal><![CDATA[<s/>]]></literal> out because at
 least one instance of <literal>s</literal> or <literal>t</literal> must be
@@ -825,7 +875,7 @@ not, but if <literal>z</literal> is missing the default value
 </para>
 
 	    <para>
-This is valid usage of these attributes:
+This is a valid example of these attributes:
 
 <programlisting>
 <![CDATA[<r x="He said: &quot;I don't like quotes!&quot;" y='1'>]]>
@@ -888,7 +938,7 @@ file to be used as content (an <emphasis>external</emphasis> entity):
 &lt;!ENTITY % <replaceable>name</replaceable> SYSTEM "<replaceable>file name</replaceable>"&gt;
 </programlisting>
 
-There are some restrictions on parameter entities:
+There are some restrictions for parameter entities:
 
 <itemizedlist mark="bullet" spacing="compact">
 	      <listitem>
@@ -899,12 +949,60 @@ declaration, i.e. the <literal>&gt;</literal>. This means that the entity
 either contains a whole number of complete declarations, or some text from the
 middle of one declaration.
 </para>
+<para><emphasis>Illegal:</emphasis>
+<programlisting>
+<![CDATA[
+<!ENTITY % e "(a | b | c)>">
+<!ELEMENT x %e;
+]]></programlisting> Because <literal>&lt;!</literal> is contained in the main
+entity, and the corresponding <literal>&gt;</literal> is contained in the
+entity <literal>e</literal>.</para>
 	      </listitem>
 	      <listitem>
 		<para>
 If the internal parameter entity contains a left paranthesis, it must also
-contains the corresponding right paranthesis.
+contain the corresponding right paranthesis.
 </para>
+<para><emphasis>Illegal:</emphasis>
+<programlisting>
+<![CDATA[
+<!ENTITY % e "(a | b | c">
+<!ELEMENT x %e;)>
+]]></programlisting> Because <literal>(</literal> is contained in the entity 
+<literal>e</literal>, and the corresponding <literal>)</literal> is
+contained in the main entity.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+When reading text from an entity, the parser automatically inserts one space
+character before the entity text and one space character after the entity
+text. However, this rule is not applied within the definition of another
+entity.</para>
+<para><emphasis>Legal:</emphasis>
+<programlisting>
+<![CDATA[ 
+<!ENTITY % suffix "gif"> 
+<!ENTITY iconfile 'icon.%suffix;'>
+]]></programlisting> Because <literal>%suffix;</literal> is referenced within
+the definition text for <literal>iconfile</literal>, no additional spaces are
+added.
+</para>
+<para><emphasis>Illegal:</emphasis>
+<programlisting>
+<![CDATA[
+<!ENTITY % suffix "test">
+<!ELEMENT x.%suffix; ANY>
+]]></programlisting>
+Because <literal>%suffix;</literal> is referenced outside the definition
+text of another entity, the parser replaces <literal>%suffix;</literal> by
+<literal><replaceable>space</replaceable>test<replaceable>space</replaceable></literal>. </para>
+<para><emphasis>Illegal:</emphasis>
+<programlisting>
+<![CDATA[
+<!ENTITY % e "(a | b | c)">
+<!ELEMENT x %e;*>
+]]></programlisting> Because there is a whitespace between <literal>)</literal>
+and <literal>*</literal>, which is illegal.</para>
 	      </listitem>
 	      <listitem>
 		<para>
@@ -949,7 +1047,20 @@ document instance. As the DTD is parsed before the document, the parameter
 entities are expanded first; for example it is possible to use the content of a
 parameter entity as the name of a general entity:
 <literal>&amp;#38;%name;;</literal><footnote><para>This construct is only
-allowed within the definition of another entity. It is not recommended.</para>
+allowed within the definition of another entity; otherwise extra spaces would
+be added (as explained above). Such indirection is not recommended.
+</para>
+<para>Complete example:
+<programlisting>
+<![CDATA[
+<!ENTITY % variant "a">      <!-- or "b" -->
+<!ENTITY text-a "This is text A.">
+<!ENTITY text-b "This is text B.">
+<!ENTITY text "&#38;text-%variant;;">
+]]></programlisting>
+You can now write <literal>&amp;text;</literal> in the document instance, and
+depending on the value of <literal>variant</literal> either
+<literal>text-a</literal> or <literal>text-b</literal> is inserted.</para>
 </footnote>.
 </para>
 	  <para>
@@ -977,6 +1088,7 @@ In the document text, you can now refer to the author names by writing
 </para>
 
 	    <para>
+<emphasis>Illegal:</emphasis>
 The following two entities are illegal because the elements in the definition
 do not nest properly:
 
@@ -1269,10 +1381,10 @@ validated while it is being parsed.
 
 	<para>
 In the <literal>examples</literal> directory of the distribution you find the
-<literal>validate</literal> application. It is invoked in the following way:
+<literal>pxpvalidate</literal> application. It is invoked in the following way:
 
 <programlisting>
-validate [ -wf ] <replaceable>file</replaceable>...
+pxpvalidate [ -wf ] <replaceable>file</replaceable>...
 </programlisting>
 
 The files mentioned on the command line are validated, and every warning and
@@ -1284,13 +1396,12 @@ The -wf switch modifies the behaviour such that a well-formedness parser is
 simulated. In this mode, the ELEMENT, ATTLIST, and NOTATION declarations of the
 DTD are ignored, and only the ENTITY declarations will take effect. This mode
 is intended for documents lacking a DTD. Please note that the parser still
-operates as validator, with some features switched off; the average
-well-formedness parser that is currently being offered everywhere simply
-ignores declarations.
+scans the DTD fully and will report all errors in the DTD; such checks are not
+required by a well-formedness parser.
 </para>
 
 	<para>
-The <literal>validate</literal> application is the simplest sensible program
+The <literal>pxpvalidate</literal> application is the simplest sensible program
 using &markup;, you may consider it as "hello world" program. 
 </para>
       </sect1>
@@ -1311,7 +1422,7 @@ following items are represented by objects:
 <emphasis>Documents:</emphasis> The document representation is more or less the
 anchor for the application; all accesses to the parsed entities start here. It
 is described by the class <literal>document</literal> contained in the module
-<literal>Markup_document</literal>. You can get some global information, such
+<literal>Pxp_document</literal>. You can get some global information, such
 as the XML declaration the document begins with, the DTD of the document,
 global processing instructions, and most important, the document tree. 
 </para>
@@ -1323,15 +1434,23 @@ global processing instructions, and most important, the document tree.
 of a tree: Elements contain other elements and text<footnote><para>Elements may
 also contain processing instructions. Unlike other document models, &markup;
 separates processing instructions from the rest of the text and provides a
-second interface to access them.</para> </footnote>. The common type to
-represent both kinds of content is <literal>node</literal> which is a class
-type that unifies the properties of elements and character data. Every node has
-a list of children (which is empty if the element is empty or the node
-represents text); nodes may have attributes; nodes have always text
+second interface to access them (method <literal>pinstr</literal>). However,
+there is a parser option (<literal>enable_pinstr_nodes</literal>) which changes
+the behaviour of the parser such that extra nodes for processing instructions
+are included into the tree.</para>
+<para>Furthermore, the tree does normally not contain nodes for XML comments;
+they are ignored by default. Again, there is an option
+(<literal>enable_comment_nodes</literal>) changing this.</para>
+</footnote>. 
+
+The common type to represent both kinds of content is <literal>node</literal>
+which is a class type that unifies the properties of elements and character
+data. Every node has a list of children (which is empty if the element is empty
+or the node represents text); nodes may have attributes; nodes have always text
 contents. There are two implementations of <literal>node</literal>, the class
 <literal>element_impl</literal> for elements, and the class
 <literal>data_impl</literal> for text data. You find these classes and class
-types in the module <literal>Markup_document</literal>, too.
+types in the module <literal>Pxp_document</literal>, too.
 </para>
 
 	      <para>
@@ -1347,11 +1466,11 @@ a second object. This object must have the three methods
 <literal>clone</literal>, <literal>node</literal>, and
 <literal>set_node</literal> as bare minimum, but you are free to add methods as
 you want. This is the preferred way to add functionality to the document
-tree<footnote><para>Due to the type system it is more or less impossible to
+tree<footnote><para>Due to the typing system it is more or less impossible to
 derive recursive classes in O'Caml. To get around this, it is common practice
 to put the modifiable or extensible part of recursive objects into parallel
 objects.</para> </footnote>. The class type <literal>extension</literal> is
-defined in <literal>Markup_document</literal>, too.
+defined in <literal>Pxp_document</literal>, too.
 </para>
 	    </listitem>
 
@@ -1364,9 +1483,9 @@ representations of element, entity, and notation declarations as well as
 processing instructions contained in the DTD. This class, and
 <literal>dtd_element</literal>, <literal>dtd_notation</literal>, and
 <literal>proc_instruction</literal> can be found in the module
-<literal>Markup_dtd</literal>. There are a couple of classes representing
+<literal>Pxp_dtd</literal>. There are a couple of classes representing
 different kinds of entities; these can be found in the module
-<literal>Markup_entity</literal>. 
+<literal>Pxp_entity</literal>. 
 </para>
 	    </listitem>
 	  </itemizedlist>
@@ -1376,7 +1495,7 @@ Additionally, the following modules play a role:
 <itemizedlist mark="bullet" spacing="compact">
 	    <listitem>
 	      <para>
-<emphasis>Markup_yacc:</emphasis> Here the main parsing functions such as
+<emphasis>Pxp_yacc:</emphasis> Here the main parsing functions such as
 <literal>parse_document_entity</literal> are located. Some additional types and
 functions allow the parser to be configured in a non-standard way.
 </para>
@@ -1384,7 +1503,7 @@ functions allow the parser to be configured in a non-standard way.
 
 	    <listitem>
 	      <para>
-<emphasis>Markup_types:</emphasis> This is a collection of basic types and
+<emphasis>Pxp_types:</emphasis> This is a collection of basic types and
 exceptions. 
 </para>
 	    </listitem>
@@ -1400,60 +1519,54 @@ Let the document to be parsed be stored in a file called
 function
 
 <programlisting>
-val parse_document_entity : config -> source -> 'ext domspec -> 'ext document
+val parse_document_entity : config -> source -> 'ext spec -> 'ext document
 </programlisting>
 
-defined in the module <literal>Markup_yacc</literal>. The first argument
+defined in the module <literal>Pxp_yacc</literal>. The first argument
 specifies some global properties of the parser; it is recommended to start with
 the <literal>default_config</literal>. The second argument determines where the
 document to be parsed comes from; this may be a file, a channel, or an entity
-ID. To parse <literal>doc.xml</literal>, it is sufficient to pass <literal>File
-"doc.xml"</literal>. 
+ID. To parse <literal>doc.xml</literal>, it is sufficient to pass
+<literal>from_file "doc.xml"</literal>. 
 </para>
 
 	<para>
-The third argument specifies the document object model to use. Roughly
+The third argument passes the object specification to use. Roughly
 speaking, it determines which classes implement the node objects of which
 element types, and which extensions are to be used. The <literal>'ext</literal>
 polymorphic variable is the type of the extension. For the moment, let us
-simply pass <literal>default_dom</literal> as this argument, and ignore it.
+simply pass <literal>default_spec</literal> as this argument, and ignore it.
 </para>
 
 	<para>
 So the following expression parses <literal>doc.xml</literal>:
 
 <programlisting>
-open Markup_yacc
-let d = parse_document_entity default_config (File "doc.xml") default_dom
+open Pxp_yacc
+let d = parse_document_entity default_config (from_file "doc.xml") default_spec
 </programlisting>
 
 Note that <literal>default_config</literal> implies that warnings are collected
 but not printed. Errors raise one of the exception defined in
-<literal>Markup_types</literal>; to get readable errors and warnings catch the
+<literal>Pxp_types</literal>; to get readable errors and warnings catch the
 exceptions as follows:
 
 <programlisting>
-<![CDATA[let rec print_error e =
-  match e with
-      Markup_types.At(where,what) ->
-        print_endline where;
-        print_error what
-    | _ ->
-        print_endline (Printexc.to_string e)
+<![CDATA[class warner =
+  object 
+    method warn w =
+      print_endline ("WARNING: " ^ w)
+  end
+;;
 
 try
-  let d = parse_document_entity default_config (File "doc.xml") default_dom
+  let config = { default_config with warner = new warner } in
+  let d = parse_document_entity config (from_file "doc.xml") default_spec
   in
-    let s = default_config.warner # print_warnings in
-    if s <> "" then print_endline s;
-    default_config.warner # reset
     ...
 with
    e ->
-     let s = default_config.warner # print_warnings in
-     if s <> "" then print_endline s;
-     default_config.warner # reset;
-     print_error e
+     print_endline (Pxp_types.string_of_exn e)
 ]]></programlisting>
 
 Now <literal>d</literal> is an object of the <literal>document</literal>
@@ -1486,6 +1599,11 @@ type of each node:
       List.iter print_structure children
   | T_data ->
       print_endline "Data"
+  | _ ->
+      (* Other node types are not possible unless the parser is configured
+         differently.
+       *)
+      assert false
 ]]></programlisting>
 
 You can call this function by
@@ -1507,7 +1625,7 @@ There are some more methods in order to access a parsed node tree:
 	    <listitem>
 	      <para>
 <literal>n # parent</literal>: Returns the parent node, or raises
-<literal>Not_found</literal>
+<literal>Not_found</literal> if the node is already the root
 </para>
 	    </listitem>
 	    <listitem>
@@ -1518,21 +1636,41 @@ There are some more methods in order to access a parsed node tree:
 	    <listitem>
 	      <para>
 <literal>n # attribute a</literal>: Returns the value of the attribute with
-name <literal>a</literal>. If <literal>a</literal> has been declared, one of
-the following values are possible: <literal>Value s</literal>
-indicating that the attribute contains a single value;
-<literal>Valuelist sl</literal> indicating that this attribute has a token list
-as value (this is possible for the attribute types IDREFS, ENTITIES, and
-NMTOKENS); <literal>Implied_value</literal> indicating that the attribute has
-been left out and was declared in the DTD as <literal>#IMPLIED</literal>. Note
-that if the attribute is absent and the DTD declared a default value, this
-method will always return the default value. Only if you try to get a
-non-declared attribute, <literal>Not_found</literal> will be raised.
+name <literal>a</literal>. The method returns a value for every
+<emphasis>declared</emphasis> attribute, independently of whether the attribute
+instance is defined or not. If the attribute is not declared,
+<literal>Not_found</literal> will be raised. (In well-formedness mode, every
+attribute is considered as being implicitly declared with type
+<literal>CDATA</literal>.) 
 </para>
 
-	      <para>
-Note that attibute values are normalized while being parsed. Most important,
-newline characters are turned into plain spaces.
+<para>
+The following return values are possible: <literal>Value s</literal>, 
+<literal>Valuelist sl</literal> , and <literal>Implied_value</literal>. 
+The first two value types indicate that the attribute value is available,
+either because there is a definition
+<literal><replaceable>a</replaceable>="<replaceable>value</replaceable>"</literal>
+in the XML text, or because there is a default value (declared in the
+DTD). Only if both the instance definition and the default declaration are
+missing, the latter value <literal>Implied_value</literal> will be returned.
+</para>
+
+<para>
+In the DTD, every attribute is typed. There are single-value types (CDATA, ID,
+IDREF, ENTITY, NMTOKEN, enumerations), in which case the method passes
+<literal>Value s</literal> back, where <literal>s</literal> is the normalized
+string value of the attribute. The other types (IDREFS, ENTITIES, NMTOKENS)
+represent list values, and the parser splits the XML literal into several
+tokens and returns these tokens as <literal>Valuelist sl</literal>.
+</para>
+
+<para>
+Normalization means that entity references (the
+<literal>&amp;<replaceable>name</replaceable>;</literal> tokens) and
+character references
+(<literal>&amp;#<replaceable>number</replaceable>;</literal>) are replaced
+by the text they represent, and that white space characters are converted into
+plain spaces.
 </para>
 	    </listitem>
 	    <listitem>
@@ -1547,7 +1685,10 @@ Note that entity references included in the text are resolved while they are
 being parsed; for example the text <![CDATA["a &lt;&gt; b"]]> will be returned
 as <![CDATA["a <> b"]]> by this method. Spaces of data nodes are always
 preserved. Newlines are preserved, but always converted to \n characters even
-if newlines are encoded as \r\n or \r.
+if newlines are encoded as \r\n or \r. Normally you will never see two adjacent
+data nodes because the parser collapses all data material at one location into
+one node. (However, if you create your own tree or transform the parsed tree,
+it is possible to have adjacent data nodes.)
 </para>
 	      <para>
 Note that elements that do <emphasis>not</emphasis> allow #PCDATA as content
@@ -1567,9 +1708,11 @@ For example, if the task is to print all contents of elements with type
     T_element "valuable" when n # attribute "priority" = Value "1" ->
       print_endline "Valuable node with priotity 1 found:";
       print_endline (n # data)
-  | _ ->
+  | (T_element _ | T_data) ->
       let children = n # sub_nodes in
       List.iter print_valuable_prio1 children
+  | _ ->
+      assert false
 ]]></programlisting>
 
 You can call this function by:
@@ -1592,10 +1735,12 @@ If you like a DSSSL-like style, you can make the function
   let ntype = n # node_type in
   match ntype with
     T_element "valuable" when n # attribute "priority" = Value "1" ->
-      print_endline "Valuable node with priotity 1 found:";
+      print_endline "Valuable node with priority 1 found:";
       print_endline (n # data)
-  | _ ->
+  | (T_element _ | T_data) ->
       process_children n
+  | _ ->
+      assert false
 ]]></programlisting>
 
 So far, O'Caml is now a simple "style-sheet language": You can form a big
@@ -1685,7 +1830,7 @@ further class definitions. Continuining the example of above, we can define the
 element type classes as follows:
 
 <programlisting>
-<![CDATA[class virtual abstract_extension =
+<![CDATA[class virtual custom_extension =
   object (self)
     ... clone, node, set_node defined as above ...
 
@@ -1694,19 +1839,19 @@ element type classes as follows:
 
 class eltype_a =
   object (self)
-    inherit abstract_extension
+    inherit custom_extension
     method print ch = ...
   end
 
 class eltype_b =
   object (self)
-    inherit abstract_extension
+    inherit custom_extension
     method print ch = ...
   end
 
 class eltype_c =
   object (self)
-    inherit abstract_extension
+    inherit custom_extension
     method print ch = ...
   end
 ]]></programlisting>
@@ -1733,6 +1878,51 @@ self # node # extension == self
 always holds.
 </para>
 
+	<para>Here are sample definitions of the <literal>print</literal>
+methods:
+
+<programlisting><![CDATA[
+class eltype_a =
+  object (self)
+    inherit custom_extension
+    method print ch = 
+      (* Nodes <a>...</a> are only containers: *)
+      output_string ch "(";
+      List.iter
+        (fun n -> n # extension # print ch)
+        (self # node # sub_nodes);
+      output_string ch ")";
+  end
+
+class eltype_b =
+  object (self)
+    inherit custom_extension
+    method print ch =
+      (* Print the value of the CDATA attribute "print": *)
+      match self # node # attribute "print" with
+        Value s       -> output_string ch s
+      | Implied_value -> output_string ch "<missing>"
+      | Valuelist l   -> assert false   
+                         (* not possible because the att is CDATA *)
+  end
+
+class eltype_c =
+  object (self)
+    inherit custom_extension
+    method print ch = 
+      (* Print the contents of this element: *)
+      output_string ch (self # node # data)
+  end
+
+class null_extension =
+  object (self)
+    inherit custom_extension
+    method print ch = assert false
+  end
+]]></programlisting>
+</para>
+
+
 	<para>
 The remaining task is to configure the parser such that these extension classes
 are actually used. Here another problem arises: It is not possible to
@@ -1757,11 +1947,11 @@ let element_exemplar = new element_impl extension_exemplar
 And a data node exemplar is created by:
 
 <programlisting>
-let data_exemplar = new data_impl extension_exemplar ""
+let data_exemplar = new data_impl extension_exemplar
 </programlisting>
 
 The classes <literal>element_impl</literal> and <literal>data_impl</literal>
-are defined in the module <literal>Markup_document</literal>. The constructors
+are defined in the module <literal>Pxp_document</literal>. The constructors
 initialize the fresh objects as empty objects, i.e. without children, without
 data contents, and so on. The <literal>extension_exemplar</literal> is the
 initial extension object the exemplars are associated with. 
@@ -1771,7 +1961,7 @@ initial extension object the exemplars are associated with.
 Once the exemplars are created and stored somewhere (e.g. in a hash table), you
 can take an exemplar and create a concrete instance (with contents) by
 duplicating it. As user of the parser you are normally not concerned with this
-as this is part of the internal logic of the parser, but as background knowlege
+as this is part of the internal logic of the parser, but as background knowledge
 it is worthwhile to mention that the two methods
 <literal>create_element</literal> and <literal>create_data</literal> actually
 perform the duplication of the exemplar for which they are invoked,
@@ -1787,24 +1977,24 @@ The configuration of the set of exemplars is passed to the
 example, this argument can be set up as follows:
 
 <programlisting>
-<![CDATA[let domspec =
-  let map = Hashtbl.create 4 in
-  Hashtbl.add map (T_element "a") (new element_impl (new eltype_a));
-  Hashtbl.add map (T_element "b") (new element_impl (new eltype_b));
-  Hashtbl.add map (T_element "c") (new element_impl (new eltype_c));
-  Hashtbl.add map T_data          (new data_impl (new data_ext));
-  { map = map;
-    default_element = new element_impl (new eltype_a);
-  }
+<![CDATA[let spec =
+  make_spec_from_alist
+    ~data_exemplar:            (new data_impl (new null_extension))
+    ~default_element_exemplar: (new element_impl (new null_extension))
+    ~element_alist:
+       [ "a",  new element_impl (new eltype_a);
+         "b",  new element_impl (new eltype_b);
+         "c",  new element_impl (new eltype_c);
+       ]
+    ()
 ]]></programlisting>
 
-The <literal>map</literal> component of the record contains a hash table which
-stores the exemplars for several node types. The hash table
-<emphasis>must</emphasis> define an exemplar for data nodes; here data nodes
-have extensions of class <literal>data_ext</literal>. Extensions of data nodes
-work in the same way as extensions of element nodes. If there are element types
-for which entries in the hash table are missing, the exemplar defined in the
-<literal>default_element</literal> component is used.
+The <literal>~element_alist</literal> function argument defines the mapping
+from element types to exemplars as associative list. The argument
+<literal>~data_exemplar</literal> specifies the exemplar for data nodes, and
+the <literal>~default_element_exemplar</literal> is used whenever the parser
+finds an element type for which the associative list does not define an
+exemplar. 
 </para>
 
 	<para>
@@ -1813,7 +2003,7 @@ functions, only the initialization is a bit different. For example, call the
 parser by:
 
 <programlisting>
-let d = parse_document_entity default_config (File "doc.xml") domspec
+let d = parse_document_entity default_config (from_file "doc.xml") spec
 </programlisting>
 
 Note that the resulting document <literal>d</literal> has a usable type;
@@ -1821,7 +2011,7 @@ especially the <literal>print</literal> method we added is visible. So you can
 print your document by
 
 <programlisting>
-d # print stdout
+d # root # extension # print stdout
 </programlisting>
 </para>
 
@@ -1829,7 +2019,7 @@ d # print stdout
 This object-oriented approach looks rather complicated; this is mostly caused
 by working around some problems of the strict typing system of O'Caml. Some
 auxiliary concepts such as extensions were needed, but the practical
-consequences of this are low. In the next section, one of the examples of the
+consequences are low. In the next section, one of the examples of the
 distribution is explained, a converter from <emphasis>readme</emphasis>
 documents to HTML.
 </para>
@@ -2017,7 +2207,7 @@ Both the title node, and the body nodes are then converted to HTML by calling
 <literal>em</literal>, <literal>ul</literal>, <literal>li</literal></title>
 	  <para>
 Several element types are converted to HTML by simply mapping them to
-correspondent HTML element types. The class <literal>map_tag</literal>
+corresponding HTML element types. The class <literal>map_tag</literal>
 implements this, and the class argument <literal>the_target_tag</literal>
 determines the tag name to map to. The output consists of the start tag, the
 recursively converted inner elements, and the end tag.
@@ -2138,11 +2328,9 @@ for updated information.</emphasis></para>
 <programlisting>
 <![CDATA[
 class [ 'ext ] document :
-  Markup_types.collect_warnings -> 
+  Pxp_types.collect_warnings -> 
   object
     method init_xml_version : string -> unit
-    method init_xml_standalone : bool -> unit
-    method init_dtd : dtd -> unit
     method init_root : 'ext node -> unit
 
     method xml_version : string
@@ -2150,8 +2338,13 @@ class [ 'ext ] document :
     method dtd : dtd
     method root : 'ext node
 
+    method encoding : Pxp_types.rep_encoding
+
     method add_pinstr : proc_instruction -> unit
     method pinstr : string -> proc_instruction list
+    method pinstr_names : string list
+
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
 
   end
 ;;
@@ -2186,6 +2379,13 @@ returned. </para>
 	  </listitem>
 	  <listitem>
 	    <para>
+<literal>encoding</literal>: returns the internal encoding of the
+document. This means that all strings of which the document consists are
+encoded in this character set.
+</para>
+	  </listitem>
+	  <listitem>
+	    <para>
 <literal>pinstr</literal>: returns the processing instructions outside the DTD
 and outside the root element. The argument passed to the method names a
 <emphasis>target</emphasis>, and the method returns all instructions with this
@@ -2194,10 +2394,21 @@ target. The target is the first word inside <literal>&lt;?</literal> and
 	  </listitem>
 	  <listitem>
 	    <para>
+<literal>pinstr_names</literal>: returns the names of the processing instructions</para>
+	  </listitem>
+	  <listitem>
+	    <para>
 <literal>add_pinstr</literal>: adds another processing instruction. This method
 is used by the parser itself to enter the instructions returned by
 <literal>pinstr</literal>, but you can also enter additional instructions.
 </para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>write</literal>: writes the document to the passed stream as XML
+text using the passed (external) encoding. The generated text is always valid
+XML and can be parsed by PXP; however, the text is badly formatted (this is not
+a pretty printer).</para>
 	  </listitem>
 	</itemizedlist>
       </sect1>
@@ -2208,10 +2419,16 @@ is used by the parser itself to enter the instructions returned by
 	<title>The class type <literal>node</literal></title>
 	<para>
 
+From <literal>Pxp_document</literal>:
+
 <programlisting>
 type node_type =
   T_data
 | T_element of string
+| T_super_root
+| T_pinstr of string
+| T_comment
+<replaceable>and some other, reserved types</replaceable>
 ;;
 
 class type [ 'ext ] node =
@@ -2223,6 +2440,7 @@ class type [ 'ext ] node =
        ></link> *)
 
     method extension : 'ext
+    method dtd : dtd
     method parent : 'ext node
     method root : 'ext node
     method sub_nodes : 'ext node list
@@ -2230,33 +2448,40 @@ class type [ 'ext ] node =
     method iter_nodes_sibl : 
            ('ext node option &fun; 'ext node &fun; 'ext node option &fun; unit) &fun; unit
     method node_type : node_type
+    method encoding : Pxp_types.rep_encoding
     method data : string
-    method dtd : dtd
+    method position : (string * int * int)
+    method comment : string option
     method pinstr : string &fun; proc_instruction list
     method pinstr_names : string list
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
 
     <anchor id="type-node-atts.sig"
    >(* <link linkend="type-node-atts" endterm="type-node-atts.title"
        ></link> *)
 
-    method attribute : string &fun; Markup_types.att_value
+    method attribute : string &fun; Pxp_types.att_value
     method required_string_attribute : string &fun; string
     method optional_string_attribute : string &fun; string option
     method required_list_attribute : string &fun; string list
     method optional_list_attribute : string &fun; string list
     method attribute_names : string list
-    method attribute_type : string &fun; Markup_types.att_type
-    method attributes : (string * Markup_types.att_value) list
+    method attribute_type : string &fun; Pxp_types.att_type
+    method attributes : (string * Pxp_types.att_value) list
+    method id_attribute_name : string
+    method id_attribute_value : string
+    method idref_attribute_names : string
 
     <anchor id="type-node-mods.sig"
    >(* <link linkend="type-node-mods" endterm="type-node-mods.title"
        ></link> *)
 
-    method add_node : 'ext node &fun; unit
+    method add_node : ?force:bool &fun; 'ext node &fun; unit
     method add_pinstr : proc_instruction &fun; unit
     method delete : unit
     method set_nodes : 'ext node list &fun; unit
-    method quick_set_attributes : (string * Markup_types.att_value) list &fun; unit
+    method quick_set_attributes : (string * Pxp_types.att_value) list &fun; unit
+    method set_comment : string option &fun; unit
 
     <anchor id="type-node-cloning.sig"
    >(* <link linkend="type-node-cloning" endterm="type-node-cloning.title"
@@ -2264,32 +2489,30 @@ class type [ 'ext ] node =
 
     method orphaned_clone : 'self
     method orphaned_flat_clone : 'self
-    method create_element : dtd &fun; node_type &fun; (string * string) list 
-                            &fun; 'ext node
+    method create_element : 
+              ?position:(string * int * int) &fun;
+              dtd &fun; node_type &fun; (string * string) list &fun;
+                  'ext node
     method create_data : dtd &fun; string &fun; 'ext node
+    method keep_always_whitespace_mode : unit
 
     <anchor id="type-node-weird.sig"
    >(* <link linkend="type-node-weird" endterm="type-node-weird.title"
        ></link> *)
 
-    method find : string &fun; 'ext node
-    method reset_finder : unit
-    method local_validate : unit
+    method local_validate : ?use_dfa:bool -> unit -> unit
 
-    (* Internal methods (undocumented). *)
+    (* ... Internal methods are undocumented. *)
 
-    method internal_adopt : 'ext node option &fun; unit
-    method internal_delete : 'ext node &fun; unit
-    method internal_init : dtd &fun; string &fun; (string * string) list &fun; unit
   end
 ;;
 </programlisting>
 
-In the module <literal>Markup_types</literal> you can find another type
+In the module <literal>Pxp_types</literal> you can find another type
 definition that is important in this context:
 
 <programlisting>
-type Markup_types.att_value =
+type Pxp_types.att_value =
     Value     of string
   | Valuelist of string list
   | Implied_value
@@ -2305,6 +2528,15 @@ A node represents either an element or a character data section. There are two
 classes implementing the two aspects of nodes: <literal>element_impl</literal>
 and <literal>data_impl</literal>. The latter class does not implement all
 methods because some methods do not make sense for data nodes.
+</para>
+
+<para>
+(Note: PXP also supports a mode which forces that processing instructions and
+comments are represented as nodes of the document tree. However, these nodes
+are instances of <literal>element_impl</literal> with node types
+<literal>T_pinstr</literal> and <literal>T_comment</literal>,
+respectively. This mode must be explicitly configured; the basic representation
+knows only element and data nodes.)
 </para>
 
 	<para>The following figure 
@@ -2327,10 +2559,21 @@ processing instructions.</para>
 </figure>
 
 	<para>Only elements, data sections, attributes and processing
-instructions can, directly or indirectly, occur in the document tree. It is
-impossible to add entity references to the tree; if the parser finds such a
-reference, not the reference as such but the referenced text (i.e. the tree
-representing the structured text) is included in the tree.</para>
+instructions (and comments, if configured) can, directly or indirectly, occur
+in the document tree. It is impossible to add entity references to the tree; if
+the parser finds such a reference, not the reference as such but the referenced
+text (i.e. the tree representing the structured text) is included in the
+tree.</para>
+
+	<para>Note that the parser collapses as much data material into one
+data node as possible such that there are normally never two adjacent data
+nodes. This invariant is enforced even if data material is included by entity
+references or CDATA sections, or if a data sequence is interrupted by
+comments. So <literal>a &amp;amp; b &lt;-- comment --&gt; c &lt;![CDATA[
+&lt;&gt; d]]&gt;</literal> is represented by only one data node, for
+instance. However, you can create document trees manually which break this
+invariant; it is only the way the parser forms the tree.
+</para> 
 
 <figure id="node-general" float="1">
 <title>Nodes are doubly linked trees</title>
@@ -2404,6 +2647,12 @@ belongs to this node (see ...).</para>
 		</listitem>
 		<listitem>
 		  <para>
+<literal>dtd</literal>: Returns a reference to the global DTD. All nodes
+of a tree must share the same DTD.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>parent</literal>: Get the father node. Raises
 <literal>Not_found</literal> in the case the node does not have a
 parent, i.e. the node is the root.</para>
@@ -2439,23 +2688,43 @@ arguments the previous node, the current node, and the next node.</para>
 		  <para>
 <literal>node_type</literal>: Returns either <literal>T_data</literal> which
 means that the node is a data node, or <literal>T_element n</literal>
-which means that the node is an element of type <literal>n</literal>.
+which means that the node is an element of type <literal>n</literal>. 
+If configured, possible node types are also <literal>T_pinstr t</literal>
+indicating that the node represents a processing instruction with target
+<literal>t</literal>, and <literal>T_comment</literal> in which case the node
+is a comment.
 </para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>encoding</literal>: Returns the encoding of the strings.</para>
 		</listitem>
 		<listitem>
 		  <para>
 <literal>data</literal>: Returns the character data of this node and all
-children, concatenated as one string. The string is ISO-8859-1-encoded. 
+children, concatenated as one string. The encoding of the string is what
+the method <literal>encoding</literal> returns.
 - For data nodes, this method simply returns the represented characters.
 For elements, the meaning of the method has been extended such that it
 returns something useful, i.e. the effectively contained characters, without
-markup.
+markup. (For <literal>T_pinstr</literal> and <literal>T_comment</literal>
+nodes, the method returns the empty string.)
 </para>
 		</listitem>
 		<listitem>
 		  <para>
-<literal>dtd</literal>: Returns a reference to the global DTD. All nodes
-of a tree must share the same DTD.
+<literal>position</literal>: If configured, this method returns the position of
+the element as triple (entity, line, byteposition). For data nodes, the
+position is not stored. If the position is not available the triple
+<literal>"?", 0, 0</literal> is returned.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>comment</literal>: Returns <literal>Some text</literal> for comment
+nodes, and <literal>None</literal> for other nodes. The <literal>text</literal>
+is everything between the comment delimiters <literal>&lt;--</literal> and
+<literal>--&gt;</literal>.
 </para>
 		</listitem>
 		<listitem>
@@ -2470,6 +2739,12 @@ the <literal>&lt;?</literal>.
 		  <para>
 <literal>pinstr_names</literal>: Returns the list of all targets of processing
 instructions directly contained in this element.</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>write s enc</literal>: Prints the node and all subnodes to the passed
+output stream as valid XML text, using the passed external encoding.
+</para>
 		</listitem>
 	      </itemizedlist>
             </para>
@@ -2534,6 +2809,12 @@ general entities
 (i.e. <literal>&amp;<replaceable>name</replaceable>;</literal>) are expanded;
 if necessary, expansion is performed recursively.
 </para>
+
+<para>
+In well-formedness mode, there is no DTD which could declare an
+attribute. Because of this, every occuring attribute is considered as a CDATA
+attribute.
+</para>
 		</listitem>
 		<listitem>
 		  <para>
@@ -2582,7 +2863,7 @@ list of declared attributes.
 		<listitem>
 		  <para>
 <literal>attribute_type n</literal>: returns the type of the attribute called
-<literal>n</literal>. See the module <literal>Markup_types</literal> for a
+<literal>n</literal>. See the module <literal>Pxp_types</literal> for a
 description of the encoding of the types.
 </para>
 		</listitem>
@@ -2591,6 +2872,25 @@ description of the encoding of the types.
 <literal>attributes</literal>: returns the list of pairs of names and values
 for all attributes of
 this element.</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>id_attribute_name</literal>: returns the name of the attribute that is
+declared with type ID. There is at most one such attribute. The method raises
+<literal>Not_found</literal> if there is no declared ID attribute for the
+element type.</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>id_attribute_value</literal>: returns the value of the attribute that
+is declared with type ID. There is at most one such attribute. The method raises
+<literal>Not_found</literal> if there is no declared ID attribute for the
+element type.</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>idref_attribute_names</literal>: returns the list of attribute names
+that are declared as IDREF or IDREFS.</para>
 		</listitem>
 	      </itemizedlist>
           </para>
@@ -2615,6 +2915,29 @@ of children. This operation is illustrated in the picture
 <literal>sn</literal> is a root, and it requires that <literal>sn</literal> and
 the current object share the same DTD.
 </para>
+
+<para>Because <literal>add_node</literal> is the method the parser itself uses
+to add new nodes to the tree, it performs by default some simple validation
+checks: If the content model is a regular expression, it is not allowed to add
+data nodes to this node unless the new nodes consist only of whitespace. In
+this case, the new data nodes are silently dropped (you can change this by
+invoking <literal>keep_always_whitespace_mode</literal>).
+</para>
+
+<para>If the document is flagged as stand-alone, these data nodes only
+containing whitespace are even forbidden if the element declaration is
+contained in an external entity. This case is detected and rejected.</para>
+
+<para>If the content model is <literal>EMPTY</literal>, it is not allowed to
+add any data node unless the data node is empty. In this case, the new data
+node is silently dropped.
+</para>
+
+<para>These checks only apply if there is a DTD. In well-formedness mode, it is
+assumed that every element is declared with content model
+<literal>ANY</literal> which prohibits any validation check. Furthermore, you
+turn these checks off by passing <literal>~force:true</literal> as first
+argument.</para>
 		</listitem>
 		<listitem>
 		  <para>
@@ -2636,6 +2959,7 @@ by the figure <link linkend="node-delete" endterm="node-delete"></link>.
 <literal>set_nodes nl</literal>: Sets the list of children to
 <literal>nl</literal>. It is required that every member of <literal>nl</literal>
 is a root, and that all members and the current object share the same DTD.
+Unlike <literal>add_node</literal>, no validation checks are performed.
 </para>
 	      </listitem>
 	      <listitem>
@@ -2646,6 +2970,12 @@ whether <literal>atts</literal> matches the DTD or not; it is up to the
 caller of this method to ensure this. (This method may be useful to transform
 the attribute values, i.e. apply a mapping to every attribute.)
 </para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>set_comment text</literal>: This method is only applicable to
+<literal>T_comment</literal> nodes; it sets the comment text contained by such
+nodes. </para>
 		</listitem>
 	      </itemizedlist>
 </para>
@@ -2690,6 +3020,9 @@ new attribute list is set to <literal>al</literal> (given as list of
 contain processing instructions. See 
 <link linkend="type-node-ex-create-element">the example below</link>.
 </para>
+
+		  <para>Note that you can specify the position of the new node
+by the optional argument <literal>~position</literal>.</para>
 		</listitem>
 		<listitem>
 		  <para>
@@ -2704,38 +3037,33 @@ node. See
 <link linkend="type-node-ex-create-data">the example below</link>.
 </para>
 		</listitem>
-	      </itemizedlist>
+		<listitem>
+		  <para>
+<literal>keep_always_whitespace_mode</literal>: Even data nodes which are
+normally dropped because they only contain ignorable whitespace, can added to
+this node once this mode is turned on. (This mode is useful to produce
+canonical XML.)
+</para>
+		</listitem>
+ 	      </itemizedlist>
 </para>
 	  </formalpara>
 	  
 	  <anchor id="type-node-weird">
 	  <formalpara>
 	    <title id="type-node-weird.title">
-              <link linkend="type-node-weird.sig">Weird methods</link>
+              <link linkend="type-node-weird.sig">Validating methods</link>
             </title>
 	    <para>
-The following methods will hopefully be replaced by better ones in the next
-major release:
+There is one method which locally validates the node, i.e. checks whether the
+subnodes match the content model of this node.
 
    	      <itemizedlist mark="bullet" spacing="compact">
 		<listitem>
 		  <para>
-<literal>find id</literal>: Searches the tree (beginning at the root node) for
-the node with an ID attribute <literal>id</literal>, or raises
-<literal>Not_found</literal>. The method may also cause a Validation_error if
-something is wrong with the IDs.
-</para>
-		</listitem>
-		<listitem>
-		  <para>
-<literal>reset_finder</literal>: Resets the ID cache. This is necessary after
-new nodes have been added; otherwise <literal>find</literal> would not find
-these nodes.</para>
-		</listitem>
-		<listitem>
-		  <para>
 <literal>local_validate</literal>: Checks that this node conforms to the
-DTD. (Applications need not to call this method unless they add new nodes
+DTD by comparing the type of the subnodes with the content model for this
+node. (Applications need not call this method unless they add new nodes
 themselves to the tree.)
 </para>
 		</listitem>
@@ -2816,7 +3144,7 @@ should be used for all character data nodes:
 
 <programlisting>
 <![CDATA[
-class [ 'ext ] data_impl : 'ext -> string -> [ 'ext ] node
+class [ 'ext ] data_impl : 'ext -> [ 'ext ] node
 ]]>
 </programlisting>
 
@@ -2828,11 +3156,10 @@ class [ 'ext ] data_impl : 'ext -> string -> [ 'ext ] node
 You can create a new instance by
 
 <programlisting>
-new data_impl <replaceable>extension_object</replaceable> <replaceable>cdata_string</replaceable>
+new data_impl <replaceable>extension_object</replaceable>
 </programlisting>
 
-which creates an exemplar node filled with the characters
-<replaceable>cdata_string</replaceable> which is connected to
+which creates an empty exemplar node which is connected to
 <replaceable>extension_object</replaceable>. The node does not contain a
 reference to any DTD, and because of this it cannot be added to node trees.
 </para>
@@ -2842,9 +3169,6 @@ reference to any DTD, and because of this it cannot be added to node trees.
 <link linkend="type-node-meth-create-data"><literal>create_data</literal>
 </link> to the exemplar (see example).
 </para>
-	  <para>(The interface is a bit confusing: Why it is possible to
-create exemplar nodes that are already filled with character data? 
-Don't expect a reasonable answer...)</para>
 
 	  <anchor id="type-node-ex-create-data">
 	  <formalpara>
@@ -2854,7 +3178,7 @@ Don't expect a reasonable answer...)</para>
 
 <programlisting>
 let exemplar_ext = ... in
-let exemplar     = new exemplar_ext data_impl "" in
+let exemplar     = new exemplar_ext data_impl in
 </programlisting>
 
 The <literal>exemplar</literal> is not used in node trees, but only as
@@ -2874,6 +3198,142 @@ be added to an element as child.
 	  </formalpara>
 	</sect2>
 
+	<sect2>
+	  <title>The type <literal>spec</literal></title>
+	  <para>
+The type <literal>spec</literal> defines a way to handle the details of
+creating nodes from exemplars.
+
+<programlisting><![CDATA[
+type 'ext spec
+constraint 'ext = 'ext node #extension
+
+val make_spec_from_mapping :
+      ?super_root_exemplar : 'ext node ->
+      ?comment_exemplar : 'ext node ->
+      ?default_pinstr_exemplar : 'ext node ->
+      ?pinstr_mapping : (string, 'ext node) Hashtbl.t ->
+      data_exemplar: 'ext node ->
+      default_element_exemplar: 'ext node ->
+      element_mapping: (string, 'ext node) Hashtbl.t -> 
+      unit -> 
+        'ext spec
+
+val make_spec_from_alist :
+      ?super_root_exemplar : 'ext node ->
+      ?comment_exemplar : 'ext node ->
+      ?default_pinstr_exemplar : 'ext node ->
+      ?pinstr_alist : (string * 'ext node) list ->
+      data_exemplar: 'ext node ->
+      default_element_exemplar: 'ext node ->
+      element_alist: (string * 'ext node) list -> 
+      unit -> 
+        'ext spec
+]]></programlisting>
+
+The two functions <literal>make_spec_from_mapping</literal> and
+<literal>make_spec_from_alist</literal> create <literal>spec</literal>
+values. Both functions are functionally equivalent and the only difference is
+that the first function prefers hashtables and the latter associative lists to
+describe mappings from names to exemplars.
+</para>
+
+<para>
+You can specify exemplars for the various kinds of nodes that need to be
+generated when an XML document is parsed:
+   	      
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para><literal>~super_root_exemplar</literal>: This exemplar
+is used to create the super root. This special node is only created if the
+corresponding configuration option has been selected; it is the parent node of
+the root node which may be convenient if every working node must have a parent.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~comment_exemplar</literal>: This exemplar is
+used when a comment node must be created. Note that such nodes are only created
+if the corresponding configuration option is "on".
+</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~default_pinstr_exemplar</literal>: If a node
+for a processing instruction must be created, and the instruction is not listed
+in the table passed by <literal>~pinstr_mapping</literal> or
+<literal>~pinstr_alist</literal>, this exemplar is used.
+Again the configuration option must be "on" in order to create such nodes at
+all. 
+</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~pinstr_mapping</literal> or
+<literal>~pinstr_alist</literal>: Map the target names of processing
+instructions to exemplars. These mappings are only used when nodes for
+processing instructions are created.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~data_exemplar</literal>: The exemplar for
+ordinary data nodes.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~default_element_exemplar</literal>: This
+exemplar is used if an element node must be created, but the element type
+cannot be found in the tables <literal>element_mapping</literal> or
+<literal>element_alist</literal>.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>~element_mapping</literal> or
+<literal>~element_alist</literal>: Map the element types to exemplars. These
+mappings are used to create element nodes.</para>
+	      </listitem>
+	    </itemizedlist>
+
+In most cases, you only want to create <literal>spec</literal> values to pass
+them to the parser functions found in <literal>Pxp_yacc</literal>. However, it
+might be useful to apply <literal>spec</literal> values directly.
+</para>
+
+<para>The following functions create various types of nodes by selecting the
+corresponding exemplar from the passed <literal>spec</literal> value, and by
+calling <literal>create_element</literal> or <literal>create_data</literal> on
+the exemplar.
+
+<programlisting><![CDATA[
+val create_data_node : 
+      'ext spec -> 
+      dtd -> 
+      (* data material: *) string -> 
+          'ext node
+
+val create_element_node : 
+      ?position:(string * int * int) ->
+      'ext spec -> 
+      dtd -> 
+      (* element type: *) string -> 
+      (* attributes: *) (string * string) list -> 
+          'ext node
+
+val create_super_root_node :
+      ?position:(string * int * int) ->
+      'ext spec -> 
+       dtd -> 
+           'ext node
+
+val create_comment_node :
+      ?position:(string * int * int) ->
+      'ext spec -> 
+      dtd -> 
+      (* comment text: *) string -> 
+          'ext node
+
+val create_pinstr_node :
+      ?position:(string * int * int) ->
+      'ext spec -> 
+      dtd -> 
+      proc_instruction -> 
+          'ext node
+]]></programlisting>
+</para>
+	</sect2>
 
 	<sect2>
 	  <title>Examples</title>
@@ -2890,7 +3350,7 @@ let exemplar_ext = ... (* some extension *) in
 let dtd = ... (* some DTD *) in
 
 let element_exemplar = new element_impl exemplar_ext in
-let data_exemplar    = new data_impl    exemplar_ext "" in
+let data_exemplar    = new data_impl    exemplar_ext in
 
 let a1 = element_exemplar # create_element dtd (T_element "a") ["att", "apple"]
 and b1 = element_exemplar # create_element dtd (T_element "b") []
@@ -3120,6 +3580,56 @@ Here, the case that the attribute is missing counts like the empty list.
 
 	</sect2>
 
+
+	<sect2>
+	  <title>Iterators</title>
+
+	  <para>There are also several iterators in Pxp_document; please see
+the mli file for details. You can find examples for them in the
+"simple_transformation" directory.
+
+<programlisting><![CDATA[
+val find : ?deeply:bool -> 
+           f:('ext node -> bool) -> 'ext node -> 'ext node
+
+val find_all : ?deeply:bool ->
+               f:('ext node -> bool) -> 'ext node -> 'ext node list
+
+val find_element : ?deeply:bool ->
+                   string -> 'ext node -> 'ext node
+
+val find_all_elements : ?deeply:bool ->
+                        string -> 'ext node -> 'ext node list
+
+exception Skip
+val map_tree :  pre:('exta node -> 'extb node) ->
+               ?post:('extb node -> 'extb node) ->
+               'exta node -> 
+                   'extb node
+
+
+val map_tree_sibl : 
+        pre: ('exta node option -> 'exta node -> 'exta node option -> 
+                  'extb node) ->
+       ?post:('extb node option -> 'extb node -> 'extb node option -> 
+                  'extb node) ->
+       'exta node -> 
+           'extb node
+
+val iter_tree : ?pre:('ext node -> unit) ->
+                ?post:('ext node -> unit) ->
+                'ext node -> 
+                    unit
+
+val iter_tree_sibl :
+       ?pre: ('ext node option -> 'ext node -> 'ext node option -> unit) ->
+       ?post:('ext node option -> 'ext node -> 'ext node option -> unit) ->
+       'ext node -> 
+           unit
+]]></programlisting>
+</para>
+	</sect2>
+
       </sect1>
 
 <!-- ********************************************************************** -->
@@ -3148,17 +3658,18 @@ class type [ 'node ] extension =
 
 This is the type of classes used for node extensions. For every node of the
 document tree, there is not only the <literal>node</literal> object, but also
-an <literal>extension</literal> object. The latter has only minimum
+an <literal>extension</literal> object. The latter has minimal
 functionality; it has only the necessary methods to be attached to the node
 object containing the details of the node instance. The extension object is
 called extension because its purpose is extensibility.</para>
 
 	<para>For some reasons, it is impossible to derive the
 <literal>node</literal> classes (i.e. <literal>element_impl</literal> and
-<literal>data_impl</literal>) such that the subclasses are usable. But
+<literal>data_impl</literal>) such that the subclasses can be extended by new
+new methods. But
 subclassing nodes is a great feature, because it allows the user to provide
 different classes for different types of nodes. The extension objects are a
-workaround that is as powerful as direct subclassing, the only price is
+workaround that is as powerful as direct subclassing, the costs are
 some notation overhead.
 </para>
 
@@ -3200,11 +3711,11 @@ started with.</para>
 
 	  <para>At minimum, you must define the methods
 <literal>clone</literal>, <literal>node</literal>, and
-<literal>set_node</literal> such that your class is compatible the the type
+<literal>set_node</literal> such that your class is compatible with the type
 <literal>extension</literal>. The method <literal>set_node</literal> is called
 during the initialization of the node, or after a node has been cloned; the
 node object invokes <literal>set_node</literal> on the extension object to tell
-it that this node is now the object the extension is linked with. The extension
+it that this node is now the object the extension is linked to. The extension
 must return the node object passed as argument of <literal>set_node</literal>
 when the <literal>node</literal> method is called.</para>
 
@@ -3284,7 +3795,8 @@ class custom_extension_kind_B =
 
 If a class does not need a method (e.g. because it does not make sense, or it
 would violate some important condition), it is possible to define the method
-and to always raise an exception when the method is invoked.
+and to always raise an exception when the method is invoked
+(e.g. <literal>assert false</literal>).
 </para>
 
 	  <para>The latter is a strong recommendation: do not try to further
@@ -3298,50 +3810,51 @@ impossible, and almost never worth-while.</para>
 	  <para>Once you have defined your extension classes, you can bind them
 to element types. The simplest case is that you have only one class and that
 this class is to be always used. The parsing functions in the module
-<literal>Markup_yacc</literal> take a <literal>domspec</literal> argument which
-must be customized. If your single class has the name <literal>c</literal>,
+<literal>Pxp_yacc</literal> take a <literal>spec</literal> argument which
+can be customized. If your single class has the name <literal>c</literal>,
 this argument should be 
 
 <programlisting>
 let spec =
-  { map =
-      ( let m = Hashtbl.create 1 in
-        Hashtbl.add m T_data (new data_impl c "");
-        m
-      );
-    default_element = new element_impl c;
-  }
+  make_spec_from_alist
+    ~data_exemplar:            (new data_impl c)
+    ~default_element_exemplar: (new element_impl c)
+    ~element_alist:            []
+    ()
 </programlisting>
 
-The component <literal>map</literal> must at least contain the exemplar to use
-for data nodes, and the component <literal>default_element</literal> specifies
-the exemplar to use for the element types that do not occur in
-<literal>map</literal> (here: for all element types). Remember that an exemplar
-is a (node, extension) pair that serves as pattern when new nodes (and the
-corresponding extension objects) are added to the document tree. In this case,
-the exemplar contains <literal>c</literal> as extension, and when nodes are
-created, the exemplar is cloned, and cloning makes also a copy of
-<literal>c</literal> such that all nodes of the document tree will have a copy
-of <literal>c</literal> as extension.
+This means that data nodes will be created from the exemplar passed by
+~data_exemplar and that all element nodes will be made from the exemplar
+specified by ~default_element_exemplar. In ~element_alist, you can 
+pass that different exemplars are to be used for different element types; but
+this is an optional feature. If you do not need it, pass the empty list.
 </para>
 
-	  <para>The <literal>map</literal> component can bind specific element
-types to specific exemplars; as exemplars may be instances of different classes
-it is effectively possible to bind element types to classes. For example, if
-the element type "p" is implemented by class "c_p", and "q" is realized by
-"c_q", you can fill this component like here:
+<para>
+Remember that an exemplar is a (node, extension) pair that serves as pattern
+when new nodes (and the corresponding extension objects) are added to the
+document tree. In this case, the exemplar contains <literal>c</literal> as
+extension, and when nodes are created, the exemplar is cloned, and cloning
+makes also a copy of <literal>c</literal> such that all nodes of the document
+tree will have a copy of <literal>c</literal> as extension.
+</para>
+
+	  <para>The <literal>~element_alist</literal> argument can bind
+specific element types to specific exemplars; as exemplars may be instances of
+different classes it is effectively possible to bind element types to
+classes. For example, if the element type "p" is implemented by class "c_p",
+and "q" is realized by "c_q", you can pass the following value:
 
 <programlisting>
 let spec =
-  { map =
-      ( let m = Hashtbl.create 1 in
-        Hashtbl.add m (T_element "p") (new element_impl c_p);
-        Hashtbl.add m (T_element "q") (new element_impl c_q);
-        Hashtbl.add m T_data          (new data_impl c "");
-        m
-      );
-    default_element = new element_impl c;
-  }
+  make_spec_from_alist
+    ~data_exemplar:            (new data_impl c)
+    ~default_element_exemplar: (new element_impl c)
+    ~element_alist:            
+      [ "p", new element_impl c_p;
+        "q", new element_impl c_q;
+      ]
+    ()
 </programlisting>
 
 The extension object <literal>c</literal> is still used for all data nodes and
@@ -3365,10 +3878,10 @@ for all other element types.
 contain character data, the following rules apply.</para>
 
 	  <para>If the element must be empty, i.e. it is declared with the
-keyword <literal>EMPTY</literal>, the element instance may still contain
-whitespace characters (spaces, tabs, carriage returns, and newlines). The
-parser ignores these characters; such an element does not have a data subnode
-containing these irrelevant characters.</para>
+keyword <literal>EMPTY</literal>, the element instance must be effectively
+empty (it must not even contain whitespace characters). The parser guarantees
+that a declared <literal>EMPTY</literal> element does never contain a data
+node, even if the data node represents the empty string.</para>
 
 	  <para>If the element declaration only permits other elements to occur
 within that element but not character data, it is still possible to insert
@@ -3418,12 +3931,28 @@ character-free element <literal>y</literal>.
 	  <title>The representation of character data</title>
 
 	  <para>The XML specification allows all Unicode characters in XML
-texts. This parser cannot deal with characters with code bigger than 255
-because it represents the characters internally in the ISO-8859-1 character
-set (this set is identical to the Unicode characters 0 to 255). When the parser
-finds a character it cannot represent, it ignores the character and prints a
-warning (to the <literal>collect_warning</literal> object that must be passed
-when the parser is called).
+texts. This parser can be configured such that UTF-8 is used to represent the
+characters internally; however, the default character encoding is
+ISO-8859-1. (Currently, no other encodings are possible for the internal string
+representation; the type <literal>Pxp_types.rep_encoding</literal> enumerates
+the possible encodings. Principially, the parser could use any encoding that is
+ASCII-compatible, but there are currently only lexical analyzers for UTF-8 and
+ISO-8859-1. It is currently impossible to use UTF-16 or UCS-4 as internal
+encodings (or other multibyte encodings which are not ASCII-compatible) unless
+major parts of the parser are rewritten - unlikely...)
+</para>
+
+<para>
+The internal encoding may be different from the external encoding (specified
+in the XML declaration <literal>&lt;?xml ... encoding="..."?&gt;</literal>); in
+this case the strings are automatically converted to the internal encoding.
+</para>
+
+<para>
+If the internal encoding is ISO-8859-1, it is possible that there are
+characters that cannot be represented. In this case, the parser ignores such
+characters and prints a warning (to the <literal>collect_warning</literal>
+object that must be passed when the parser is called).
 </para>
 
 	  <para>The XML specification allows lines to be separated by single LF
@@ -3431,6 +3960,15 @@ characters, by CR LF character sequences, or by single CR
 characters. Internally, these separators are always converted to single LF
 characters.</para>
 
+	  <para>The parser guarantees that there are never two adjacent data
+nodes; if necessary, data material that would otherwise be represented by
+several nodes is collapsed into one node. Note that you can still create node
+trees with adjacent data nodes; however, the parser does not return such trees.
+</para>
+
+	  <para>Note that CDATA sections are not represented specially; such
+sections are added to the current data material that being collected for the
+next data node.</para>
 	</sect2>
 
 
@@ -3445,36 +3983,56 @@ expansion text instead of the reference.
 	</sect2>
 
 	<sect2>
-	  <title>The representation of attributes</title>
-	  <para>As attribute values are composed of Unicode characters, too,
-the same restriction applies as for character data: Characters that cannot be
-represented are dropped, and a warning is printed.</para>
+	  <title>The representation of attributes</title> <para>As attribute
+values are composed of Unicode characters, too, the same problems with the
+character encoding arise as for character material. Attribute values are
+converted to the internal encoding, too; and if there are characters that
+cannot be represented, these are dropped, and a warning is printed.</para>
 
 	  <para>Attribute values are normalized before they are returned by
 methods like <literal>attribute</literal>. First, any remaining entity
-references are expanded; if necessary, expansion is performed recursively. 
+references are expanded; if necessary, expansion is performed recursively.
 Second, newline characters (any of LF, CR LF, or CR characters) are converted
-to single space characters. Note that especially the latter action conforms to
-the XML standard.
+to single space characters. Note that especially the latter action is
+prescribed by the XML standard (but <literal>&#10;</literal> is not converted
+such that it is still possible to include line feeds into attributes).
 </para>
 	</sect2>
 
 	<sect2>
 	  <title>The representation of processing instructions</title>
-	  <para>Processing instructions are not (yet) well supported. PIs are
-parsed to some extent: The first word of the PI is called the target, and it is
-stored separated from the rest of the PI:
+<para>Processing instructions are parsed to some extent: The first word of the
+PI is called the target, and it is stored separated from the rest of the PI:
 
 <programlisting><![CDATA[
 <?target rest?>
 ]]></programlisting>
 
-The exact location where a PI occurs is not represented. The parser puts the PI
-into the object that represents the embracing construct (an element, a DTD, or
-the whole document); that means you can find out which PIs occur in a certain
-element, in the DTD, or in the whole document, but you cannot lookup the exact
-position within the construct.
+The exact location where a PI occurs is not represented (by default). The
+parser puts the PI into the object that represents the embracing construct (an
+element, a DTD, or the whole document); that means you can find out which PIs
+occur in a certain element, in the DTD, or in the whole document, but you
+cannot lookup the exact position within the construct.
 </para>
+
+	  <para>If you require the exact location of PIs, it is possible to
+create extra nodes for them. This mode is controled by the option
+<literal>enable_pinstr_nodes</literal>. The additional nodes have the node type
+<literal>T_pinstr <replaceable>target</replaceable></literal>, and are created
+from special exemplars contained in the <literal>spec</literal> (see
+pxp_document.mli).</para>
+	</sect2>
+
+	<sect2>
+	  <title>The representation of comments</title> 
+
+<para>Normally, comments are not represented; they are dropped by
+default. However, if you require them, it is possible to create
+<literal>T_comment</literal> nodes for them. This mode can be specified by the
+option <literal>enable_comment_nodes</literal>. Comment nodes are created from
+special exemplars contained in the <literal>spec</literal> (see
+pxp_document.mli). You can access the contents of comments through the 
+method <literal>comment</literal>.</para>
 	</sect2>
 
 	<sect2>
@@ -3484,6 +4042,18 @@ position within the construct.
 	  <para>These attributes are not supported specially; they are handled
 like any other attribute.</para>
 	</sect2>
+
+
+	<sect2>
+	  <title>And what about namespaces?</title>
+	  <para>Currently, there is no special support for namespaces.
+However, the parser allows it that the colon occurs in names such that it is
+possible to implement namespaces on top of the current API.</para>
+
+	  <para>Some future release of PXP will support namespaces as built-in
+feature...</para>
+	</sect2>
+
       </sect1>
 
     </chapter>
@@ -3493,6 +4063,7 @@ like any other attribute.</para>
     <chapter>
       <title>Configuring and calling the parser</title>
 
+<!--
       <para>
 <emphasis>
 Sorry, this chapter has not yet been written. For an introduction into parser
@@ -3500,15 +4071,18 @@ configuration, see the previous chapters. As a first approximation, the
 interface definition of Markup_yacc outlines what could go here.
 </emphasis>
 </para>
+-->
 
+<!--
       <para>
 <programlisting>&markup-yacc.mli;</programlisting>
 </para>
+-->
 
       <sect1>
 	<title>Overview</title>
 	<para>
-There are the following main modes of invoking the parser:
+There are the following main functions invoking the parser (in Pxp_yacc):
 
           <itemizedlist mark="bullet" spacing="compact">
 	    <listitem>
@@ -3521,35 +4095,50 @@ file
 <!DOCTYPE root ... [ ... ] > <root> ... </root>
 ]]></programlisting>
 
-and you can accept any DTD that is included in the file.
+and you can accept any DTD that is included in the file (e.g. because the file
+is under your control).
 </para>
 	    </listitem>
 	    <listitem>
-	      <para><emphasis>parse_wf_entity:</emphasis> You want to
+	      <para><emphasis>parse_wfdocument_entity:</emphasis> You want to
 parse a complete and closed document consisting of a DTD and the document body;
 but the body is not validated, only checked for well-formedness. This mode is
-preferred if validation costs too much time.
+preferred if validation costs too much time or if the DTD is missing.
 </para>
 	    </listitem>
 	    <listitem>
 	      <para><emphasis>parse_dtd_entity:</emphasis> You want only to
-parse an entity (file) containing the whole DTD or only a part of it. Sometimes
-it is interesting to read a DTD without document, for example to compare it
-with the DTD included in a document, or to apply the next mode:
+parse an entity (file) containing the external subset of a DTD. Sometimes it is
+interesting to read such a DTD, for example to compare it with the DTD included
+in a document, or to apply the next mode:
 </para>
 	    </listitem>
 	    <listitem>
 	      <para><emphasis>parse_content_entity:</emphasis> You want only to
 parse an entity (file) containing a fragment of a document body; this fragment
-is validated against the DTD you pass to the parser. Especially, the fragment
+is validated against the DTD you pass to the function. Especially, the fragment
 must not have a <literal> &lt;!DOCTYPE&gt;</literal> clause, and must directly
-begin with an element.  The element is validated against the DTD (note that it
-is possible to create a "DTD" that matches everything, i.e. you can turn off
-validation).  This mode is interesting if you want to check documents against a
-fixed, immutable DTD.
+begin with an element.  The element is validated against the DTD.  This mode is
+interesting if you want to check documents against a fixed, immutable DTD.
 </para>
 	    </listitem>
+	    <listitem>
+	      <para><emphasis>parse_wfcontent_entity:</emphasis> This function
+also parses a single element without DTD, but does not validate it.</para>
+	    </listitem>
+	    <listitem>
+	      <para><emphasis>extract_dtd_from_document_entity:</emphasis> This
+function extracts the DTD from a closed document consisting of a DTD and a
+document body. Both the internal and the external subsets are extracted.</para>
+	    </listitem>
 	  </itemizedlist>
+</para>
+
+<para>
+In many cases, <literal>parse_document_entity</literal> is the preferred mode
+to parse a document in a validating way, and
+<literal>parse_wfdocument_entity</literal> is the mode of choice to parse a
+file while only checking for well-formedness.
 </para>
 
 <para>
@@ -3579,7 +4168,7 @@ but this is a detail we can ignore here.) Consider you have a file called
 <literal>"main.xml"</literal> containing 
 
 <programlisting><![CDATA[
-<!ENITITY % sub SYSTEM "sub/sub.xml">
+<!ENTITY % sub SYSTEM "sub/sub.xml">
 %sub;
 ]]></programlisting>
 
@@ -3587,7 +4176,7 @@ and a file stored in the subdirectory <literal>"sub"</literal> with name
 <literal>"sub.xml"</literal> containing
 
 <programlisting><![CDATA[
-<!ENITITY % subsub SYSTEM "subsub/subsub.xml">
+<!ENTITY % subsub SYSTEM "subsub/subsub.xml">
 %subsub;
 ]]></programlisting>
 
@@ -3607,7 +4196,7 @@ only demands that <literal>SYSTEM</literal> entities are interpreted like URLs
 (which is not very precise, as there are lots of URL schemes in use), hoping
 that this helps overcoming the local peculiarities of the environment; the idea
 is that if you do not know your environment you can refer to other entities by
-giving the URLs of them. I think that this interpretation of
+denoting URLs for them. I think that this interpretation of
 <literal>SYSTEM</literal> names may have some applications in the internet, but
 it is not the first choice in general. Because of this, the resolver is a
 separate module of the parser that can be exchanged by another one if
@@ -3619,25 +4208,34 @@ The following resolvers do already exist:
 
           <itemizedlist mark="bullet" spacing="compact">
 	    <listitem>
-	      <para>A resolver for file names. The <literal>SYSTEM</literal>
-name is simply interpreted as file name with the slash "/" as separator for
-directories.</para>
+	      <para>Resolvers reading from arbitrary input channels. These
+can be configured such that a certain ID is associated with the channel; in
+this case inner references to external entities can be resolved. There is also
+a special resolver that interprets SYSTEM IDs as URLs; this resolver can
+process relative SYSTEM names and determine the corresponding absolute URL.
+</para>
 	    </listitem>
 	    <listitem>
 	      <para>A resolver that reads always from a given O'Caml
-string. This resolver is not able to resolve further names because the string
-is not associated with any name, i.e. if the document contained in the string
-refers to an external entity, this reference cannot be followed.</para>
+string. This resolver is not able to resolve further names unless the string is
+not associated with any name, i.e. if the document contained in the string
+refers to an external entity, this reference cannot be followed in this
+case.</para>
 	    </listitem>
 	    <listitem>
-	      <para>A resolver that reads from an arbitrary input
-channel. This resolver cannot resolve inner names, too.</para>
+	      <para>A resolver for file names. The <literal>SYSTEM</literal>
+name is interpreted as file URL with the slash "/" as separator for
+directories. - This resolver is derived from the generic URL resolver.</para>
 	    </listitem>
 	  </itemizedlist>
 
 The interface a resolver must have is documented, so it is possible to write
 your own resolver. For example, you could connect the parser with an HTTP
-client, and resolve URLs of the HTTP namespace.</para>
+client, and resolve URLs of the HTTP namespace. The resolver classes support
+that several independent resolvers are combined to one more powerful resolver;
+thus it is possible to combine a self-written resolver with the already
+existing resolvers.
+</para>
 
 <para>
 Note that the existing resolvers only interpret <literal>SYSTEM</literal>
@@ -3655,50 +4253,87 @@ relatively simple to provide such a resolver.
 	<title>Resolvers and sources</title>
 	
 	<sect2>
-	  <title>Using the built-in resolvers</title>
+	  <title>Using the built-in resolvers (called sources)</title>
 
-	  <para>The type <literal>source</literal> enumerates the various
+	  <para>The type <literal>source</literal> enumerates the two
 possibilities where the document to parse comes from.
 
 <programlisting>
 type source =
-    Entity of ((dtd -&gt; Markup_entity.entity) * Markup_reader.resolver)
-  | Channel of in_channel
-  | File of string
-  | Latin1 of string
-  | ExtID of (ext_id * Markup_reader.resolver)
+    Entity of ((dtd -&gt; Pxp_entity.entity) * Pxp_reader.resolver)
+  | ExtID of (ext_id * Pxp_reader.resolver)
 </programlisting>
+
+You normally need not to worry about this type as there are convenience
+functions that create <literal>source</literal> values:
 
 
             <itemizedlist mark="bullet" spacing="compact">
 	      <listitem>
-		<para><literal>File s</literal>: The document is read from file
-<literal>s</literal>, you may specify absolute or relative path
-names. <emphasis>This <literal>source</literal> has the advantage that it is
-able to resolve inner external entities; i.e. if your document includes data
-from another file (using the <literal>SYSTEM</literal> attribute), this mode
-will find that file.</emphasis> This mode cannot resolve
-<literal>PUBLIC</literal> identifiers.
+		<para><literal>from_file s</literal>: The document is read from
+file <literal>s</literal>; you may specify absolute or relative path names.
+The file name must be encoded as UTF-8 string.
 </para>
-		<para>This mode is able to read UTF-8, UTF-16, and
-ISO-8859-1-encoded data.</para>
+
+<para>There is an optional argument <literal>~system_encoding</literal>
+specifying the character encoding which is used for the names of the file
+system. For example, if this encoding is ISO-8859-1 and <literal>s</literal> is
+also a ISO-8859-1 string, you can form the source:
+
+<programlisting><![CDATA[
+let s_utf8  =  recode_string ~in_enc:`Enc_iso88591 ~out_enc:`Enc_utf8 s in
+from_file ~system_encoding:`Enc_iso88591 s_utf8
+]]></programlisting>
+</para>
+
+<para>
+This <literal>source</literal> has the advantage that
+it is able to resolve inner external entities; i.e. if your document includes
+data from another file (using the <literal>SYSTEM</literal> attribute), this
+mode will find that file. However, this mode cannot resolve
+<literal>PUBLIC</literal> identifiers nor <literal>SYSTEM</literal> identifiers
+other than "file:".
+</para>
 	      </listitem>
 	      <listitem>
-		<para><literal>Channel ch</literal>: The document is read from
-the channel <literal>ch</literal>. This mode is not able to interpret
-file names of <literal>SYSTEM</literal> clauses, nor it can look up
-<literal>PUBLIC</literal> identifiers. </para>
-		<para>This mode is able to read UTF-8, UTF-16, and
-ISO-8859-1-encoded data.</para>
+		<para><literal>from_channel ch</literal>: The document is read
+from the channel <literal>ch</literal>. In general, this source also supports
+file URLs found in the document; however, by default only absolute URLs are
+understood. It is possible to associate an ID with the channel such that the
+resolver knows how to interpret relative URLs:
+
+<programlisting>
+from_channel ~id:(System "file:///dir/dir1/") ch
+</programlisting>
+
+There is also the ~system_encoding argument specifying how file names are
+encoded. - The example from above can also be written (but it is no
+longer possible to interpret relative URLs because there is no ~id argument,
+and computing this argument is relatively complicated because it must
+be a valid URL):
+
+<programlisting>
+let ch = open_in s in
+let src = from_channel ~system_encoding:`Enc_iso88591 ch in
+...;
+close_in ch
+</programlisting>
+</para>
 	      </listitem>
 	      <listitem>
-		<para><literal>Latin1 s</literal>: The string
+		<para><literal>from_string s</literal>: The string
 <literal>s</literal> is the document to parse. This mode is not able to
 interpret file names of <literal>SYSTEM</literal> clauses, nor it can look up
 <literal>PUBLIC</literal> identifiers. </para> 
 
-		<para>This mode is only able to read ISO-8859-1-encoded
-data.</para>
+		<para>Normally, the encoding of the string is detected as usual
+by analyzing the XML declaration, if any. However, it is also possible to
+specify the encoding directly:
+
+<programlisting>
+let src = from_string ~fixenc:`ISO-8859-2 s
+</programlisting>
+</para>
 	      </listitem>
 	      <listitem>
 		<para><literal>ExtID (id, r)</literal>: The document to parse
@@ -3731,17 +4366,22 @@ to read from (either a <literal>SYSTEM</literal> or <literal>PUBLIC</literal>
 clause). When opened, the resolver must return the
 <literal>Lexing.lexbuf</literal> that reads the characters.  The resolver can
 be closed, and it can be cloned. Furthermore, it is possible to tell the
-resolver which character set it should assume. (Note: Markup works internally
-with ISO-8859-1, so the resolver must recode the characters into this character
-set.)
+resolver which character set it should assume. - The following from Pxp_reader:
 
 <programlisting><![CDATA[
+exception Not_competent
+exception Not_resolvable of exn
+
 class type resolver =
   object
+    method init_rep_encoding : rep_encoding -> unit
+    method init_warner : collect_warnings -> unit
+    method rep_encoding : rep_encoding
     method open_in : ext_id -> Lexing.lexbuf
     method close_in : unit
     method change_encoding : string -> unit
     method clone : resolver
+    method close_all : unit
   end
 ]]></programlisting>
 
@@ -3750,11 +4390,19 @@ The resolver object must work as follows:</para>
 <para>
             <itemizedlist mark="bullet" spacing="compact">
 	      <listitem>
+		<para>When the parser is called, it tells the resolver the
+warner object and the internal encoding by invoking
+<literal>init_warner</literal> and <literal>init_rep_encoding</literal>. The
+resolver should store these values. The method <literal>rep_encoding</literal>
+should return the internal encoding.
+</para>
+	      </listitem>
+	      <listitem>
 		<para>If the parser wants to read from the resolver, it invokes
 the method <literal>open_in</literal>. Either the resolver succeeds, in which
 case the <literal>Lexing.lexbuf</literal> reading from the file or stream must
 be returned, or opening fails. In the latter case the method implementation
-should raise an exception.</para>
+should raise an exception (see below).</para>
 	      </listitem>
 	      <listitem>
 		<para>If the parser finishes reading, it calls the
@@ -3762,19 +4410,19 @@ should raise an exception.</para>
 	      </listitem>
 	      <listitem>
 		<para>If the parser finds a reference to another external
-entitiy in the input stream, it calls <literal>clone</literal> to get a second
-resolver which must be closed (not yet connected with an input stream). 
-The parser then invokes <literal>open_in</literal> and the other methods as
-described.</para>
+entity in the input stream, it calls <literal>clone</literal> to get a second
+resolver which must be initially closed (not yet connected with an input
+stream).  The parser then invokes <literal>open_in</literal> and the other
+methods as described.</para>
 	      </listitem>
 	      <listitem>
 		<para>If you already know the character set of the input
-stream, you should recode it to ISO-8859-1, and define the method
+stream, you should recode it to the internal encoding, and define the method
 <literal>change_encoding</literal> as an empty method.</para>
 	      </listitem>
 	      <listitem>
-		<para>If you want to support multiple character sets, the object
-must follow a much more complicated protocol. Directly after
+		<para>If you want to support multiple external character sets,
+the object must follow a much more complicated protocol. Directly after
 <literal>open_in</literal> has been called, the resolver must return a lexical
 buffer that only reads one byte at a time. This is only possible if you create
 the lexical buffer with <literal>Lexing.from_function</literal>; the function
@@ -3783,8 +4431,8 @@ reached. If the parser has read the first line of the document, it will invoke
 <literal>change_encoding</literal> to tell the resolver which character set to
 assume. From this moment, the object can return more than one byte at once. The
 argument of <literal>change_encoding</literal> is either the parameter of the
-"encoding" attribute of the XML declaration, or the empty string if there is not
-any XML declaration or if the declaration does not contain an encoding
+"encoding" attribute of the XML declaration, or the empty string if there is
+not any XML declaration or if the declaration does not contain an encoding
 attribute. </para>
 
 		<para>At the beginning the resolver must only return one
@@ -3795,17 +4443,252 @@ input stream the character set changes.</para>
 		<para>If you want automatic recognition of the character set,
 it is up to the resolver object to implement this.</para>
 	      </listitem>
-	    </itemizedlist></para>
+
+	      <listitem><para>If an error occurs, the parser calls the method
+<literal>close_all</literal> for the top-level resolver; this method should
+close itself (if not already done) and all clones.</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+	  <formalpara><title>Exceptions</title>
+	    <para>
+It is possible to chain resolvers such that when the first resolver is not able
+to open the entity, the other resolvers of the chain are tried in turn. The
+method <literal>open_in</literal> should raise the exception
+<literal>Not_competent</literal> to indicate that the next resolver should try
+to open the entity. If the resolver is able to handle the ID, but some other
+error occurs, the exception <literal>Not_resolvable</literal> should be raised
+to force that the chain breaks.
+	  </para>
+	  </formalpara>
+
 	<para>Example: How to define a resolver that is equivalent to
-Latin1.</para>
+from_string: ...</para>
 
 	</sect2>
+	
+	<sect2>
+	  <title>Predefined resolver components</title>
+	  <para>
+There are some classes in Pxp_reader that define common resolver behaviour.
 
+<programlisting><![CDATA[
+class resolve_read_this_channel : 
+    ?id:ext_id -> 
+    ?fixenc:encoding -> 
+    ?auto_close:bool -> 
+    in_channel -> 
+        resolver
+]]></programlisting>
+
+Reads from the passed channel (it may be even a pipe). If the
+<literal>~id</literal> argument is passed to the object, the created resolver
+accepts only this ID. Otherwise all IDs are accepted.  - Once the resolver has
+been cloned, it does not accept any ID. This means that this resolver cannot
+handle inner references to external entities. Note that you can combine this
+resolver with another resolver that can handle inner references (such as
+resolve_as_file); see class 'combine' below.  - If you pass the
+<literal>~fixenc</literal> argument, the encoding of the channel is set to the
+passed value, regardless of any auto-recognition or any XML declaration. - If
+<literal>~auto_close = true</literal> (which is the default), the channel is
+closed after use. If <literal>~auto_close = false</literal>, the channel is
+left open.
+ </para>
+
+	  <para>
+<programlisting><![CDATA[
+class resolve_read_any_channel : 
+    ?auto_close:bool -> 
+    channel_of_id:(ext_id -> (in_channel * encoding option)) -> 
+        resolver
+]]></programlisting>
+
+This resolver calls the function <literal>~channel_of_id</literal> to open a
+new channel for the passed <literal>ext_id</literal>. This function must either
+return the channel and the encoding, or it must fail with Not_competent.  The
+function must return <literal>None</literal> as encoding if the default
+mechanism to recognize the encoding should be used. It must return
+<literal>Some e</literal> if it is already known that the encoding of the
+channel is <literal>e</literal>.  If <literal>~auto_close = true</literal>
+(which is the default), the channel is closed after use. If
+<literal>~auto_close = false</literal>, the channel is left open.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+class resolve_read_url_channel :
+    ?base_url:Neturl.url ->
+    ?auto_close:bool -> 
+    url_of_id:(ext_id -> Neturl.url) -> 
+    channel_of_url:(Neturl.url -> (in_channel * encoding option)) -> 
+        resolver
+]]></programlisting>
+
+When this resolver gets an ID to read from, it calls the function
+<literal>~url_of_id</literal> to get the corresponding URL. This URL may be a
+relative URL; however, a URL scheme must be used which contains a path.  The
+resolver converts the URL to an absolute URL if necessary.  The second
+function, <literal>~channel_of_url</literal>, is fed with the absolute URL as
+input. This function opens the resource to read from, and returns the channel
+and the encoding of the resource.
+</para>
+<para>
+Both functions, <literal>~url_of_id</literal> and
+<literal>~channel_of_url</literal>, can raise Not_competent to indicate that
+the object is not able to read from the specified resource. However, there is a
+difference: A Not_competent from <literal>~url_of_id</literal> is left as it
+is, but a Not_competent from <literal>~channel_of_url</literal> is converted to
+Not_resolvable. So only <literal>~url_of_id</literal> decides which URLs are
+accepted by the resolver and which not.
+</para>
+<para>
+The function <literal>~channel_of_url</literal> must return
+<literal>None</literal> as encoding if the default mechanism to recognize the
+encoding should be used. It must return <literal>Some e</literal> if it is
+already known that the encoding of the channel is <literal>e</literal>.
+</para>
+<para>
+If <literal>~auto_close = true</literal> (which is the default), the channel is
+closed after use. If <literal>~auto_close = false</literal>, the channel is
+left open.
+</para>
+<para>
+Objects of this class contain a base URL relative to which relative URLs are
+interpreted. When creating a new object, you can specify the base URL by
+passing it as <literal>~base_url</literal> argument. When an existing object is
+cloned, the base URL of the clone is the URL of the original object. - Note
+that the term "base URL" has a strict definition in RFC 1808.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+class resolve_read_this_string : 
+    ?id:ext_id -> 
+    ?fixenc:encoding -> 
+    string -> 
+        resolver
+]]></programlisting>
+
+Reads from the passed string. If the <literal>~id</literal> argument is passed
+to the object, the created resolver accepts only this ID. Otherwise all IDs are
+accepted. - Once the resolver has been cloned, it does not accept any ID. This
+means that this resolver cannot handle inner references to external
+entities. Note that you can combine this resolver with another resolver that
+can handle inner references (such as resolve_as_file); see class 'combine'
+below. - If you pass the <literal>~fixenc</literal> argument, the encoding of
+the string is set to the passed value, regardless of any auto-recognition or
+any XML declaration.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+class resolve_read_any_string : 
+    string_of_id:(ext_id -> (string * encoding option)) -> 
+        resolver
+]]></programlisting>
+
+This resolver calls the function <literal>~string_of_id</literal> to get the
+string for the passed <literal>ext_id</literal>. This function must either
+return the string and the encoding, or it must fail with Not_competent.  The
+function must return <literal>None</literal> as encoding if the default
+mechanism to recognize the encoding should be used. It must return
+<literal>Some e</literal> if it is already known that the encoding of the
+string is <literal>e</literal>.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+class resolve_as_file :
+    ?file_prefix:[ `Not_recognized | `Allowed | `Required ] ->
+    ?host_prefix:[ `Not_recognized | `Allowed | `Required ] ->
+    ?system_encoding:encoding ->
+    ?url_of_id:(ext_id -> Neturl.url) -> 
+    ?channel_of_url: (Neturl.url -> (in_channel * encoding option)) ->
+    unit -> 
+        resolver
+]]></programlisting>
+Reads from the local file system. Every file name is interpreted as
+file name of the local file system, and the referred file is read.
+</para>
+<para>
+The full form of a file URL is: file://host/path, where
+'host' specifies the host system where the file identified 'path'
+resides. host = "" or host = "localhost" are accepted; other values
+will raise Not_competent. The standard for file URLs is 
+defined in RFC 1738.
+</para>
+<para>
+Option <literal>~file_prefix</literal>: Specifies how the "file:" prefix of
+file names is handled:
+            <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para><literal>`Not_recognized:</literal>The prefix is not
+recognized.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>`Allowed:</literal> The prefix is allowed but
+not required (the default).</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>`Required:</literal> The prefix is
+required.</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+<para>
+Option <literal>~host_prefix:</literal> Specifies how the "//host" phrase of
+file names is handled:
+            <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para><literal>`Not_recognized:</literal>The prefix is not
+recognized.</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>`Allowed:</literal> The prefix is allowed but
+not required (the default).</para>
+	      </listitem>
+	      <listitem>
+		<para><literal>`Required:</literal> The prefix is
+required.</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+<para>
+Option <literal>~system_encoding:</literal> Specifies the encoding of file
+names of the local file system. Default: UTF-8.
+</para>
+<para>
+Options <literal>~url_of_id</literal>, <literal>~channel_of_url</literal>: Not
+for the casual user!
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+class combine : 
+    ?prefer:resolver -> 
+    resolver list -> 
+        resolver
+]]></programlisting>
+
+Combines several resolver objects. If a concrete entity with an
+<literal>ext_id</literal> is to be opened, the combined resolver tries the
+contained resolvers in turn until a resolver accepts opening the entity
+(i.e. it does not raise Not_competent on open_in).
+</para>
+<para>
+Clones: If the 'clone' method is invoked before 'open_in', all contained
+resolvers are cloned separately and again combined. If the 'clone' method is 
+invoked after 'open_in' (i.e. while the resolver is open), additionally the
+clone of the active resolver is flagged as being preferred, i.e. it is tried
+first. 
+</para>
+
+	</sect2>
       </sect1>
 
       <sect1>
 	<title>The DTD classes</title> <para><emphasis>Sorry, not yet
-written. Perhaps the interface definition of Markup_dtd expresses the same:
+written. Perhaps the interface definition of Pxp_dtd expresses the same:
 </emphasis></para>
 	<para>
 <programlisting>&markup-dtd1.mli;&markup-dtd2.mli;</programlisting>
@@ -3814,7 +4697,392 @@ written. Perhaps the interface definition of Markup_dtd expresses the same:
 
       <sect1>
 	<title>Invoking the parser</title>
-	<para><emphasis>Sorry, not yet written.</emphasis></para>
+
+	<para>Here a description of Pxp_yacc.</para>
+
+	<sect2>
+	  <title>Defaults</title>
+	  <para>The following defaults are available:
+
+<programlisting>
+val default_config : config
+val default_extension : ('a node extension) as 'a
+val default_spec : ('a node extension as 'a) spec
+</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Parsing functions</title>
+	  <para>In the following, the term "closed document" refers to
+an XML structure like
+
+<programlisting>
+&lt;!DOCTYPE ... [ <replaceable>declarations</replaceable> ] &gt;
+&lt;<replaceable>root</replaceable>&gt;
+...
+&lt;/<replaceable>root</replaceable>&gt;
+</programlisting>
+
+The term "fragment" refers to an XML structure like
+
+<programlisting>
+&lt;<replaceable>root</replaceable>&gt;
+...
+&lt;/<replaceable>root</replaceable>&gt;
+</programlisting>
+
+i.e. only to one isolated element instance.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val parse_dtd_entity : config -> source -> dtd
+]]></programlisting>
+
+Parses the declarations which are contained in the entity, and returns them as
+<literal>dtd</literal> object.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val extract_dtd_from_document_entity : config -> source -> dtd
+]]></programlisting>
+
+Extracts the DTD from a closed document. Both the internal and the external
+subsets are extracted and combined to one <literal>dtd</literal> object. This
+function does not parse the whole document, but only the parts that are
+necessary to extract the DTD.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val parse_document_entity : 
+    ?transform_dtd:(dtd -> dtd) ->
+    ?id_index:('ext index) ->
+    config -> 
+    source -> 
+    'ext spec -> 
+        'ext document
+]]></programlisting>
+
+Parses a closed document and validates it against the DTD that is contained in
+the document (internal and external subsets). The option
+<literal>~transform_dtd</literal> can be used to transform the DTD in the
+document, and to use the transformed DTD for validation. If
+<literal>~id_index</literal> is specified, an index of all ID attributes is
+created.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val parse_wfdocument_entity : 
+    config -> 
+    source -> 
+    'ext spec -> 
+        'ext document
+]]></programlisting>
+
+Parses a closed document, but checks it only on well-formedness.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val parse_content_entity  : 
+    ?id_index:('ext index) ->
+    config ->  
+    source -> 
+    dtd -> 
+    'ext spec -> 
+        'ext node
+]]></programlisting>
+
+Parses a fragment, and validates the element.
+</para>
+
+	  <para>
+<programlisting><![CDATA[
+val parse_wfcontent_entity : 
+    config -> 
+    source -> 
+    'ext spec -> 
+        'ext node
+]]></programlisting>
+
+Parses a fragment, but checks it only on well-formedness.
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Configuration options</title>
+	  <para>
+
+<programlisting><![CDATA[
+type config =
+    { warner : collect_warnings;
+      errors_with_line_numbers : bool;
+      enable_pinstr_nodes : bool;
+      enable_super_root_node : bool;
+      enable_comment_nodes : bool;
+      encoding : rep_encoding;
+      recognize_standalone_declaration : bool;
+      store_element_positions : bool;
+      idref_pass : bool;
+      validate_by_dfa : bool;
+      accept_only_deterministic_models : bool;
+      ...
+    }
+]]></programlisting>
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem><para><literal>warner:</literal>The parser prints
+warnings by invoking the method <literal>warn</literal> for this warner
+object. (Default: all warnings are dropped)</para>
+	      </listitem>
+	      <listitem><para><literal>errors_with_line_numbers:</literal>If
+true, errors contain line numbers; if false, errors contain only byte
+positions. The latter mode is faster. (Default: true)</para>
+	      </listitem>
+	      <listitem><para><literal>enable_pinstr_nodes:</literal>If true,
+the parser creates extra nodes for processing instructions. If false,
+processing instructions are simply added to the element or document surrounding
+the instructions. (Default: false)</para>
+	      </listitem>
+	      <listitem><para><literal>enable_super_root_node:</literal>If
+true, the parser creates an extra node which is the parent of the root of the
+document tree. This node is called super root; it is an element with type
+<literal>T_super_root</literal>. - If there are processing instructions outside
+the root element and outside the DTD, they are added to the super root instead
+of the document. - If false, the super root node is not created. (Default:
+false)</para>
+	      </listitem>
+	      <listitem><para><literal>enable_comment_nodes:</literal>If true,
+the parser creates nodes for comments with type <literal>T_comment</literal>;
+if false, such nodes are not created. (Default: false)</para>
+	      </listitem>
+	      <listitem><para><literal>encoding:</literal>Specifies the
+internal encoding of the parser. Most strings are then represented according to
+this encoding; however there are some exceptions (especially
+<literal>ext_id</literal> values which are always UTF-8 encoded).
+(Default: `Enc_iso88591)</para>
+	      </listitem>
+	      <listitem><para><literal>
+recognize_standalone_declaration:</literal> If true and if the parser is
+validating, the <literal>standalone="yes"</literal> declaration forces that it
+is checked whether the document is a standalone document. - If false, or if the
+parser is in well-formedness mode, such declarations are ignored.
+(Default: true)
+</para>
+	      </listitem>
+	      <listitem><para><literal>store_element_positions:</literal> If
+true, for every non-data node the source position is stored. If false, the
+position information is lost. If available, you can get the positions of nodes
+by invoking the <literal>position</literal> method.
+(Default: true)</para>
+	      </listitem>
+	      <listitem><para><literal>idref_pass:</literal>If true and if
+there is an ID index, the parser checks whether every IDREF or IDREFS attribute
+refer to an existing node; this requires that the parser traverses the whole
+doument tree. If false, this check is left out. (Default: false)</para>
+	      </listitem>
+	      <listitem><para><literal>validate_by_dfa:</literal>If true and if
+the content model for an element type is deterministic, a deterministic finite
+automaton is used to validate whether the element contents match the content
+model of the type. If false, or if a DFA is not available, a backtracking
+algorithm is used for validation. (Default: true)
+</para>
+	      </listitem>
+	      <listitem><para><literal>
+accept_only_deterministic_models:</literal> If true, only deterministic content
+models are accepted; if false, any syntactically correct content models can be
+processed. (Default: true)</para>
+	      </listitem>
+	    </itemizedlist></para>
+	</sect2>
+
+	<sect2>
+	  <title>Which configuration should I use?</title>
+	  <para>First, I recommend to vary the default configuration instead of
+creating a new configuration record. For instance, to set
+<literal>idref_pass</literal> to <literal>true</literal>, change the default
+as in:
+<programlisting>
+let config = { default_config with idref_pass = true }
+</programlisting>
+The background is that I can add more options to the record in future versions
+of the parser without breaking your programs.</para>
+
+	  <formalpara>
+	    <title>Do I need extra nodes for processing instructions?</title>
+<para>By default, such nodes are not created. This does not mean that the
+processing instructions are lost; however, you cannot find out the exact
+location where they occur. For example, the following XML text
+
+<programlisting><![CDATA[
+<x><?pi1?><y/><?pi2?></x> 
+]]></programlisting> 
+
+will normally create one element node for <literal>x</literal> containing
+<emphasis>one</emphasis> subnode for <literal>y</literal>. The processing
+instructions are attached to <literal>x</literal> in a separate hash table; you
+can access them using <literal>x # pinstr "pi1"</literal> and <literal>x #
+pinstr "pi2"</literal>, respectively. The information is lost where the
+instructions occur within <literal>x</literal>.
+</para>
+	  </formalpara>
+
+	    <para>If the option <literal>enable_pinstr_nodes</literal> is
+turned on, the parser creates extra nodes <literal>pi1</literal> and
+<literal>pi2</literal> such that the subnodes of <literal>x</literal> are now: 
+
+<programlisting><![CDATA[
+x # sub_nodes = [ pi1; y; pi2 ]
+]]></programlisting>
+
+The extra nodes contain the processing instructions in the usual way, i.e. you
+can access them using <literal>pi1 # pinstr "pi1"</literal> and <literal>pi2 #
+pinstr "pi2"</literal>, respectively.
+</para>
+
+	  <para>Note that you will need an exemplar for the PI nodes (see
+<literal>make_spec_from_alist</literal>).</para> 
+
+	  <formalpara>
+	    <title>Do I need a super root node?</title>
+	    <para>By default, there is no super root node. The
+<literal>document</literal> object refers directly to the node representing the
+root element of the document, i.e.
+
+<programlisting><![CDATA[
+doc # root = r
+]]></programlisting>
+
+if <literal>r</literal> is the root node. This is sometimes inconvenient: (1)
+Some algorithms become simpler if every node has a parent, even the root
+node. (2) Some standards such as XPath call the "root node" the node whose
+child represents the root of the document. (3) The super root node can serve
+as a container for processing instructions outside the root element. Because of
+these reasons, it is possible to create an extra super root node, whose child
+is the root node:
+
+<programlisting><![CDATA[
+doc # root = sr         &&
+sr # sub_nodes = [ r ]
+]]></programlisting>
+
+When extra nodes are also created for processing instructions, these nodes can
+be added to the super root node if they occur outside the root element (reason
+(3)), and the order reflects the order in the source text.</para>
+	  </formalpara>
+
+	  <para>Note that you will need an exemplar for the super root node
+(see <literal>make_spec_from_alist</literal>).</para>
+
+	  <formalpara>
+	    <title>What is the effect of the UTF-8 encoding?</title>
+	    <para>By default, the parser represents strings (with few
+exceptions) as ISO-8859-1 strings. These are well-known, and there are tools
+and fonts for this encoding.</para>
+	  </formalpara>
+	  <para>However, internationalization may require that you switch over
+to UTF-8 encoding. In most environments, the immediate effect will be that you
+cannot read strings with character codes >= 160 any longer; your terminal will
+only show funny glyph combinations. It is strongly recommended to install
+Unicode fonts (<ulink URL="http://czyborra.com/unifont/">GNU Unifont</ulink>, 
+<ulink URL="http://www.cl.cam.ac.uk/~mgk25/download/ucs-fonts.tar.gz">
+Markus Kuhn's fonts</ulink>) and <ulink
+URL="http://myweb.clark.net/pub/dickey/xterm/xterm.html">terminal emulators
+that can handle UTF-8 byte sequences</ulink>. Furthermore, a Unicode editor may
+be helpful (such as <ulink
+URL="ftp://metalab.unc.edu/pub/Linux/apps/editors/X/">Yudit</ulink>). There are
+also <ulink URL="http://www.cl.cam.ac.uk/~mgk25/unicode.html">FAQ</ulink> by
+Markus Kuhn.
+</para>
+	  <para>By setting <literal>encoding</literal> to
+<literal>`Enc_utf8</literal> all strings originating from the parsed XML
+document are represented as UTF-8 strings. This includes not only character
+data and attribute values but also element names, attribute names and so on, as
+it is possible to use any Unicode letter to form such names.  Strictly
+speaking, PXP is only XML-compliant if the UTF-8 mode is used; otherwise it
+will have difficulties when validating documents containing
+non-ISO-8859-1-names.
+</para>
+
+	  <para>This mode does not have any impact on the external
+representation of documents. The character set assumed when reading a document
+is set in the XML declaration, and character set when writing a document must
+be passed to the <literal>write</literal> method.
+</para>
+
+	  <formalpara>
+	    <title>How do I check that nodes exist which are referred by IDREF attributes?</title>
+	    <para>First, you must create an index of all occurring ID
+attributes:
+
+<programlisting><![CDATA[
+let index = new hash_index
+]]></programlisting>
+
+This index must be passed to the parsing function:
+
+<programlisting><![CDATA[
+parse_document_entity
+  ~id_index:(index :> index)
+  config source spec
+]]></programlisting>
+
+Next, you must turn on the <literal>idref_pass</literal> mode:
+
+<programlisting><![CDATA[
+let config = { default_config with idref_pass = true }
+]]></programlisting>
+
+Note that now the whole document tree will be traversed, and every node will be
+checked for IDREF and IDREFS attributes. If the tree is big, this may take some
+time.
+</para>
+	  </formalpara>
+
+	  <formalpara>
+	    <title>What are deterministic content models?</title>
+	    <para>These type of models can speed up the validation checks;
+furthermore they ensure SGML-compatibility. In particular, a content model is
+deterministic if the parser can determine the actually used alternative by
+inspecting only the current token. For example, this element has
+non-deterministic contents:
+
+<programlisting><![CDATA[
+<!ELEMENT x ((u,v) | (u,y+) | v)>
+]]></programlisting>
+
+If the first element in <literal>x</literal> is <literal>u</literal>, the
+parser does not know which of the alternatives <literal>(u,v)</literal> or
+<literal>(u,y+)</literal> will work; the parser must also inspect the second
+element to be able to distinguish between the alternatives. Because such
+look-ahead (or "guessing") is required, this example is
+non-deterministic.</para>
+	  </formalpara>
+
+	  <para>The XML standard demands that content models must be
+deterministic. So it is recommended to turn the option
+<literal>accept_only_deterministic_models</literal> on; however, PXP can also
+process non-deterministic models using a backtracking algorithm.</para>
+
+	  <para>Deterministic models ensure that validation can be performed in
+linear time. In order to get the maximum benefits, PXP also implements a
+special validator that profits from deterministic models; this is the
+deterministic finite automaton (DFA). This validator is enabled per element
+type if the element type has a deterministic model and if the option
+<literal>validate_by_dfa</literal> is turned on.</para>
+
+	  <para>In general, I expect that the DFA method is faster than the
+backtracking method; especially in the worst case the DFA takes only linear
+time. However, if the content model has only few alternatives and the
+alternatives do not nest, the backtracking algorithm may be better.</para>
+
+	</sect2>
+
+
       </sect1>
 
 
