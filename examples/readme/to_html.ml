@@ -1,13 +1,16 @@
-(* $Id: to_html.ml,v 1.1 1999/08/22 22:29:32 gerd Exp $
+(* $Id: to_html.ml,v 1.2 1999/09/12 20:09:32 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
+(*$ readme.code.header *)
 open Markup_types
 open Markup_document
+(*$-*)
 
 
+(*$ readme.code.footnote-printer *)
 class type footnote_printer =
   object
     method footnote_to_html : store_type -> out_channel -> unit
@@ -19,8 +22,10 @@ and store_type =
     method print_footnotes : out_channel -> unit
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.store *)
 class store =
   object (self)
 
@@ -46,8 +51,11 @@ class store =
 
   end
 ;;
+(*$-*)
 
 
+
+(*$ readme.code.escape-html *)
 let escape_html s =
   Str.global_substitute
     (Str.regexp "<\\|>\\|&\\|\"")
@@ -60,8 +68,10 @@ let escape_html s =
       | _ -> assert false)
     s
 ;;
+(*$-*)
 
 
+(*$ readme.code.shared *)
 class virtual shared =
   object (self)
 
@@ -84,8 +94,10 @@ class virtual shared =
 
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.only-data *)
 class only_data =
   object (self)
     inherit shared
@@ -94,8 +106,10 @@ class only_data =
       output_string ch (escape_html (self # node # data))
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.no-markup *)
 class no_markup =
   object (self)
     inherit shared
@@ -106,8 +120,10 @@ class no_markup =
 	(self # node # sub_nodes)
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.readme *)
 class readme =
   object (self)
     inherit shared
@@ -123,10 +139,55 @@ class readme =
 	    Value s -> s
 	  | _ -> assert false
       in
+      let html_header, _ =
+	try (self # node # dtd # par_entity "readme:html:header") 
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_trailer, _ =
+	try (self # node # dtd # par_entity "readme:html:trailer")
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_bgcolor, _ =
+	try (self # node # dtd # par_entity "readme:html:bgcolor")
+            # replacement_text
+	with Validation_error _ -> "white", false in
+      let html_textcolor, _ =
+	try (self # node # dtd # par_entity "readme:html:textcolor")
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_alinkcolor, _ =
+	try (self # node # dtd # par_entity "readme:html:alinkcolor")
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_vlinkcolor, _ =
+	try (self # node # dtd # par_entity "readme:html:vlinkcolor")
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_linkcolor, _ =
+	try (self # node # dtd # par_entity "readme:html:linkcolor")
+            # replacement_text
+	with Validation_error _ -> "", false in
+      let html_background, _ =
+	try (self # node # dtd # par_entity "readme:html:background")
+            # replacement_text
+	with Validation_error _ -> "", false in
+
       output_string ch "<html><header><title>\n";
       output_string ch (escape_html title);
       output_string ch "</title></header>\n";
-      output_string ch "<body bgcolor=\"white\">\n";
+      output_string ch "<body ";
+      List.iter
+	(fun (name,value) ->
+	   if value <> "" then 
+	     output_string ch (name ^ "=\"" ^ escape_html value ^ "\" "))
+	[ "bgcolor",    html_bgcolor;
+	  "text",       html_textcolor;
+	  "link",       html_linkcolor;
+	  "alink",      html_alinkcolor;
+	  "vlink",      html_vlinkcolor;
+	];
+      output_string ch ">\n";
+      output_string ch html_header;
       output_string ch "<h1>";
       output_string ch (escape_html title);
       output_string ch "</h1>\n";
@@ -137,12 +198,15 @@ class readme =
       (* now process footnotes *)
       store # print_footnotes ch;
       (* trailer *)
+      output_string ch html_trailer;
       output_string ch "</html>\n";
 
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.section *)
 class section the_tag =
   object (self)
     inherit shared
@@ -167,8 +231,10 @@ class section the_tag =
 class sect1 = section "h1";;
 class sect2 = section "h3";;
 class sect3 = section "h4";;
+(*$-*)
 
 
+(*$ readme.code.map-tag *)
 class map_tag the_target_tag =
   object (self)
     inherit shared
@@ -188,8 +254,10 @@ class p = map_tag "p";;
 class em = map_tag "b";;
 class ul = map_tag "ul";;
 class li = map_tag "li";;
+(*$-*)
 
 
+(*$ readme.code.br *)
 class br =
   object (self)
     inherit shared
@@ -201,8 +269,10 @@ class br =
 	(self # node # sub_nodes);
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.code *)
 class code =
   object (self)
     inherit shared
@@ -231,8 +301,10 @@ class code =
 
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.a *)
 class a =
   object (self)
     inherit shared
@@ -259,8 +331,10 @@ class a =
 	
   end
 ;;
+(*$-*)
 
 
+(*$ readme.code.footnote *)
 class footnote =
   object (self)
     inherit shared
@@ -295,9 +369,12 @@ class footnote =
  
   end
 ;;
+(*$-*)
+
 
 (**********************************************************************)
 
+(*$ readme.code.tag-map *)
 open Markup_yacc
 
 let tag_map =
@@ -336,11 +413,16 @@ let tag_map =
     default_element = new element_impl (new no_markup);
   }
 ;;
+(*$-*)
+
 
 (* ======================================================================
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.2  1999/09/12 20:09:32  gerd
+ * 	Added section marks.
+ *
  * Revision 1.1  1999/08/22 22:29:32  gerd
  * 	Initial revision.
  *
