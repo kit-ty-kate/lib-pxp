@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<!-- $Id: reptilsheet-style.xml,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+<!-- $Id: reptilsheet-style.xml,v 1.2 2001/07/02 22:50:26 gerd Exp $ -->
 
 <!DOCTYPE application SYSTEM "ds-style.dtd" [
 <!ENTITY h1.font  '-*-helvetica-bold-r-*-*-18-*-*-*-*-*-*-*'>
@@ -16,43 +16,43 @@
 <!ENTITY headline
   '<vbox>
      <label font="&h2.font;" fgcolor="darkgreen">Anwendungskenndaten</label>
-     <vspace width="2mm"/>
+     <vspace height="2mm"/>
      <hbox>
         <hbox bgcolor="black">
            <hspace width="18cm"/>
-           <vbox><vspace width="2px"/></vbox>
+           <vbox><vspace height="2px"/></vbox>
         </hbox>
         <hspace width="5mm"/>
      </hbox>
-     <vspace width="3mm"/>
+     <vspace height="3mm"/>
    </vbox>'>
 
 <!ENTITY hilfe.headline
   '<vbox>
      <label font="&h2.font;" fgcolor="darkgreen">Hilfe</label>
-     <vspace width="2mm"/>
+     <vspace height="2mm"/>
      <hbox>
         <hbox bgcolor="black">
            <hspace width="18cm"/>
-           <vbox><vspace width="2px"/></vbox>
+           <vbox><vspace height="2px"/></vbox>
         </hbox>
         <hspace width="5mm"/>
      </hbox>
-     <vspace width="3mm"/>
+     <vspace height="3mm"/>
    </vbox>'>
 
 <!ENTITY info.headline
   '<vbox>
      <label font="&h2.font;" fgcolor="darkgreen">Über xmlforms</label>
-     <vspace width="2mm"/>
+     <vspace height="2mm"/>
      <hbox>
         <hbox bgcolor="black">
            <hspace width="18cm"/>
-           <vbox><vspace width="2px"/></vbox>
+           <vbox><vspace height="2px"/></vbox>
         </hbox>
         <hspace width="5mm"/>
      </hbox>
-     <vspace width="3mm"/>
+     <vspace height="3mm"/>
    </vbox>'>
 
 <!ENTITY footline
@@ -60,11 +60,11 @@
      <hbox>
         <hbox bgcolor="black">
            <hspace width="18cm"/>
-           <vbox><vspace width="2px"/></vbox>
+           <vbox><vspace height="2px"/></vbox>
         </hbox>
         <hspace width="5mm"/>
      </hbox>
-     <vspace width="2mm"/>
+     <vspace height="2mm"/>
      <hbox>
        <button bgcolor="&bg.button;" label="zurück" action="list-prev"/>
        <button bgcolor="&bg.button;" label="weiter" action="list-next"/>
@@ -79,11 +79,11 @@
      <hbox>
         <hbox bgcolor="black">
            <hspace width="18cm"/>
-           <vbox><vspace width="2px"/></vbox>
+           <vbox><vspace height="2px"/></vbox>
         </hbox>
         <hspace width="5mm"/>
      </hbox>
-     <vspace width="2mm"/>
+     <vspace height="2mm"/>
      <hbox>
        <button bgcolor="&bg.button;" label="zurück" action="hist-prev"/>
        <hspace width="0pt" fill="yes"/>
@@ -105,7 +105,7 @@
 >
 
   <mask name="startseite">
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
@@ -113,7 +113,7 @@
 	  <label>Projekt REPTIL</label>
 	  <label>Anwendungskenndaten</label>
 	</vbox>
-	<vspace width="1cm"/>
+	<vspace height="1cm"/>
 	<vbox>
 	  <hbox>
 	    <hbox width="6cm" halign="right">
@@ -140,7 +140,7 @@
 	    <entry font="&in.font;" textwidth="40" slot="app.owner"/>
 	  </hbox>
 	</vbox>
-	<vspace width="1cm"/>
+	<vspace height="1cm"/>
 	<hbox>
 	  <hspace width="3cm"/>
 	  <hbox width="8cm">
@@ -164,7 +164,7 @@
             </vbox>
           </hbox>
 	</hbox>
-	<vspace width="0px" fill="yes"/>
+	<vspace height="0px" fill="yes"/>
 	<hbox>
 	  <hspace width="0px" fill="yes"/>
 	</hbox>
@@ -181,14 +181,14 @@
   <sequence name="kenndaten-liste">
     <mask name="verzeichnisse">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Verzeichnisse</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Installations-Verzeichnisse:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -197,7 +197,7 @@
 		     textheight="3"
 		     slot="app.dirs.install"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Log-Verzeichnis:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -205,7 +205,7 @@
 		   textwidth="70"
 	           slot="app.dirs.log"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Spool-Verzeichnis:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -213,7 +213,7 @@
 		   textwidth="70"
 	           slot="app.dirs.spool"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.verzeichnisse"/>
@@ -221,7 +221,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -231,14 +231,14 @@
 
     <mask name="datenbereiche">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Datenbereiche</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Verzeichnisse, Speicher- und Archivierungsbedarf:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -247,7 +247,7 @@
 		     textheight="10"
 		     slot="app.dirs.import"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.datenbereiche"/>
@@ -255,7 +255,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -265,14 +265,14 @@
 
     <mask name="datenbanken">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Datenbanken</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Namen und Größe der Datenbanken:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -281,7 +281,7 @@
 		     textheight="10"
 		     slot="app.db.specs"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.datenbanken"/>
@@ -289,7 +289,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -299,14 +299,14 @@
 
     <mask name="netzverbindungen">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Netzwerk-Verbindungen</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Beschreibung der Verbindungen (zu welchem System, Protokoll) ausser www:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -315,7 +315,7 @@
 		     textheight="10"
 		     slot="app.net.connections"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.netzverbindungen"/>
@@ -323,7 +323,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -333,14 +333,14 @@
 
     <mask name="user-ids">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">User-IDs</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Welche User-IDs werden ausser dri, www, informix noch benötigt?</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -349,7 +349,7 @@
 		     textheight="10"
 		     slot="app.sys.users"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.user-ids"/>
@@ -357,7 +357,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -367,14 +367,14 @@
 
     <mask name="daemonen">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Daemonen</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Welche zusätzlichen Daemonen müssen gestartet werden?</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -383,7 +383,7 @@
 		     textheight="3"
 		     slot="app.sys.daemons.required"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Welche Daemonen werden bereitgestellt; wie heissen die Start/Stopp-Skripte?</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -392,7 +392,7 @@
 		     textheight="3"
 		     slot="app.sys.daemons.provided"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.daemonen"/>
@@ -400,7 +400,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -410,14 +410,14 @@
 
     <mask name="www-server">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">WWW-Server</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Welche Teile liegen im repsec-Bereich?</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -426,7 +426,7 @@
 		     textheight="3"
 		     slot="app.sys.www.repsec"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Weitere besondere Konfigurationen (Plugins etc):</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -435,7 +435,7 @@
 		     textheight="3"
 		     slot="app.sys.www.config"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.www-server"/>
@@ -443,7 +443,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -453,14 +453,14 @@
 
     <mask name="historie">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Historie</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <hbox>
 	    <label>Beschreibung der </label>
 	    <label font="&dfl.bold.font;">benutzersichtbaren</label>
@@ -477,7 +477,7 @@
 	    <hspace width="1cm"/>
 	    <label>(Neue Einträge bitte mit Datum jeweils am Anfang einfügen.)</label>
           </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.historie"/>
@@ -485,7 +485,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -495,14 +495,14 @@
 
     <mask name="doku">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Dokumentation</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>URLs oder öffentliche Verzeichnisse mit Dokumentation:</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -511,7 +511,7 @@
 		     textheight="10"
 		     slot="app.historie"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.doku"/>
@@ -519,7 +519,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -529,14 +529,14 @@
 
     <mask name="paketierung">
       <!-- ************************** HEADER ************************** -->
-      <vspace width="5mm"/>
+      <vspace height="5mm"/>
       <hbox>
 	<hspace width="5mm"/>
 	<vbox>
 	  &headline;
 	  <!-- ************************** CONTENT ************************* -->
 	  <label font="&h1.font;">Paketierung</label>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Pakete, die zu dieser Anwendung gehören (Langnamen):</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -545,7 +545,7 @@
 		     textheight="2"
 		     slot="app.pkg.this"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <label>Pakete, die als installiert vorausgesetzt werden (ausser Basis-Paketen):</label>
 	  <hbox>
 	    <hspace width="1cm"/>
@@ -554,7 +554,7 @@
 		     textheight="5"
 		     slot="app.app.required"/>
 	  </hbox>
-	  <vspace width="3mm"/>
+	  <vspace height="3mm"/>
 	  <button bgcolor="&bg.button;"
 		  label="Hilfe"
 		  goto="hilfe.paketierung"/>
@@ -562,7 +562,7 @@
 	</vbox>
       </hbox>
       <!-- ************************** FOOTER ************************** -->
-      <vspace width="0px" fill="yes"/>
+      <vspace height="0px" fill="yes"/>
       <hbox>
 	<hspace width="5mm"/>
 	&footline;
@@ -579,14 +579,14 @@
 
   <mask name="hilfe.verzeichnisse">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Verzeichnisse</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -600,7 +600,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -609,14 +609,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.datenbereiche">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Datenbereiche</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -627,7 +627,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -636,14 +636,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.datenbanken">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Datenbanken</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -654,7 +654,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -663,14 +663,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.netzverbindungen">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Netzwerk-Verbindungen</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -681,7 +681,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -690,14 +690,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.user-ids">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">User-IDs</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -708,7 +708,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -718,14 +718,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.daemonen">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Daemonen</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -736,7 +736,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -746,14 +746,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.www-server">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">WWW-Server</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -764,7 +764,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -774,14 +774,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.historie">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Historie</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -792,7 +792,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -802,14 +802,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.doku">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Dokumentation</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -820,7 +820,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -830,14 +830,14 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="hilfe.paketierung">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&hilfe.headline;
 	<!-- ************************** CONTENT ************************* -->
 	<label font="&h1.font;">Paketierung</label>
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -848,7 +848,7 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &hilfe.footline;
@@ -863,13 +863,13 @@ Mal schauen ob umgebrochen wird wenn die Zeile so lang ist dass sie nicht mehr i
 
   <mask name="info">
     <!-- ************************** HEADER ************************** -->
-    <vspace width="5mm"/>
+    <vspace height="5mm"/>
     <hbox>
       <hspace width="5mm"/>
       <vbox>
 	&info.headline;
 	<!-- ************************** CONTENT ************************* -->
-	<vspace width="3mm"/>
+	<vspace height="3mm"/>
         <textbox fgcolor="&fg.hilfe;"
 		 bgcolor="&bg.hilfe;"
 		 textheight="15"
@@ -1000,7 +1000,7 @@ http://www.npc.de/ocaml/linkdb.
       </vbox>
     </hbox>
     <!-- ************************** FOOTER ************************** -->
-    <vspace width="0px" fill="yes"/>
+    <vspace height="0px" fill="yes"/>
     <hbox>
       <hspace width="5mm"/>
       &info.footline;

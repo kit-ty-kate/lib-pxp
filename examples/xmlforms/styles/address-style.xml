@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<!-- $Id: address-style.xml,v 1.1 1999/08/21 19:11:07 gerd Exp $ -->
+<!-- $Id: address-style.xml,v 1.2 2001/07/02 22:50:26 gerd Exp $ -->
 
 <!DOCTYPE application SYSTEM "ds-style.dtd" [
 <!ENTITY h1.font  '-*-helvetica-bold-r-*-*-18-*-*-*-*-*-*-*'>
@@ -344,7 +344,7 @@ quickly.
 Version <unknown>,
 written by Gerd Stolpmann
 
-Contact: Gerd.Stolpmann@darmstadt.netsurf.de
+Contact: gerd@gerd-stolpmann.de
 ]]></textbox>
 	<!-- ************************************************************ -->
       </vbox>
