@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.4 2000/07/14 13:56:49 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.5 2000/07/16 16:34:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -165,12 +165,17 @@ class dtd :
        * but other exceptions are possible, too.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> bool -> unit
-      (* write_compact_as_latin1 os doctype:
-       * Writes the DTD as Latin 1 string to 'os'. If 'doctype', a 
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> bool -> unit
+      (* write_compact_as_latin1 os enc doctype:
+       * Writes the DTD as 'enc'-encoded string to 'os'. If 'doctype', a 
        * DTD like <!DOCTYPE root [ ... ]> is written. If 'not doctype',
        * only the declarations are written (the material within the
        * square brackets).
+       *)
+
+    method write_compact_as_latin1 : Pxp_types.output_stream -> bool -> unit
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
        *)
 
 
@@ -289,11 +294,15 @@ and dtd_element : dtd -> string ->
        * Raises mostly Validation_error if the validation fails.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* write_compact_as_latin1 os:
-       * Writes the <!ELEMENT ... > declaration to 'os' as Latin 1 string.
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+      (* write_compact_as_latin1 os enc:
+       * Writes the <!ELEMENT ... > declaration to 'os' as 'enc'-encoded string.
        *)
 
+    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
+       *)
   end
 
 (* ---------------------------------------------------------------------- *)
@@ -309,9 +318,15 @@ and dtd_notation : string -> Pxp_types.ext_id -> Pxp_types.rep_encoding ->
     method ext_id : Pxp_types.ext_id
     method encoding : Pxp_types.rep_encoding
 
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+      (* write_compact_as_latin1 os enc:
+       * Writes the <!NOTATION ... > declaration to 'os' as 'enc'-encoded 
+       * string.
+       *)
+
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* write_compact_as_latin1 os:
-       * Writes the <!NOTATION ... > declaration to 'os' as Latin 1 string.
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
        *)
 
   end
@@ -330,9 +345,14 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
     method value : string
     method encoding : Pxp_types.rep_encoding
 
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
+      (* write_compact_as_latin1 os enc:
+       * Writes the <?...?> PI to 'os' as 'enc'-encoded string.
+       *)
+
     method write_compact_as_latin1 : Pxp_types.output_stream -> unit
-      (* write_compact_as_latin1 os:
-       * Writes the <?...?> PI to 'os' as Latin 1 string.
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
        *)
 
   end
@@ -345,6 +365,9 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.5  2000/07/16 16:34:41  gerd
+ * 	New method 'write', the successor of 'write_compact_as_latin1'.
+ *
  * Revision 1.4  2000/07/14 13:56:49  gerd
  * 	Added methods id_attribute_name and idref_attribute_names.
  *

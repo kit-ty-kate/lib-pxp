@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.5 2000/07/14 13:56:48 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.6 2000/07/16 16:34:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -255,29 +255,35 @@ class dtd  the_warner init_encoding =
 
     method pinstr_names = pinstr_names
 
-    method write_compact_as_latin1 os doctype = 
+    method write os enc doctype = 
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
       if doctype then begin
-	write os "<!DOCTYPE " 0 10;
+	wms "<!DOCTYPE ";
 	( match root with
-	    None -> failwith "#write_compact_as_latin1: DTD without root";
-	  | Some r -> write os r 0 (String.length r)
+	    None -> failwith "#write: DTD without root";
+	  | Some r -> wms r
 	);
-	write os " [\n" 0 3;
+	wms " [\n";
       end;
       Hashtbl.iter
 	(fun name notation ->
-	   notation # write_compact_as_latin1 os)
+	   notation # write os enc)
 	notations;
       Hashtbl.iter
 	(fun name element ->
-	   element # write_compact_as_latin1 os)
+	   element # write os enc)
 	elements;
       Hashtbl.iter
 	(fun name pi ->
-	   pi # write_compact_as_latin1 os)
+	   pi # write os enc)
 	pinstr;
       if doctype then 
-	write os "]>\n" 0 3
+	wms "]>\n";
+
+    method write_compact_as_latin1 os doctype = 
+      self # write os `Enc_iso88591 doctype
+
 
 
     (************************************************************)
@@ -442,32 +448,35 @@ and dtd_element the_dtd the_name =
     method idref_attribute_names = idref_att_names
 
 
-    method write_compact_as_latin1 os = 
+    method write os enc = 
+      let encoding = self # encoding in
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
       let rec write_contentspec cs =
 	match cs with
 	    Unspecified ->
-	      failwith "#write_compact_as_latin1: Unspecified content model found"
+	      failwith "#write: Unspecified content model found"
 	  | Empty ->
-	      write os "EMPTY" 0 5
+	      wms "EMPTY"
 	  | Any ->
-	      write os "ANY" 0 3
+	      wms "ANY"
 	  | Mixed ml ->
-	      write os "(" 0 1;
+	      wms "(";
 	      write_mixedspec_list ml;
-	      write os ")*" 0 2;
+	      wms ")*";
 	  | Regexp re ->
 	      write_children re false
 
       and write_mixedspec_list ml =
 	match ml with
 	    MPCDATA :: ml' ->
-	      write os "#PCDATA" 0 7;
-	      if ml' <> [] then write os "|" 0 1;
+	      wms "#PCDATA";
+	      if ml' <> [] then wms "|";
 	      write_mixedspec_list ml';
 	  | MChild s :: ml' ->
-	      write os s 0 (String.length s);
-	      if ml' <> [] then write os "|" 0 1;
+	      wms s;
+	      if ml' <> [] then wms "|";
 	      write_mixedspec_list ml';
 	  | [] ->
 	      ()
@@ -476,56 +485,56 @@ and dtd_element the_dtd the_name =
 	match re with
 	    Optional re' ->
 	      let p = needs_parens re' in
-	      if p then write os "(" 0 1;
+	      if p then wms "(";
 	      write_children re' cp;
-	      if p then write os ")" 0 1;
-	      write os "?" 0 1;
+	      if p then wms ")";
+	      wms "?";
 	  | Repeated re' ->
 	      let p = needs_parens re' in
-	      if p then write os "(" 0 1;
+	      if p then wms "(";
 	      write_children re' cp;
-	      if p then write os ")" 0 1;
-	      write os "*" 0 1;
+	      if p then wms ")";
+	      wms "*";
 	  | Repeated1 re' ->
 	      let p = needs_parens re' in
-	      if p then write os "(" 0 1;
+	      if p then wms "(";
 	      write_children re' cp;
-	      if p then write os ")" 0 1;
-	      write os "+" 0 1;
+	      if p then wms ")";
+	      wms "+";
 	  | Alt re' ->
-	      write os "(" 0 1;
+	      wms "(";
 	      ( match re' with
 		    re1' :: rer' ->
 		      write_children re1' true;
 		      List.iter
 			(fun ren' ->
-			   write os "|" 0 1;
+			   wms "|";
 			   write_children ren' true;
 			)
 			rer';
 		  | [] ->
-		      failwith "#write_compact_as_latin1: Illegal content model"
+		      failwith "#write: Illegal content model"
 	      );
-	      write os ")" 0 1;
+	      wms ")";
 	  | Seq re' ->
-	      write os "(" 0 1;
+	      wms "(";
 	      ( match re' with
 		    re1' :: rer' ->
 		      write_children re1' true;
 		      List.iter
 			(fun ren' ->
-			   write os "," 0 1;
+			   wms ",";
 			   write_children ren' true;
 			)
 			rer';
 		  | [] ->
-		      failwith "#write_compact_as_latin1: Illegal content model"
+		      failwith "#write: Illegal content model"
 	      );
-	      write os ")" 0 1;
+	      wms ")";
 	  | Child ch ->
-	      if not cp then write os "(" 0 1;
-	      write os ch 0 (String.length ch);
-	      if not cp then write os ")" 0 1;
+	      if not cp then wms "(";
+	      wms ch;
+	      if not cp then wms ")";
 
       and needs_parens re =
 	match re with
@@ -533,75 +542,71 @@ and dtd_element the_dtd the_name =
 	  | _ -> false
       in
 
-      write os "<!ELEMENT " 0 10;
-      write os name 0 (String.length name);
-      write os " " 0 1;
+      wms ("<!ELEMENT " ^ name ^ " ");
       write_contentspec content_model;
-      write os ">\n" 0 2;
+      wms ">\n";
 
-      write os "<!ATTLIST " 0 10;
-      write os name 0 (String.length name);
+      wms ("<!ATTLIST " ^ name);
       List.iter
 	(fun (n,((t,d),_)) ->
-	   write os "\n  " 0 2;
-	   write os n 0 (String.length n);
+	   wms ("\n  " ^ n);
 	   ( match t with
-		 A_cdata       -> write os " CDATA" 0 6;
-	       | A_id          -> write os " ID"    0 3;
-	       | A_idref       -> write os " IDREF" 0 6;
-	       | A_idrefs      -> write os " IDREFS" 0 7;
-	       | A_entity      -> write os " ENTITY" 0 7;
-	       | A_entities    -> write os " ENTITIES" 0 9;
-	       | A_nmtoken     -> write os " NMTOKEN" 0 8;
-	       | A_nmtokens    -> write os " NMTOKENS" 0 9;
+		 A_cdata       -> wms " CDATA";
+	       | A_id          -> wms " ID";
+	       | A_idref       -> wms " IDREF";
+	       | A_idrefs      -> wms " IDREFS";
+	       | A_entity      -> wms " ENTITY";
+	       | A_entities    -> wms " ENTITIES";
+	       | A_nmtoken     -> wms " NMTOKEN";
+	       | A_nmtokens    -> wms " NMTOKENS";
 	       | A_notation nl -> 
-		   write os " NOTATION (" 0 11;
+		   wms " NOTATION (";
 		   ( match nl with
 			 nl1:: nl' ->
-			   write os nl1 0 (String.length nl1);
+			   wms nl1;
 			   List.iter
 			     (fun n ->
-				write os "|" 0 1;
-				write os n 0 (String.length n);
+				wms ("|" ^ n);
 			     )
 			     nl'
 		       | [] ->
-			   failwith "#write_compact_as_latin1: Illegal content model";
+			   failwith "#write: Illegal content model";
 		   );
-		   write os ")" 0 1;
+		   wms ")";
 	       | A_enum el     ->
-		   write os " (" 0 2;
+		   wms " (";
 		   ( match el with
 			 el1:: el' ->
-			   write os el1 0 (String.length el1);
+			   wms el1;
 			   List.iter
 			     (fun e ->
-				write os "|" 0 1;
-				write os e 0 (String.length e);
+				wms ("|" ^ e);
 			     )
 			     el'
 		       | [] ->
-			   failwith "#write_compact_as_latin1: Illegal content model";
+			   failwith "#write: Illegal content model";
 		   );
-		   write os ")" 0 1;
+		   wms ")";
 	   );
 	   ( match d with
-		 D_required -> write os " #REQUIRED" 0 10
-	       | D_implied  -> write os " #IMPLIED"  0 9
+		 D_required -> wms " #REQUIRED"
+	       | D_implied  -> wms " #IMPLIED"
 	       | D_default s ->
-		   write os " \"" 0 2;
-		   write_data_string os s;
-		   write os "\"" 0 1;
+		   wms " \"";
+		   write_data_string ~from_enc:encoding ~to_enc:enc os s;
+		   wms "\"";
 	       | D_fixed s ->
-		   write os " FIXED \"" 0 8;
-		   write_data_string os s;
-		   write os "\"" 0 1;
+		   wms " FIXED \"";
+		   write_data_string ~from_enc:encoding ~to_enc:enc os s;
+		   wms "\"";
 	   );
 	)
 	attributes;
 
-      write os ">\n" 0 2;
+      wms ">\n";
 
+    method write_compact_as_latin1 os = 
+      self # write os `Enc_iso88591
 
     (************************************************************)
     (*                    VALIDATION                            *)
@@ -714,7 +719,7 @@ and dtd_element the_dtd the_name =
   end
 
 and dtd_notation the_name the_xid init_encoding =
-  object
+object (self)
     val name = the_name
     val xid = (the_xid : ext_id)
     val encoding = (init_encoding : Pxp_types.rep_encoding)
@@ -722,43 +727,41 @@ and dtd_notation the_name the_xid init_encoding =
     method ext_id = xid
     method encoding = encoding
 
-    method write_compact_as_latin1 os = 
+    method write os enc = 
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
       let write_sysid s =
-	if String.contains s '"' then begin
-	  write os "'" 0 1;
-	  write os s 0 (String.length s);
-	  write os "'" 0 1;
-	end
-	else begin
-	  write os "\"" 0 1;
-	  write os s 0 (String.length s);
-	  write os "\"" 0 1;
-	end
+	if String.contains s '"' then
+	  wms ("'" ^ s ^ "'")
+	else
+	  wms ("\"" ^ s ^ "\"");
       in
 
-      write os "<!NOTATION " 0 11;
-      write os name 0 (String.length name);
-      write os " " 0 1;
+      wms ("<!NOTATION " ^ name ^ " ");
       ( match xid with
 	    System s ->
-	      write os "SYSTEM " 0 7;
+	      wms "SYSTEM ";
 	      write_sysid s;
 	  | Public (p,s) ->
-	      write os "PUBLIC " 0 7;
+	      wms "PUBLIC ";
 	      write_sysid p;
 	      if (s <> "") then begin
-		write os " " 0 1;
+		wms " ";
 		write_sysid s;
 	      end;
 	  | Anonymous ->
-	      failwith "External ID Anonymous cannot be represented"
+	      failwith "#write: External ID Anonymous cannot be represented"
       );
-      write os ">\n" 0 2;
+      wms ">\n";
+
+    method write_compact_as_latin1 os = 
+      self # write os `Enc_iso88591 
 
   end
 
 and proc_instruction the_target the_value init_encoding =
-  object
+object (self)
     val target = the_target
     val value = (the_value : string)
     val encoding = (init_encoding : Pxp_types.rep_encoding)
@@ -776,12 +779,18 @@ and proc_instruction the_target the_value init_encoding =
     method value = value
     method encoding = encoding
 
+    method write os enc = 
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
+      wms "<?";
+      wms target;
+      wms " ";
+      wms value;
+      wms "?>";
+
     method write_compact_as_latin1 os = 
-      write os "<?" 0 2;
-      write os target 0 (String.length target);
-      write os " " 0 1;
-      write os value 0 (String.length value);
-      write os "?>" 0 2;
+      self # write os `Enc_iso88591
 
   end
 ;;
@@ -791,6 +800,9 @@ and proc_instruction the_target the_value init_encoding =
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.6  2000/07/16 16:34:41  gerd
+ * 	New method 'write', the successor of 'write_compact_as_latin1'.
+ *
  * Revision 1.5  2000/07/14 13:56:48  gerd
  * 	Added methods id_attribute_name and idref_attribute_names.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.5 2000/07/14 13:56:11 gerd Exp $
+(* $Id: pxp_document.mli,v 1.6 2000/07/16 16:34:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -310,10 +310,15 @@ class type [ 'ext ] node =
        * to be included into the document.
        *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (* Write the contents of this node and the subtrees to the passed
-       * output stream; the character set ISO-8859-1 is used. The format
+       * output stream; the passed encoding is used. The format
        * is compact (the opposite of "pretty printing").
+       *)
+
+    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
        *)
 
     (* ---------------------------------------- *)
@@ -434,11 +439,16 @@ class [ 'ext ] document :
     method pinstr_names : string list
       (* Return all target strings of all PIs. *)
 
-    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
+    method write : Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (* Write the document to the passed
-       * output stream; the character set ISO-8859-1 is used. The format
+       * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
        * If a DTD is present, the DTD is included into the internal subset.
+       *)
+
+    method write_compact_as_latin1 : Pxp_types.output_stream -> unit
+      (* DEPRECATED METHOD; included only to keep compatibility with
+       * older versions of the parser
        *)
 
   end
@@ -449,6 +459,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.6  2000/07/16 16:34:41  gerd
+ * 	New method 'write', the successor of 'write_compact_as_latin1'.
+ *
  * Revision 1.5  2000/07/14 13:56:11  gerd
  * 	Added methods id_attribute_name, id_attribute_value,
  * idref_attribute_names.

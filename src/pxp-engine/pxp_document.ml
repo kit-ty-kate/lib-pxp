@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.6 2000/07/14 13:56:11 gerd Exp $
+(* $Id: pxp_document.ml,v 1.7 2000/07/16 16:34:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -68,6 +68,7 @@ class type [ 'ext ] node =
     method create_data : dtd -> string -> 'ext node
     method local_validate : unit
     method keep_always_whitespace_mode : unit
+    method write : output_stream -> encoding -> unit
     method write_compact_as_latin1 : output_stream -> unit
     method internal_adopt : 'ext node option -> unit
     method internal_delete : 'ext node -> unit
@@ -314,6 +315,7 @@ class virtual ['ext] node_impl an_ext =
                    dtd -> node_type -> (string * string) list -> 'ext node
     method virtual create_data : dtd -> string -> 'ext node
     method virtual keep_always_whitespace_mode : unit
+    method virtual write : output_stream -> encoding -> unit
     method virtual write_compact_as_latin1 : output_stream -> unit
     method virtual local_validate : unit
     method virtual internal_delete : 'ext node -> unit
@@ -380,9 +382,13 @@ class ['ext] data_impl an_ext : ['ext] node =
     method keep_always_whitespace_mode = ()
 
 
-    method write_compact_as_latin1 os =
-      write_data_string os content
+    method write os enc =
+      let encoding = self # encoding in
+      write_data_string ~from_enc:encoding ~to_enc:enc os content
 
+
+    method write_compact_as_latin1 os =
+      self # write os `Enc_iso88591
 	
     method internal_delete _ =
       assert false
@@ -845,45 +851,45 @@ class ['ext] element_impl an_ext : ['ext] node =
       method keep_always_whitespace_mode =
 	keep_always_whitespace <- true
 
-      method write_compact_as_latin1 os =
+      method write os enc =
+	let encoding = self # encoding in
+	let wms = 
+	  write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
 	let invisible = (name = "-vr" || name = "-pi") in
 	if not invisible then begin
-	  write os "<" 0 1;
-	  write os name 0 (String.length name);
+	  wms ("<" ^ name);
 	  List.iter
 	    (fun (aname, avalue) ->
 	       match avalue with
 		   Implied_value -> ()
 		 | Value v ->
-		     write os "\n" 0 1;
-		     write os aname 0 (String.length aname);
-		     write os "=\"" 0 2;
-		     write_data_string os v;
-		     write os "\"" 0 1;
+		     wms ("\n" ^ aname ^ "=\"");
+		     write_data_string ~from_enc:encoding ~to_enc:enc os v;
+		     wms "\"";
 		 | Valuelist l ->
 		     let v = String.concat " " l in
-		     write os "\n" 0 1;
-		     write os aname 0 (String.length aname);
-		     write os "=\"" 0 2;
-		     write_data_string os v;
-		     write os "\"" 0 1;
+		     wms ("\n" ^ aname ^ "=\"");
+		     write_data_string ~from_enc:encoding ~to_enc:enc os v;
+		     wms "\"";
 	    )
 	    attributes;
-	  write os "\n>" 0 2;
+	  wms "\n>";
 	end;
 	Hashtbl.iter
 	  (fun n pi ->
-	     pi # write_compact_as_latin1 os
+	     pi # write os enc
 	  )
 	  (Lazy.force pinstr);
 	List.iter 
-	  (fun n -> n # write_compact_as_latin1 os)
+	  (fun n -> n # write os enc)
 	  (self # sub_nodes);
 	if not invisible then begin
-	  write os "</" 0 2;
-	  write os name 0 (String.length name);
-	  write os "\n>" 0 2;
+	  wms ("</" ^ name ^ "\n>");
 	end
+
+      method write_compact_as_latin1 os =
+	self # write os `Enc_iso88591
 
     end
 ;;
@@ -1027,22 +1033,29 @@ class ['ext] document the_warner =
 	(Lazy.force pinstr);
       !l
 
-    method write_compact_as_latin1 os =
+    method write os enc =
+      let encoding = self # encoding in
+      let wms = 
+	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
       let r = self # root in
-      write os "<?xml version='1.0' encoding='ISO-8859-1'?>\n" 0 44;
+      wms ("<?xml version='1.0' encoding='" ^ string_of_encoding enc ^ 
+	   "'?>");
       ( match self # dtd # root with
 	    None ->
-	      self # dtd # write_compact_as_latin1 os false
+	      self # dtd # write os enc false
 	  | Some _ ->
-	      self # dtd # write_compact_as_latin1 os true
+	      self # dtd # write os enc true
       );
       Hashtbl.iter
 	(fun n pi ->
-	   pi # write_compact_as_latin1 os
+	   pi # write os enc
 	)
 	(Lazy.force pinstr);
-      r # write_compact_as_latin1 os;
+      r # write os enc;
 	    
+    method write_compact_as_latin1 os =
+      self # write os `Enc_iso88591
 
   end
 ;;
@@ -1052,6 +1065,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.7  2000/07/16 16:34:41  gerd
+ * 	New method 'write', the successor of 'write_compact_as_latin1'.
+ *
  * Revision 1.6  2000/07/14 13:56:11  gerd
  * 	Added methods id_attribute_name, id_attribute_value,
  * idref_attribute_names.
