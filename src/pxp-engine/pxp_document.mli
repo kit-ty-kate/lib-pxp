@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.18 2001/06/09 22:33:14 gerd Exp $
+(* $Id: pxp_document.mli,v 1.19 2001/06/25 21:04:18 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -247,16 +247,36 @@ open Pxp_dtd
 
 
 type node_type =
-  (* The basic and most important node types:
-   * - T_element element_type   is the type of element nodes
-   * - T_data                   is the type of text data nodes
-   * By design of the parser, neither CDATA sections nor entity references
-   * are represented in the node tree; so there are no types for them.
-   *)
     T_element of string
   | T_data
+  | T_super_root                        (* XPath calls them simply root nodes *)
+  | T_pinstr of string                  (* The string is the target of the PI *)
+  | T_comment
+  | T_none
+  | T_attribute of string          (* The string is the name of the attribute *)
+  | T_namespace of string            (* The string is the namespace srcprefix *)
+  (* <ID:type-node-type>
+   * <TYPE:type>
+   * <CALL>   [node_type]
+   * <SIG>    AUTO
+   * <DESCR>  This type enumerates the possible node types:
+   *   - [T_element name]: The node is an element and has element type [name]
+   *   - [T_data]: The node is a data node
+   *   - [T_super_root]: The node is a super root node
+   *   - [T_pinstr name]: The node contains a processing instruction with
+   *     target [name]
+   *   - [T_comment]: The node is a comment
+   *   - [T_attribute name]: The node contains an attribute called [name]
+   *   - [T_namespace prefix]: The node identifies a namespace for the
+   *     [prefix]
+   *   - [T_none]: This is a "bottom value" used if there is no reasonable
+   *     type.
+   *     --
+   * </ID>
+   *)
 
-  (* The following types are extensions to my original design. They have mainly
+  (* About T_super_root, T_pinstr, T_comment: 
+   * These types are extensions to my original design. They have mainly
    * been added to simplify the implementation of standards (such as
    * XPath) that require that nodes of these types are included into the
    * main document tree.
@@ -266,19 +286,13 @@ type node_type =
    * enable_super_root_node, enable_pinstr_nodes, enable_comment_nodes.
    * By default, such nodes are not created.
    *)
-  | T_super_root                        (* XPath calls them simply root nodes *)
-  | T_pinstr of string                  (* The string is the target of the PI *)
-  | T_comment
 
-  (* The following types are fully virtual. This means that it is impossible
+  (* About T_attribute, T_namespace:
+   * These types are fully virtual. This means that it is impossible
    * to make the parser insert such nodes into the regular tree. They are
    * normally created by special methods to allow additional views on the
    * document tree.
    *)
-  | T_none
-  | T_attribute of string          (* The string is the name of the attribute *)
-  | T_namespace of string            (* The string is the namespace srcprefix *)
-;;
 
 
 (* The result type of the method classify_data_node: *)
@@ -288,7 +302,18 @@ type data_node_classification =
   | CD_empty
   | CD_ignorable
   | CD_error of exn
-;;
+  (* <ID:type-data-node-classification>
+   * <CALL>   [data_node_classification]
+   * <SIG>    AUTO
+   * <DESCR>  This type enumerates the result values of the method
+   *   [classify_data_node]. See the description of this method.
+   * </ID>
+   *)
+
+
+(* QUESTION: Perhaps we should reexport att_value here. It is the only
+ * type from Pxp_types that is needed regularly.
+ *)
 
 
 (* Regular definition: *)
@@ -311,60 +336,170 @@ class type [ 'node ] extension =
 
 
 class type [ 'ext ] node =
+  (* <ID:type-node>
+   * <CALL>   'ext [node]
+   * <SIG>    class type 'ext node = object ... end
+   * <DESCR>  This is the common class type of all classes representing 
+   *    nodes.
+   *
+   *    Not all classes implement all methods. As the type system of O'Caml
+   *    demands that there must be always a method definition for all
+   *    methods of the type, methods will raise the exception
+   *    [Method_not_applicable] if they are called on a class not supporting
+   *    them. The exception [Namespace_method_not_applicable] is reserved
+   *    for the special case that a namespace method is invoked on a 
+   *    class that does not support namespaces.
+   * <SEE> sig-class-type-node
+   * </ID>
+   *)
+
   object ('self)
     constraint 'ext = 'ext node #extension
 
     method extension : 'ext
-      (* Return the extension of this node: *)
-
-    method delete : unit
-      (* Delete this node from the parent's list of sub nodes. This node gets
-       * orphaned.
-       * 'delete' does nothing if this node does not have a parent.
+      (* <ID:type-node-extension>
+       * <TYPE:method>
+       * <CALL>   obj # [extension]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the extension object of the node object [obj].
+       * <DOMAIN> Applicable to element, data, comment, processing instruction,
+       *   and super root nodes.
+       * </ID>
        *)
 
-    method delete_nodes : ?pos:int -> ?len:int -> unit -> unit
-      (* Delete nodes from the list of subnodes: The nodes at positions
-       * pos to pos+len-1 are deleted, and turned into orphans. 
-       * The defaults are:
-       *   ~pos: 0
-       *   ~len: number of subnodes
-       * i.e.
-       * n # delete_nodes() deletes all subnodes of n
+    method remove : unit -> unit
+      (* <ID:type-node-remove>
+       * <CALL>   obj # [remove] ()
+       * <SIG>    AUTO
+       * <DESCR>  Removes [obj] from the tree. After this
+       *    operation, [obj] is no longer the child of the former father node,
+       *    i.e. it does neither occur in the former father's list of children
+       *    nor is the former father the parent of [obj]. The node [obj]
+       *    becomes orphaned.
+       *
+       *    If [obj] is already a root, [remove] does nothing.
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>  Elements, comments, processing instructions, data nodes,
+       *   super root nodes.
+       * <SEE>     node-delete
+       * </ID>
+       *)
+
+    method delete : unit
+      (* DEPRECATED METHOD
+       * remove() does exactly the same
+       *)
+
+    method remove_nodes : ?pos:int -> ?len:int -> unit -> unit
+      (* <ID:type-node-remove-nodes>
+       * <CALL>   obj # [remove_nodes] ~pos ~len ()
+       * <SIG>    AUTO
+       * <DESCR>  Removes the specified nodes from the list of children of
+       *    [obj]. The method deletes the nodes from position [pos] to 
+       *    [pos+len-1]. The optional argument [pos] defaults to 0. The 
+       *    optional argument [len] defaults to the length of the children
+       *    list.
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN> Elements.
+       * </ID>
        *)
 
     method parent : 'ext node
-      (* Get the parent, or raise Not_found if this node is an orphan. *)
+      (* <ID:type-node-parent>
+       * <CALL>   obj # [parent]
+       * <SIG>    AUTO
+       * <DESCR>  Get the parent node, or raise [Not_found] if this node is
+       *   a root node. For attribute and namespace nodes, the parent is
+       *   artificially defined as the element to which these nodes apply.
+       * <DOMAIN> All node types.
+       * </ID>
+       *)
 
     method root : 'ext node
-      (* Get the direct or indirect parent that does not have a parent itself,
-       * i.e. the root of the tree.
+      (* <ID:type-node-root>
+       * <CALL>   obj # [root]
+       * <SIG>    AUTO
+       * <DESCR>  Gets the root node of the tree.
+       *   Every node is contained in a tree with a root, so this method always 
+       *   succeeds. Note that this method searches the root,
+       *   which costs time proportional to the length of the path to the root.
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method orphaned_clone : 'self
-      (* return an exact clone of this element and all sub nodes (deep copy)
-       * except string values which are shared by this node and the clone.
-       * The other exception is that the clone has no parent (i.e. it is now
-       * a root).
+      (* <ID:type-node-orphaned-clone>
+       * <CALL>   obj # [orphaned_clone]
+       * <SIG>    AUTO
+       * <DESCR>  Returns a clone of the node and the complete tree below
+       *    this node (deep clone). The clone does not have a parent (i.e. the
+       *    reference to the parent node is not cloned). While copying the
+       *    subtree strings are skipped; normally the original tree and the
+       *    copy tree share strings. Extension objects are cloned by invoking
+       *    the [clone] method on the original objects; how much of
+       *    the extension objects is cloned depends on the implemention of
+       *    this method.
+       * <DOMAIN> All node types.
+       * <SEE> node-clone
+       * </ID>
        *)
 
     method orphaned_flat_clone : 'self
-      (* return a clone of this element where all subnodes are omitted.
-       * The type of the node, and the attributes are the same as in the
-       * original node.
-       * The clone has no parent.
+      (* <ID:type-node-orphaned-flat-clone>
+       * <CALL>   obj # [orphaned_flat_clone]
+       * <SIG>    AUTO
+       * <DESCR>  return a clone of this element where all subnodes are omitted.
+       *     The type of the node, and the attributes are the same as in the
+       *     original node. The clone has no parent.
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method append_node : 'ext node -> unit
-      (* Appends the passed node to the list of subnodes of this element.
-       * Note: It is not checked whether the node matches the content model
-       * of the element.
+      (* <ID:type-node-append-node>
+       * <CALL>   obj # [append_node] n
+       * <SIG>    AUTO
+       * <DESCR>  Adds the node [n] to the list of children of [obj]. The 
+       *   method expects that [n] is a root, and it requires that [n] and
+       *   [obj] share the same DTD.
+       *
+       *   Note: This method does not check whether the modified XML tree
+       *   is still valid.
+       * <DOMAIN> This method is only applicable to element nodes.
+       * <SEE> node-add
+       * </ID>
        *)
 
     method classify_data_node : 'ext node -> data_node_classification
-      (* Classifies the passed data node, and returns whether it is 
-       * reasonable to append the data node to the list of subnodes
-       * (using append_node).
+      (* <ID:type-node-classify-data-node>
+       * <CALL>   obj # [classify_data_node] n
+       * <SIG>    AUTO
+       * <DESCR>  Classifies the passed data node [n], and returns whether it
+       *      is reasonable to append the data node to the list of subnodes
+       *     (using [append_node]). The following return values are possible:
+       *      - [CD_normal]: Adding [n] does not violate any validation 
+       *        constraint
+       *      - [CD_other]: [n] is not a data node
+       *      - [CD_empty]: The element [obj] is declared as [EMTPY], and
+       *        [n] contains the empty string. It is allowed to append
+       *        [n] but it does not make sense
+       *      - [CD_ignorable]: The element [obj] is declared such that
+       *        it is forbidden to put character data into it. However,
+       *        the node [n] only contains white space which is allowed
+       *        as an exception to this rule. This means that it is allowed
+       *        to append [n] but [n] would not contain any information
+       *        except formatting hints.
+       *      - [CD_error e]: It is an error to append [n]. The exception
+       *        [e], usually a [Validation_error], contains details about
+       *        the problem.
+       *      --
+       * Note that the method always returns and never raises an exception.
+       * <DOMAIN> Elements.
+       * </ID>
        *)
 
     method add_node : ?force:bool -> 'ext node -> unit
@@ -379,278 +514,685 @@ class type [ 'ext ] node =
        *)
 
     method insert_nodes : ?pos:int -> 'ext node list -> unit
-      (* Inserts the passed list of nodes into the list of subnodes of
-       * this element. The ~pos argument specifies where the insertion
-       * happens: After the nodes have been inserted, the first node
-       * of the inserted list has the index ~pos.
-       * Note: It is not checked whether the inserted nodes match the content
-       * model of the element.
+      (* <ID:type-node-insert-nodes>
+       * <CALL>   obj # [insert_nodes] ~pos nl
+       * <SIG>    AUTO
+       * <DESCR>  Inserts the list of nodes [nl] in-place into the list of
+       *    children of [obj]. The insertion is performed at position [pos],
+       *    i.e. in the modified list of children, the first element of
+       *    [nl] will have position [pos]. If the optional argument [pos]
+       *    is not passed to the method, the list [nl] is appended
+       *    to the list of children. 
+       *
+       *    The method requires that all elements of
+       *    the list [nl] are roots, and that all elements and [obj]
+       *    share the same DTD.
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>  Elements.
+       * </ID>
        *)
 
     method set_nodes : 'ext node list -> unit
-      (* Set the list of sub nodes. Elements that are no longer sub nodes gets
-       * orphaned, and all new elements that previously were not sub nodes
-       * must be orphans.
+      (* <ID:type-node-set-nodes>
+       * <CALL>   obj # [set_nodes] l
+       * <SIG>    AUTO
+       * <DESCR>  Sets the list of children to [l]. It is required that
+       *     every member of [l] is either a root or was already a children
+       *     of this node before the method call, and it is required that 
+       *     all members and the current object share the same DTD.
+       *
+       *     Former children which are not members of [l] are removed from
+       *     the tree and get orphaned (see method [remove]).
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>  Elements.
+       * </ID>
        *)
 
     method add_pinstr : proc_instruction -> unit
-      (* Add a processing instruction to the set of processing instructions of
-       * this node. Usually only elements contain processing instructions.
-       * Nodes of type T_pinstr may contain one processing instruction.
+      (* <ID:type-node-add-pinstr>
+       * <CALL>   obj # [add_pinstr] pi
+       * <SIG>    AUTO
+       * <DESCR>  Adds the processing instruction [pi] to the set of
+       *   processing instructions contained in [obj]. If [obj] is an
+       *   element node, you can add any number of processing instructions.
+       *   If [obj] is a processing instruction node, you can put at most
+       *   one processing instruction into this node.
+       * <DOMAIN> Elements, and processing instruction nodes.
+       * </ID>
        *)
 
     method pinstr : string -> proc_instruction list
-      (* Get all processing instructions with the passed name. 
-       * If this node has type T_pinstr pi, you can get the contained 
-       * processing instruction by calling node # pinstr pi.
+      (* <ID:type-node-pinstr>
+       * <CALL>   obj # [pinstr] n
+       * <SIG>    AUTO
+       * <DESCR>  Returns all processing instructions that are
+       *   directly contained in [obj] and that have a target
+       *   specification of [n].
+       * <DOMAIN> All node types. However, this method is only reasonable
+       *   for processing instruction nodes, and for elements; for all
+       *   other node types the method will return the empty list. Note
+       *   that the parser can be configured such that it creates 
+       *   processing instruction nodes or not; in the first case, only
+       *   the processing instruction nodes contain processing instruction,
+       *   in the latter case, only the elements embracing the instructions
+       *   contain them.
+       * </ID>
        *)
 
     method pinstr_names : string list
-      (* Get a list of all names of processing instructions *)
+      (* <ID:type-node-pinstr-names>
+       * <CALL>   obj # [pinstr_names]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the targets of all processing instructions that are
+       *   directly contained in [obj].
+       * <DOMAIN> All node types. However, this method is only reasonable
+       *   for processing instruction nodes, and for elements; for all
+       *   other node types the method will return the empty list. Note
+       *   that the parser can be configured such that it creates 
+       *   processing instruction nodes or not; in the first case, only
+       *   the processing instruction nodes contain processing instruction,
+       *   in the latter case, only the elements embracing the instructions
+       *   contain them.
+       * </ID>
+       *)
 
     method node_position : int
-      (* Returns the position of this node among all children of the parent
-       * node. Positions are counted from 0.
-       * Raises Not_found if the node is the root node.
+      (* <ID:type-node-node-position>
+       * <CALL>   obj # [node_position]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the position of [obj] among all children of the parent
+       *   node. Positions are counted from 0. There are several cases:
+       *    - The regular nodes get positions from 0 to l-1 where l is the
+       *      length of the list of regular children.
+       *    - Attribute nodes and namespace nodes are irregular nodes, 
+       *      which means here that their positions are counted seperately.
+       *      All attribute nodes have positions from 0 to m-1; all namespace
+       *      nodes have positions from 0 to n-1.
+       *    - If [obj] is a root, this method raises [Not_found]
+       *      --
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method node_path : int list
-      (* Returns the list of node positions of the ancestors of this node,
-       * including this node. The first list element is the node position
-       * of this child of the root, and the last list element is the
-       * node position of this node.
-       * Returns [] if the node is the root node.
+      (* <ID:type-node-node-path>
+       * <CALL>  obj # [node_path]
+       * <SIG>    AUTO
+       * <DESCR> Returns the list of node positions describing
+       *   the location of this node in the whole tree. The list describes 
+       *   the path from the root node down to this node; the first path
+       *   element is the index of the child of the root, the second path
+       *   element is the index of the child of the child, and so on, and
+       *   the last path element is the index of this node. The method returns 
+       *   [[[]]] if this node is the root node.
        *
-       * Attribute and namespace nodes: By definition of the document order
-       * these nodes occur after their parent and before the regular children
-       * (elements). Because of this, attribute nodes at position p have the 
-       * node path [ -1; p ] relative to their parent, and namespace nodes
-       * at position p have the node path [ -2; p ] relative to their
-       * parent.
+       *   Attribute and namespace nodes are not part of the regular tree, so 
+       *   there is a special rule for them. Attribute nodes of an element 
+       *   node [x] have the node path [[x # node_path @ [-1; p]]] where 
+       *   [p] is the position of the attribute node. Namespace nodes of an 
+       *   element node [x] have the node path [[x # node_path @ [-2; p]]] 
+       *   where [p] is the position of the namespace node.
+       *   (This definition respects the document order.)
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method sub_nodes : 'ext node list
-      (* Get the list of sub nodes *)
+      (* <ID:type-node-sub-nodes>
+       * <CALL>   obj # [sub_nodes]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the regular children of the node as list. Only
+       *   Elements, data nodes, comments, and processing instructions can
+       *   occur in this list; attributes and namespace nodes are not
+       *   considered as regular nodes, and super root nodes can only
+       *   be root nodes and will never be children of another node.
+       *   The returned list is always empty if [obj] is a data node,
+       *   comment, processing instruction, attribute, or namespace.
+       * <DOMAIN> All node types.
+       * </ID>
+       *)
 
     method iter_nodes : ('ext node -> unit) -> unit
-      (* iterate over the sub nodes.
-       * Note that further iterators are defined below (outside the
-       * class).
+      (* <ID:type-node-iter-nodes>
+       * <CALL>   obj # [iter_nodes] f
+       * <SIG>    AUTO
+       * <DESCR>  Iterates over the regular children of [obj], and
+       *   calls the function [f] for every child ch: [f ch]. The
+       *   regular children are the nodes returned by [sub_nodes], see
+       *   there for an explanation.
+       * <DOMAIN> All node types.
+       * <SEE>    document-iterators
+       * </ID>
        *)
 
     method iter_nodes_sibl :
       ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
-      (* Here every iteration step can also access to the previous and to the
-       * following node if present.
-       * Note that further iterators are defined below (outside the
-       * class).
+      (* <ID:type-node-iter-nodes-sibl>
+       * <CALL>   obj # [iter_nodes_sibl] f
+       * <SIG>    AUTO
+       * <DESCR>  Iterates over the regular children of [obj], and
+       *   calls the function [f] for every child: [f pred ch succ].
+       *   - [ch] is the child
+       *   - [pred] is [None] if the child is the first in the list,
+       *     and [Some p] otherwise; [p] is the predecessor of [ch]
+       *   - [succ] is [None] if the child is the last in the list,
+       *     and [Some s] otherwise; [s] is the successor of [ch]
+       *     --
+       *   The
+       *   regular children are the nodes returned by [sub_nodes], see
+       *   there for an explanation.
+       * <DOMAIN> All node types.
+       * <SEE>    document-iterators
+       * </ID>
        *)
 
     method nth_node : int -> 'ext node
-      (* Returns the n-th sub node of this node, n >= 0. Raises Not_found
-       * if the index is out of the valid range.
-       * Note that the first invocation of this method requires additional
-       * overhead.
+      (* <ID:type-node-nth-node>
+       * <CALL>   obj # [nth_node] n
+       * <SIG>    AUTO
+       * <DESCR>  Returns the n-th regular child of [obj], [n >= 0].
+       *    Raises [Not_found] if the index [n] is out of the valid range.
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method previous_node : 'ext node
+      (* <ID:type-node-previous-node>
+       * <CALL>   obj # [previous_node]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the predecessor of [obj]
+       *   in the list of regular children of the parent, or raise [Not_found]
+       *   if this node is the first child. This is equivalent to
+       *   [obj # parent # nth_node (obj # node_position - 1)].
+       * <DOMAIN> All node types.
+       * </ID>
+       *)
+
     method next_node : 'ext node
-      (* Return the previous and next nodes, respectively. These methods are
-       * equivalent to
-       * - parent # nth_node (self # node_position - 1) and
-       * - parent # nth_node (self # node_position + 1), respectively.
+      (* <ID:type-node-next-node>
+       * <CALL>   obj # [next_node]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the successor of [obj]
+       *   in the list of regular children of the parent, or raise [Not_found]
+       *   if this node is the last child. This is equivalent to
+       *   [obj # parent # nth_node (obj # node_position + 1)].
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method data : string
-      (* Get the data string of this node. (This method conforms to the
-       * string-value method of XPath.)
-       *
-       * Data nodes: returns the character data
-       * Element nodes, Super root node: returns the concatenation of all
-       *   subordinate data nodes (ignores attributes, comments, PIs, and
-       *   namespaces)
-       * Attribute nodes: Returns the attribute value as string
-       *   (raises Not_found for implied values)
-       * Comment nodes: Returns the comment string (inside <-- and -->)
-       *   (raises Not_found if there is no comment string)
-       * PI nodes: Returns the data part of the processing instruction
-       *   (returns "" if the data part is missing)
-       * Namespace nodes: Returns the namespace URI
+      (* <ID:type-node-data>
+       * <CALL>   obj # [data]
+       * <SIG>    AUTO
+       * <DESCR>  This method returns what is considered as
+       *   the data of the node which depends on the node type:
+       *    - Data nodes: the method returns the character string the node 
+       *      represents
+       *    - Element nodes, super root nodes: the method returns the
+       *      concatenated character strings of all (direct or indirect)
+       *      data nodes below [obj]
+       *    - Comment nodes: the method returns the
+       *      comment string (without delimiters), or it raises Not_found if the
+       *      comment string is not set
+       *    - Processing instructions: the
+       *      method returns the data part of the instruction, or "" if the data
+       *      part is missing
+       *    - Attribute nodes: the method returns the attribute
+       *      value as string, or it raises [Not_found] if the attribute
+       *      is implied.
+       *    - Namespace nodes: the method returns the namespace
+       *      URI
+       *      --
+       * <DOMAIN> All node types.
+       * </ID>
        *)
 
     method set_data : string -> unit
-      (* Data nodes: This method sets the contents of the node 
-       * Other node types: Method is not available.
+      (* <ID:type-node-set-data>
+       * <CALL>   obj # [set_data] s
+       * <SIG>    AUTO
+       * <DESCR>  This method sets the character string contained in 
+       *   data nodes.
        *
-       * Important node: If this method is called for data nodes, the XML tree
-       * may become invalid. This method does not check whether the new
-       * text is valid or not. To perform the check, you have to call
-       * validate_contents ~check_data_nodes:true for the containing element
-       * node.
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN> Data nodes.
+       * </ID>
        *)
 
     method node_type : node_type
-      (* Get the name of the element type. *)
+      (* <ID:type-node-node-type>
+       * <CALL>   obj # [node_type]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the type of [obj]:
+       *   - [T_element t]: The node is an element with type [t]
+       *   - [T_data]: The node is a data node
+       *   - [T_comment]: The node is a comment node
+       *   - [T_pinstr n]: The node is a processing instruction with
+       *     target [n]
+       *   - [T_super_root]: The node is a super root node
+       *   - [T_attribute n]: The node is an attribute with name [n]
+       *   - [T_namespace p]: The node is a namespace with prefix [p]
+       *     --
+       * <DOMAIN> All node types.
+       * </ID>
+       * XXX: <SEE> Where attribute and namespace nodes are discussed
+       *)
 
     method position : (string * int * int)
-      (* Return the name of the entity, the line number, and the column
-       * position (byte offset) of the beginning of the element.
-       * Only available if the element has been created with position
-       * information.
-       * Returns "?",0,0 if not available. (Note: Line number 0 is not
-       * possible otherwise.)
-       * The position is usually only available for element nodes.
+      (* <ID:type-node-position>
+       * <CALL>   obj # [position]
+       * <SIG>    AUTO
+       * <DESCR>  Returns a triple [(entity,line,pos)] describing the 
+       *   location of the element in the original XML text. This triple is
+       *   only available for elements, and only if the parser has been
+       *   configured to store positions (see parser option
+       *   [store_element_positions]). If available, [entity] describes 
+       *   the entity where the element occurred, [line] is the line number
+       *   [>= 1], and [pos] is the byte position of the first character
+       *   of the element in the line. 
+       *
+       *   If unavailable, the method will return the triple [("?",0,0)].
+       * <DOMAIN> All node types. Note that the method will always return
+       *   [("?",0,0)] for non-element nodes.
+       * </ID>
        *)
 
     method attribute : string -> Pxp_types.att_value
-    method attribute_names : string list
-    method attribute_type : string -> Pxp_types.att_type
-    method attributes : (string * Pxp_types.att_value) list
-      (* Get a specific attribute; get the names of all attributes; get the
-       * type of a specific attribute; get names and values of all attributes.
+      (* <ID:type-node-attribute>
+       * <CALL>   obj # [attribute] name
+       * <SIG>    AUTO
+       * <DESCR>  Returns the value of the attribute [name].
        *
-       * Note: If the DTD allows arbitrary for this element, "attribute_type"
-       * raises Undeclared.
+       *   If the parser is in validating mode, the method is able to return
+       *   values for declared attributes, and it raises [Not_found] for any 
+       *   undeclared attribute. Note that it even returns a value if the
+       *   attribute is actually missing but is declared as [#IMPLIED] or 
+       *   has a default value. 
+       *
+       *   If the parser (more precisely, the DTD object) is in 
+       *   well-formedness mode, the method is able to return values for 
+       *   defined attributes, and it raises [Not_found] for any
+       *   unknown attribute name.
+       *
+       *   Possible return values are:
+       *     -  [Implied_value]: The attribute has been declared with the
+       *        keyword [#IMPLIED], and the attribute definition is missing
+       *        in the attribute list of the element.
+       *     -  [Value s]: The attribute has been declared as type [CDATA], 
+       *        as [ID], as [IDREF], as [ENTITY], or as [NMTOKEN], or as 
+       *        enumeration or notation, and one of the two conditions holds: 
+       *        (1) The attribute value is defined in the attribute list in
+       *        which case this value is returned in the string [s]. (2) The
+       *        attribute has been omitted, and the DTD declares the attribute
+       *        with a default value. The default value is returned in [s]. 
+       *        
+       *        Summarized, [Value s] is returned for non-implied, non-list 
+       *        attribute values.
+       *
+       *        Furthermore, [Value s] is returned for non-declared attributes
+       *        if the DTD object allows this, for instance, if the DTD
+       *        object specifies well-formedness mode.
+       *     -  [Valuelist l]: The attribute has been declared as type
+       *        [IDREFS], as [ENTITIES], or [NMTOKENS], and one of the two
+       *        conditions holds: (1) The attribute value is defined in the 
+       *        attribute list in which case the space-separated tokens of
+       *        the value are returned in the string list [l]. (2) The
+       *        attribute has been omitted, and the DTD declares the attribute 
+       *        with a default value. The default value is returned in [l]. 
+       *
+       *        Summarized, [Valuelist l] is returned for all list-type
+       *        attribute values.
+       *        --
+       *   Note that before the attribute value is returned, the value is
+       *   normalized. This means that newlines are converted to spaces, and
+       *   that references to character entities (i.e. [&#n;]) and
+       *   general entities (i.e. [&name;]) are expanded; if necessary, 
+       *   the expansion is performed recursively.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return values, all other node types always raise [Not_found].
+       * </ID>
+       *)
+
+
+    method attribute_names : string list
+      (* <ID:type-node-attribute-names>
+       * <CALL>    obj # [attribute_names]
+       * <SIG>    AUTO
+       * <DESCR>   Returns the list of all attribute names of this element.
+       *   In validating mode, this list is simply the list of declared
+       *   attributes. In well-formedness mode, this list is the list of
+       *   defined attributes.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return a non-empty list, all other node types always return
+       *   the empty list.
+       * </ID>
+       *)
+
+    method attribute_type : string -> Pxp_types.att_type
+      (* <ID:type-node-attribute-type>
+       * <CALL>   obj # [attribute_type] name
+       * <SIG>    AUTO
+       * <DESCR>  Returns the type of the attribute [name]. If the attribute
+       *   is declared, the declared type is returned. If the attribute is
+       *   defined but undeclared, the type [A_cdata] will be returned.
+       *   (The module [Pxp_types] contains the Caml type of attribute types.)
+       *   This method raises [Not_found] if the attribute is unknown.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return values, all other node types always raise [Not_found].
+       * </ID>
+       *)
+
+    method attributes : (string * Pxp_types.att_value) list
+      (* <ID:type-node-attributes>
+       * <CALL>   obj # [attributes]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the list of [(name,value)] pairs describing
+       *    all attributes (declared attributes plus defined attributes).
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return non-empty values, all other node types always
+       *   return the empty list.
+       * </ID>
        *)
 
     method required_string_attribute : string -> string
+      (* <ID:type-node-required-string-attribute>
+       * <CALL>    obj # [required_string_attribute] name
+       * <SIG>    AUTO
+       * <DESCR>   Returns the value of the attribute [name] as string,
+       *    i.e. if the value of the attribute is [Value s], this method
+       *    will return simply [s], and if the value is [Valuelist l],
+       *    this method will return the elements of [l] separated by
+       *    spaces. If the attribute value is [Implied_value], the method
+       *    will fail.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return values, all other node types always fail.
+       * </ID>
+       *)
+
     method required_list_attribute : string -> string list
-      (* Return the attribute or fail if the attribute is not present:
-       * The first version passes the value always as string back;
-       * the second version always as list.
+      (* <ID:type-node-required-list-attribute>
+       * <CALL>    obj # [required_list_attribute] name
+       * <SIG>    AUTO
+       * <DESCR>   Returns the value of the attribute [name] as string list,
+       *    i.e. if the value of the attribute is [Valuelist l], this method
+       *    will return simply [l], and if the value is [Value s],
+       *    this method will return the one-element list [[[s]]].
+       *    If the attribute value is [Implied_value], the method
+       *    will fail.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return values, all other node types always fail.
+       * </ID>
        *)
 
     method optional_string_attribute : string -> string option
+      (* <ID:type-node-optional-string-attribute>
+       * <CALL>    obj # [optional_string_attribute] name
+       * <SIG>    AUTO
+       * <DESCR>   Returns the value of the attribute [name] as optional string,
+       *    i.e. if the value of the attribute is [Value s], this method
+       *    will return [Some s], and if the value is [Valuelist l],
+       *    this method will return [Some s] where [s] consists of the
+       *    concatenated elements of [l] separated by spaces. If the
+       *    attribute value is [Implied_value], the method will return [None].
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return [Some] values, all other node types always return [None].
+       * </ID>
+       *)
+
     method optional_list_attribute : string -> string list
-      (* Return some attribute value or return None if the attribute is not
-       *  present:
-       * The first version passes the value always as string back;
-       * the second version always as list.
+      (* <ID:type-node-optional-list-attribute>
+       * <CALL>    obj # [required_list_attribute] name
+       * <SIG>    AUTO
+       * <DESCR>   Returns the value of the attribute [name] as string list,
+       *    i.e. if the value of the attribute is [Valuelist l], this method
+       *    will return simply [l], and if the value is [Value s],
+       *    this method will return the one-element list [[[s]]].
+       *    If the attribute value is [Implied_value], the method
+       *    will return the empty list [[[]]].
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return non-empty values, all other node types always
+       *   return the empty list.
+       * </ID>
        *)
 
     method id_attribute_name : string
+      (* <ID:type-node-id-attribute-name>
+       * <CALL>   obj # [id_attribute_name]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the name of the (at most one) attribute being
+       *    declared as type [ID]. The method raises [Not_found] if there 
+       *    is no declared [ID] attribute for the element type.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return names, all other node types always raise [Not_found].
+       * </ID>
+       *)
+
     method id_attribute_value : string
-      (* Return the name and value of the ID attribute. The methods may
-       * raise Not_found if there is no ID attribute in the DTD, or no
-       * ID attribute in the element, respectively.
+      (* <ID:type-node-id-attribute-value>
+       * <CALL>   obj # [id_attribute_value]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the string value of the (at most one) attribute being
+       *    declared as type [ID]. The method raises [Not_found] if there 
+       *    is no declared [ID] attribute for the element type.
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return names, all other node types always raise [Not_found].
+       * </ID>
        *)
 
     method idref_attribute_names : string list
-      (* Returns the list of attribute names of IDREF or IDREFS type. *)
+      (* <ID:type-node-idref-attribute-names>
+       * <CALL>   obj # [idref_attribute_names]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the names of the attributes being
+       *    declared as type [IDREF] or [IDREFS]. 
+       * <DOMAIN> All node types. However, only elements and attribute nodes
+       *   will return names, all other node types always return the empty
+       *   list.
+       * </ID>
+       *)
 
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+      (* DEPRECATED METHOD! set_attributes does exactly the same. *)
+
     method set_attributes : (string * Pxp_types.att_value) list -> unit
-      (* Sets the attributes but does not check whether they match the DTD.
-       * 'quick_set_attributes' is the old name; for new software
-       * 'set_attributes' should be preferred.
+      (* <ID:type-node-set-attributes>
+       * <CALL>   obj # [set_attributes] al
+       * <SIG>    AUTO
+       * <DESCR>  Sets the attributes of this element to [al].
        *
-       * Important note: The new set of attributes is not validated against
-       * the ATTLIST declaration in the DTD. You can call validate_attlist
-       * to perform this check.
+       *    Note that this method does not add missing attributes that are
+       *    declared in the DTD. It also never rejects undeclared attributes.
+       *    The passed values are not checked.
+       *
+       *    Note: This method does not check whether the modified XML tree
+       *    is still valid.
+       * <DOMAIN>   Elements.
+       * </ID>
        *)
 
     method attributes_as_nodes : 'ext node list
-      (* Experimental feature: Return the attributes as node list. Every node
-       * has type T_attribute n, and contains only the single attribute n.
-       * This node list is computed on demand, so the first invocation of this
-       * method will create the list, and following invocations will only
-       * return the existing list.
+      (* <ID:type-node-attributes-as-nodes>
+       * <CALL>   obj # [attributes_as_nodes]
+       * <SIG>    AUTO
+       * <DESCR>  Returns all attributes (i.e. declared plus defined
+       *   attributes) as a list of attribute nodes with node type 
+       *   [T_attribute name]. 
        *
-       * To get the name of an attribute node n, call
-       *   n # node_type 
-       * which will return: T_attribute name.
-       * To get the value of an attribute node n, call either
-       *   n # data
-       * returning the value as string, or 
-       *   n # attribute name
-       * returning the value as att_value.
+       *   This method should be used if it is required for typing reasons
+       *   that the attributes have also type [node]. A common example
+       *   are sets that may both contain elements and attributes, as they
+       *   are used in the XPath language.
+       *
+       *   The attribute nodes are read-only; any call to a method
+       *   modifying their contents will raise [Method_not_applicable].
+       *   In order to get the value of such an attribute node [anode],
+       *   one can invoke the method [attribute]:
+       *
+       *   [anode # attribute name]
+       *
+       *   where [name] is the name of the attribute represented by
+       *   [anode]. This will return the attribute value as [att_value]. Of
+       *   course, the other attribute observers can be applied as well. 
+       *   Furthermore, the method [data] will return the attribute value as
+       *   string. However, every attribute node only contains the value of the
+       *   one attribute it represents, and it does not make sense to pass
+       *   names of other attributes to the observer methods.
+       *   
+       *   The attribute nodes live outside of the regular XML tree, and
+       *   they are not considered as children of the element node. However,
+       *   the element node is the parent node of the attribute nodes 
+       *   (i.e. the children/parent relationship is asymmetric).
+       *
+       *   The method [attributes_as_nodes] computes the list of attribute
+       *   nodes when it is first invoked, and it will return the same list
+       *   again in subsequent invocations.
+       * <DOMAIN>  This method is only applicable to elements.
+       * </ID>
        *)
 
     method set_comment : string option -> unit
-      (* Sets the comment string; only applicable for T_comment nodes *)
+      (* <ID:type-node-set-comment>
+       * <CALL>   obj # [set_comment] c
+       * <SIG>    AUTO
+       * <DESCR>  Sets the comment string contained in comment nodes, if
+       *    [c = Some s]. Otherwise, this method removes the comment string
+       *    ([c = None]).
+       *
+       *    Note that the comment string must not include the delimiters
+       *    [<--] and [-->]. Furthermore, it must not contain any character
+       *    or character sequence that are forbidden in comments, such
+       *    as ["--"]. However, this method does not check this condition.
+       * <DOMAIN>  Comment nodes.
+       * </ID>
+       *)
 
     method comment : string option
-      (* Get the comment string.
-       * Returns always None for nodes with a type other than T_comment.
+      (* <ID:type-node-comment>
+       * <CALL>   obj # [comment]
+       * <SIG>    AUTO
+       * <DESCR>  Returns [Some text] if the node is a comment node and if
+       *    [text] is the comment string (without the delimiters [<--] and
+       *    [-->]). Otherwise, [None] is passed back.
        *
-       * Note: The 'data' method also returns the comment string, and ""
-       * if the string is not available.
+       *    Note: The [data] method also returns the comment string, but it
+       *    raises [Not_found] if the string is not available.
+       * <DOMAIN> All node types. Note that the method will always return
+       *    [None] for non-comment nodes.
+       * </ID>
        *)
 
     method normprefix : string
-      (* For namespace-aware implementations of the node class, this method
-       * returns the normalized prefix of the element or attribute.
-       * If the object does not have a prefix, "" will be passed back.
+      (* <ID:type-node-normprefix>
+       * <CALL>   obj # [normprefix]
+       * <SIG>    AUTO
+       * <DESCR>  For namespace-aware implementations of the node class, this
+       *     method returns the normalized prefix of the element or attribute.
+       *     If the object does not have a prefix, "" will be passed back.
        *
-       * This method is only supported by the implementations
-       * namespace_element_impl, namespace_attribute_impl.
-       * When invoked for other classes, it will fail.
+       *     The normalized prefix is the part of the name before the 
+       *     colon. It is normalized because the parser ensures that every
+       *     prefix corresponds only to one namespace. Note that the
+       *     prefix can be different than in the parsed XML source because
+       *     the normalization step needs to change the prefix to avoid
+       *     prefix conflicts.
+       * <DOMAIN> Elements and attributes supporting namespaces.
+       * </ID>
        *)
 
     method localname : string
-      (* For namespace-aware implementations of the node class, this method
-       * returns the local part of the name of the element or attribute.
+      (* <ID:type-node-localname>
+       * <CALL>   obj # [localname]
+       * <SIG>    AUTO
+       * <DESCR>  For namespace-aware implementations of the node class, this
+       *     method returns the local part of the name of the element or
+       *     attribute.
        *
-       * This method is only supported by the implementations
-       * namespace_element_impl, namespace_attribute_impl.
-       * When invoked for other classes, it will fail.
+       *     The local name is the part of the name after the colon, or
+       *     the whole name if there is no colon.
+       * <DOMAIN> Elements and attributes supporting namespaces.
+       * </ID>
        *)
 
     method namespace_uri : string
-      (* For namespace-aware implementations of the node class, this method
-       * returns the namespace URI of the element, attribute or namespace.
-       * It is required that a namespace manager is available.
+      (* <ID:type-node-namespace-uri>
+       * <CALL>   obj # [namespace_uri]
+       * <SIG>    AUTO
+       * <DESCR>  For namespace-aware implementations of the node class, this
+       *     method returns the namespace URI of the element, attribute or
+       *     namespace. It is required that a namespace manager is available.
        *
-       * If the object does not have a namespace prefix, and there is no
-       * default namespace, this method returns "".
+       *     If the node does not have a namespace prefix, and there is no
+       *     default namespace, this method returns "".
        *
-       * This method is only supported by the implementations
-       * namespace_element_impl, namespace_attribute_impl, namespace_impl.
-       * When invoked for other classes, it will fail.
+       *     The namespace URI is the unique name of the namespace.
+       * <DOMAIN> Elements and attributes supporting namespaces; furthermore
+       *     namespace nodes.
+       * </ID>
        *)
 
     method namespace_manager : namespace_manager
-      (* For namespace-aware implementations of the node class, this method
-       * returns the namespace manager. If the namespace manager has not been
-       * set, the exception Not_found is raised.
+      (* <ID:type-node-namespace-manager>
+       * <CALL>   obj # [namespace_manager]
+       * <SIG>    AUTO
+       * <DESCR>  For namespace-aware implementations of the node class,
+       *      this method returns the namespace manager. If the namespace
+       *      manager has not been set, the exception [Not_found] is raised.
        *
-       * This method is only supported by the implementations
-       * namespace_element_impl, namespace_attribute_impl, namespace_impl.
-       * When invoked for other classes, it will fail.
+       *      The namespace manager is an object that holds the mapping
+       *      from namespace prefixes to namespace URIs, and vice versa.
+       *      It is contained in the DTD.
+       * <DOMAIN> Elements and attributes supporting namespaces; furthermore
+       *     namespace nodes.
+       * </ID>
        *)
 
     method namespace_info : 'ext namespace_info
-      (* Returns additional information about the namespace prefixes
-       * in the parsed XML source. This method has been added for
-       * better XPath conformance.
+      (* <ID:type-node-namespace-info>
+       * <CALL>   obj # [namespace_info]
+       * <SIG>    AUTO
+       * <DESCR>  Returns additional information about the namespace prefixes
+       *     in the parsed XML source. This method has been added for
+       *     better XPath conformance. Note that it is still experimental
+       *     and it is likely that it will be changed.
        *
-       * This record is only available if the parser has been configured
+       *     This record is only available if the parser has been configured
        * to support namespaces, and if the parser has been configured
        * to set this record (requires a lot of memory). Furthermore, only
        * the implementation namespace_element_impl supports this method.
        *
-       * This method raises Not_found if the namespace_info field has not
+       * This method raises [Not_found] if the [namespace_info] field has not
        * been set.
-       *
-       * This method fails if the class does not support it.
-       *)
-
-    method set_namespace_info : 'ext namespace_info option -> unit
-      (* Sets the namespace_info field.
-       * Only the implementation namespace_element_impl supports this
-       * method.
+       * <DOMAIN> Elements supporting namespaces.
+       * </ID>
        *)
 
     method dtd : dtd
-      (* Get the DTD. Fails if no DTD is specified (which is impossible if
-       * 'create_element' or 'create_data' have been used to create this
-       * object)
+      (* <ID:type-node-dtd>
+       * <CALL>   obj # [dtd]
+       * <SIG>    AUTO
+       * <DESCR>  Returns the DTD.
+       * <DOMAIN> All node types. Note (1) that exemplars need not to have
+       *   an associated DTD, in which case this method fails. (2) Even
+       *   in well-formedness mode every node has a DTD object;
+       *   this object specifies well-formedness mode.
+       * </ID>
        *)
 
     method encoding : Pxp_types.rep_encoding
-      (* Get the encoding which is always the same as the encoding of the
-       * DTD. See also method 'dtd' (Note: This method fails, too, if
-       * no DTD is present.)
+      (* <ID:type-node-encoding>
+       * <CALL>   obj # [encoding]
+       * <SIG>    AUTO
+       * <DESCR>  Get the encoding which is always the same as the encoding of 
+       *   the DTD. See also method [dtd]. (Note: This method fails, too, if
+       *   no DTD is present.)
+       * <DOMAIN> All node types. Note that exemplars need not to have
+       *   an associated DTD, in which case this method fails.
+       * </ID>
        *)
 
     method create_element :
@@ -659,96 +1201,207 @@ class type [ 'ext ] node =
 	     ?valcheck:bool ->      (* default: true *)
 	     ?att_values:((string * Pxp_types.att_value) list) ->
              dtd -> node_type -> (string * string) list -> 'ext node
-      (* create an "empty copy" of this element:
-       * - new DTD
-       * - new node type (which must not be T_data)
-       * - new attribute list: Attributes can either be passed as 
-       *   (string*string) list, or as (string*att_value) list
-       *   (using ~att_values). The method forms the union of both
-       *   arguments, and sets the attribute list from that
-       * - empty list of nodes
+      (* <ID:type-node-create-element>
+       * <CALL>   obj # [create_element] ~name_pool_for_attribute_values ~position ~valcheck ~att_values 
+       *          dtd ntype att_list
+       * <SIG>    AUTO
+       * <DESCR>  Returns a flat copy of this element node with the following
+       *    modifications: 
+       *     - The DTD is set to [dtd]
+       *     - The node type is set to [ntype] (which must be [T_element name])
+       *     - The attribute list is set to the concatenation of 
+       *       [att_list] and [att_values]; [att_list] passes attribute values
+       *       as strings while [att_values] passes attribute values as
+       *       type [att_value]
+       *     - The copy does not have children nor a parent
+       *     - The copy does not contain processing instructions.
+       *     - The position triple is set to [position]
+       *       --
+       *   Note that the extension object is copied, too.
        *
-       * ~valcheck (default: true) - If set to false, the validation
-       * of the attribute list is turned off. This means that you can
-       * pass any attributes to the method, and it will never complain
-       * about validation errors. However, the method will also not
-       * complement missing default values, so use this feature with
-       * care. You can later revalidate the element by calling the
-       * complement_attlist and validate_attlist methods.
+       *   If [valcheck = true] (the default), it is checked whether the 
+       *   element type exists and whether the passed attributes match the
+       *   declared attribute list. Missing attributes are automatically
+       *   added, if possible. If [valcheck = false], any element type
+       *   and any attributes are accepted.
+       *
+       *   If a [name_pool_for_attribute_values] is passed, the attribute
+       *   values in [att_list] are put into this pool.
+       *
+       *   The optional arguments have the following defaults:
+       *    - [~name_pool_for_attribute_values]: No pool is used
+       *    - [~position]: The position is not available in the copy
+       *    - [~valcheck]: false
+       *    - [~att_values]: empty
+       *      --
+       * <DOMAIN> Elements.
+       * <SEE> type-node-ex-create-element
+       * </ID>
        *)
 
     method create_data : dtd -> string -> 'ext node
-      (* create an "empty copy" of this data node: *)
+      (* <ID:type-node-create-data>
+       * <CALL>   obj # [create_data] dtd cdata
+       * <SIG>    AUTO
+       * <DESCR>  Returns a flat copy of this data node with the following
+       *    modifications: 
+       *     - The DTD is set to [dtd]
+       *     - The character string is set to [cdata]
+       *       --
+       *   Note that the extension object is copied, too.
+       * <DOMAIN> Data nodes.
+       * <SEE> type-node-ex-create-data
+       * </ID>
+       *)
+
+    method create_other : dtd -> -> node_type -> 'ext node
+      (* <ID:type-node-create-other>
+       * <CALL>   obj # [create_other] dtd ntype
+       * <SIG>    AUTO
+       * <DESCR>  Returns a flat copy of this node with the following
+       *   modification:
+       *     - The DTD is set to [dtd]
+       *       --
+       *   Note that the extension object is copied, too.
+       *
+       *   The passed node type [ntype] must match the node type
+       *   of [obj].
+       * <DOMAIN> Super root nodes, processing instruction nodes,
+       *    comment nodes
+       * </ID>
+       *)
+
 
     method local_validate : 
               ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+      (* DEPRECATED NAME of validate_contents. *)
+
     method validate_contents : 
               ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
-      (* Check that the subnodes of this element match the declared
-       * content model of this element.
+      (* <ID:type-node-validate-contents>
+       * <CALL>   obj # [validate_contents] ?use_dfa ?check_data_nodes ()
+       * <SIG>    AUTO
+       * <DESCR>  Checks that the subnodes of this element match the declared
+       *     content model of this element. The method returns [()] if
+       *     the element is okay, and it raises an exception if an error
+       *     is found (in most cases [Validation_error]).
+       *
        *     This check is always performed by the parser, such that
-       * software that only reads parsed XML trees needs not call
-       * this method. However, if software modifies the tree itself,
-       * an invocation of this method ensures that the validation constraints
-       * about content models are fulfilled.
+       *     software that only reads parsed XML trees needs not call
+       *     this method. However, if software modifies the tree itself,
+       *     an invocation of this method ensures that the validation
+       *     constraints about content models are fulfilled.
        *
-       * Option ~use_dfa: If true, the deterministic finite automaton of
-       *   regexp content models is used for validation, if available.
-       *   Defaults to false.
-       * Option ~check_data_nodes: If true, it is checked whether data nodes
-       *   only occur at valid positions. If false, these checks are left out.
-       *   Defaults to true. (Usually, the parser turns this feature off
-       *   because the parser already performs a similar check.)
+       *     Note that the check is not performed recursively.
+       *  
+       *     - Option [~use_dfa]: If true, the deterministic finite automaton of
+       *       regexp content models is used for validation, if available.
+       *       Defaults to false.
+       *     - Option [~check_data_nodes]: If true, it is checked whether data
+       *       nodes only occur at valid positions. If false, these checks
+       *       are left out. Defaults to true. (Usually, the parser turns
+       *       this feature off because the parser already performs a similar
+       *       check.)
        *
-       * 'local_validate' is the old name of the method; in new software
-       * 'validate_contents' should be called.
+       *       See [classify_data_node] for details about what is checked.
+       *       --
+       *
+       * In previous releases of PXP, this method was called [local_validate].
+       * <DOMAIN> All node types. However, there are only real checks for
+       *    elements; for other nodes, this method is a no-op.
+       * </ID>
        *)
 
     method complement_attlist : unit -> unit
-      (* Adds attributes that are declared in the DTD but are currently missing.
-       * #IMPLIED attributes are added with Implied_value, and if there is 
-       * a default value for an attribute, this value is added.
-       * #REQUIRED attributes are set to Implied_value, too.
+      (* <ID:type-node-complement-attlist>
+       * <CALL>   obj # [complement_attlist] ()
+       * <SIG>    AUTO
+       * <DESCR>  Adds attributes that are declared in the DTD but are
+       *     currently missing: [#IMPLIED] attributes are added with 
+       *     [Implied_value], and if there is a default value for an attribute, 
+       *     this value is added. [#REQUIRED] attributes are set to
+       *     [Implied_value], too.
        * 
-       * It is only necessary to call this method if the element is created
-       * with ~valcheck:false, and the element must be validated.
-       * If the element is created with ~valcheck:true, the attlist
-       * will automatically complemented.
+       *     It is only necessary to call this method if the element is created
+       *     with ~valcheck:false, or the attribute list has been modified,
+       *     and the element must be validated.
+       * <DOMAIN> Elements.
+       * </ID>
        *)
 
     method validate_attlist : unit -> unit
-      (* Check that the attribute list of this element matches the declared
-       * attribute list.
-       *    This check is implicitly performed by create_element unless
-       * the option ~valcheck:false has been passed.
-       * This check is not called by the method 'set_attributes'.
+      (* <ID:type-node-validate-attlist>
+       * <CALL>   obj # [validate_attlist] ()
+       * <SIG>    AUTO
+       * <DESCR>  Checks whether the attribute list of the element [obj] 
+       *    matches the declared attribute list. The method returns [()]
+       *    if the attribute list is formed correctly, and it raises an
+       *    exception (usually a [Validation_error]) if there is an error.
+       *
+       *    This check is implicitly performed by [create_element] unless
+       * the option [~valcheck:false] has been passed. This means that it
+       * is usually not necessary to call this method; however, if the
+       * attribute list has been changed by [set_attributes] or if 
+       * [~valcheck:false] is in effect, the invocation of this method
+       * ensures the validity of the attribute list.
+       *
+       * Note that the method complains about missing attributes even
+       * if these attributes have been declared with a default value or as
+       * being [#IMPLIED]; this method only checks the attributes but does
+       * not modify the attribute list. If you know that attributes are
+       * missing and you want to add them automatically just as 
+       * [create_element] does, you can call [complement_attlist] before
+       * doing this check.
+       * <DOMAIN> All node types. However, for non-element nodes this
+       *   check is a no-op.
+       * </ID>
        *)
 
     method validate : unit -> unit
-      (* Does validate_contents + validate_attlist and ensures that the
-       * node is locally valid.
+      (* <ID:type-node-validate>
+       * <CALL>   obj # [validate] ()
+       * <SIG>    AUTO
+       * <DESCR>  Calls [validate_contents] and [validate_attlist], and
+       *     ensures that this element is locally valid. The method 
+       *     returns [()] if the element is valid, and raises an exception
+       *     otherwise.
+       * <DOMAIN> All node types. However, for non-element nodes this
+       *   check is a no-op.
+       * </ID>
        *)
 
     (* method keep_always_whitespace_mode : unit *)
       (* This method has been removed. You can now set the handling of
-       * ignorable whitespace by a new Pxp_yacc.config option.
+       * ignorable whitespace by a new Pxp_yacc.config option:
+       * [drop_ignorable_whitespace]
        *)
 
     method write : 
              ?prefixes:string list ->
+	     ?default:string ->
              Pxp_types.output_stream -> Pxp_types.encoding -> unit
-      (* Write the contents of this node and the subtrees to the passed
-       * output stream; the passed encoding is used. The format
-       * is compact (the opposite of "pretty printing").
+      (* <ID:type-node-write>
+       * <CALL>   obj # [write] ~prefixes stream enc
+       * <SIG>    AUTO
+       * <DESCR>  Write the contents of this node and the subtrees to the passed
+       *    [stream] encoded as [enc]. The generated output is again XML.
+       *    The output style is rather compact and should not be considered
+       *    as "pretty printing".
        *
-       * Option ~prefixes: The class namespace_element_impl interprets this
-       *   option and passes it recursively to subordinate invocations of
-       *   'write'. The meaning is that the normprefixes enumerated by this list
+       *   Option [~prefixes]: The class [namespace_element_impl] interprets 
+       *   this option and passes it recursively to subordinate invocations of
+       *   [write]. The meaning is that the normprefixes enumerated by this list
        *   have already been declared by surrounding elements. The option
        *   defaults to [] forcing the method to output all necessary prefix
        *   declarations.
        *
-       * KNOWN BUG: comment nodes are not printed.
+       *   Option [~default]: Specifies the normprefix that becomes the
+       *   default namespace in the output.
+       *
+       *   KNOWN BUG: comment nodes are not printed.
+       * <DOMAIN> All regular node types (elements, data nodes, comments,
+       *   processing instructions, super root nodes).
+       * </ID>
        *)
 
     (* ---------------------------------------- *)
@@ -763,6 +1416,12 @@ class type [ 'ext ] node =
 			   (string * Pxp_types.att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
+
+    method set_namespace_info : 'ext namespace_info option -> unit
+      (* Sets the namespace_info field.
+       * Only the implementation namespace_element_impl supports this
+       * method.
+       *)
 
     method dump : Format.formatter -> unit
 
@@ -792,51 +1451,116 @@ and ['ext] namespace_info =
 
 
 class [ 'ext ] data_impl : 'ext -> [ 'ext ] node
-    (* Creation:
-     *   new data_impl an_extension
-     * creates a new data node with the given extension and the empty string
-     * as content.
-     *)
-;;
+  (* <ID:class-data-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [data_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes data nodes. You can create a new object by
+   *
+   *   [let exemplar = new data_impl ext_obj]
+   *
+   *   which creates a special form of empty data node which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called a data exemplar. In order to get a working data node
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_data] on the exemplar object.
+   * </ID>
+   *)
 
 
 class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
-    (* Creation:
-     *   new element_impl an_extension
-     * creates a new empty element node with the given extension.
-     *)
-;;
+  (* <ID:class-element-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [element_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes element nodes. You can create a new object by
+   *
+   *   [let exemplar = new element_impl ext_obj]
+   *
+   *   which creates a special form of empty element which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called an element exemplar. In order to get a working element
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_element] on the exemplar object.
+   *
+   *   Note that the class [element_impl] is not namespace-aware.
+   * </ID>
+   *)
 
 
 class [ 'ext ] comment_impl : 'ext -> [ 'ext ] node ;;
-    (* Creation:
-     *   new comment_impl an_extension
-     * creates a new empty comment node with the given extension.
-     * To store a comment, use the method set_comment; to get the comment
-     * string, invoke the method comment.
-     *)
-
-class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
-    (* Creation:
-     *   new comment_impl an_extension
-     * creates a new empty super root node with the given extension.
-     * A super root node behaves much like an element; however you cannot
-     * add attributes.
-     *)
-
-class [ 'ext ] pinstr_impl : 'ext -> [ 'ext ] node ;;
-    (* Creation:
-     *   new comment_impl an_extension
-     * creates a new empty processing instruction node with the given extension.
-     *)
-
-val pinstr : 'ext node -> proc_instruction
-  (* Returns the processing instruction contained in a pinstr node.
-   * This function raises Invalid_argument if invoked for a different node
-   * type than T_pinstr.
+  (* <ID:class-comment-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [comment_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes comment nodes. You can create a new object by
+   *
+   *   [let exemplar = new comment_impl ext_obj]
+   *
+   *   which creates a special form of empty element which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called an comment exemplar. In order to get a working element
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_other] on the exemplar object, e.g.
+   *
+   *   [let comment = exemplar # create_other dtd]
+   * </ID>
    *)
 
-(* Attribute nodes are experimental: *)
+class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
+  (* <ID:class-super-root-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [super_root_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes super root nodes. You can create a new object by
+   *
+   *   [let exemplar = new super_root_impl ext_obj]
+   *
+   *   which creates a special form of empty super root which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called a super root exemplar. In order to get a working node
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_other] on the exemplar object, e.g.
+   *
+   *   [let root = exemplar # create_other dtd]
+   * </ID>
+   *)
+
+class [ 'ext ] pinstr_impl : 'ext -> [ 'ext ] node ;;
+  (* <ID:class-pinstr-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [pinstr_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes processing instruction nodes. You can create a new object by
+   *
+   *   [let exemplar = new pinstr_impl ext_obj]
+   *
+   *   which creates a special form of empty node which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called a processing instruction exemplar. In order to get a working node
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_other] on the exemplar object, e.g.
+   *
+   *   [let pi = exemplar # create_other dtd]
+   * </ID>
+   *)
+
+val pinstr : 'ext node -> proc_instruction
+  (* <ID:val-pinstr>
+   * <TYPE:fun>
+   * <CALL>   [pinstr] n
+   * <SIG>    AUTO
+   * <DESCR>  Returns the processing instruction contained in a
+   *   processing instruction node.
+   *   This function raises [Invalid_argument] if invoked for a different node
+   *   type than T_pinstr.
+   * </ID>
+   *)
 
 class [ 'ext ] attribute_impl :
   element:string -> name:string -> Pxp_types.att_value -> dtd -> [ 'ext ] node
@@ -865,18 +1589,59 @@ class [ 'ext ] attribute_impl :
      *)
 
 val attribute_name  : 'ext node -> string
+  (* <ID:val-attribute-name>
+   * <TYPE:fun>
+   * <CALL>   [attribute_name] n
+   * <SIG>    AUTO
+   * <DESCR>  Returns the name of the attribute contained in an attribute
+   *    node. Raises [Invalid_argument] if [n] does not have node type
+   *    [T_attribute].
+   * </ID>
+   *)
+
 val attribute_value : 'ext node -> Pxp_types.att_value
+  (* <ID:val-attribute-value>
+   * <TYPE:fun>
+   * <CALL>   [attribute_value] n
+   * <SIG>    AUTO
+   * <DESCR>  Returns the value of the attribute contained in an attribute
+   *    node. Raises [Invalid_argument] if [n] does not have node type
+   *    [T_attribute].
+   * </ID>
+   *)
+
 val attribute_string_value : 'ext node -> string
-  (* These three functions are defined for attribute nodes, and return
-   * the name, the att_value, and the string value, respectively.
-   * If called for non-attribute nodes, these functions raise Invalid_argument.
+  (* <ID:val-attribute-string-value>
+   * <TYPE:fun>
+   * <CALL>   [attribute_string_value] n
+   * <SIG>    AUTO
+   * <DESCR>  Returns the string value of the attribute contained in an attribute
+   *    node. Raises [Invalid_argument] if [n] does not have node type
+   *    [T_attribute].
+   * </ID>
    *)
 
 (* Very experimental namespace support: *)
 
-class [ 'ext ] namespace_element_impl :
-  'ext -> [ 'ext ] node
-;;
+class [ 'ext ] namespace_element_impl : 'ext -> [ 'ext ] node
+  (* <ID:class-namespace-element-impl>
+   * <TYPE:class>
+   * <CALL>   'ext [namespace_element_impl]
+   * <SIG>    AUTO
+   * <DESCR>  This class is an implementation of [node] which
+   *   realizes element nodes. In contrast to [element_impl], this class
+   *   also implements the namespace methods.
+   *   You can create a new object by
+   *
+   *   [let exemplar = new namespace_element_impl ext_obj]
+   *
+   *   which creates a special form of empty element which already contains a
+   *   reference to the [ext_obj], but is otherwise empty. This special form
+   *   is called an element exemplar. In order to get a working element
+   *   that can be used in a node tree it is required to apply the method
+   *   [create_element] on the exemplar object.
+   * </ID>
+   *)
 
   (* namespace_element_impl: the namespace-aware implementation of element
    * nodes. 
@@ -896,7 +1661,6 @@ class [ 'ext ] namespace_element_impl :
    * - namespace_info
    * - set_namespace_info
    * - namespace_manager
-   * - set_namespace_manager
    *)
 
 
@@ -938,9 +1702,14 @@ class [ 'ext ] namespace_info_impl :
 
 type 'ext spec
 constraint 'ext = 'ext node #extension
-    (* Contains the exemplars used for the creation of new nodes
-     *)
-
+  (* <ID:type-spec>
+   * <TYPE:type>
+   * <CALL>   'ext [spec]
+   * <SIG>    AUTO
+   * <DESCR>  The abstract data type specifying which objects are actually
+   *    created by the parser.
+   * </ID>
+   *)
 
 val make_spec_from_mapping :
       ?super_root_exemplar : 'ext node ->
@@ -952,15 +1721,39 @@ val make_spec_from_mapping :
       element_mapping: (string, 'ext node) Hashtbl.t ->
       unit ->
         'ext spec
-    (* Specifies:
-     * - For new data nodes, the ~data_exemplar must be used
-     * - For new element nodes: If the element type is mentioned in the
-     *   ~element_mapping hash table, the exemplar found in this table is
-     *   used. Otherwise, the ~default_element_exemplar is used.
-     * Optionally:
-     * - You may also specify exemplars for super root nodes, for comments
-     *   and for processing instructions
-     *)
+  (* <ID:val-make-spec-from-mapping>
+   * <TYPE:fun>
+   * <CALL>   [make_spec_from_mapping]
+   *            ~super_root_exemplar ~comment_exemplar ~default_pinstr_exemplar
+   *            ~pinstr_mapping ~data_exemplar ~default_element_exemplar
+   *            ~element_mapping
+   *            ()
+   * <SIG>    AUTO
+   * <DESCR>  Creates a [spec] from the arguments. Some arguments are optional,
+   *    some arguments are mandatory.
+   *      - [~super_root_exemplar]: Specifies the exemplar to be used for
+   *        new super root nodes. This exemplar is optional.
+   *      - [~comment_exemplar]: Specifies the exemplar to be used for
+   *        new comment nodes. This exemplar is optional.
+   *      - [~pinstr_exemplar]: Specifies the exemplar to be used for
+   *        new processing instruction nodes by a hashtable mapping target
+   *        names to exemplars. This hashtable is optional.
+   *      - [~default_pinstr_exemplar]: Specifies the exemplar to be used for
+   *        new processing instruction nodes. This exemplar will be used
+   *        for targets that are not contained in the [~pinstr_exemplar]
+   *        hashtable. This exemplar is optional.
+   *      - [~data_exemplar]: Specifies the exemplar to be used for
+   *        new data nodes. This exemplar is mandatory.
+   *      - [~element_mapping]: Specifies the exemplar to be used for
+   *        new element nodes by a hashtable mapping element types to
+   *        exemplars. This hashtable is mandatory (but may be empty).
+   *      - [~default_element_exemplar]: Specifies the exemplar to be used for
+   *        new element nodes. This exemplar will be used
+   *        for element types that are not contained in the [~element_mapping]
+   *        hashtable. This exemplar is mandatory.
+   *        --
+   * </ID>
+   *)
 
 val make_spec_from_alist :
       ?super_root_exemplar : 'ext node ->
@@ -972,35 +1765,105 @@ val make_spec_from_alist :
       element_alist: (string * 'ext node) list ->
       unit ->
         'ext spec
-    (* This is a convenience function: You can pass the mappings from
-     * elements and PIs to exemplar by associative lists.
-     *)
+  (* <ID:val-make-spec-from-alist>
+   * <TYPE:fun>
+   * <CALL>   [make_spec_from_alist]
+   *            ~super_root_exemplar ~comment_exemplar ~default_pinstr_exemplar
+   *            ~pinstr_alist ~data_exemplar ~default_element_exemplar
+   *            ~element_alist
+   *            ()
+   * <SIG>    AUTO
+   * <DESCR>  Creates a [spec] from the arguments. This is a convenience
+   *    function for [make_spec_from_mapping]; instead of requiring hashtables
+   *    the function allows it to pass associative lists.
+   * </ID>
+   *)
 
 val create_data_node :
       'ext spec -> dtd -> string -> 'ext node
+  (* <ID:val-create-data-node>
+   * <TYPE:fun>
+   * <CALL>   [create_data_node] spec dtd datastring
+   * <SIG>    AUTO
+   * <DESCR>  Creates a new data node from the exemplar contained in [spec].
+   *    The new node contains [datastring] and is connected with the [dtd].
+   * </ID>
+   *)
+
 val create_element_node :
       ?name_pool_for_attribute_values:Pxp_types.pool ->
       ?position:(string * int * int) ->
       ?valcheck:bool ->
       ?att_values:((string * Pxp_types.att_value) list) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
-(* TODO *)
-(* NEW: options
- *  ?parsed_attlist
- *  ?valcheck_xxx (see above)
- *)
+  (* <ID:val-create-element-node>
+   * <CALL>    [create_element_node] ~name_pool_for_attribute_values
+   *              ~position ~valcheck ~att_values spec dtd eltype
+   *              att_list
+   * <SIG>     AUTO
+   * <DESCR>   Creates a new element node from the exemplar(s) contained in
+   *    [spec]:
+   *      - The new node will be connected to the passed [dtd].
+   *      - The new node will have the element type [eltype].
+   *      - The attributes of the new node will be the concatenation of
+   *        [att_list] and [att_values]; [att_list] passes attribute values
+   *        as strings while [att_values] passes attribute values as
+   *        type [att_value]
+   *      - The source position is set to [~position] (if passed)
+   *      - The [~name_pool_for_attribute_values] will be used, if passed.
+   *      - If [~valcheck = true] (the default), the attribute list is 
+   *        immediately validated. If [~valcheck = false], the validation
+   *        is left out; in this case you can pass any element type and
+   *        and any attributes, and it does not matter whether and how
+   *        they are declared.
+   *        --
+   * </ID>
+   *)
 
 val create_super_root_node :
       ?position:(string * int * int) ->
       'ext spec -> dtd -> 'ext node
+  (* <ID:val-create-super-root-node>
+   * <CALL>   [create_super_root_node] ~position spec dtd
+   * <SIG>    AUTO
+   * <DESCR>  Creates a new super root node from the exemplar contained in
+   *    [spec]. The new node is connected to [dtd], and the position
+   *    triple is set to [~position].
+   *
+   *    The function fails if there is no super root exemplar in [spec].
+   * </ID>
+   *)
+
 val create_comment_node :
       ?position:(string * int * int) ->
       'ext spec -> dtd -> string -> 'ext node
+  (* <ID:val-create-comment-node>
+   * <CALL>   [create_comment_node] ~position spec dtd commentstring
+   * <SIG>    AUTO
+   * <DESCR>  Creates a new comment node from the exemplar contained in
+   *    [spec]. The new node is connected to [dtd], and the position
+   *    triple is set to [~position]. The contents of the node are set
+   *    to [commentstring].
+   *
+   *    The function fails if there is no comment exemplar in [spec].
+   * </ID>
+   *)
+
+
 val create_pinstr_node :
       ?position:(string * int * int) ->
       'ext spec -> dtd -> proc_instruction -> 'ext node
-  (* These functions use the exemplars contained in a spec and create fresh
-   * node objects from them.
+  (* <ID:val-create-pinstr-node>
+   * <CALL>   [create_pinstr_node] ~position spec dtd pi
+   * <SIG>    AUTO
+   * <DESCR>  Creates a new processing instruction node from the exemplar 
+   *    contained in [spec]. The new node is connected to [dtd], and the 
+   *    position triple is set to [~position]. The contents of the node are set
+   *    to [pi].
+   *
+   *    The function fails if there is no processing instruction exemplar in
+   *    [spec].
+   * </ID>
    *)
 
 val create_no_node :
@@ -1057,25 +1920,42 @@ val get_pinstr_exemplar :
  *)
 
 val compare : 'ext node -> 'ext node -> int
-  (* Returns -1 if the first node is before the second node, or +1 if the
-   * first node is after the second node, or 0 if both nodes are identical.
+  (* <ID:val-compare>
+   * <TYPE:fun>
+   * <CALL>   [compare] n1 n2
+   * <SIG>    AUTO
+   * <DESCR>  Returns -1 if [n1] occurs before [n2], or +1 if [n1] occurs
+   * after [n2], or 0 if both nodes are identical.
    * If the nodes are unrelated (do not have a common ancestor), the result
-   * is undefined (Note: this case is different from ord_compare).
+   * is undefined (Note: this case is different from [ord_compare]).
    * This test is rather slow, but it works even if the XML tree changes
-   * dynamically (in contrast to ord_compare below).
+   * dynamically (in contrast to [ord_compare] below).
+   * </ID>
    *)
 
 type 'ext ord_index
 constraint 'ext = 'ext node #extension
-  (* The type of ordinal indexes *)
+  (* <ID:type-ord-index>
+   * <TYPE:type>
+   * <CALL>   'ext [ord_index]
+   * <SIG>    AUTO
+   * <DESCR>  The type of ordinal indexes.
+   * </ID>
+   *)
 
 val create_ord_index : 'ext node -> 'ext ord_index
-  (* Creates an ordinal index for the subtree starting at the passed node.
+  (* <ID:val-create-ord-index>
+   * <TYPE:fun>
+   * <CALL>   [create_ord_index] startnode
+   * <SIG>    AUTO
+   * <DESCR>   
+   * Creates an ordinal index for the subtree starting at [startnode].
    * This index assigns to every node an ordinal number (beginning with 0) such
    * that nodes are numbered upon the order of the first character in the XML
    * representation (document order).
    * Note that the index is not automatically updated when the tree is
    * modified.
+   * </ID>
    *)
 
 val ord_number : 'ext ord_index -> 'ext node -> int
@@ -1091,13 +1971,20 @@ val ord_number : 'ext ord_index -> 'ext node -> int
    *)
 
 val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
-  (* Compares two nodes like 'compare':
-   * Returns -1 if the first node is before the second node, or +1 if the
-   * first node is after the second node, or 0 if both nodes are identical.
-   * If one of the nodes does not occur in the ordinal index, Not_found
-   * is raised. (Note that this is a different behaviour than what 'compare'
+  (* <ID:val-ord-compare>
+   * <TYPE:fun>
+   * <CALL>   [ord_compare] idx n1 n2
+   * <SIG>    AUTO
+   * <DESCR>
+   * Compares two nodes like [compare]:
+   * Returns -1 if [n1] occurs before [n2], or +1 if [n1] occurs
+   * after [n2], or 0 if both nodes are identical.
+   * If one of the nodes does not occur in the ordinal index, [Not_found]
+   * is raised. (Note that this is a different behaviour than what [compare]
    * would do.)
-   * This test is much faster than 'compare'.
+   *
+   * This test is much faster than [compare].
+   * </ID>
    *)
 
 
@@ -1106,60 +1993,132 @@ val ord_compare : 'ext ord_index -> 'ext node -> 'ext node -> int
 (* General note: The iterators ignore attribute and namespace nodes *)
 
 val find : ?deeply:bool ->
-           f:('ext node -> bool) -> 'ext node -> 'ext node
-  (* Searches the first node for which the predicate f is true, and returns
-   * it. Raises Not_found if there is no such node.
-   * By default, ~deeply=false. In this case, only the children of the
-   * passed node are searched.
-   * If passing ~deeply=true, the children are searched recursively
-   * (depth-first search).
+           ('ext node -> bool) -> 'ext node -> 'ext node
+  (* <ID:val-find>
+   * <TYPE:fun>
+   * <CALL>    [find] ~deeply f startnode
+   * <SIG>     AUTO
+   * <DESCR>   Searches the first node in the tree below [startnode] for which 
+   *     the predicate f is true, and returns it. Raises [Not_found]
+   *     if there is no such node.
+   *
+   *     By default, [~deeply=false]. In this case, only the children of
+   *     [startnode] are searched.
+   *
+   *     If passing [~deeply=true], the children are searched recursively
+   *     (depth-first search). Note that even in this case [startnode] itself
+   *     is not checked.
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
    *)
 
 val find_all : ?deeply:bool ->
-               f:('ext node -> bool) -> 'ext node -> 'ext node list
-  (* Searches all nodes for which the predicate f is true, and returns them.
-   * By default, ~deeply=false. In this case, only the children of the
-   * passed node are searched.
-   * If passing ~deeply=true, the children are searched recursively
-   * (depth-first search).
+               ('ext node -> bool) -> 'ext node -> 'ext node list
+  (* <ID:val-find-all>
+   * <CALL>    [find_all] ~deeply f startnode
+   * <SIG>     AUTO
+   * <DESCR>   Searches all nodes in the tree below [startnode] for which 
+   *     the predicate f is true, and returns them. 
+   *
+   *     By default, [~deeply=false]. In this case, only the children of
+   *     [startnode] are searched.
+   *
+   *     If passing [~deeply=true], the children are searched recursively
+   *     (depth-first search). Note that even in this case [startnode] itself
+   *     is not checked.
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
    *)
 
 val find_element : ?deeply:bool ->
                    string -> 'ext node -> 'ext node
-  (* Searches the first element with the passed element type.
-   * By default, ~deeply=false. In this case, only the children of the
-   * passed node are searched.
-   * If passing ~deeply=true, the children are searched recursively
-   * (depth-first search).
+  (* <ID:val-find-element>
+   * <TYPE:fun>
+   * <CALL>    [find_element] ~deeply eltype startnode
+   * <SIG>     AUTO
+   * <DESCR>   Searches the first element in the tree below [startnode] 
+   *     that has the element type [eltype], and returns it. Raises [Not_found]
+   *     if there is no such node.
+   *
+   *     By default, [~deeply=false]. In this case, only the children of
+   *     [startnode] are searched.
+   *
+   *     If passing [~deeply=true], the children are searched recursively
+   *     (depth-first search). Note that even in this case [startnode] itself
+   *     is not checked.
+   * </ID>
    *)
 
 val find_all_elements : ?deeply:bool ->
                         string -> 'ext node -> 'ext node list
-  (* Searches all elements with the passed element type.
-   * By default, ~deeply=false. In this case, only the children of the
-   * passed node are searched.
-   * If passing ~deeply=true, the children are searched recursively
-   * (depth-first search).
+  (* <ID:val-find-all-elements>
+   * <TYPE:fun>
+   * <CALL>    [find_all_elements] ~deeply eltype startnode
+   * <SIG>     AUTO
+   * <DESCR>   Searches all elements in the tree below [startnode] 
+   *     having the element type [eltype], and returns them.
+   *
+   *     By default, [~deeply=false]. In this case, only the children of
+   *     [startnode] are searched.
+   *
+   *     If passing [~deeply=true], the children are searched recursively
+   *     (depth-first search). Note that even in this case [startnode] itself
+   *     is not checked.
+   * </ID>
    *)
 
 exception Skip
+  (* <ID:exc-skip>
+   * <TYPE:exception>
+   * <CALL>   [Skip]
+   * <SIG>    AUTO
+   * <DESCR>  This exception can be used in the functions passed to
+   *    [map_tree], [map_tree_sibl], [iter_tree], and [iter_tree_sibl]
+   *    to skip the current node, and to proceed with the next node.
+   *    See these function for details.
+   * </ID>
+   *)
+
 val map_tree :  pre:('exta node -> 'extb node) ->
                ?post:('extb node -> 'extb node) ->
                'exta node ->
                    'extb node
-  (* Traverses the passed node and all children recursively. After entering
-   * a node, the function ~pre is called. The result of this function must
-   * be a new node; it must not have children nor a parent (you can simply
-   * pass (fun n -> n # orphaned_flat_clone) as ~pre).
-   * After that, the children are processed in the same way (from left to
-   * right); the results of the transformation will be added to the
-   * new node as new children.
-   * Now, the ~post function is invoked with this node as argument, and
-   * the result is the result of the function (~post should return a root
-   * node, too; if not specified, the identity is the ~post function).
-   * Both ~pre and ~post may raise Skip, which causes that the node is
-   * left out. If the top node is skipped, the exception Not_found is
-   * raised.
+  (* <ID:val-map-tree>
+   * <TYPE:fun>
+   * <CALL>   [map_tree] ~pre ~post startnode
+   * <SIG>    AUTO
+   * <DESCR>  Maps the tree beginning at [startnode] to a second tree
+   *    using the following algorithm.
+   *
+   *    [startnode] and the whole tree below it are recursively traversed.
+   *    After entering a node, the function ~pre is called. The result of
+   *    this function must be a new node; it must not have children nor a
+   *    parent. For example, you can pass
+   *      [~pre:(fun n -> n # orphaned_flat_clone)] 
+   *    to copy the original node. After that, the children are processed
+   *    in the same way (from left to right) resulting in a list of
+   *    mapped children. These are added to the mapped node as its 
+   *    children.
+   * 
+   *    Now, the ~post function is invoked with the mapped node as argument, and
+   *    the result is the result of the function (~post should return a root
+   *    node, too; if not specified, the identity is the ~post function).
+   *
+   *    Both ~pre and ~post may raise [Skip] which causes that the node is
+   *    left out (i.e. the mapped tree does neither contain the node nor
+   *    any children of the node). 
+   *    If the top node is skipped, the exception [Not_found] is
+   *    raised.
+   *
+   *    For example, the following piece of code duplicates a tree, but
+   *    removes all comment nodes:
+   *
+   *    [ map_tree ~pre:(fun n -> if n # node_type = T_comment then raise Skip else n # orphaned_flat_clone) startnode ]
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
    *)
 
 val map_tree_sibl :
@@ -1169,28 +2128,96 @@ val map_tree_sibl :
                   'extb node) ->
        'exta node ->
            'extb node
-   (* Works like map_tree, but the function ~pre and ~post have additional
-    * arguments:
-    * - ~pre l n r: The node n is the node to map, and l is the previous
-    *   node, and r is the next node (both None if not present). l and r
-    *   are both nodes before the transformation.
-    * - ~post l n r: The node n is the node which is the result of ~pre
-    *   plus adding children. l and r are again the previous and the next
-    *   node, respectively, but after being transformed.
-    *)
+  (* <ID:val-map-tree-sibl>
+   * <TYPE:fun>
+   * <CALL>   [map_tree_sibl] ~pre ~post startnode
+   * <SIG>    AUTO
+   * <DESCR>  Maps the tree beginning at [startnode] to a second tree
+   *    using the following algorithm.
+   *
+   *    [startnode] and the whole tree below it are recursively traversed.
+   *    After entering a node, the function ~pre is called with three
+   *    arguments: some previous node, the current node, and some next node.
+   *    The previous and the next node may not exist because the current
+   *    node is the first or the last in the current list of nodes.
+   *    In this case, [None] is passed as previous or next node, resp.
+   *    The result of this function invocation must be a new node; 
+   *    it must not have children nor a parent. For example, you can pass
+   *      [~pre:(fun prev n next -> n # orphaned_flat_clone)] 
+   *    to copy the original node. After that, the children are processed
+   *    in the same way (from left to right) resulting in a list of
+   *    mapped children. 
+   * 
+   *    Now, the ~post function is applied to the list of mapped children
+   *    resulting in a list of postprocessed children. (Note: this part
+   *    works rather differently than [map_tree].) ~post has three arguments:
+   *    some previous child, the current child, and some next child.
+   *    The previous and the next child are [None] if non-existing.
+   *    The postprocessed children are appended to the mapped node resulting
+   *    in the mapped tree.
+   *
+   *    Both ~pre and ~post may raise [Skip] which causes that the node is
+   *    left out (i.e. the mapped tree does neither contain the node nor
+   *    any children of the node). 
+   *    If the top node is skipped, the exception [Not_found] is
+   *    raised.
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
+   *)
 
 val iter_tree : ?pre:('ext node -> unit) ->
                 ?post:('ext node -> unit) ->
                 'ext node ->
                     unit
-   (* Iterates only instead of mapping the nodes. *)
+  (* <ID:val-iter-tree>
+   * <TYPE:fun>
+   * <CALL>   [iter_tree] ~pre ~post startnode
+   * <SIG>    AUTO
+   * <DESCR>  Iterates over the tree beginning at [startnode] 
+   *    using the following algorithm.
+   *
+   *    [startnode] and the whole tree below it are recursively traversed.
+   *    After entering a node, the function ~pre is called. Now, the children
+   *    are processed recursively. Finally, the ~post function is invoked.
+   *
+   *    The ~pre function may raise [Skip] causing that the children
+   *    and the invocation of the ~post function are skipped.
+   *    If the ~post function raises [Skip] nothing special happens.
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
+   *)
+
 
 val iter_tree_sibl :
        ?pre: ('ext node option -> 'ext node -> 'ext node option -> unit) ->
        ?post:('ext node option -> 'ext node -> 'ext node option -> unit) ->
        'ext node ->
            unit
-   (* Iterates only instead of mapping the nodes. *)
+  (* <ID:val-iter-tree-sibl>
+   * <TYPE:fun>
+   * <CALL>   [iter_tree_sibl] ~pre ~post startnode
+   * <SIG>    AUTO
+   * <DESCR>  Iterates over the tree beginning at [startnode] 
+   *    using the following algorithm.
+   *
+   *    [startnode] and the whole tree below it are recursively traversed.
+   *    After entering a node, the function ~pre is called with three
+   *    arguments: some previous node, the current node, and some next node.
+   *    The previous and the next node may be [None] if non-existing.
+   *    Now, the children are processed recursively. 
+   *    Finally, the ~post function is invoked with the same three
+   *    arguments.
+   *
+   *    The ~pre function may raise [Skip] causing that the children
+   *    and the invocation of the ~post function are skipped.
+   *    If the ~post function raises [Skip] nothing special happens.
+   *
+   *     Attribute and namespace nodes are ignored.
+   * </ID>
+   *)
+
 
 (************************ Whitespace handling ***************************)
 
@@ -1200,17 +2227,26 @@ type stripping_mode =
   | `Strip_seq
   | `Disabled
   ]
-
-(* `Strip_one_lf: If there is a linefeed character at the beginning/at the end, 
- *   it will be removed. If there are more linefeed characters, only the first/
- *   the last is removed. (This is the SGML rule to strip whitespace.)
- * `Strip_one: If there is a whitespace character at the beginning/at the end, 
- *   it will be removed. If there are more whitespace characters, only the 
- *   first/the last is removed. Whitespace characters are space, newline,
- *   carriage return, tab.
- * `Strip_seq: All whitespace characters at the beginning/at the end are
- *   removed.
- *)
+  (* <ID:type-stripping-mode>
+   * <TYPE:type>
+   * <CALL>   [stripping_mode]
+   * <SIG>    AUTO
+   * <DESCR>  The different ways how to strip whitespace from a single
+   *    data node:
+   * - [`Strip_one_lf]: If there is a linefeed character at the beginning/at
+   *   the end, it will be removed. If there are more linefeed characters, 
+   *   only the first/the last is removed.
+   *   (This is the SGML rule to strip whitespace.)
+   * - [`Strip_one]: If there is a whitespace character at the beginning/at
+   *   the end, it will be removed. If there are more whitespace characters, 
+   *   only the  first/the last is removed. Whitespace characters are space, 
+   *   newline, carriage return, tab.
+   * - [`Strip_seq]: All whitespace characters at the beginning/at the end are
+   *   removed.
+   * - [`Disabled]: Do not strip whitespace.
+   *   --
+   * </ID>
+   *)
 
 
 val strip_whitespace : 
@@ -1218,71 +2254,68 @@ val strip_whitespace :
       ?delete_empty_nodes:bool ->
       'ext node ->
       unit
-  (* Modifies the passed tree in-place by the following rules:
+  (* <ID:val-strip-whitespace>
+   * <TYPE:fun>
+   * <CALL>   [strip_whitespace] ~force ~left ~right ~delete_empty_nodes
+   *             startnode
+   * <SIG>    AUTO
+   * <DESCR>
+   * Modifies the passed tree in-place by the following rules:
    * - In general, whitespace stripping is not applied to nodes inside
-   *   an xml:space="preserve" region, unless ~force:true is passed
-   *   to the function (default is ~force:false). Only if whitespace
+   *   an [xml:space="preserve"] region, unless [~force:true] is passed
+   *   to the function (default is [~force:false]). Only if whitespace
    *   stripping is allowed, the following rules are carried out.
    *   Note that the detection of regions with preserved whitespace takes
-   *   the parent nodes of the passed node into account.
+   *   the parent nodes of the passed [startnode] into account.
    * - If applied to a data node, whitespace at the beginning of the node
-   *   is removed according to ~left, and whitespace at the end of the node
-   *   is removed according to ~right.
+   *   is removed according to [~left], and whitespace at the end of the node
+   *   is removed according to [~right].
    * - If applied to an element, whitespace at the beginning of the first
-   *   data subnode is removed according to ~left, and whitespace at the end
-   *   of the last data subnode is removed according to ~right. Furthermore,
+   *   data subnode is removed according to [~left], and whitespace at the end
+   *   of the last data subnode is removed according to [~right]. Furthermore,
    *   these rules are recursively applied to all subelements (but not to
    *   other node types).
    * - If applied to the super root node, this node is treated as if it
    *   were an element.
    * - Whitespace of other node types is left as-is, as whitespace occuring
    *   in attributes.
-   * - Option ~delete_empty_nodes (default true):
-   *   If text nodes become empty after removal of whitespace, they are
+   * - Option [~delete_empty_nodes] (default true):
+   *   If data nodes become empty after removal of whitespace, they are
    *   deleted from the XML tree. 
+   *   --
    * 
    * Defaults:
-   *   ~force:false
-   *   ~left:`Disabled
-   *   ~right:`Disabled
-   *
-   * Examples:
-   *
-   * strip_whitespace ~left:`Strip_one_lf ~right:`Strip_one_lf root
-   *   Strips LF characters according to the SGML rules: One LF is stripped
-   *   after the start tag, and one before the end tag. xml:space is respected.
-   *
-   * iter_tree
-   *   ~pre:(fun n -> if n # node_type = T_data then 
-   *                    n # strip_whitespace 
-   *                      ~force:true ~left:`Strip_seq ~right:`Strip_seq
-   *        )
-   *   root
-   *
-   *   Strips any whitespace characters from every data nodes individually.
-   *
-   * Traps:
-   * - In order to work properly, this function expects a normalized XML tree
-   *   (no consecutive text nodes, no empty text nodes). If the tree is not
-   *   normalized, the semantics of strip_whitespace is well-defined, but
-   *   the function may not do what is expected. Especially, whitespace is
-   *   not stripped across text nodes. E.g. if the spaces in <A>  </A>
-   *   are stored in two nodes, and ~left:`Strip_seq is demanded,  the
-   *   function will only remove the first space.
+   *   - [~force:false]
+   *   - [~left:`Disabled]
+   *   - [~right:`Disabled]
+   * </ID>
    *)
+
 
 (****************************** normalization ****************************)
 
 val normalize : 'ext node -> unit
-  (* Normalizes the whole tree such that neither empty data nodes
-   * nor consecutive data nodes exist. Normalization works in-place
-   * and tries to reuse as many nodes as possible.
+  (* <ID:val-normalize>
+   * <TYPE:fun>
+   * <CALL>   [normalize] startnode
+   * <SIG>    AUTO
+   * <DESCR>  Normalizes the tree denoted by [startnode]  such that
+   *    neither empty data nodes nor adjacent data nodes exist. Normalization
+   *    works in-place.
+   * </ID>
    *)
 
 (******************************** validation *****************************)
 
 val validate : 'ext node -> unit
-  (* Validates the whole subtree *)
+  (* <ID:val-validate>
+   * <TYPE:fun>
+   * <CALL>   [validate] startnode
+   * <SIG>    AUTO
+   * <DESCR>  Validates the tree denoted by [startnode]. In contrast to
+   *   [startnode # validate()] this function validates recursively.
+   * </ID>
+   *)
 
 (******************************* document ********************************)
 
@@ -1373,6 +2406,12 @@ val print_doc :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.19  2001/06/25 21:04:18  gerd
+ * 	Updated documentation. Most docs are now structured comments
+ * that can be extracted and included into the docbook manual.
+ * 	New option ~default for method [write].
+ * 	New method create_other.
+ *
  * Revision 1.18  2001/06/09 22:33:14  gerd
  * 	Added 'dump' methods to 'node' and 'document'. Also print_node,
  * print_doc.
