@@ -18,12 +18,9 @@
 
     <p>PXP is the new, completely revised and partly rewritten 
 validating XML parser
-for O'Caml; the old name, "Markup", has been dropped. PXP is not yet
-stable and currently being developed, but pre-releases are available
-(see below). If you want to develop serious software for PXP, please
-use the stable release "Markup 0.2.10" which is still available. The
-intention of the pre-release is to show the direction of the current
-work, and not to provide a useable software component.
+for O'Caml; the old name, "Markup", has been dropped. The current version
+of PXP is still a bit experimental because it is not fully tested; however,
+it is now stable enough to be used in experimental applications.
 </p>
 
     <p>PXP will retain most parts of Markup's API; the name PXP 
@@ -84,16 +81,18 @@ for programs transforming XML trees.</p>
     <title>Download the PXP pre-release</title>
 
     <p>The current pre-release is available under 
-<a href="&url.gps-ocaml-download;/pxp-pre-0.99.3.tar.gz">
-&url.gps-ocaml-download;/pxp-pre-0.99.3.tar.gz</a>. There is currently no
+<a href="&url.gps-ocaml-download;/pxp-pre-0.99.4.tar.gz">
+&url.gps-ocaml-download;/pxp-pre-0.99.4.tar.gz</a>. There is currently no
 documentation for this version of the software; it is recommended to use the <a
 href="&url.markup-manual;">Markup manual</a> and compare it with the current
 module interfaces.</p>
 
-    <p>Please note that this is work in progress; it contains bugs
+    <p>Please note that this is work in progress; it may still contain bugs
 and irregularities.</p>
 
-    <p>The parser works only with OCaml-3.</p>
+    <p>The parser works only with OCaml-3. Since 0.99.4, the parser needs
+the <a href="&url.netstring-project;">netstring package</a>.
+</p>
 
     <p>I am very interested in your opinion to PXP; please <a
 href="mailto:&person.gps.mail;">contact me</a>.</p>

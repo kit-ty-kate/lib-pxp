@@ -12,7 +12,8 @@
   <sect1><title>The "pxp" package</title>
     <sect2><title>Prerequisites</title>
       <p>
-&m; does not need any other packages besides the O'Caml core. &m; works
+&m; requires that the <a href="&url.netstring-project;">netstring package
+</a> is already installed. &m; works
 only with O'Caml 3.00 (the support for 2.04 has been dropped).
 The installation
 procedure defined in the Makefile requires <a
@@ -33,6 +34,10 @@ UTF8_SUPPORT = no
 in Makefile.conf. In this case, the UTF-8 modules are not even compiled.
 - By default, the UTF-8 support is enabled.
 </p>
+
+      <p>
+Note: Compiling the UTF-8 modules lasts 10 minutes on my 400 Mhz Pentium II;
+if this is too long, you can set UTF8_SUPPORT to "no".</p>
     </sect2>
 
     <sect2><title>Compilation</title>
@@ -91,10 +96,10 @@ package "pxp"
 ocamlfind ocamlc -package pxp ...
 </code>
 
-By default, the UTF-8 support will be linked in. If you do not need it,
-you may define the predicate "pxp_without_utf8", which causes that the
-UTF-8 relevant parts are not linked with your program; the difference
-in size is about 1 MB:
+By default, the UTF-8 support modules will be linked in. If you do not need
+them, you may define the predicate "pxp_without_utf8", which causes that the
+UTF-8 relevant parts are not linked with your program; the difference in size
+is about 1 MB:
 
 <code>
 ocamlfind ocamlc -package pxp -predicates pxp_without_utf8 ...
@@ -158,11 +163,6 @@ with building software again.</p></li>
 </code>
 </p></li>
       </ul>
-      <p>Note that in earlier versions of PXP/Markup than 0.2.3 there was a
-second problem with Solaris (and other System V systems) which does not
-allow ! in scripts executed by /bin/sh. Because of this, the ! command was 
-removed from the scripts.
-</p>
     </sect2>
   </sect1>
 </readme>
