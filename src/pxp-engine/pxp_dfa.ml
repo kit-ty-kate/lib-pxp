@@ -1,15 +1,10 @@
-(* $Id: pxp_dfa.ml,v 1.1 2000/07/23 02:16:08 gerd Exp $
+(* $Id: pxp_dfa.ml,v 1.2 2001/06/27 23:34:35 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-module StringOrd = struct
-  type t = string
-  let compare = (compare : string -> string -> int)
-end;;
+open Pxp_aux
 
-module StringMap = Map.Make(StringOrd);;
-  (* 'a StringMap.t: the type of maps (dictionaries) from string to 'a *)
 
 module Graph = struct
   type vertex =
@@ -261,6 +256,9 @@ let dfa_of_regexp_content_model re =
  * History:
  * 
  * $Log: pxp_dfa.ml,v $
+ * Revision 1.2  2001/06/27 23:34:35  gerd
+ * 	Moved module StringMap to Pxp_aux.
+ *
  * Revision 1.1  2000/07/23 02:16:08  gerd
  * 	Initial revision.
  *
