@@ -53,7 +53,7 @@ distclean:
 	$(MAKE) -C examples distclean
 	$(MAKE) -C rtests distclean
 	test ! -f doc/Makefile || $(MAKE) -C doc distclean
-	for dir in gensrc/pxp-*; do if [ -f $$dir/gen_dir ]; then rm -rf $$dir; else $(MAKE) -C $$dir distclean; done
+	for dir in gensrc/pxp-*; do if [ -f $$dir/gen_dir ]; then rm -rf $$dir; else $(MAKE) -C $$dir distclean; fi; done
 
 .PHONY: RELEASE
 RELEASE:
