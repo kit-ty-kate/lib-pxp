@@ -1,0 +1,12 @@
+This directory contains real regression tests, i.e. it is tested whether
+reported bugs have been fixed.
+
+001.xml		2000-08-26: Haruo's single quote bug. Attvalues delimited
+		by single quotes did not work for the UTF-8 lexer.
+002+.xml	2000-08-26: Haruo's file-names-are-not-URLs bug. from_file
+		interpreted the file name as URL-encoded string. "002+.xml"
+		because the "+" must not be decoded as space.
+003.xml		2000-08-26: Alain's bug that data nodes must not be merged
+		where PI nodes are created. In the "comments" directory
+		there is another test for the case that comments delimit
+		data material

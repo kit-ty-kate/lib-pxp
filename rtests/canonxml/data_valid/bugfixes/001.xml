@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE schema [
+<!ELEMENT schema ANY>
+<!ELEMENT element ANY>
+<!ATTLIST element minOccurs CDATA #IMPLIED>
+]>
+<schema>
+	<element minOccurs='0'/>
+	<element minOccurs='0'/>
+</schema>
