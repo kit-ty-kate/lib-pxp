@@ -1,12 +1,12 @@
-(* $Id: validate.ml,v 1.4 2000/05/01 16:44:57 gerd Exp $
+(* $Id: validate.ml,v 1.5 2000/06/04 20:21:55 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
-open Markup_document;;
-open Markup_yacc;;
-open Markup_types;;
+open Pxp_document;;
+open Pxp_yacc;;
+open Pxp_types;;
 
 let error_happened = ref false;;
 
@@ -15,12 +15,15 @@ let print_error e =
 ;;
 
 
-let parse debug wf filename =
+let parse debug wf iso88591 filename =
   try 
     (* Parse the document: *)
     let doc =
       (if wf then parse_wf_entity else parse_document_entity)
-	{ default_config with debugging_mode = debug }
+	{ default_config with 
+	    debugging_mode = debug;
+	    encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
+        }
 	(File filename)
 	default_dom 
     in
@@ -46,10 +49,12 @@ let parse debug wf filename =
 let main() =
   let debug = ref false in
   let wf = ref false in
+  let iso88591 = ref false in
   let files = ref [] in
   Arg.parse
       [ "-d",   Arg.Set debug, "turn debugging mode on";
 	"-wf",  Arg.Set wf,    "check only on well-formedness";
+        "-iso-8859-1", Arg.Set iso88591, "use ISO-8859-1 as internal encoding instead of UTF-8";
       ]
       (fun x -> files := x :: !files)
       "
@@ -57,11 +62,11 @@ usage: validate [options] file ...
 
 - checks the validity of XML documents. See below for list of options.
 
-<title>Markup! The XML parser for Objective Caml</title>
+<title>PXP - The XML parser for Objective Caml</title>
 
 List of options:";
   files := List.rev !files;
-  List.iter (parse !debug !wf) !files;
+  List.iter (parse !debug !wf !iso88591) !files;
 ;;
 
 
@@ -72,6 +77,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.5  2000/06/04 20:21:55  gerd
+ * 	Updated to new module names.
+ *
  * Revision 1.4  2000/05/01 16:44:57  gerd
  * 	Added check for ID uniqueness.
  * 	Using new error formatter.
