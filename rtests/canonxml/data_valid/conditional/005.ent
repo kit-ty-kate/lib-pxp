@@ -1,0 +1,4 @@
+<!ELEMENT doc EMPTY>
+<!ENTITY % e "INCLUDE">
+<![%e;[<!ATTLIST doc att CDATA #IMPLIED>]]>
+<!ATTLIST doc att CDATA #REQUIRED>

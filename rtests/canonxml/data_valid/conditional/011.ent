@@ -1,0 +1,6 @@
+<!ELEMENT doc EMPTY>
+<![INCLUDE[ <![INCLUDE[ <!ATTLIST doc att CDATA #IMPLIED> ]]> 
+            <![IGNORE[ xxx ]]> 
+]]>
+<!ATTLIST doc att CDATA #REQUIRED>
+

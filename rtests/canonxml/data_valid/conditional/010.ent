@@ -1,0 +1,5 @@
+<!ELEMENT doc EMPTY>
+<![IGNORE[x <![IGNORE[xxx]]>]]>
+<![IGNORE[<![IGNORE[xxx]]>]]>
+<![IGNORE[x <![INCLUDE[xxx]]>]]>
+<![IGNORE[<![INCLUDE[xxx]]>]]>

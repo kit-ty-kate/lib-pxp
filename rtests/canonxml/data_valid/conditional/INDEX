@@ -1,0 +1,20 @@
+001	IGNORE works: <![IGNORE[ ... ]]>
+002	[precondition for 003] The first ATTLIST declaration for the same
+	attribute counts
+003	INCLUDE works: <![INCLUDE[ ... ]]>
+004	IGNORE works: <![%e;[ ... ]]> with e="IGNORE"
+005	INCLUDE works: <![%e;[ ... ]]> with e="INCLUDE"
+006	IGNORE works: <![IGNORE[ ... ]]> ignoring a section that would
+	be illegal
+007	Within ignored sections references to parameter references are
+	not resolved.
+	NOTE: You cannot derive this directly from the XML spec. because a 
+	precise definition what "ignoring" means is missing. This property
+	is an interpretation of the statement about reliable parsing in
+	section 3.4.
+008	Ignored sections may contain string literals containing "]]>".
+	NOTE: same problem with XML spec as 007
+009	Ignored sections may contain comments containing "]]>".
+	NOTE: same problem with XML spec as 007
+010	Nested conditional sections with outermost IGNORE
+011	Nested conditional sections with outermost INCLUDE

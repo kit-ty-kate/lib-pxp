@@ -1,0 +1,4 @@
+<!ELEMENT doc EMPTY>
+<!-- Only a precondition check for test 003: the first ATTLIST counts -->
+<!ATTLIST doc att CDATA #IMPLIED>
+<!ATTLIST doc att CDATA #REQUIRED>

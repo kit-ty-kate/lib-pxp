@@ -1,0 +1,4 @@
+<!ELEMENT doc EMPTY>
+<![IGNORE[<!ENTITY e "]]>">]]>
+<![IGNORE[<!ENTITY e ']]>'>]]>
+

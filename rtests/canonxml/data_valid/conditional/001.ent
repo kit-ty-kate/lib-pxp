@@ -1,0 +1,2 @@
+<!ELEMENT doc EMPTY>
+<![IGNORE[<!ATTLIST doc att CDATA #REQUIRED>]]>
