@@ -79,8 +79,8 @@ for programs transforming XML trees.</p>
     <title>Download the PXP pre-release</title>
 
     <p>The current pre-release is available under 
-<a href="&url.gps-ocaml-download;/pxp-pre-0.99.7.tar.gz">
-&url.gps-ocaml-download;/pxp-pre-0.99.7.tar.gz</a>. There is currently no
+<a href="&url.gps-ocaml-download;/pxp-pre-0.99.8.tar.gz">
+&url.gps-ocaml-download;/pxp-pre-0.99.8.tar.gz</a>. There is currently no
 documentation for this version of the software; it is recommended to use the <a
 href="&url.markup-manual;">Markup manual</a> and compare it with the current
 module interfaces.</p>
