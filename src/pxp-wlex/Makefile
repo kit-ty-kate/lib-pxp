@@ -13,7 +13,7 @@ opt:
 
 generate: pxp_wlex.ml
 
-pxp_wlex.mll: pxp_wlex.ml
+pxp_wlex.ml: pxp_wlex.mll
 	wlex pxp_wlex.mll
 
 depend: *.ml
