@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.3 2001/06/07 22:46:15 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.4 2001/06/08 01:15:47 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -220,8 +220,7 @@ let subtree_to_channel ?(omit_positions = false) ch n =
 ;;
 
 
-let subtree_from_cmd_sequence_nohead ?enable_namespace_processing 
-                                     ~f:f0 dtd spec =
+let subtree_from_cmd_sequence_nohead ~f:f0 dtd spec =
   let current_array = ref( [| |] ) in
   let current_pos = ref 0 in
   let rec f() =
@@ -245,10 +244,12 @@ let subtree_from_cmd_sequence_nohead ?enable_namespace_processing
   let atts = ref (Array.create 100 "") in
   let mng = new namespace_manager in
   let mng_found = ref false in
-  let dest_mng = 
-    match enable_namespace_processing with
-	Some m -> m
-      | None   -> mng       (* value does not matter *)
+  let enable_mng, dest_mng = 
+    try 
+      true, dtd # namespace_manager
+    with
+	Namespace_method_not_applicable _ -> 
+	  false, mng (* value does not matter *)
   in
   let map_nsprefix name =
     let p, l = namespace_split name in
@@ -320,8 +321,6 @@ let subtree_from_cmd_sequence_nohead ?enable_namespace_processing
 		dtd
 		eltype
 		[] in
-	    if enable_namespace_processing <> None then
-	      e # set_namespace_manager dest_mng;
 	    e
 	| Start_super_root_node pos ->
 	    create_super_root_node ?position:pos spec dtd
@@ -349,7 +348,7 @@ let subtree_from_cmd_sequence_nohead ?enable_namespace_processing
 	      dtd
 	      (new proc_instruction target value (dtd # encoding))
 	| Namespace_mapping (normprefix, uris) ->
-	    if enable_namespace_processing <> None then begin
+	    if enable_mng then begin
 	      let primary_uri = uris.( Array.length uris - 1 ) in
 	      if normprefix <> "xml" then
 		mng # add_namespace normprefix primary_uri;
@@ -393,8 +392,7 @@ let subtree_from_cmd_sequence_nohead ?enable_namespace_processing
 ;;
 
 
-let subtree_from_cmd_sequence ?enable_namespace_processing 
-                              ~f dtd spec =
+let subtree_from_cmd_sequence ~f dtd spec =
   match f() with
       Head(enc_s,_) ->
 	let enc = Netconversion.encoding_of_string enc_s in
@@ -406,18 +404,16 @@ let subtree_from_cmd_sequence ?enable_namespace_processing
 	if dtd # encoding <> rep_enc then
 	  failwith "Pxp_marshal.subtree_from_cmd_sequence";
 
-	subtree_from_cmd_sequence_nohead
-	  ?enable_namespace_processing ~f dtd spec
+	subtree_from_cmd_sequence_nohead ~f dtd spec
 
     | _ ->
 	failwith "Pxp_marshal.subtree_from_cmd_sequence"
 ;;
 
 
-let subtree_from_channel ?enable_namespace_processing ch dtd spec =
+let subtree_from_channel ch dtd spec =
   try
     subtree_from_cmd_sequence
-      ?enable_namespace_processing
       (fun () -> 
 	 Marshal.from_channel ch)
       dtd 
@@ -527,7 +523,6 @@ let document_from_cmd_sequence f config spec =
   done;
   let root = 
     subtree_from_cmd_sequence_nohead
-      ?enable_namespace_processing:config.Pxp_yacc.enable_namespace_processing
       f dtd spec in
   doc # init_root root;
   doc
@@ -550,6 +545,12 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.4  2001/06/08 01:15:47  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.3  2001/06/07 22:46:15  gerd
  * 	Revised set of reconstruction commands:
  *  - Head: Contains the encoding

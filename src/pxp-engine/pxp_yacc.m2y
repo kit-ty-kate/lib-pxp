@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.26 2001/06/07 22:55:14 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.27 2001/06/08 01:15:47 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -419,6 +419,8 @@ class ['ext] parser_object
 
 
     method normalize_namespace_prefix ?(apply_default = false) prefix localname =
+      if String.contains localname ':' then
+	raise(Namespace_error("Found several colons in a name"));
       if prefix = "" then begin
 	(* No prefix *)
 	if apply_default && default_normprefix <> "" then
@@ -1877,7 +1879,6 @@ start_tag():
                   ?position:position 
 		  spec dtd norm_name norm_attlist 
 	      in
-	      element # set_namespace_manager mng;
 
 	      if config.enable_namespace_info then begin
 		let info = 
@@ -2339,6 +2340,10 @@ let call_parser ~configuration:cfg
 let parse_dtd_entity cfg src =
   (* Parse a DTD given as separate entity. *)
   let dtd = new dtd cfg.warner cfg.encoding in
+  ( match cfg.enable_namespace_processing with
+	Some mng -> dtd # set_namespace_manager mng
+      | None     -> ()
+  );
   let doc = new document cfg.warner in
   let pobj =
     call_parser 
@@ -2401,6 +2406,10 @@ let parse_wfcontent_entity cfg src spec =
        "pxp:dtd"
        "optional-element-and-notation-declarations"
        cfg.encoding);
+  ( match cfg.enable_namespace_processing with
+	Some mng -> dtd # set_namespace_manager mng
+      | None     -> ()
+  );
   let doc = new document cfg.warner in
   let pobj =
     call_parser
@@ -2445,6 +2454,10 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x))
 	 "optional-element-and-notation-declarations"
 	 cfg.encoding);
   end;
+  ( match cfg.enable_namespace_processing with
+	Some mng -> dtd # set_namespace_manager mng
+      | None     -> ()
+  );
   let doc = new document cfg.warner in
   let pobj =
     call_parser 
@@ -2552,6 +2565,12 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.27  2001/06/08 01:15:47  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.26  2001/06/07 22:55:14  gerd
  * 	Uses methods classify_data_node, append_node, validate_contents
  * now provided by nodes.

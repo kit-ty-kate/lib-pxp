@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.16 2001/06/07 22:48:38 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.17 2001/06/08 01:15:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -27,10 +27,82 @@ type validation_record =
 ;;
 
 
+class namespace_manager =
+object (self)
+    val uri_of_prefix = Hashtbl.create 10  (* not unique *)
+    val prefix_of_uri = Hashtbl.create 10  (* unique *)
+    val primary_uri_of_prefix = Hashtbl.create 10  (* unique *)
+
+    initializer
+      ignore(self # add_namespace "xml" "http://www.w3.org/XML/1998/namespace")
+
+    method add_uri (np:string) (uri:string) =
+      if not (Hashtbl.mem uri_of_prefix np) then raise Not_found;
+      try
+	let np' = Hashtbl.find prefix_of_uri uri in
+	if np <> np' then
+	  raise(Namespace_error "add_uri: the URI is already managed")
+      with
+	  Not_found ->
+	    Hashtbl.add uri_of_prefix np uri;
+	    Hashtbl.add prefix_of_uri uri np;
+	    ()
+
+    method add_namespace np uri =
+      let l = Hashtbl.find_all uri_of_prefix np in
+      if l = [] then begin
+	if Hashtbl.mem prefix_of_uri uri then
+	  raise(Namespace_error "add_namespace: the URI is already managed");
+	Hashtbl.add uri_of_prefix np uri;
+	Hashtbl.add primary_uri_of_prefix np uri;
+	Hashtbl.add prefix_of_uri uri np;
+      end
+      else 
+	if l <> [ uri ] then
+	  raise(Namespace_error "add_namespace: the namespace does already exist")
+
+    method lookup_or_add_namespace prefix (uri:string) =
+      let rec add_loop n =
+	let p = prefix ^ (if n=0 then "" else string_of_int n) in
+	if Hashtbl.mem uri_of_prefix p then begin
+	  add_loop (n+1)
+	end
+	else begin
+	  Hashtbl.add uri_of_prefix p uri;
+	  Hashtbl.add primary_uri_of_prefix p uri;
+	  Hashtbl.add prefix_of_uri uri p;
+	  p
+	end
+      in
+      try
+	Hashtbl.find prefix_of_uri uri
+      with
+	  Not_found ->
+	    add_loop (if prefix = "" then 1 else 0)
+	      (* prefix = "": make sure that such a prefix is never added *)
+
+    method get_primary_uri normprefix =
+      Hashtbl.find primary_uri_of_prefix normprefix
+
+    method get_uri_list normprefix =
+      Hashtbl.find_all uri_of_prefix normprefix
+
+    method get_normprefix uri =
+      Hashtbl.find prefix_of_uri uri
+
+    method iter_namespaces f =
+      Hashtbl.iter 
+	(fun p uri -> f p)
+	primary_uri_of_prefix
+  end
+;;
+
+
 class dtd  the_warner init_encoding =
   object (self)
     val mutable root = (None : string option)
     val mutable id =   (None : dtd_id option)
+    val mutable mng =  (None : namespace_manager option)
 
     val warner       = (the_warner : collect_warnings)
     val encoding     = init_encoding
@@ -105,6 +177,13 @@ class dtd  the_warner init_encoding =
     method root = root
     method id = id
 
+    method namespace_manager =
+      match mng with
+	  None -> raise(Namespace_method_not_applicable "namespace_manager")
+	| Some m -> m
+
+    method set_namespace_manager m =
+      mng <- Some m
 
     method add_element el =
       (* raises Not_found if 'el' has already been added *)
@@ -218,6 +297,26 @@ class dtd  the_warner init_encoding =
 			 e # allow_arbitrary
 		      )
 		      el
+		| "namespace" ->
+		    let prefix = 
+		      try List.assoc "prefix" atts
+		      with Not_found ->
+			raise(Error("Missing `prefix' attribute for pxp:dtd"))
+		    in
+		    let uri =
+		      try List.assoc "uri" atts
+		      with Not_found ->
+			raise(Error("Missing `uri' attribute for pxp:dtd"))
+		    in
+		    ( match mng with
+			  None ->
+			    raise(Error("Cannot do pxp:dtd instruction: namespaces not enabled"))
+			| Some m ->
+			    ( try m # add_uri prefix uri
+			      with Not_found ->
+				m # add_namespace prefix uri
+			    )
+		    )
 		| _ ->
 		    raise(Error("Unknown PXP option `" ^ 
 				optname ^ "'"))
@@ -225,35 +324,6 @@ class dtd  the_warner init_encoding =
 	  | _ ->
 	      raise(Error("The processing instruction target `" ^ 
 			  name ^ "' is not defined by this PXP version"))
-      end
-      else begin
-	(*----------------------------------------------------------------------
-	 * SUPPORT FOR DEPRECATED PI OPTIONS:
-	 * - <?xml:allow_undeclared_elements_and_notations?>
-	 *   is now <?pxp:dtd optional-element-and-notation-declarations?>
-	 * - <?xml:allow_undeclared_attributes <elementname>?>
-	 *   is now <?pxp:dtd optional-attribute-declarations 
-	 *            elements='<elementname> ...'?>
-	 * Please update your DTDs! Alternatively, you may uncommment the
-	 * following piece of code.
-	 *)
-(*  	    if name = "xml:allow_undeclared_elements_and_notations" then *)
-(*  	      self # allow_arbitrary; *)
-(*  	    if name = "xml:allow_undeclared_attributes" then begin *)
-(*  	      let v = pi # value in *)
-(*  	      let e =  *)
-(*  		try *)
-(*  		  Str_hashtbl.find elements v *)
-(*  		with *)
-(*  		    Not_found -> *)
-(*  		      raise(Validation_error("Reference to undeclared element `"*)
-(*		      ^ v ^ "'")) *)
-(*  	      in *)
-(*  	      e # allow_arbitrary; *)
-(*  	    end; *)
-	(*----------------------------------------------------------------------
-	 *)
-	()
       end;
       Str_hashtbl.add pinstr name pi;
       if not (List.mem name pinstr_names) then
@@ -1037,6 +1107,12 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.17  2001/06/08 01:15:46  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.16  2001/06/07 22:48:38  gerd
  * 	Improvement: 'write' writes sorted attributes. This makes
  * many regression tests simpler.

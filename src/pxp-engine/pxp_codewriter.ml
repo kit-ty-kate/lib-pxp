@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.9 2001/06/07 22:39:20 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.10 2001/06/08 01:15:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -85,13 +85,13 @@ let write_document out d =
   output_string out ";;\n"
 ;;
 
-
+(*
 let write_dtd out dtd =
   output_string out "let create_dtd config =\n";
   write_local_dtd out dtd;
   output_string out ";;\n"
 ;;
-
+*)
 
 let write_subtree out t =
   output_string out "let create_subtree ?enable_namespace_processing dtd spec =\n";
@@ -103,6 +103,12 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.10  2001/06/08 01:15:46  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.9  2001/06/07 22:39:20  gerd
  * 	Pxp_codewriter now uses Pxp_marshal to generate the code.
  * This simply reduces the complexity of the whole package a lot...

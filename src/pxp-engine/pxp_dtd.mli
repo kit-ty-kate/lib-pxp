@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.mli,v 1.12 2001/06/07 22:49:11 gerd Exp $
+(* $Id: pxp_dtd.mli,v 1.13 2001/06/08 01:15:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -44,6 +44,86 @@ type validation_record =
    * efficiently from the DTD to the document nodes.
    * Please do not use this type in your own programs.
    *)
+
+
+(* Very experimental namespace support: *)
+
+class namespace_manager :
+  (* This class manages mappings from URIs to normalized prefixes. For every
+   * namespace a namespace_manager object contains a set of mappings
+   * uri1 |-> np, uri2 |-> np, ..., uriN |-> np.
+   * The normalized prefix np is characterical of the namespace, and
+   * identifies the namespace uniquely.
+   * The first URI uri1 is the primary URI, the other URIs are aliases.
+   * The following operations are supported:
+   * - add_uri np uri: The passed uri is added to the already existing
+   *   namespace which is identified by the normprefix np. This means
+   *   that the precondition is that there is already some mapping
+   *   uri' |-> np, and that there is no mapping for uri. Postcondition
+   *   is that uri |-> np is a new mapping.
+   *   add_uri thus adds a new alias URI for an existing namespace.
+   * - add_namespace np uri: Precondition is that neither np nor uri
+   *   are used in the namespace_manager object. The effect is that the
+   *   mapping uri |-> np is added.
+   * - lookup_or_add_namespace p uri: If there is already some mapping
+   *   uri |-> np, the normprefix np is simply returned ("lookup"). In this
+   *   case p is ignored. Otherwise uri is not yet mapped, and in this
+   *   case some unique np must be found such that uri |-> np can be
+   *   added ("add_namespace"). First, the passed prefix p is tried.
+   *   If p is free, it can be taken as new normprefix: np = p. Otherwise
+   *   some number n is found such that the concatenation p + n is free:
+   *   np = p + n. The operation returns np.
+   *)
+  object
+    method add_uri : string -> string -> unit
+      (* add_uri np uri: adds uri as alias URI to the namespace identified
+       * by the normprefix np (see above for detailed semantics). The method
+       * raises Not_found if the normprefix np is unknown to the object,
+       * and it fails (Namespace_error) if the uri is member of a
+       * different namespace. Nothing happens if the uri is already member
+       * of the namespace np.
+       *)
+    method add_namespace : string -> string -> unit
+      (* add_namespace np uri: adds a new namespace to the object. The
+       * namespace is identified by the normprefix np and contains initially
+       * the primary URI uri.
+       * The method fails (Namespace_error) if either np already identifies
+       * some namespace or if uri is already member of some namespace.
+       * Nothing happens if uri is the sole member of the namespace np.
+       * It is required that np <> "".
+       *)
+    method lookup_or_add_namespace : string -> string -> string
+      (* lookup_or_add_namespace p uri: first, the method looks up if
+       * the namespace for uri does already exist. If so, p is ignored,
+       * and the method returns the normprefix identifying the namespace.
+       * Otherwise, a new namespace is added for some normprefix np which
+       * initially contains uri. The normprefix np is calculated upon p
+       * serving as suggestion for the normprefix. The method returns
+       * the normprefix.
+       *)
+    method get_primary_uri : string -> string
+      (* Return the primary URI for a normprefix, or raises Not_found.
+       * get_uri "" raises always Not_found.
+       *)
+    method get_uri_list : string -> string list
+      (* Return all URIs for a normprefix, or [] if the normprefix is
+       * unused. get_uri_list "" returns always []. The last URI of the
+       * returned list is the primary URI.
+       *)
+    method get_normprefix : string -> string
+      (* Return the normprefix for a URI, or raises Not_found *)
+    method iter_namespaces : (string -> unit) -> unit
+      (* Iterates over all namespaces contained in the object, and
+       * calls the passed function for every namespace. The argument of the
+       * invoked function is the normprefix of the namespace.
+       *)
+
+    (* Encodings: prefixes and URIs are always encoded in the default
+     * encoding of the document
+     *)
+  end
+;;
+
 
 class dtd :
   (* Creation:
@@ -94,6 +174,16 @@ class dtd :
     method set_standalone_declaration : bool -> unit
       (* Sets the 'standalone' declaration. *)
 
+
+    method namespace_manager : namespace_manager
+      (* For namespace-aware implementations of the node class, this method
+       * returns the namespace manager. If the namespace manager has not been
+       * set, the exception Not_found is raised.
+       *)
+
+    method set_namespace_manager : namespace_manager -> unit
+      (* Sets the namespace manager as returned by namespace_manager.
+       *)
 
     method add_element : dtd_element -> unit
       (* add the given element declaration to this DTD. Raises Not_found
@@ -384,6 +474,12 @@ and proc_instruction : string -> string -> Pxp_types.rep_encoding ->
  * History:
  * 
  * $Log: pxp_dtd.mli,v $
+ * Revision 1.13  2001/06/08 01:15:47  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.12  2001/06/07 22:49:11  gerd
  * 	Removed: method write_compact_as_latin1
  *

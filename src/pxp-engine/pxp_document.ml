@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.21 2001/06/08 00:12:56 gerd Exp $
+(* $Id: pxp_document.ml,v 1.22 2001/06/08 01:15:46 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -46,77 +46,6 @@ type data_node_classification =
   | CD_empty
   | CD_ignorable
   | CD_error of exn
-;;
-
-
-class namespace_manager =
-object (self)
-    val uri_of_prefix = Hashtbl.create 10  (* not unique *)
-    val prefix_of_uri = Hashtbl.create 10  (* unique *)
-    val primary_uri_of_prefix = Hashtbl.create 10  (* unique *)
-
-    initializer
-      ignore(self # add_namespace "xml" "http://www.w3.org/XML/1998/namespace")
-
-    method add_uri (np:string) (uri:string) =
-      if not (Hashtbl.mem uri_of_prefix np) then raise Not_found;
-      try
-	let np' = Hashtbl.find prefix_of_uri uri in
-	if np <> np' then
-	  raise(Namespace_error "add_uri: the URI is already managed")
-      with
-	  Not_found ->
-	    Hashtbl.add uri_of_prefix np uri;
-	    Hashtbl.add prefix_of_uri uri np;
-	    ()
-
-    method add_namespace np uri =
-      let l = Hashtbl.find_all uri_of_prefix np in
-      if l = [] then begin
-	if Hashtbl.mem prefix_of_uri uri then
-	  raise(Namespace_error "add_namespace: the URI is already managed");
-	Hashtbl.add uri_of_prefix np uri;
-	Hashtbl.add primary_uri_of_prefix np uri;
-	Hashtbl.add prefix_of_uri uri np;
-      end
-      else 
-	if l <> [ uri ] then
-	  raise(Namespace_error "add_namespace: the namespace does already exist")
-
-    method lookup_or_add_namespace prefix (uri:string) =
-      let rec add_loop n =
-	let p = prefix ^ (if n=0 then "" else string_of_int n) in
-	if Hashtbl.mem uri_of_prefix p then begin
-	  add_loop (n+1)
-	end
-	else begin
-	  Hashtbl.add uri_of_prefix p uri;
-	  Hashtbl.add primary_uri_of_prefix p uri;
-	  Hashtbl.add prefix_of_uri uri p;
-	  p
-	end
-      in
-      try
-	Hashtbl.find prefix_of_uri uri
-      with
-	  Not_found ->
-	    add_loop (if prefix = "" then 1 else 0)
-	      (* prefix = "": make sure that such a prefix is never added *)
-
-    method get_primary_uri normprefix =
-      Hashtbl.find primary_uri_of_prefix normprefix
-
-    method get_uri_list normprefix =
-      Hashtbl.find_all uri_of_prefix normprefix
-
-    method get_normprefix uri =
-      Hashtbl.find prefix_of_uri uri
-
-    method iter_namespaces f =
-      Hashtbl.iter 
-	(fun p uri -> f p)
-	primary_uri_of_prefix
-  end
 ;;
 
 
@@ -182,7 +111,6 @@ class type [ 'ext ] node =
     method namespace_info : 'ext namespace_info
     method set_namespace_info : 'ext namespace_info option -> unit
     method namespace_manager : namespace_manager
-    method set_namespace_manager : namespace_manager -> unit
     method dtd : dtd
     method encoding : rep_encoding
     method create_element :
@@ -623,8 +551,6 @@ class virtual ['ext] node_impl an_ext =
             = nsmethod_na "set_namespace_info"
     method namespace_manager                      
             = nsmethod_na "namespace_manager"
-    method set_namespace_manager (m : namespace_manager) 
-            = nsmethod_na "set_namespace_manager"
 
 
     (************* METHODS THAT NEED TO BE DEFINED **************)
@@ -933,8 +859,6 @@ class ['ext] attribute_impl ~element ~name value dtd =
      method set_namespace_info info =
                                  nsmethod_na "set_namespace_info"
      method namespace_manager =  nsmethod_na "namespace_manager"
-     method set_namespace_manager =
-                                 nsmethod_na "set_namespace_manager"
    end
      : ['ext] node)
 ;;
@@ -2156,7 +2080,10 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	      wms "\n>";
 	  | T_comment ->
 	      wms ("<!--");
-	      wms (self # comment);
+	      ( match self # comment with
+		    None   -> ()
+		  | Some c -> wms c;
+	      );
 	      wms ("-->");
 	  | _ ->
 	      ()
@@ -2375,7 +2302,6 @@ class ['ext] namespace_attribute_impl ~element ~name value dtd =
    object (self)
     inherit [ 'ext ] attribute_impl ~element ~name value dtd as super
 
-    val mutable mng = (None : namespace_manager option)
     val mutable normprefix = ""
     val mutable localname = ""
 
@@ -2396,10 +2322,7 @@ class ['ext] namespace_attribute_impl ~element ~name value dtd =
     method localname = localname
 
     method namespace_uri = 
-      match mng with
-	  None   -> 
-	          failwith "Pxp_document.namespace_attribute_impl#namespace_uri"
-	| Some m -> m # get_primary_uri normprefix
+      self # namespace_manager # get_primary_uri normprefix
 
     method namespace_info =
       self # parent # namespace_info
@@ -2408,13 +2331,7 @@ class ['ext] namespace_attribute_impl ~element ~name value dtd =
       method_na "set_namespace_info"
 
     method namespace_manager =
-       match mng with
-	  None   -> 
-	      failwith "Pxp_document.namespace_attribute_impl#namespace_manager"
-	| Some m -> m
-
-    method set_namespace_manager m =
-      mng <- Some m
+      self # dtd # namespace_manager
 
   end
 ;;
@@ -2424,7 +2341,6 @@ class [ 'ext ] namespace_element_impl an_ext =
   object (self)
     inherit [ 'ext ] element_impl an_ext as super
 
-    val mutable mng = (None : namespace_manager option)
     val mutable normprefix = ""
     val mutable localname = ""
     val mutable nsinfo = None
@@ -2432,9 +2348,7 @@ class [ 'ext ] namespace_element_impl an_ext =
     method normprefix = normprefix
     method localname = localname
     method namespace_uri = 
-      match mng with
-	  None   -> failwith "Pxp_document.namespace_element_impl#namespace_uri"
-	| Some m -> m # get_primary_uri normprefix
+      self # namespace_manager # get_primary_uri normprefix
 
     method namespace_info =
       match nsinfo with
@@ -2445,13 +2359,7 @@ class [ 'ext ] namespace_element_impl an_ext =
       nsinfo <- x
 
     method namespace_manager =
-       match mng with
-	  None   -> 
-	        failwith "Pxp_document.namespace_element_impl#namespace_manager"
-	| Some m -> m
-
-    method set_namespace_manager m =
-      mng <- Some m
+      self # dtd # namespace_manager
 
     method internal_init new_pos attval_name_pool valcheck_element_exists
                          new_dtd new_name
@@ -2535,7 +2443,6 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
   (object (self)
      val mutable parent = (None : 'ext node option)
      val mutable node_position = -1
-     val mutable mng = (None : namespace_manager option)
      val normprefix = normprefix
      val srcprefix = srcprefix
 
@@ -2593,12 +2500,7 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
       raise Not_found
 
     method namespace_manager =
-       match mng with
-	  None   -> failwith "Pxp_document.namespace_impl#namespace_manager"
-	| Some m -> m
-
-    method set_namespace_manager m =
-      mng <- Some m
+      self # dtd # namespace_manager
 
     (* Senseless methods: *)
 
@@ -2706,7 +2608,6 @@ object
 		 let s = if srcprefix = "!" then "" else srcprefix in
 		 let nsnode = new namespace_impl s normprefix dtd in
 		 nsnode # internal_adopt (Some parent) !pos;
-		 nsnode # set_namespace_manager (parent # namespace_manager);
 		 d := nsnode :: !d;
 		 done_srcprefixes := srcprefix :: !done_srcprefixes;
 	       end
@@ -3079,7 +2980,7 @@ let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
 
 
 let validate tree =
-  iter
+  iter_tree
     ~pre:(fun n -> n # validate())
     tree
 ;;
@@ -3498,6 +3399,12 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.22  2001/06/08 01:15:46  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.21  2001/06/08 00:12:56  gerd
  * 	Implemented rev. 1.16 of pxp_document.mli.
  *

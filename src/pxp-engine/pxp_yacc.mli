@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.14 2001/06/07 22:53:20 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.15 2001/06/08 01:15:47 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -263,7 +263,7 @@ type config =
 	 * slower.
 	 *)
 
-      enable_namespace_processing : Pxp_document.namespace_manager option;
+      enable_namespace_processing : Pxp_dtd.namespace_manager option;
         (* Setting this option to a namespace_manager enables namespace
 	 * processing. This works only if the namespace-aware implementation
 	 * namespace_element_impl of element nodes is used in the spec;
@@ -500,6 +500,12 @@ val parse_wfcontent_entity :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.15  2001/06/08 01:15:47  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.14  2001/06/07 22:53:20  gerd
  * 	New config option: drop_ignorable_whitespace.
  * 	New defaults: default_namespace_config, default_namespace_spec.

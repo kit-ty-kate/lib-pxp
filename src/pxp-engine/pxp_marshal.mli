@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.mli,v 1.2 2001/06/07 22:47:31 gerd Exp $
+(* $Id: pxp_marshal.mli,v 1.3 2001/06/08 01:15:47 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -69,7 +69,6 @@ val document_to_channel :
   (* The same for documents. *)
 
 val subtree_from_cmd_sequence : 
-      ?enable_namespace_processing:Pxp_document.namespace_manager ->
       (unit -> reconstruction_cmd) ->
       Pxp_dtd.dtd ->
       'ext Pxp_document.spec ->
@@ -77,7 +76,7 @@ val subtree_from_cmd_sequence :
   (* Reconstructs the subtree from a sequence of reconstruction_cmd values.
    * The passed function is called to get the next reconstruction_cmd.
    *
-   * enable_namespace_processing: (default: None)
+   * If the DTD contains a namespace_manager:
    *   You must pass a namespace_manager to enable the namespace code.
    *   Note that the normprefixes found in the input stream are remapped
    *   to unique normprefixes, if this is necessary. This means that the
@@ -89,7 +88,6 @@ val subtree_from_cmd_sequence :
    *)
 
 val subtree_from_channel : 
-      ?enable_namespace_processing:Pxp_document.namespace_manager ->
       in_channel ->
       Pxp_dtd.dtd ->
       'ext Pxp_document.spec ->
@@ -112,6 +110,12 @@ val document_from_channel :
  * History:
  * 
  * $Log: pxp_marshal.mli,v $
+ * Revision 1.3  2001/06/08 01:15:47  gerd
+ * 	Moved namespace_manager from Pxp_document to Pxp_dtd. This
+ * makes it possible that the DTD can recognize the processing instructions
+ * <?pxp:dtd namespace prefix="..." uri="..."?>, and add the namespace
+ * declaration to the manager.
+ *
  * Revision 1.2  2001/06/07 22:47:31  gerd
  * 	The new support for namespaces is reflected in the signature:
  * New option enable_namespace_processing.
