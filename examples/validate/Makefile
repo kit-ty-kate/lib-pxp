@@ -5,8 +5,7 @@
 # make distclean: 	remove any superflous files (recursively)
 #----------------------------------------------------------------------
 
-REQ = str pxp-engine pxp-lex-iso88591 pxp-wlex-utf8
-# Note: you can also use pxp-lex-utf8
+# REQ: This variable is set in Makefile.config
 
 pxpvalidate: validate.ml
 	ocamlfind ocamlc -g -o pxpvalidate -package "$(REQ)" -linkpkg validate.ml
@@ -25,18 +24,29 @@ pxpvalidate.1: pxpvalidate.pod
 releasebyte:
 	(cd ..; tar czf pxpvalidate-1.1.1.tar.gz pxpvalidate/{INSTALL,LICENSE,Makefile,pxpvalidate.1,pxpvalidate.byte,setup.sh,validate.ml})
 
+
+Makefile.config:
+	if ocamlfind query >/dev/null; then;                    \
+	    lexer = "pxp-lex-iso88591 pxp-wlex-utf8";           \
+	else                                                    \
+	    lexer = "pxp-lex-iso88591 pxp-lex-utf8";            \
+	fi;                                                     \
+	echo "REQ = str pxp-engine $$lexer" >Makefile.config
+
 #----------------------------------------------------------------------
 .PHONY: all
 all:
 
 .PHONY: clean
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa 
+	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa
 
 .PHONY: CLEAN
 CLEAN: clean
 
 .PHONY: distclean
 distclean: clean
-	rm -f *~
+	rm -f *~ Makefile.config
 	rm -f pxpvalidate pxpvalidate.opt pxpvalidate.byte interpreter
+
+include Makefile.config
