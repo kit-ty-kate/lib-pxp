@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.9 2001/05/17 22:31:03 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.10 2001/06/13 18:42:00 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -120,7 +120,6 @@ let rec output_xml config n =
 let parse debug wf iso88591 comments filename =
   let spec =
     let e = new element_impl default_extension in
-    e # keep_always_whitespace_mode;
     make_spec_from_mapping
       ~super_root_exemplar:      (new super_root_impl default_extension)
       ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
@@ -137,6 +136,7 @@ let parse debug wf iso88591 comments filename =
 	  enable_pinstr_nodes = true;
 	  enable_super_root_node = true;
 	  enable_comment_nodes = comments;
+	  drop_ignorable_whitespace = false;
 	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
 	  idref_pass = true;
       }
@@ -197,6 +197,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.10  2001/06/13 18:42:00  gerd
+ * 	Updated
+ *
  * Revision 1.9  2001/05/17 22:31:03  gerd
  * 	Updated
  *
