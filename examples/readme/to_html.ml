@@ -1,4 +1,4 @@
-(* $Id: to_html.ml,v 1.3 2000/06/04 20:25:38 gerd Exp $
+(* $Id: to_html.ml,v 1.4 2000/07/08 17:58:17 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -378,40 +378,38 @@ class footnote =
 open Pxp_yacc
 
 let tag_map =
-  { map =
-      (let m = Hashtbl.create 50 in
-       Hashtbl.add m (T_element "readme")
-	             (new element_impl (new readme));
-       Hashtbl.add m (T_element "sect1")
-	             (new element_impl (new sect1));
-       Hashtbl.add m (T_element "sect2")
-	             (new element_impl (new sect2));
-       Hashtbl.add m (T_element "sect3")
-	             (new element_impl (new sect3));
-       Hashtbl.add m (T_element "title")
-	             (new element_impl (new no_markup));
-       Hashtbl.add m (T_element "p")
-	             (new element_impl (new p));
-       Hashtbl.add m (T_element "br")
-	             (new element_impl (new br));
-       Hashtbl.add m (T_element "code")
-	             (new element_impl (new code));
-       Hashtbl.add m (T_element "em")
-	             (new element_impl (new em));
-       Hashtbl.add m (T_element "ul")
-	             (new element_impl (new ul));
-       Hashtbl.add m (T_element "li")
-	             (new element_impl (new li));
-       Hashtbl.add m (T_element "footnote")
-	             (new element_impl (new footnote : #shared :> shared));
-       Hashtbl.add m (T_element "a")
-	             (new element_impl (new a));
-       Hashtbl.add m T_data
-	             (new data_impl (new only_data) "");
-       m);
-
-    default_element = new element_impl (new no_markup);
-  }
+  make_spec_from_mapping
+    ~data_exemplar:(new data_impl (new only_data))
+    ~default_element_exemplar:(new element_impl (new no_markup))
+    ~element_mapping:
+       (let m = Hashtbl.create 50 in
+	Hashtbl.add m "readme"
+	              (new element_impl (new readme));
+	Hashtbl.add m "sect1"
+	              (new element_impl (new sect1));
+	Hashtbl.add m "sect2"
+	              (new element_impl (new sect2));
+	Hashtbl.add m "sect3"
+	              (new element_impl (new sect3));
+	Hashtbl.add m "title"
+	              (new element_impl (new no_markup));
+	Hashtbl.add m "p"
+	              (new element_impl (new p));
+	Hashtbl.add m "br"
+	              (new element_impl (new br));
+	Hashtbl.add m "code"
+	              (new element_impl (new code));
+	Hashtbl.add m "em"
+	              (new element_impl (new em));
+	Hashtbl.add m "ul"
+	              (new element_impl (new ul));
+	Hashtbl.add m "li"
+	              (new element_impl (new li));
+	Hashtbl.add m "footnote"
+	              (new element_impl (new footnote : #shared :> shared));
+	Hashtbl.add m "a"
+	              (new element_impl (new a));
+	m)
 ;;
 (*$-*)
 
@@ -420,6 +418,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.4  2000/07/08 17:58:17  gerd
+ * 	Updated because of PXP API changes.
+ *
  * Revision 1.3  2000/06/04 20:25:38  gerd
  * 	Updates because of renamed PXP modules.
  *

@@ -1,4 +1,4 @@
-(* $Id: main.ml,v 1.4 2000/06/04 20:25:38 gerd Exp $
+(* $Id: main.ml,v 1.5 2000/07/08 17:58:17 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -24,7 +24,7 @@ let convert_to_html filename =
   let document =
     parse_document_entity
       { default_config with encoding = `Enc_iso88591 }
-      (File filename)
+      (from_file filename)
       To_html.tag_map
   in
   let root = document # root in
@@ -38,7 +38,7 @@ let convert_to_text filename =
   let document =
     parse_document_entity
       default_config
-      (File filename)
+      (from_file filename)
       To_text.tag_map
   in
   let root = document # root in
@@ -87,6 +87,9 @@ main();;
  * History:
  *
  * $Log: main.ml,v $
+ * Revision 1.5  2000/07/08 17:58:17  gerd
+ * 	Updated because of PXP API changes.
+ *
  * Revision 1.4  2000/06/04 20:25:38  gerd
  * 	Updates because of renamed PXP modules.
  *
