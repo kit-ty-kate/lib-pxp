@@ -2225,6 +2225,7 @@ class type [ 'ext ] node =
     method attribute : string -> Markup_types.att_value
     method attribute_names : string list
     method attribute_type : string -> Markup_types.att_type
+    method attributes : (string * Markup_types.att_value) list
     method required_string_attribute : string -> string
     method required_list_attribute : string -> string list
     method optional_string_attribute : string -> string option
@@ -2390,6 +2391,12 @@ this element.</para>
 <literal>n</literal>. See the module <literal>Markup_types</literal> for a
 description of the encoding of the types.
 </para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>attributes</literal>: returns the list of pairs of names and values
+for all attributes of
+this element.</para>
 	      </listitem>
 	      <listitem>
 		<para>
