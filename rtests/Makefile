@@ -8,7 +8,7 @@ all:
 	$(MAKE) -C codewriter &&                   \
 	$(MAKE) -C canonxml &&                     \
 	$(MAKE) -C negative &&                     \
-	$(MAKE) -C dynamic                         \
+	$(MAKE) -C dynamic &&                      \
 	$(MAKE) -C lex
 
 .PHONY: clean
