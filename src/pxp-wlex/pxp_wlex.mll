@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mll,v 1.1 2000/09/17 00:14:06 gerd Exp $
+(* $Id: pxp_wlex.mll,v 1.2 2000/09/21 21:33:16 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -35,6 +35,7 @@ classes
   let tok_Doctype__Document_type = Doctype dummy_entity, Document_type
   let tok_Ignore__Document       = Ignore, Document
   let tok_Ignore__Within_tag     = Ignore, Within_tag
+  let tok_IgnoreLineEnd__Within_tag = IgnoreLineEnd, Within_tag
   let tok_Ignore__Document_type  = Ignore, Document_type
   let tok_Ignore__Declaration    = Ignore, Declaration
   let tok_Ignore__Ignored        = Ignore, Ignored_section
@@ -236,7 +237,13 @@ rule scan_content = parse
 
 
 and scan_within_tag = parse
-    ws+
+    '\013' '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\013'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | [' ' '\t']+
       { tok_Ignore__Within_tag }
   | name
       { Name (Lexing.lexeme lexbuf ), Within_tag }
@@ -656,6 +663,9 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mll,v $
+ * Revision 1.2  2000/09/21 21:33:16  gerd
+ * 	Bugfix: Line counting within tags
+ *
  * Revision 1.1  2000/09/17 00:14:06  gerd
  * 	Initial revision.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.3 2000/08/14 22:18:34 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.4 2000/09/21 21:33:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -17,7 +17,13 @@
 
 
 rule scan_within_tag = parse
-    ws+
+    '\013' '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\013'
+      { tok_IgnoreLineEnd__Within_tag }
+  | '\010'
+      { tok_IgnoreLineEnd__Within_tag }
+  | [' ' '\t']+
       { tok_Ignore__Within_tag }
   | name
       { Name (Lexing.lexeme lexbuf ), Within_tag }
@@ -53,6 +59,9 @@ rule scan_within_tag = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.4  2000/09/21 21:33:14  gerd
+ * 	Bugfix: Line counting within tags
+ *
  * Revision 1.3  2000/08/14 22:18:34  gerd
  * 	Bad_character_stream -> Netconversion.Malformed_code
  *
