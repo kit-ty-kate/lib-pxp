@@ -1,4 +1,4 @@
-(* $Id: ds_context.ml,v 1.1 1999/08/21 19:11:05 gerd Exp $
+(* $Id: ds_context.ml,v 1.2 2000/05/30 00:09:08 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -26,7 +26,7 @@ class context the_filename the_obj_dtd the_root the_topframe =
     initializer
       self # load_obj
 
-    method obj = (obj : 'node extension node as 'node)
+    method obj = obj
 
     (* history *)
 
@@ -183,6 +183,9 @@ class context the_filename the_obj_dtd the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.2  2000/05/30 00:09:08  gerd
+ * 	Minor fix.
+ *
  * Revision 1.1  1999/08/21 19:11:05  gerd
  * 	Initial revision.
  *
