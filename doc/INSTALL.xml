@@ -64,12 +64,21 @@ The Makefile defines the following goals:</p>
 	<li>
 	  <p>make install</p>
 	  <p>installs the bytecode archives, the interface definitions, and if
-present, the native archives in the default location of <em>findlib</em>
+present, the native archives in the default location of <em>findlib</em> as
+package "pxp"
 </p>
 	</li>
 	<li>
 	  <p>make uninstall</p>
-	  <p>removes the package</p>
+	  <p>removes the package "pxp"</p>
+	</li>
+	<li>
+	  <p>make markup-install</p>
+	  <p>installs the Markup compatibility API as package "markup"</p>
+	</li>
+	<li>
+	  <p>make markup-uninstall</p>
+	  <p>removes the package "markup"</p>
 	</li>
       </ul>
     </sect2>

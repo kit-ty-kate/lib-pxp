@@ -235,6 +235,12 @@ There is currently no "early parser hook", i.e. a possibility to throw
     <sect2>
       <title>Recent Changes</title>
       <ul>
+	<li>
+	  <p>Changed in 0.99.3:</p>
+	  <p>The markup_* modules have been renamed to pxp_*. There is a new
+compatibility API that tries to be compatible with markup-0.2.10.</p>
+	  <p>The type "encoding" is now a polymorphic variant.</p>
+	</li>
         <li>
 	  <p>Changed in 0.99.2:</p>
 	  <p>Added checks for the constraints about the standalone
