@@ -3728,7 +3728,7 @@ resolver <literal>r</literal>.</para>
 	  <para>A resolver is an object that can be opened like a file, but you
 do not pass the file name to the resolver, but the XML identifier of the entity
 to read from (either a <literal>SYSTEM</literal> or <literal>PUBLIC</literal>
-clause). If opened, the resolver must return the
+clause). When opened, the resolver must return the
 <literal>Lexing.lexbuf</literal> that reads the characters.  The resolver can
 be closed, and it can be cloned. Furthermore, it is possible to tell the
 resolver which character set it should assume. (Note: Markup works internally
@@ -3813,14 +3813,19 @@ written. Perhaps the interface definition of Markup_dtd expresses the same:
       </sect1>
 
       <sect1>
-	<title>Configuring the class exemplars of the node tree</title>
-	<para><emphasis>Sorry, not yet written.</emphasis></para>
-      </sect1>
-
-      <sect1>
 	<title>Invoking the parser</title>
 	<para><emphasis>Sorry, not yet written.</emphasis></para>
       </sect1>
+
+
+      <sect1>
+	<title>Updates</title> 
+
+	<para><emphasis>Some (often later added) features that are otherwise
+not explained in the manual but worth to be mentioned.</emphasis></para>
+
+      </sect1>
+
     </chapter>
  
   </part>
