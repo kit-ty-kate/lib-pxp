@@ -8,6 +8,9 @@
 %readme.code.to-html;
 %get.markup-yacc.mli;
 %get.markup-dtd.mli;
+
+<!ENTITY fun "-&gt;">                       <!-- function type operator -->
+
 ]>
 
 
@@ -2200,54 +2203,79 @@ is used by the parser itself to enter the instructions returned by
       </sect1>
 
       <sect1>
-	<title>The <literal>node</literal> class type</title>
+	<title>The class type <literal>node</literal></title>
 	<para>
 
 <programlisting>
-<![CDATA[
 class type [ 'ext ] node =
   object ('self)
     constraint 'ext = 'ext node #extension
 
+    <anchor id="type-node-general.sig"
+   >(* <link linkend="type-node-general" endterm="type-node-general.title"
+       ></link> *)
+
     method extension : 'ext
-    method delete : unit
     method parent : 'ext node
     method root : 'ext node
+    method sub_nodes : 'ext node list
+    method iter_nodes : ('ext node &fun; unit) &fun; unit
+    method iter_nodes_sibl : 
+           ('ext node option &fun; 'ext node &fun; 'ext node option &fun; unit) &fun; unit
+    method node_type : node_type
+    method data : string
+    method dtd : dtd
+    method pinstr : string &fun; proc_instruction list
+    method pinstr_names : string list
+
+    <anchor id="type-node-atts.sig"
+   >(* <link linkend="type-node-atts" endterm="type-node-atts.title"
+       ></link> *)
+
+    method attribute : string &fun; Markup_types.att_value
+    method required_string_attribute : string &fun; string
+    method optional_string_attribute : string &fun; string option
+    method required_list_attribute : string &fun; string list
+    method optional_list_attribute : string &fun; string list
+    method attribute_names : string list
+    method attribute_type : string &fun; Markup_types.att_type
+    method attributes : (string * Markup_types.att_value) list
+
+    <anchor id="type-node-mods.sig"
+   >(* <link linkend="type-node-mods" endterm="type-node-mods.title"
+       ></link> *)
+
+    method add_node : 'ext node &fun; unit
+    method add_pinstr : proc_instruction &fun; unit
+    method delete : unit
+    method set_nodes : 'ext node list &fun; unit
+    method quick_set_attributes : (string * Markup_types.att_value) list &fun; unit
+
+    <anchor id="type-node-cloning.sig"
+   >(* <link linkend="type-node-cloning" endterm="type-node-cloning.title"
+       ></link> *)
+
     method orphaned_clone : 'self
     method orphaned_flat_clone : 'self
-    method add_node : 'ext node -> unit
-    method add_pinstr : proc_instruction -> unit
-    method pinstr : string -> proc_instruction list
-    method sub_nodes : 'ext node list
-    method iter_nodes : ('ext node -> unit) -> unit
-    method iter_nodes_sibl : 
-           ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
-    method find : string -> 'ext node
+    method create_element : dtd &fun; node_type &fun; (string * string) list 
+                            &fun; 'ext node
+    method create_data : dtd &fun; string &fun; 'ext node
+
+    <anchor id="type-node-weird.sig"
+   >(* <link linkend="type-node-weird" endterm="type-node-weird.title"
+       ></link> *)
+
+    method find : string &fun; 'ext node
     method reset_finder : unit
-    method set_nodes : 'ext node list -> unit
-    method data : string
-    method node_type : node_type
-    method attribute : string -> Markup_types.att_value
-    method attribute_names : string list
-    method attribute_type : string -> Markup_types.att_type
-    method attributes : (string * Markup_types.att_value) list
-    method required_string_attribute : string -> string
-    method required_list_attribute : string -> string list
-    method optional_string_attribute : string -> string option
-    method optional_list_attribute : string -> string list
-    method quick_set_attributes : (string * Markup_types.att_value) list -> unit
-    method dtd : dtd
-    method create_element : dtd -> node_type -> (string * string) list 
-                            -> 'ext node
-    method create_data : dtd -> string -> 'ext node
     method local_validate : unit
-    (* internal methods: *)
-    method internal_adopt : 'ext node option -> unit
-    method internal_delete : 'ext node -> unit
-    method internal_init : dtd -> string -> (string * string) list -> unit
+
+    (* Internal methods (undocumented). *)
+
+    method internal_adopt : 'ext node option &fun; unit
+    method internal_delete : 'ext node &fun; unit
+    method internal_init : dtd &fun; string &fun; (string * string) list &fun; unit
   end
 ;;
-]]>
 </programlisting>
 </para>
 
@@ -2343,86 +2371,143 @@ are called <emphasis>orphaned</emphasis>.
 	<sect2>
 	  <title>The methods of the class type <literal>node</literal></title>
 
-	<formalpara>
-	  <title>Observers</title>
+	  <anchor id="type-node-general">
+	  <formalpara>
+	    <title id="type-node-general.title">
+              <link linkend="type-node-general.sig">General observers</link>
+            </title>
 
-	  <para>
-   	    <itemizedlist mark="bullet" spacing="compact">
-	      <listitem>
-		<para>
+	    <para>
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>
+		  <para>
 <literal>extension</literal>: The reference to the extension object which
-belongs to this node.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+belongs to this node (see ...).</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>parent</literal>: Get the father node. Raises
 <literal>Not_found</literal> in the case the node does not have a
-parent.</para>
-	      </listitem>
-	      <listitem>
-		<para>
-<literal>root</literal>: Gets a reference to the root node of the tree.</para>
-	      </listitem>
-	      <listitem>
-		<para>
-<literal>sub_nodes</literal>: Returns references to the children.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+parent, i.e. the node is the root.</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>root</literal>: Gets the reference to the root node of the tree.
+Every node is contained in a tree with a root, so this method always 
+succeeds. Note that this method <emphasis>searches</emphasis> the root,
+which costs time proportional to the length of the path to the root.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>sub_nodes</literal>: Returns references to the children. The returned
+list reflects the order of the children. For data nodes, this method returns
+the empty list.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>iter_nodes f</literal>: Iterates over the children, and calls
-<literal>f</literal> for every child in turn.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+<literal>f</literal> for every child in turn. 
+</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>iter_nodes_sibl f</literal>: Iterates over the children, and calls
 <literal>f</literal> for every child in turn. <literal>f</literal> gets as
 arguments the previous node, the current node, and the next node.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>node_type</literal>: Returns either <literal>T_data</literal> which
-means that the node is a character data node, or <literal>T_element n</literal>
-which means that the node is an element of type <literal>n</literal>.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+means that the node is a data node, or <literal>T_element n</literal>
+which means that the node is an element of type <literal>n</literal>.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>data</literal>: Returns the character data of this node and all
-children, concatenated as one string. The string is ISO-8859-1-encoded. </para>
-	      </listitem>
-	      <listitem>
-		<para>
+children, concatenated as one string. The string is ISO-8859-1-encoded. 
+- For data nodes, this method simply returns the represented characters.
+For elements, the meaning of the method has been extended such that it
+returns something useful, i.e. the effectively contained characters, without
+markup.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>dtd</literal>: Returns a reference to the global DTD. All nodes
+of a tree must share the same DTD.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>pinstr n</literal>: Returns all processing instructions that are
+directly contained in this element and that have a <emphasis>target</emphasis>
+specification of <literal>n</literal>. The target is the first word after
+the <literal>&lt;?</literal>.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
+<literal>pinstr_names</literal>: Returns the list of all targets of processing
+instructions directly contained in this element.</para>
+		</listitem>
+	      </itemizedlist>
+            </para>
+	  </formalpara>
+
+	  <anchor id="type-node-atts">
+	  <formalpara>
+	    <title id="type-node-atts.title">
+              <link linkend="type-node-atts.sig">Attribute observers</link>
+            </title>
+	    <para>
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>
+		  <para>
 <literal>attribute n</literal>: Returns the value of the attribute with name
-<literal>n</literal>. Possible value are:
+<literal>n</literal>. This method returns a value for every declared 
+attribute, and it raises <literal>Not_found</literal> for any undeclared
+attribute. Note that it even returns a value if the attribute is actually
+missing but is declared as <literal>#IMPLIED</literal> or has a default
+value. - Possible values are:
                   <itemizedlist mark="bullet" spacing="compact">
-		    <listitem>
-		      <para>
+		      <listitem>
+			<para>
 <literal>Implied_value</literal>: The attribute has been declared with the
 keyword <literal>#IMPLIED</literal>, and the attribute is missing in the
 attribute list of this element.</para>
-		    </listitem>
-		    <listitem>
-		      <para>
+		      </listitem>
+		      <listitem>
+			<para>
 <literal>Value s</literal>: The attribute has been declared as type
-<literal>CDATA</literal>, <literal>ID</literal>, <literal>IDREF</literal>,
-<literal>ENTITY</literal>, or <literal>NMTOKEN</literal>, or as enumeration or
-notation, and one of the two conditions holds: (1) The attribute value is
-present in the attribute list in which case the value is returned in the string
-<literal>s</literal>. (2) The attribute has been omitted, and the DTD declared
-the attribute with a default value. The default value is returned in
-<literal>s</literal>. </para>
-		    </listitem>
-		    <listitem>
-		      <para>
+<literal>CDATA</literal>, as <literal>ID</literal>, as
+<literal>IDREF</literal>, as <literal>ENTITY</literal>, or as
+<literal>NMTOKEN</literal>, or as enumeration or notation, and one of the two
+conditions holds: (1) The attribute value is present in the attribute list in
+which case the value is returned in the string <literal>s</literal>. (2) The
+attribute has been omitted, and the DTD declared the attribute with a default
+value. The default value is returned in <literal>s</literal>. 
+- Summarized, <literal>Value s</literal> is returned for non-implied, non-list 
+attribute values.
+</para>
+		      </listitem>
+		      <listitem>
+			<para>
 <literal>Valuelist l</literal>: The attribute has been declared as type
-<literal>IDREFS</literal>, <literal>ENTITIES</literal>, or
-<literal>NMTOKENS</literal>, and one of the two conditions holds: (1) The
+<literal>IDREFS</literal>, as <literal>ENTITIES</literal>, or
+as <literal>NMTOKENS</literal>, and one of the two conditions holds: (1) The
 attribute value is present in the attribute list in which case the
 space-separated tokens of the value are returned in the string list
 <literal>l</literal>. (2) The attribute has been omitted, and the DTD declared
 the attribute with a default value. The default value is returned in
-<literal>l</literal>. </para>
-		    </listitem>
-		  </itemizedlist>
+<literal>l</literal>. 
+- Summarized, <literal>Valuelist l</literal> is returned for all list-type
+attribute values.
+</para>
+		      </listitem>
+		    </itemizedlist>
 
 Note that before the attribute value is returned, the value is normalized. This
 means that newlines are converted to spaces, and that references to character
@@ -2430,210 +2515,222 @@ entities (i.e. <literal>&amp;#<replaceable>n</replaceable>;</literal>) and
 general entities
 (i.e. <literal>&amp;<replaceable>name</replaceable>;</literal>) are expanded;
 if necessary, expansion is performed recursively.
-
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>required_string_attribute n</literal>: returns the Value attribute
 called n, or the Valuelist attribute as a string where the list elements
 are separated by spaces. If the attribute value is implied, or if the
-attribute does not exists, the method will fail.
+attribute does not exists, the method will fail. - This method is convenient
+if you expect a non-implied and non-list attribute value.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>optional_string_attribute n</literal>: returns the Value attribute
 called n, or the Valuelist attribute as a string where the list elements
 are separated by spaces. If the attribute value is implied, or if the
-attribute does not exists, the method returns None.
+attribute does not exists, the method returns None. - This method is 
+convenient if you expect a non-list attribute value including the implied
+value.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>required_list_attribute n</literal>: returns the Valuelist attribute
 called n, or the Value attribute as a list with a single element.
 If the attribute value is implied, or if the
-attribute does not exists, the method will fail.
+attribute does not exists, the method will fail. - This method is 
+convenient if you expect a list attribute value.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>optional_list_attribute n</literal>: returns the Valuelist attribute
 called n, or the Value attribute as a list with a single element.
 If the attribute value is implied, or if the
-attribute does not exists, an empty list will be returned.
+attribute does not exists, an empty list will be returned. - This method
+is convenient if you expect a list attribute value or the implied value.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>attribute_names</literal>: returns the list of all attribute names of
-this element.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+this element. As this is a validating parser, this list is equal to the
+list of declared attributes.
+</para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>attribute_type n</literal>: returns the type of the attribute called
 <literal>n</literal>. See the module <literal>Markup_types</literal> for a
 description of the encoding of the types.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>attributes</literal>: returns the list of pairs of names and values
 for all attributes of
 this element.</para>
-	      </listitem>
-	      <listitem>
-		<para>
-<literal>dtd</literal>: returns a reference to the global DTD.</para>
-	      </listitem>
-	      <listitem>
-		<para>
-<literal>pinstr n</literal>: returns all processing instructions that are
-directly contained in this element and that have a <emphasis>target</emphasis>
-specification of <literal>n</literal>.</para>
-	      </listitem>
+		</listitem>
+	      </itemizedlist>
+          </para>
+	  </formalpara>
+	  
+	  <anchor id="type-node-mods">
+	  <formalpara>
+	    <title id="type-node-mods.title">
+              <link linkend="type-node-mods.sig">Modifying methods</link>
+            </title>
+	    
+	    <para>
+The following methods are only defined for element nodes (more exactly:
+the methods are defined for data nodes, too, but fail always).
 
-	    </itemizedlist>
-
-</para>
-	</formalpara>
-
-	<formalpara>
-	  <title>Modifying methods</title>
-
-	  <para>
-   	    <itemizedlist mark="bullet" spacing="compact">
-	      <listitem>
-		<para>
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>
+		  <para>
 <literal>add_node sn</literal>: Adds sub node <literal>sn</literal> to the list
-of children. It is required that <literal>sn</literal> must not have a
-parent. This operation is illustrated in the picture <link linkend="node-add"
-endterm="node-add"></link>.
+of children. This operation is illustrated in the picture 
+<link linkend="node-add" endterm="node-add"></link>. This method expects that
+<literal>sn</literal> is a root, and it requires that <literal>sn</literal> and
+the current object share the same DTD.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>add_pinstr pi</literal>: Adds the processing instruction
 <literal>pi</literal> to the list of processing instructions.
 </para>
-	      </listitem>
+		</listitem>
 
-	      <listitem>
-		<para>
+		<listitem>
+		  <para>
 <literal>delete</literal>: Deletes this node from the tree. After this
 operation, this node is no longer the child of the former father node; and the
 node loses the connection to the father as well. This operation is illustrated
 by the figure <link linkend="node-delete" endterm="node-delete"></link>.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>set_nodes nl</literal>: Sets the list of children to
-<literal>nl</literal>. It is required that no member of <literal>nl</literal>
-has a parent (i.e. all the nodes must be roots).
+<literal>nl</literal>. It is required that every member of <literal>nl</literal>
+is a root, and that all members and the current object share the same DTD.
 </para>
 	      </listitem>
 	      <listitem>
-		<para>
+		  <para>
 <literal>quick_set_attributes atts</literal>: sets the attributes of this
-element to atts. It is not checked whether atts matches the DTD or not.
+element to <literal>atts</literal>. It is <emphasis>not</emphasis> checked
+whether <literal>atts</literal> matches the DTD or not; it is up to the
+caller of this method to ensure this. (This method may be useful to transform
+the attribute values, i.e. apply a mapping to every attribute.)
 </para>
-	      </listitem>
-	    </itemizedlist>
+		</listitem>
+	      </itemizedlist>
 </para>
-	</formalpara>
+	  </formalpara>
+	  
+	  <anchor id="type-node-cloning">
+	  <formalpara>
+	    <title id="type-node-cloning.title">
+              <link linkend="type-node-cloning.sig">Cloning methods</link>
+            </title>
 
-	<formalpara>
-	  <title>Cloning methods</title>
-<para>
-   	    <itemizedlist mark="bullet" spacing="compact">
-	      <listitem>
-		<para>
+	    <para>
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>
+		  <para>
 <literal>orphaned_clone</literal>: Returns a clone of the node and the complete
-tree below this node (deep clone). The clone does not have a parent. While
+tree below this node (deep clone). The clone does not have a parent (i.e. the
+reference to the parent node is <emphasis>not</emphasis> cloned). While
 copying the subtree, strings are skipped; it is likely that the original tree
-and the copy tree share strings. Whether extension objects are cloned as well
-depends on the implemention of the <literal>clone</literal> method of the
-extension objects.
+and the copy tree share strings. Extension objects are cloned by invoking
+the <literal>clone</literal> method on the original objects; how much of
+the extension objects is cloned depends on the implemention of this method.
 </para>
-		<para>This operation is illustrated by the figure 
+		  <para>This operation is illustrated by the figure 
 <link linkend="node-clone" endterm="node-clone"></link>.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>orphaned_flat_clone</literal>: Returns a clone of the node,
-but sets the sub nodes to [].
-The clone does not have a parent. It is
-allowed that strings are shared between the original nodes and the copy nodes.
-Whether extension objects are cloned as well depends on the implemention of the
-<literal>clone</literal> method of the extension objects.
+but sets the list of sub nodes to [], i.e. the sub nodes are not cloned.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
+<anchor id="type-node-meth-create-element">
 <literal>create_element dtd nt al</literal>: Returns a flat copy of this node
-(which must be an element) with the following modifications: The DTD is now
-<literal>dtd</literal>; the node type is <literal>nt</literal>, and the new
-attribute list is <literal>al</literal> (given as list of (name,value)
-pairs). The copy does not have children nor a parent. It does not contain
-processing instructions.
+(which must be an element) with the following modifications: The DTD is set to
+<literal>dtd</literal>; the node type is set to <literal>nt</literal>, and the
+new attribute list is set to <literal>al</literal> (given as list of
+(name,value) pairs). The copy does not have children nor a parent. It does not
+contain processing instructions. See 
+<link linkend="type-node-ex-create-element">the example below</link>.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
+<anchor id="type-node-meth-create-data">
 <literal>create_data dtd cdata</literal>: Returns a flat copy of this node
-(which must be a character node) with the following modifications: The DTD is
-now <literal>dtd</literal>; the node type is <literal>T_data</literal>; the
+(which must be a data node) with the following modifications: The DTD is set to
+<literal>dtd</literal>; the node type is set to <literal>T_data</literal>; the
 attribute list is empty (data nodes never have attributes); the list of
 children and PIs is empty, too (same reason). The new node does not have a
 parent. The value <literal>cdata</literal> is the new character content of the
-node. 
+node. See 
+<link linkend="type-node-ex-create-data">the example below</link>.
 </para>
-	      </listitem>
-	    </itemizedlist>
+		</listitem>
+	      </itemizedlist>
 </para>
-	</formalpara>
-
-	<formalpara>
-	  <title>Weird methods</title>
-<para>
+	  </formalpara>
+	  
+	  <anchor id="type-node-weird">
+	  <formalpara>
+	    <title id="type-node-weird.title">
+              <link linkend="type-node-weird.sig">Weird methods</link>
+            </title>
+	    <para>
 The following methods will hopefully be replaced by better ones in the next
-release:
+major release:
 
-   	    <itemizedlist mark="bullet" spacing="compact">
-	      <listitem>
-		<para>
+   	      <itemizedlist mark="bullet" spacing="compact">
+		<listitem>
+		  <para>
 <literal>find id</literal>: Searches the tree (beginning at the root node) for
 the node with an ID attribute <literal>id</literal>, or raises
 <literal>Not_found</literal>. The method may also cause a Validation_error if
 something is wrong with the IDs.
 </para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>reset_finder</literal>: Resets the ID cache. This is necessary after
 new nodes have been added; otherwise <literal>find</literal> would not find
 these nodes.</para>
-	      </listitem>
-	      <listitem>
-		<para>
+		</listitem>
+		<listitem>
+		  <para>
 <literal>local_validate</literal>: Checks that this node conforms to the
 DTD. (Applications need not to call this method unless they add new nodes
 themselves to the tree.)
 </para>
-	      </listitem>
-	    </itemizedlist>
+		</listitem>
+	      </itemizedlist>
 </para>
-	</formalpara>
+	  </formalpara>
 	</sect2>
 
 	<sect2>
 	  <title>The class <literal>element_impl</literal></title>
 	  <para>
-This class is an implementation conforming to <literal>node</literal> which
-should be used for all element nodes:
+This class is an implementation of <literal>node</literal> which
+realizes element nodes:
 
 <programlisting>
 <![CDATA[
@@ -2651,16 +2748,43 @@ You can create a new instance by
 new element_impl <replaceable>extension_object</replaceable>
 </programlisting>
 
-which creates an empty element without useful type which is connected to the
-<replaceable>extension_object</replaceable>. Such an element cannot be used to
-form node trees; its only purpose is to serve as exemplar that can be
-cloned. This means that you must invoke <literal>create_element</literal> on
-the exemplar to get a useable empty element.
-
-	  <blockquote><para>
-This interface is a strong candidate for future improvements. 
+which creates a special form of empty element which already contains a
+reference to the <replaceable>extension_object</replaceable>, but is
+otherwise empty. This special form is called an
+<emphasis>exemplar</emphasis>. The purpose of exemplars is that they serve as
+patterns that can be duplicated and filled with data. The method
+<link linkend="type-node-meth-create-element">
+<literal>create_element</literal></link> is designed to perform this action.
 </para>
-	  </blockquote>
+	  </formalpara>
+
+	  <anchor id="type-node-ex-create-element">
+	  <formalpara>
+	    <title>Example</title>
+
+	    <para>First, create an exemplar by
+
+<programlisting>
+let exemplar_ext = ... in
+let exemplar     = new element_impl exemplar_ext in
+</programlisting>
+
+The <literal>exemplar</literal> is not used in node trees, but only as
+a pattern when the element nodes are created:
+
+<programlisting>
+let element = exemplar # <link linkend="type-node-meth-create-element">create_element</link> dtd (T_element name) attlist 
+</programlisting>
+
+The <literal>element</literal> is a copy of <literal>exemplar</literal>
+(even the extension <literal>exemplar_ext</literal> has been copied)
+which ensures that <literal>element</literal> and its extension are objects
+of the same class as the exemplars; note that you need not to pass a 
+class name or other meta information. The copy is initially connected 
+with the <literal>dtd</literal>, it gets a node type, and the attribute list
+is filled. The <literal>element</literal> is now fully functional; it can
+be added to another element as child, and it can contain references to
+subnodes.
 </para>
 	  </formalpara>
 
@@ -2669,7 +2793,7 @@ This interface is a strong candidate for future improvements.
 	<sect2>
 	  <title>The class <literal>data_impl</literal></title>
 	  <para>
-This class is an implementation conforming to <literal>node</literal> which
+This class is an implementation of <literal>node</literal> which
 should be used for all character data nodes:
 
 <programlisting>
@@ -2689,13 +2813,156 @@ You can create a new instance by
 new data_impl <replaceable>extension_object</replaceable> <replaceable>cdata_string</replaceable>
 </programlisting>
 
-which creates a node filled with the characters
+which creates an exemplar node filled with the characters
 <replaceable>cdata_string</replaceable> which is connected to
-<replaceable>extension_object</replaceable>. The new node is fully functional.
+<replaceable>extension_object</replaceable>. The node does not contain a
+reference to any DTD, and because of this it cannot be added to node trees.
+</para>
+	  </formalpara>
+	    
+	  <para>To get a fully working data node, apply the method
+<link linkend="type-node-meth-create-data"><literal>create_data</literal>
+</link> to the exemplar (see example).
+</para>
+	  <para>(The interface is a bit confusing: Why it is possible to
+create exemplar nodes that are already filled with character data? 
+Don't expect a reasonable answer...)</para>
+
+	  <anchor id="type-node-ex-create-data">
+	  <formalpara>
+	    <title>Example</title>
+
+	    <para>First, create an exemplar by
+
+<programlisting>
+let exemplar_ext = ... in
+let exemplar     = new exemplar_ext data_impl "" in
+</programlisting>
+
+The <literal>exemplar</literal> is not used in node trees, but only as
+a pattern when the data nodes are created:
+
+<programlisting>
+let data_node = exemplar # <link
+				 linkend="type-node-meth-create-data">create_data</link> dtd "The characters contained in the data node" 
+</programlisting>
+
+The <literal>data_node</literal> is a copy of <literal>exemplar</literal>.
+The copy is initially connected 
+with the <literal>dtd</literal>, and it is filled with character material.
+The <literal>data_node</literal> is now fully functional; it can
+be added to an element as child.
 </para>
 	  </formalpara>
 	</sect2>
 
+
+	<sect2>
+	  <title>Examples</title>
+
+	  <formalpara>
+	    <title>Building trees.</title>
+
+	    <para>Here is the piece of code that creates the tree of
+the figure <link linkend="node-term" endterm="node-term"></link>. The extension
+object and the DTD are beyond the scope of this example.
+
+<programlisting>
+let exemplar_ext = ... (* some extension *) in
+let dtd = ... (* some DTD *) in
+
+let element_exemplar = new element_impl exemplar_ext in
+let data_exemplar    = new data_impl    exemplar_ext "" in
+
+let a1 = element_exemplar # create_element dtd (T_element "a") ["att", "apple"]
+and b1 = element_exemplar # create_element dtd (T_element "b") []
+and c1 = element_exemplar # create_element dtd (T_element "c") []
+and a2 = element_exemplar # create_element dtd (T_element "a") ["att", "orange"]
+in
+
+let cherries = data_exemplar # create_data dtd "Cherries" in
+let orange   = data_exemplar # create_data dtd "An orange" in
+
+a1 # add_node b1;
+a1 # add_node c1;
+b1 # add_node a2;
+b1 # add_node cherries;
+a2 # add_node orange;
+</programlisting>
+
+Alternatively, the last block of statements could also be written as:
+
+<programlisting>
+a1 # set_nodes [b1; c1];
+b1 # set_nodes [a2; cherries];
+a2 # set_nodes [orange];
+</programlisting>
+
+The root of the tree is <literal>a1</literal>, i.e. it is true that
+
+<programlisting>
+x # root == a1
+</programlisting>
+
+for every x from { <literal>a1</literal>, <literal>a2</literal>,
+<literal>b1</literal>, <literal>c1</literal>, <literal>cherries</literal>,
+<literal>orange</literal> }.
+</para>
+	  </formalpara>
+	  <para>
+Furthermore, the following properties hold:
+
+<programlisting>
+  a1 # attribute "att" = Value "apple"
+& a2 # attribute "att" = Value "orange"
+
+& cherries # data = "Cherries"
+&   orange # data = "An orange"
+&       a1 # data = "CherriesAn orange"
+
+&       a1 # node_type = T_element "a"
+&       a2 # node_type = T_element "a"
+&       b1 # node_type = T_element "b"
+&       c1 # node_type = T_element "c"
+& cherries # node_type = T_data
+&   orange # node_type = T_data
+
+&       a1 # sub_nodes = [ b1; c1 ]
+&       a2 # sub_nodes = [ orange ]
+&       b1 # sub_nodes = [ a2; cherries ]
+&       c1 # sub_nodes = []
+& cherries # sub_nodes = []
+&   orange # sub_nodes = []
+
+&       a2 # parent == a1
+&       b1 # parent == b1
+&       c1 # parent == a1
+& cherries # parent == b1
+&   orange # parent == a2
+</programlisting>
+</para>
+	  <formalpara>
+	    <title>Searching nodes.</title>
+
+	    <para>The following function searches all nodes of a tree 
+for which a certain condition holds:
+
+<programlisting>
+let rec search t p =
+  if p t then
+    t :: search_list (t # sub_nodes p)
+  else
+    search_list (t # sub_nodes p)
+
+and search_list l p =
+  match l with
+    []      -&gt; []
+  | t :: l' -&gt; (search t p) @ (search_list l' p)
+;;
+</programlisting>
+</para>
+	  </formalpara>
+	</sect2>
 
       </sect1>
 
