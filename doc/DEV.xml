@@ -48,6 +48,12 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.0.98.3:</em></p>
+	<p>A single fix (again line numbering) that only applies to the
+ocamlopt version. The symptom was an "array-out-of-bounds" runtime error.
+</o>
+      </li>
+
       <li><p><em>1.0.98.2:</em></p>
 	<p>Corrects a bug with incorrect line numbering that was in
 1.0.98.1.</p>
