@@ -30,19 +30,19 @@ toploop.lex-utf8:
 	top=`dirname $$PWD` &&                                 \
 	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
 	export OCAMLPATH &&                                    \
-	ocamlfind ocamlmktop -o toploop.lex-utf8 -linkpkg -package threads,pxp,pxp-lex-utf8,findlib,str -thread
+	ocamlfind ocamlmktop -o toploop.lex-utf8 -linkpkg -package threads,pxp-engine,pxp-lex-iso88591,pxp-lex-utf8,findlib,str -thread
 
 toploop.wlex-utf8: 
 	top=`dirname $$PWD` &&                                 \
 	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
 	export OCAMLPATH &&                                    \
-	ocamlfind ocamlmktop -o toploop.wlex-utf8 -linkpkg -package threads,pxp,pxp-wlex-utf8,str -thread
+	ocamlfind ocamlmktop -o toploop.wlex-utf8 -linkpkg -package threads,pxp-engine,pxp-lex-iso88591,pxp-wlex-utf8,str -thread
 
 toploop.ulex-utf8: 
 	top=`dirname $$PWD` &&                                 \
 	OCAMLPATH="$$top/gensrc:$$top/src:$$OCAMLPATH" &&      \
 	export OCAMLPATH &&                                    \
-	ocamlfind ocamlmktop -o toploop.ulex-utf8 -linkpkg -package threads,pxp,pxp-ulex-utf8,str -thread
+	ocamlfind ocamlmktop -o toploop.ulex-utf8 -linkpkg -package threads,pxp-engine,pxp-lex-iso88591,pxp-ulex-utf8,str -thread
 
 exit.cmo:
 	ocamlc -c exit.ml

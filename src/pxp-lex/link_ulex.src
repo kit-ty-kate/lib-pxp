@@ -26,7 +26,7 @@ let _ =
   assert("${encoding}" = "utf8");;
 (* The rest of this module assumes that the internal encoding is UTF-8 *)
 
-
+(*
 let from_function ulb ulb_pos ulb_copy lexbuf_ref ubuf upos ulen =
   (* ulb_pos: Absolute position of the first char in ulb
    * ulb_copy: Relative position of the next char to copy
@@ -68,7 +68,7 @@ let from_function ulb ulb_pos ulb_copy lexbuf_ref ubuf upos ulen =
       End_of_file -> 
 	0
 ;;
-
+*)
 
 class lfactory : lexer_factory =
 object(self)
@@ -91,72 +91,39 @@ object(self)
 end
 
 and lobj factory (_ulb : ULB.unicode_lexbuf) : lexer_obj =
-  let ulb_pos = ref 0 
-  and ulb_copy = ref 0 
-  and lexbuf_ref = ref None in
 object(self)
-  val mutable ulb = _ulb
-  val mutable lexbuf = Ulexing.create 
-			 (from_function _ulb ulb_pos ulb_copy lexbuf_ref)
-
-  initializer
-    lexbuf_ref := Some lexbuf
+  val mutable lexbuf = Ulexing.from_ulb_lexbuf _ulb
 
   method factory = factory
 
   method encoding = `Enc_utf8
 
   method open_source src =
-    lexbuf_ref := None;
-    ulb <- Lazy.force src.lsrc_unicode_lexbuf;
-    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
-    lexbuf_ref := Some lexbuf;
-    ulb_pos := 0;
-    ulb_copy := 0;
+    let ulb = Lazy.force src.lsrc_unicode_lexbuf in
+    lexbuf <- Ulexing.from_ulb_lexbuf ulb
 
   method open_string s =
-    lexbuf_ref := None;
-    ulb <- ULB.from_string `Enc_utf8 s;
-    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
-    lexbuf_ref := Some lexbuf;
-    ulb_pos := 0;
-    ulb_copy := 0;
+    let ulb = ULB.from_string `Enc_utf8 s in
+    lexbuf <- Ulexing.from_ulb_lexbuf ulb
 
   method open_string_inplace s =
-    lexbuf_ref := None;
-    ulb <- ULB.from_string_inplace `Enc_utf8 s;
-    lexbuf <- Ulexing.create (from_function ulb ulb_pos ulb_copy lexbuf_ref);
-    lexbuf_ref := Some lexbuf;
-    ulb_pos := 0;
-    ulb_copy := 0;
+    let ulb = ULB.from_string_inplace `Enc_utf8 s in
+    lexbuf <- Ulexing.from_ulb_lexbuf ulb
 
   method lexeme_length =
     Ulexing.lexeme_length lexbuf
 
   method lexeme_char pos =
-    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
-    ulb.ULB.ulb_chars.( ls + pos )
+    Ulexing.lexeme_char lexbuf pos
 
   method lexeme =
-    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
-    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
-    assert(ls >= 0);
-    ULB.utf8_sub_string ls (le-ls) ulb
-    (* Ulexing.utf8_lexeme lexbuf *)
+    Ulexing.utf8_lexeme lexbuf
 
   method lexeme_strlen =
-    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
-    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
-    assert(ls >= 0);
-    ULB.utf8_sub_string_length ls (le-ls) ulb
-    (* String.length (Ulexing.utf8_lexeme lexbuf) *)
+    Ulexing.utf8_sub_lexeme_length lexbuf 0 (Ulexing.lexeme_length lexbuf)
 
   method sub_lexeme pos len =
-    let ls = Ulexing.lexeme_start lexbuf - !ulb_pos in
-    let le = Ulexing.lexeme_end   lexbuf - !ulb_pos in
-    assert(ls >= 0);
-    ULB.utf8_sub_string (ls+pos) len ulb
-    (* Ulexing.utf8_sub_lexeme lexbuf pos len *)
+    Ulexing.utf8_sub_lexeme lexbuf pos len
  
   method scan_document =
     fun () -> 

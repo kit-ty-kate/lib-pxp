@@ -193,6 +193,28 @@ module ULB : sig
 
 end (* module ULB *)
 
+module Ulexing : sig
+  type lexbuf
+  exception Error
+  val from_ulb_lexbuf : ULB.unicode_lexbuf -> lexbuf
+  val lexeme_start: lexbuf -> int
+  val lexeme_end: lexbuf -> int
+  val lexeme_length: lexbuf -> int
+  val lexeme: lexbuf -> int array
+  val lexeme_char: lexbuf -> int -> int
+  val sub_lexeme: lexbuf -> int -> int -> int array
+  val utf8_lexeme: lexbuf -> string
+  val utf8_sub_lexeme: lexbuf -> int -> int -> string
+  val utf8_sub_lexeme_length: lexbuf -> int -> int -> int
+    
+  (* "Internal" interface *)
+  val start: lexbuf -> unit
+  val next: lexbuf -> int
+  val mark: lexbuf -> int -> unit
+  val backtrack: lexbuf -> int
+end
+
+
 	  
 (* One must only use either [lsrc_lexbuf], or [lsrc_unicode_lexbuf] ! *)
 type lexer_source =
