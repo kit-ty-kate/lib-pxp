@@ -1,4 +1,4 @@
-(* $Id: to_text.ml,v 1.4 2000/08/18 21:15:25 gerd Exp $
+(* $Id: to_text.ml,v 1.5 2000/08/22 14:34:25 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -549,38 +549,24 @@ class a =
 open Pxp_yacc
 
 let tag_map =
-  make_spec_from_mapping
+  make_spec_from_alist
     ~data_exemplar:(new data_impl (new only_data))
     ~default_element_exemplar:(new element_impl (new no_markup))
-    ~element_mapping:
-       (let m = Hashtbl.create 50 in
-	Hashtbl.add m "readme"
-	              (new element_impl (new readme));
-	Hashtbl.add m "sect1"
-	              (new element_impl (new sect1));
-	Hashtbl.add m "sect2"
-	              (new element_impl (new sect2));
-	Hashtbl.add m "sect3"
-	              (new element_impl (new sect3));
-	Hashtbl.add m "title"
-	              (new element_impl (new no_markup));
-	Hashtbl.add m "p"
-	              (new element_impl (new p));
-	Hashtbl.add m "br"
-	              (new element_impl (new br));
-	Hashtbl.add m "code"
-	              (new element_impl (new code));
-	Hashtbl.add m "em"
-	              (new element_impl (new no_markup));
-	Hashtbl.add m "ul"
-	              (new element_impl (new no_markup));
-	Hashtbl.add m "li"
-	              (new element_impl (new li));
-	Hashtbl.add m "footnote"
-	              (new element_impl (new footnote : #shared :> shared));
-	Hashtbl.add m "a"
-	              (new element_impl (new a : #shared :> shared));
-	m)
+    ~element_alist:
+       [ "readme",   (new element_impl (new readme));
+	 "sect1",    (new element_impl (new sect1));
+	 "sect2",    (new element_impl (new sect2));
+	 "sect3",    (new element_impl (new sect3));
+	 "title",    (new element_impl (new no_markup));
+	 "p",        (new element_impl (new p));
+	 "br",       (new element_impl (new br));
+	 "code",     (new element_impl (new code));
+	 "em",       (new element_impl (new no_markup));
+	 "ul",       (new element_impl (new no_markup));
+	 "li",       (new element_impl (new li));
+	 "footnote", (new element_impl (new footnote : #shared :> shared));
+	 "a",        (new element_impl (new a : #shared :> shared));
+       ]
     ()
 ;;
 
@@ -591,6 +577,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_text.ml,v $
+ * Revision 1.5  2000/08/22 14:34:25  gerd
+ * 	Using make_spec_from_alist instead of make_spec_from_mapping.
+ *
  * Revision 1.4  2000/08/18 21:15:25  gerd
  * 	Minor updates because of PXP API changes.
  *
