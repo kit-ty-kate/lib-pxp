@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.2 2000/07/08 22:15:45 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.3 2000/07/16 16:33:57 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -12,6 +12,7 @@
 open Pxp_types
 open Pxp_lexer_types
 open Pxp_lexers
+open Pxp_encoding
 
 let character enc warner k =
   assert (k>=0);
@@ -429,26 +430,88 @@ let normalization_changes_value lexerset atype v =
 
 (**********************************************************************)
 
-let write_data_string os content =
+let write_markup_string ~(from_enc:rep_encoding) ~to_enc os s =
+  (* Write the 'from_enc'-encoded string 's' as 'to_enc'-encoded string to
+   * 'os'. All characters are written as they are.
+   *)
+  let s' =
+    if to_enc = (from_enc :> encoding)
+    then s 
+    else recode_string 
+	         ~in_enc:(from_enc :> encoding)
+		 ~out_enc:to_enc
+		 ~subst:(fun n -> 
+			   failwith 
+			     ("Pxp_aux.write_markup_string: Cannot represent " ^
+			      "code point " ^ string_of_int n))
+		 s
+  in
+  write os s' 0 (String.length s')
+;;
+
+
+let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
+  (* Write the 'from_enc'-encoded string 's' as 'to_enc'-encoded string to
+   * 'os'. The characters '&', '<', '>', '"', '%' and every character that
+   * cannot be represented in 'to_enc' are paraphrased as entity reference
+   * "&...;".
+   *)
+  let convert_ascii s =
+    (* Convert the ASCII-encoded string 's'. Note that 'from_enc' is
+     * always ASCII-compatible
+     *)
+    if to_enc = (from_enc :> encoding) 
+    then s
+    else
+      recode_string
+        ~in_enc:(from_enc :> encoding)
+        ~out_enc:to_enc
+        ~subst:(fun n -> assert false)
+	s
+  in
+
+  let write_ascii s =
+    (* Write the ASCII-encoded string 's' *)
+    let s' = convert_ascii s in
+    write os s' 0 (String.length s')
+  in
+      
+  let write_part j l =
+    (* Writes the substring of 'content' beginning at pos 'j' with length 'l'
+     *)
+    if to_enc = (from_enc :> encoding) then
+      write os content j l
+    else begin
+      let s' = recode_string 
+	         ~in_enc:(from_enc :> encoding)
+	         ~out_enc:to_enc
+	         ~subst:(fun n -> 
+			   convert_ascii ("&#" ^ string_of_int n ^ ";"))
+		 (String.sub content j l)
+      in
+      write os s' 0 (String.length s')
+    end
+  in
+
   let i = ref 0 in
   for k = 0 to String.length content - 1 do
     match content.[k] with
 	('&' | '<' | '>' | '"' | '%') as c ->
 	  if !i < k then
-	    write os content !i (k - !i);
+	    write_part !i (k - !i);
 	  begin match c with
-	      '&' -> write os "&amp;"  0 5
-	    | '<' -> write os "&lt;"   0 4
-	    | '>' -> write os "&gt;"   0 4
-	    | '"' -> write os "&quot;" 0 6
-	    | '%' -> write os "&#37;"  0 5  (* reserved in DTDs *)
+	      '&' -> write_ascii "&amp;"
+	    | '<' -> write_ascii "&lt;"
+	    | '>' -> write_ascii "&gt;"
+	    | '"' -> write_ascii "&quot;"
+	    | '%' -> write_ascii "&#37;"  (* reserved in DTDs *)
 	    | _   -> assert false
 	  end;
 	  i := k+1
       | _ -> ()
   done;
   if !i < String.length content then
-    write os content !i (String.length content - !i)
+    write_part !i (String.length content - !i)
 ;;
 
 
@@ -456,6 +519,10 @@ let write_data_string os content =
  * History:
  * 
  * $Log: pxp_aux.ml,v $
+ * Revision 1.3  2000/07/16 16:33:57  gerd
+ * 	New function write_markup_string: Handles the encoding
+ * of the string.
+ *
  * Revision 1.2  2000/07/08 22:15:45  gerd
  * 	[Merging 0.2.10:] write_data_string: The character '%' is special, too.
  *
