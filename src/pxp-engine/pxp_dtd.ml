@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.13 2000/09/22 22:54:30 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.14 2000/10/01 19:47:19 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -18,7 +18,7 @@ type validation_record =
       content_dfa     : dfa_definition option Lazy.t;
       id_att_name     : string option;
       idref_att_names : string list;
-      att_lookup      : (string, int) Hashtbl.t;
+      att_lookup      : int Str_hashtbl.t;
       init_att_vals   : (string * att_value) array;
       att_info        : (att_type * bool) array;
       att_required    : int list;
@@ -36,11 +36,11 @@ class dtd  the_warner init_encoding =
     val encoding     = init_encoding
     val lexerset     = Pxp_lexers.get_lexer_set init_encoding
 
-    val elements     = (Hashtbl.create 100 : (string,dtd_element) Hashtbl.t)
-    val gen_entities = (Hashtbl.create 100 : (string,entity * bool) Hashtbl.t)
-    val par_entities = (Hashtbl.create 100 : (string,entity) Hashtbl.t)
-    val notations    = (Hashtbl.create 100 : (string,dtd_notation) Hashtbl.t)
-    val pinstr       = (Hashtbl.create 100 : (string,proc_instruction) Hashtbl.t)
+    val elements     = (Str_hashtbl.create 100 : dtd_element Str_hashtbl.t)
+    val gen_entities = (Str_hashtbl.create 100 : (entity * bool) Str_hashtbl.t)
+    val par_entities = (Str_hashtbl.create 100 : entity Str_hashtbl.t)
+    val notations    = (Str_hashtbl.create 100 : dtd_notation Str_hashtbl.t)
+    val pinstr       = (Str_hashtbl.create 100 : proc_instruction Str_hashtbl.t)
     val mutable element_names = []
     val mutable gen_entity_names = []
     val mutable par_entity_names = []
@@ -55,19 +55,19 @@ class dtd  the_warner init_encoding =
     initializer
     let w = new drop_warnings in
     self # add_gen_entity 
-      (new internal_entity self "lt"   w "&#38;#60;" false false false encoding)
+      (new internal_entity self "lt"   w "&#38;#60;" false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "gt"   w "&#62;"     false false false encoding)
+      (new internal_entity self "gt"   w "&#62;"     false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "amp"  w "&#38;#38;" false false false encoding)
+      (new internal_entity self "amp"  w "&#38;#38;" false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "apos" w "&#39;"     false false false encoding)
+      (new internal_entity self "apos" w "&#39;"     false false encoding)
       false;
     self # add_gen_entity 
-      (new internal_entity self "quot" w "&#34;"     false false false encoding)
+      (new internal_entity self "quot" w "&#34;"     false false encoding)
       false;
 
 
@@ -111,9 +111,9 @@ class dtd  the_warner init_encoding =
       (* Note: 'el' is encoded in the same way as 'self'! *)
       let name = el # name in
       check_name warner name;
-      if Hashtbl.mem elements name then
+      if Str_hashtbl.mem elements name then
 	raise Not_found;
-      Hashtbl.add elements name el;
+      Str_hashtbl.add elements name el;
       element_names <- name :: element_names;
       validated <- false
 
@@ -129,7 +129,7 @@ class dtd  the_warner init_encoding =
 	failwith "Pxp_dtd.dtd # add_gen_entity: Inconsistent encodings";
       let name = en # name in
       check_name warner name;
-      if Hashtbl.mem gen_entities name then begin
+      if Str_hashtbl.mem gen_entities name then begin
 	if List.mem name [ "lt"; "gt"; "amp"; "quot"; "apos" ] then begin
 	  (* These are allowed to be declared several times *)
 	  let (rt,_) = en # replacement_text in
@@ -155,7 +155,7 @@ class dtd  the_warner init_encoding =
 	  warner # warn ("Entity `" ^ name ^ "' declared twice")
       end
       else begin
-	Hashtbl.add gen_entities name (en, extdecl);
+	Str_hashtbl.add gen_entities name (en, extdecl);
 	gen_entity_names <- name :: gen_entity_names
       end
 
@@ -165,8 +165,8 @@ class dtd  the_warner init_encoding =
 	failwith "Pxp_dtd.dtd # add_par_entity: Inconsistent encodings";
       let name = en # name in
       check_name warner name;
-      if not (Hashtbl.mem par_entities name) then begin
-	Hashtbl.add par_entities name en;
+      if not (Str_hashtbl.mem par_entities name) then begin
+	Str_hashtbl.add par_entities name en;
 	par_entity_names <- name :: par_entity_names
       end
       else
@@ -179,9 +179,9 @@ class dtd  the_warner init_encoding =
 	failwith "Pxp_dtd.dtd # add_notation: Inconsistent encodings";
       let name = no # name in
       check_name warner name;
-      if Hashtbl.mem notations name then
+      if Str_hashtbl.mem notations name then
 	raise (Validation_error("Notation `" ^ name ^ "' declared twice"));
-      Hashtbl.add notations name no;
+      Str_hashtbl.add notations name no;
       notation_names <- name :: notation_names
 
 
@@ -209,7 +209,7 @@ class dtd  the_warner init_encoding =
 		    List.iter
 		      (fun e_name ->
 			 let e =
-			   try Hashtbl.find elements e_name
+			   try Str_hashtbl.find elements e_name
 			   with
 			       Not_found ->
 				 raise(Error("Reference to unknown element `" ^
@@ -243,7 +243,7 @@ class dtd  the_warner init_encoding =
 (*  	      let v = pi # value in *)
 (*  	      let e =  *)
 (*  		try *)
-(*  		  Hashtbl.find elements v *)
+(*  		  Str_hashtbl.find elements v *)
 (*  		with *)
 (*  		    Not_found -> *)
 (*  		      raise(Validation_error("Reference to undeclared element `"*)
@@ -255,7 +255,7 @@ class dtd  the_warner init_encoding =
 	 *)
 	()
       end;
-      Hashtbl.add pinstr name pi;
+      Str_hashtbl.add pinstr name pi;
       if not (List.mem name pinstr_names) then
 	pinstr_names <- name :: pinstr_names;
 
@@ -263,7 +263,7 @@ class dtd  the_warner init_encoding =
     method element name =
       (* returns the element 'name' or raises Validation_error if not found *)
       try
-	Hashtbl.find elements name
+	Str_hashtbl.find elements name
       with
 	  Not_found ->
 	    if allow_arbitrary then
@@ -279,7 +279,7 @@ class dtd  the_warner init_encoding =
     method gen_entity name =
       (* returns the entity 'name' or raises WF_error if not found *)
       try
-	Hashtbl.find gen_entities name
+	Str_hashtbl.find gen_entities name
       with
 	  Not_found ->
 	    raise(WF_error("Reference to undeclared general entity `" ^ name ^ "'"))
@@ -291,7 +291,7 @@ class dtd  the_warner init_encoding =
     method par_entity name =
       (* returns the entity 'name' or raises WF_error if not found *)
       try
-	Hashtbl.find par_entities name
+	Str_hashtbl.find par_entities name
       with
 	  Not_found ->
 	    raise(WF_error("Reference to undeclared parameter entity `" ^ name ^ "'"))
@@ -303,7 +303,7 @@ class dtd  the_warner init_encoding =
     method notation name =
       (* returns the notation 'name' or raises Validation_error if not found *)
       try
-	Hashtbl.find notations name
+	Str_hashtbl.find notations name
       with
 	  Not_found ->
 	    if allow_arbitrary then
@@ -319,7 +319,7 @@ class dtd  the_warner init_encoding =
       (* returns the list of all processing instructions contained in the DTD
        * with target 'name'
        *)
-      Hashtbl.find_all pinstr name
+      Str_hashtbl.find_all pinstr name
 
 
     method pinstr_names = pinstr_names
@@ -348,7 +348,7 @@ class dtd  the_warner init_encoding =
       List.iter
 	(fun name ->
 	   let notation = 
-	     try Hashtbl.find notations name with Not_found -> assert false in
+	     try Str_hashtbl.find notations name with Not_found -> assert false in
 	   notation # write os enc)
 	(List.sort compare notation_names);
 
@@ -356,7 +356,7 @@ class dtd  the_warner init_encoding =
       List.iter
 	(fun name ->
 	   let ent,_ = 
-	     try Hashtbl.find gen_entities name with Not_found -> assert false 
+	     try Str_hashtbl.find gen_entities name with Not_found -> assert false 
 	   in
 	   if ent # is_ndata then begin
 	     let xid = ent # ext_id in
@@ -385,7 +385,7 @@ class dtd  the_warner init_encoding =
       List.iter
 	(fun name ->
 	   let element = 
-	     try Hashtbl.find elements name with Not_found -> assert false in
+	     try Str_hashtbl.find elements name with Not_found -> assert false in
 	   element # write os enc)
 	(List.sort compare element_names);
 
@@ -395,7 +395,7 @@ class dtd  the_warner init_encoding =
 	   List.iter
 	     (fun pi ->
 		pi # write os enc)
-	     (Hashtbl.find_all pinstr name)
+	     (Str_hashtbl.find_all pinstr name)
 	)
 	(List.sort compare pinstr_names);
 
@@ -412,7 +412,7 @@ class dtd  the_warner init_encoding =
     (************************************************************)
 
     method only_deterministic_models =
-      Hashtbl.iter
+      Str_hashtbl.iter
 	(fun n el ->
 	   let cm = el # content_model in
 	   match cm with
@@ -436,7 +436,7 @@ class dtd  the_warner init_encoding =
 	List.iter
 	  (fun name ->
 	     let ent,_ = 
-	       try Hashtbl.find gen_entities name with Not_found -> assert false 
+	       try Str_hashtbl.find gen_entities name with Not_found -> assert false 
 	     in
 	     if ent # is_ndata then begin
 	       let xid = ent # ext_id in
@@ -451,7 +451,7 @@ class dtd  the_warner init_encoding =
 	  gen_entity_names;
 
 	(* Validate the elements: *)
-	Hashtbl.iter
+	Str_hashtbl.iter
 	  (fun n el ->
 	     el # validate)
 	  elements;
@@ -462,7 +462,7 @@ class dtd  the_warner init_encoding =
 	    None -> ()
 	  | Some r ->
 	      begin try
-		let _ = Hashtbl.find elements r in ()
+		let _ = Str_hashtbl.find elements r in ()
 	      with
 		  Not_found ->
 		    raise(Validation_error("The root element is not declared"))
@@ -635,14 +635,14 @@ and dtd_element the_dtd the_name =
 	    None ->
 	      let n = List.length attributes in
 	      let init_att_vals = Array.create n ("", Implied_value) in
-	      let att_lookup = Hashtbl.create n in
+	      let att_lookup = Str_hashtbl.create n in
 	      let att_info = Array.create n (A_cdata, false) in
 	      let att_required = ref [] in
 	      let k = ref 0 in
 	      List.iter
 		(fun (n, ((t,d), ext)) ->
 
-		   Hashtbl.add att_lookup n !k;
+		   Str_hashtbl.add att_lookup n !k;
 
 		   let init_val = 
 		     match d with
@@ -1046,6 +1046,9 @@ object (self)
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.14  2000/10/01 19:47:19  gerd
+ * 	Using Str_hashtbl instead of Hashtbl.
+ *
  * Revision 1.13  2000/09/22 22:54:30  gerd
  * 	Optimized the attribute checker (internal_init of element
  * nodes). The validation_record has now more fields to support
