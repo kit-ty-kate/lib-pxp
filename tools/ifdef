@@ -1,0 +1,126 @@
+#! /bin/sh
+# (*
+exec ocaml "$0" "$@"
+*) directory ".";;
+
+let rec neg_index_from s start c =
+  let l = String.length s in
+  if start = l then
+    raise Not_found
+  else if start > l then
+    invalid_arg "neg_index_from" 
+  else if s.[ start ] = c then
+    neg_index_from s (start+1) c
+  else
+    start
+;;
+
+
+type directive =
+    Ifdef of string
+  | Ifndef of string
+  | Endif
+  | No_directive
+
+let get_directive s =
+  let l_s = String.length s in
+  let is literal =
+    let l_literal = String.length literal in
+    (l_s >= l_literal) &&
+    (String.sub s 0 l_literal = literal) &&
+    (if l_s > l_literal then s.[l_literal] = ' ' else true)
+  in
+  let get_arg() =
+    try
+      let k1 = String.index s ' ' in
+      let k2 = neg_index_from s k1 ' ' in
+      let k3 = try String.index_from s k2 ' ' with Not_found -> l_s in
+      String.sub s k2 (k3-k2)
+    with
+	Not_found ->
+	  failwith "Argument expected"
+  in
+  match s with
+      _ when is "IFDEF"  -> Ifdef (get_arg())
+    | _ when is "IFNDEF" -> Ifndef (get_arg()) 
+    | _ when is "ENDIF"  -> Endif
+    | _ -> No_directive
+;;
+
+let rec filter infile inch outch vars linenr skip =
+  (* Copy lines from [inch] to [outch]. The next line read from [inch] will
+   * have line number [linenr]. [vars] contains the list of defined variables.
+   * [skip] indicates that output is to be suppressed.
+   * The function stops at the next ENDIF directive for which no matching
+   * IFDEF or IFNDEF has been found before, or at the end of [inch].
+   * The function returns the line number of the ENDIF directive.
+   *)
+  output_string outch ("# " ^ string_of_int linenr ^ " \"" ^ infile ^ "\"\n");
+  try
+    let current_linenr = ref linenr in
+    let current_line = ref (input_line inch) in
+    let dir = ref (get_directive !current_line) in
+    while !dir <> Endif do
+      begin match !dir with
+	| Ifdef v ->
+	    let skip' = not (List.mem v vars) in
+	    let linenr' = 
+	      filter infile inch outch vars (!current_linenr+1) (skip || skip') in
+	    current_linenr := linenr';
+	    output_string 
+	      outch 
+	      ("# " ^ string_of_int (!current_linenr+1) ^ " \"" ^ infile ^ "\"\n");
+	| Ifndef v ->
+	    let skip' = List.mem v vars in
+	    let linenr' = 
+	      filter infile inch outch vars (!current_linenr+1) (skip || skip') in
+	    current_linenr := linenr';
+	    output_string 
+	      outch 
+	      ("# " ^ string_of_int (!current_linenr+1) ^ " \"" ^ infile ^ "\"\n");
+	| No_directive ->
+	    if not skip then 
+	      output_string outch (!current_line ^ "\n");
+	| Endif -> assert false
+      end;
+
+      (* Continue with next line: *)
+      incr current_linenr;
+      current_line := input_line inch;
+      dir := get_directive !current_line;
+    done;
+    !current_linenr
+  with
+      End_of_file -> 0
+;;
+
+      
+let main () =
+  let vars = ref [] in
+  let infile = ref "" in
+  Arg.parse
+      [ "-D", Arg.String (fun s -> vars := s :: !vars),
+	   "var    define this variable";
+      ]
+      (fun s -> infile := s)
+      "usage: ifdef [ options ] filename.mlp";
+  if !infile = "" then
+    failwith "No input file!";
+  let basename = Filename.chop_extension !infile in
+  let outfile = basename ^ ".ml" in
+  if !infile = outfile then
+    failwith "Input filename ends with .ml, please avoid that";
+  let inch = open_in !infile in
+  let outch = open_out outfile in
+  try
+    let _ = filter !infile inch outch !vars 1 false in
+    close_out outch;
+    close_in inch;
+  with
+      error ->
+	close_out outch;
+	close_in inch;
+	Sys.remove (outfile)
+;;
+
+main();;
