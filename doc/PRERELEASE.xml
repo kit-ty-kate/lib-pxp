@@ -88,6 +88,9 @@ module interfaces.</p>
     <p>Please note that this is work in progress; it contains bugs
 and irregularities.</p>
 
+    <p>Note that the current version can only be compiled with the
+bytecode compiler of O'Caml 3.00.</p>
+
     <p>I am very interested in your opinion to PXP; please <a
 href="&person.gps.mail;">contact me</a>.</p>
   </sect1>
