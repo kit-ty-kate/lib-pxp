@@ -1,4 +1,4 @@
-(* $Id: pxp_codewriter.ml,v 1.6 2000/08/18 20:16:59 gerd Exp $
+(* $Id: pxp_codewriter.ml,v 1.7 2000/08/30 15:48:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -199,7 +199,7 @@ let write_local_dtd out (dtd : dtd) =
        output_string out " encoding in\n";
        output_string out "dtdobj # add_notation no;\n";
     )
-    (List.sort compare (dtd # notation_names));
+    (List.sort Pervasives.compare (dtd # notation_names));
 
   (* Add unparsed entities: *)
   List.iter
@@ -217,7 +217,7 @@ let write_local_dtd out (dtd : dtd) =
 	 output_string out "dtdobj # add_gen_entity (ndata :> Pxp_entity.entity) false;\n";
        end;
     )
-    (List.sort compare (dtd # gen_entity_names));
+    (List.sort Pervasives.compare (dtd # gen_entity_names));
 
 
   (* Add elements: *)
@@ -242,7 +242,7 @@ let write_local_dtd out (dtd : dtd) =
 	    write_expr_att_default out attdefault;
 	    output_string out " false;\n";
 	 )
-	 (List.sort compare (el # attribute_names));
+	 (List.sort Pervasives.compare (el # attribute_names));
 
        (* Allow arbitrary? *)
        if el # arbitrary_allowed then
@@ -256,7 +256,7 @@ let write_local_dtd out (dtd : dtd) =
        (* Add the element 'el' to 'dtdobj': *)
        output_string out "dtdobj # add_element el;\n";
     )
-    (List.sort compare (dtd # element_names));
+    (List.sort Pervasives.compare (dtd # element_names));
 
   (* Add processing instructions: *)
   List.iter
@@ -271,7 +271,7 @@ let write_local_dtd out (dtd : dtd) =
 	 )
 	 pilist;
     )
-    (List.sort compare (dtd # pinstr_names));
+    (List.sort Pervasives.compare (dtd # pinstr_names));
 
   (* Set the name of the root element: *)
   begin match dtd # root with
@@ -383,7 +383,7 @@ let rec write_local_subtree out n =
 	       )
 	       pilist;
 	  )
-	  (List.sort compare (n # pinstr_names));
+	  (List.sort Pervasives.compare (n # pinstr_names));
   end;
        
   (* Add the sub nodes: *)
@@ -429,7 +429,7 @@ let write_local_document out (d : 'ext document) =
 	 )
 	 pilist;
     )
-    (List.sort compare (d # pinstr_names));
+    (List.sort Pervasives.compare (d # pinstr_names));
   
   (* Return the result: *)
   output_string out "doc in\n"
@@ -469,6 +469,9 @@ let write_subtree out t =
  * History:
  * 
  * $Log: pxp_codewriter.ml,v $
+ * Revision 1.7  2000/08/30 15:48:07  gerd
+ * 	Minor update.
+ *
  * Revision 1.6  2000/08/18 20:16:59  gerd
  * 	Updates because of new node types T_comment, T_pinstr, T_super_root.
  *
