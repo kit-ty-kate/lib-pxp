@@ -1,4 +1,4 @@
-(* $Id: ds_app.ml,v 1.2 1999/12/17 21:34:29 gerd Exp $
+(* $Id: ds_app.ml,v 1.3 2000/05/01 16:48:45 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -20,12 +20,7 @@ let object_dtd_root  = "record"
 
 
 let rec print_error e =
-  match e with
-      Markup_types.At(where,what) ->
-        print_endline where;
-        print_error what
-    | _ ->
-        print_endline (Printexc.to_string e)
+  print_endline (string_of_exn e)
 ;;
 
 
@@ -83,6 +78,9 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.3  2000/05/01 16:48:45  gerd
+ * 	Using the new error formatter.
+ *
  * Revision 1.2  1999/12/17 21:34:29  gerd
  * 	The name of the root element is set to "record" in the
  * object_dtd; otherwise the parser would not check that the root

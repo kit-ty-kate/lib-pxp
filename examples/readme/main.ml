@@ -1,4 +1,4 @@
-(* $Id: main.ml,v 1.2 1999/08/23 16:54:19 gerd Exp $
+(* $Id: main.ml,v 1.3 2000/05/01 16:46:40 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -9,12 +9,7 @@ open Markup_yacc
 
 
 let rec print_error e =
-  match e with
-      Markup_types.At(where,what) ->
-        prerr_endline where;
-        print_error what
-    | _ ->
-        prerr_endline (Printexc.to_string e)
+  prerr_endline(string_of_exn e)
 ;;
 
 
@@ -92,6 +87,9 @@ main();;
  * History:
  *
  * $Log: main.ml,v $
+ * Revision 1.3  2000/05/01 16:46:40  gerd
+ * 	Using the new error formatter.
+ *
  * Revision 1.2  1999/08/23 16:54:19  gerd
  * 	Minor changes.
  *
