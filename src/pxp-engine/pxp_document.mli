@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.7 2000/07/23 02:16:34 gerd Exp $
+(* $Id: pxp_document.mli,v 1.8 2000/08/18 20:14:00 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -125,8 +125,37 @@ open Pxp_dtd
 
 
 type node_type =
+  (* The basic and most important node types:
+   * - T_element element_type   is the type of element nodes
+   * - T_data                   is the type of text data nodes
+   * By design of the parser, neither CDATA sections nor entity references
+   * are represented in the node tree; so there are no types for them.
+   *)
     T_element of string
   | T_data
+
+  (* The following types are extensions to my original design. They have mainly
+   * been added to simplify the implementation of standards (such as
+   * XPath) that require that nodes of these types are included into the
+   * main document tree.
+   * There are options (see Pxp_yacc) forcing the parser to insert such
+   * nodes; in this case, the nodes are actually element nodes serving
+   * as wrappers for the additional data structures. The options are:
+   * enable_super_root_node, enable_pinstr_nodes, enable_comment_nodes.
+   * By default, such nodes are not created.
+   *)
+  | T_super_root
+  | T_pinstr of string                  (* The string is the target of the PI *)
+  | T_comment
+
+  (* The following types are fully virtual. This means that it is impossible
+   * to make the parser insert such nodes. However, these types might be
+   * practical when defining views on the tree.
+   * Note that the list of virtual node types will be extended if necessary.
+   *)
+  | T_none
+  | T_attribute
+  | T_namespace
 ;;
 
 
@@ -275,6 +304,14 @@ class type [ 'ext ] node =
       (* Sets the attributes but does not check whether they match the DTD.
        *)
 
+    method set_comment : string option -> unit
+      (* Sets the comment string; only applicable for T_comment nodes *)
+
+    method comment : string option
+      (* Get the comment string.
+       * Returns always None for nodes with a type other than T_comment.
+       *)
+
     method dtd : dtd
       (* Get the DTD. Fails if no DTD is specified (which is impossible if
        * 'create_element' or 'create_data' have been used to create this
@@ -292,7 +329,7 @@ class type [ 'ext ] node =
              dtd -> node_type -> (string * string) list -> 'ext node
       (* create an "empty copy" of this element:
        * - new DTD
-       * - new node type
+       * - new node type (which must not be T_data)
        * - new attribute list
        * - empty list of nodes
        *)
@@ -340,6 +377,8 @@ class type [ 'ext ] node =
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
                            dtd -> string -> (string * string) list -> unit
+    method internal_init_other : (string * int * int) ->
+                                 dtd -> node_type -> unit
   end
 ;;
 
@@ -368,20 +407,46 @@ constraint 'ext = 'ext node #extension
 
 
 val make_spec_from_mapping :
+      ?super_root_exemplar : 'ext node ->
+      ?comment_exemplar : 'ext node ->
+      ?default_pinstr_exemplar : 'ext node ->
+      ?pinstr_mapping : (string, 'ext node) Hashtbl.t ->
       data_exemplar: 'ext node ->
       default_element_exemplar: 'ext node ->
-      element_mapping: (string, 'ext node) Hashtbl.t -> 'ext spec
+      element_mapping: (string, 'ext node) Hashtbl.t -> 
+      unit -> 
+        'ext spec
     (* Specifies:
      * - For new data nodes, the ~data_exemplar must be used
      * - For new element nodes: If the element type is mentioned in the
      *   ~element_mapping hash table, the exemplar found in this table is
      *   used. Otherwise, the ~default_element_exemplar is used.
+     * Optionally:
+     * - You may also specify exemplars for super root nodes, for comments
+     *   and for processing instructions
      *)
 
-val create_data_node : 'ext spec -> dtd -> string -> 'ext node
+val create_data_node : 
+      'ext spec -> dtd -> string -> 'ext node
 val create_element_node : 
       ?position:(string * int * int) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
+val create_super_root_node :
+      ?position:(string * int * int) ->
+      'ext spec -> dtd -> 'ext node
+val create_comment_node :
+      ?position:(string * int * int) ->
+      'ext spec -> dtd -> string -> 'ext node
+val create_pinstr_node :
+      ?position:(string * int * int) ->
+      'ext spec -> dtd -> proc_instruction -> 'ext node
+  (* These functions use the exemplars contained in a spec and create fresh
+   * node objects from them.
+   *)
+
+val create_no_node : 
+       ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
+  (* Creates a T_none node with limited functionality *)
 
 
 class [ 'ext ] document :
@@ -465,6 +530,10 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.8  2000/08/18 20:14:00  gerd
+ * 	New node_types: T_super_root, T_pinstr, T_comment, (T_attribute),
+ * (T_none), (T_namespace).
+ *
  * Revision 1.7  2000/07/23 02:16:34  gerd
  * 	Support for DFAs.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.11 2000/08/14 22:24:55 gerd Exp $
+(* $Id: pxp_document.ml,v 1.12 2000/08/18 20:14:00 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -16,6 +16,12 @@ exception Skip
 type node_type =
     T_element of string
   | T_data
+  | T_super_root
+  | T_pinstr of string
+  | T_comment
+  | T_none
+  | T_attribute
+  | T_namespace
 ;;
 
 
@@ -61,6 +67,8 @@ class type [ 'ext ] node =
     method id_attribute_value : string
     method idref_attribute_names : string list
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method set_comment : string option -> unit
+    method comment : string option
     method dtd : dtd
     method encoding : rep_encoding
     method create_element :
@@ -75,6 +83,8 @@ class type [ 'ext ] node =
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
                            dtd -> string -> (string * string) list -> unit
+    method internal_init_other : (string * int * int) ->
+                                 dtd -> node_type -> unit
   end
 ;;
 
@@ -82,6 +92,10 @@ type 'ext spec_table =
     { mapping : (string, 'ext node) Hashtbl.t;
       data_node : 'ext node;
       default_element : 'ext node;
+      super_root_node : 'ext node option;
+      pinstr_mapping : (string, 'ext node) Hashtbl.t;
+      default_pinstr_node : 'ext node option;
+      comment_node : 'ext node option;
     }
 ;;
 
@@ -91,11 +105,23 @@ type 'ext spec =
 
 
 let make_spec_from_mapping
-      ~data_exemplar ~default_element_exemplar ~element_mapping =
+      ?super_root_exemplar 
+      ?comment_exemplar
+      ?default_pinstr_exemplar 
+      ?pinstr_mapping
+      ~data_exemplar ~default_element_exemplar ~element_mapping () =
   Spec_table
     { mapping = element_mapping;
       data_node = data_exemplar;
       default_element = default_element_exemplar;
+      super_root_node = super_root_exemplar;
+      comment_node = comment_exemplar;
+      default_pinstr_node = default_pinstr_exemplar;
+      pinstr_mapping =
+	(match pinstr_mapping with
+	     None -> Hashtbl.create 1
+	   | Some m -> m
+	)
     }
 ;;
 
@@ -108,19 +134,14 @@ let validate_content ?(use_dfa=None) model (el : 'a node) =
    * on success and 'false' on failure.
    *)
 
-  (* Handling of "-pi": These elements are just ignored everywhere, as if
-   * they did not exist.
-   *)
-
   let rec is_empty cl =
     (* Whether the node list counts as empty or not. *)
     match cl with
 	[] -> true
       | n :: cl' ->
 	  ( match n # node_type with
-		T_element "-pi" -> is_empty cl'    (* ignore such an element *)
-	      | T_data          -> is_empty cl'    (* ignore data nodes *)
-	      | _               -> false
+	      | T_element _     -> false
+	      | _               -> is_empty cl'    (* ignore other nodes *)
 	  )
   in
 
@@ -178,10 +199,10 @@ let validate_content ?(use_dfa=None) model (el : 'a node) =
 		      (* Note: It can happen that we find a data node here
 		       * if the 'keep_always_whitespace' mode is turned on.
 		       *)
-		  | T_element "-pi" ->              (* Ignore this element *)
-		      run_regexp cl' ml
 		  | T_element nt ->
 		      if nt = chld then run_regexp cl' ml'
+		  | _ ->                            (* Ignore this element *)
+		      run_regexp cl' ml
 		end
   in
 
@@ -200,8 +221,6 @@ let validate_content ?(use_dfa=None) model (el : 'a node) =
 		    (* Note: It can happen that we find a data node here
 		     * if the 'keep_always_whitespace' mode is turned on.
 		     *)
-	      | T_element "-pi" ->              (* Ignore this element *)
-		  next_step cl'
 	      | T_element nt ->
 		  begin try
 		    current_vertex := Graph.follow_edge !current_vertex nt;
@@ -209,6 +228,8 @@ let validate_content ?(use_dfa=None) model (el : 'a node) =
 		  with
 		      Not_found -> false
 		  end
+	      | _ ->                         (* Ignore this node *)
+		  next_step cl'
 	    end
 	| [] ->
 	    VertexSet.mem !current_vertex dfa.dfa_stops
@@ -232,13 +253,9 @@ let validate_content ?(use_dfa=None) model (el : 'a node) =
 	    (fun sub_el ->
 	       let nt = sub_el # node_type in
 	       match nt with
-		 T_data -> ()
 	       | T_element name ->
-		   if not (List.mem name mix') then begin
-		     match name with
-			 "-pi" -> ()                 (* Ignore this element *)
-		       | _     -> raise Not_found
-		   end
+		   if not (List.mem name mix') then raise Not_found;
+	       | _ -> ()
 	    );
 	  true
 	with
@@ -353,6 +370,8 @@ class virtual ['ext] node_impl an_ext =
     method virtual optional_string_attribute : string -> string option
     method virtual optional_list_attribute : string -> string list
     method virtual quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method virtual set_comment : string option -> unit
+    method virtual comment : string option
     method virtual create_element : 
                    ?position:(string * int * int) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
@@ -364,6 +383,8 @@ class virtual ['ext] node_impl an_ext =
     method virtual internal_delete : 'ext node -> unit
     method virtual internal_init : (string * int * int) ->
                                 dtd -> string -> (string * string) list -> unit
+    method virtual internal_init_other : (string * int * int) ->
+                                         dtd -> node_type -> unit
   end
 ;;
 
@@ -408,6 +429,11 @@ class ['ext] data_impl an_ext : ['ext] node =
     method idref_attribute_names = []
     method quick_set_attributes _ =
       failwith "method 'quick_set_attributes' not applicable to data node"
+    method comment = None
+    method set_comment c =
+      match c with
+	  None -> ()
+	| Some _ -> failwith "method 'set_comment' not applicable to data node"
     method create_element ?position _ _ _ =
       failwith "method 'create_element' not applicable to data node"
     method create_data new_dtd new_str =
@@ -437,6 +463,8 @@ class ['ext] data_impl an_ext : ['ext] node =
       assert false
     method internal_init _ _ _ _ =
       assert false
+    method internal_init_other _ _ _ =
+      assert false
   end
 ;;
 
@@ -450,20 +478,41 @@ class ['ext] element_impl an_ext : ['ext] node =
       val mutable content_model = Any
       val mutable content_dfa = lazy None
       val mutable ext_decl = false
-      val mutable name = "[unnamed]"
+      val mutable ntype = T_none
       val mutable id_att_name = None
       val mutable idref_att_names = []
       val mutable rev_nodes = ([] : 'c list)
       val mutable nodes = (None : 'c list option)
       val mutable attributes = []
+      val mutable comment = None
       val pinstr = lazy (Hashtbl.create 10 : (string,proc_instruction) Hashtbl.t)
       val mutable keep_always_whitespace = false
 
       val mutable position = no_position
 
+      method comment = comment
+
+      method set_comment c =
+	if ntype = T_comment then
+	  comment <- c
+	else
+	  failwith "set_comment: not applicable to node types other than T_comment"
+
       method attributes = attributes
 
       method position = position
+
+      method private error_name =
+	match ntype with
+	    T_element n -> "Element `" ^ n ^ "'"
+	  | T_super_root -> "Super root"
+	  | T_pinstr n -> "Wrapper element for processing instruction `" ^ n ^ 
+	      "'"
+	  | T_comment -> "Wrapper element for comment"
+	  | T_none -> "NO element"
+	  | T_attribute -> assert false
+	  | T_namespace -> assert false
+	  | T_data -> assert false
 
       method add_node n =
 	let only_whitespace s =
@@ -476,7 +525,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      match s.[i] with
 		  ('\009'|'\010'|'\013'|'\032') -> ()
 		| _ ->
-		    raise(Validation_error("Element `" ^ name ^ "' must not have character contents"));
+		    raise(Validation_error(self # error_name ^ 
+					   " must not have character contents"));
 	    done
 	  end
 	  else begin
@@ -486,7 +536,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 	    if t <> Ignore or
 	      (lexerset.scan_name_string lexbuf <> Eof)
 	    then
-	      raise(Validation_error("Element `" ^ name ^ "' must not have character contents"));
+	      raise(Validation_error(self # error_name ^
+				     " must not have character contents"));
 	    ()
 	  end
 	in
@@ -505,7 +556,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 		  | Unspecified -> ()
 		  | Empty       -> 
 		      if n # data <> "" then
-			raise(Validation_error("Element `" ^ name ^ "' must be empty"));
+			raise(Validation_error(self # error_name ^ 
+					       " must be empty"));
 		      raise Skip
 		  | Mixed _     -> ()
 		  | Regexp _    -> 
@@ -521,14 +573,14 @@ class ['ext] element_impl an_ext : ['ext] node =
 			if ext_decl then
 			  raise
 			    (Validation_error
-			       ("Element `" ^ name ^ 
-				"' violates standalone declaration"  ^
+			       (self # error_name ^ 
+				" violates standalone declaration"  ^
 				" because extra white space separates" ^ 
 				" the sub elements"));
 		      end;
 		      if not keep_always_whitespace then raise Skip
 		end
-	    | T_element nt ->
+	    | _ ->
 		()
 	  end;
 	  (* all OK, so add this node: *)
@@ -653,7 +705,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	let cl = self # sub_nodes in
 	String.concat "" (List.map (fun n -> n # data) cl)
 
-      method node_type = T_element name
+      method node_type = ntype
 
       method attribute n =
 	List.assoc n attributes
@@ -665,16 +717,21 @@ class ['ext] element_impl an_ext : ['ext] node =
       method attribute_type n =
 	let d =
 	  match dtd with
-	      None -> failwith "attribute_type not available without DTD"
+	      None -> failwith "attribute_type: not available without DTD"
 	    | Some d -> d
 	in
-	let eltype = d # element name in
-	try
-	  let atype, adefault = eltype # attribute n in
-	  atype
-	with
-	    Undeclared ->
-	      A_cdata
+	match ntype with
+	    T_element name ->
+	      let eltype = d # element name in
+	      ( try
+		  let atype, adefault = eltype # attribute n in
+		  atype
+		with
+		    Undeclared ->
+		      A_cdata
+	      )
+	  | _ ->
+	      failwith "attribute_type: not available for non-element nodes"
 
 
       method required_string_attribute n =
@@ -752,19 +809,43 @@ class ['ext] element_impl an_ext : ['ext] node =
 	x # set_node obj;
 	match new_type with
 	    T_data ->
-	      failwith "Cannot create T_data node"
+	      failwith "create_element: Cannot create T_data node"
 	  | T_element name ->
 	      obj # internal_init position new_dtd name new_attlist;
 	      obj
+	  | (T_comment | T_pinstr _ | T_super_root | T_none) ->
+	      obj # internal_init_other position new_dtd new_type;
+	      obj
+	  | _ ->
+	      failwith "create_element: Cannot create such nodes"
 
-      method internal_init new_pos new_dtd new_name new_attlist =
+
+      method internal_init_other new_pos new_dtd new_ntype =
 	(* resets the contents of the object *)
 	parent <- None;
 	rev_nodes <- [];
 	nodes <- None;
-	name <- new_name;
+	ntype <- new_ntype;
 	position <- new_pos;
-	(* Hashtbl.clear pinstr; *)
+	content_model <- Any;
+	content_dfa <- lazy None;
+	attributes <- [];
+	dtd <- Some new_dtd;
+	ext_decl <- false;
+	id_att_name <- None;
+	idref_att_names <- [];
+	comment <- None;
+
+
+      method internal_init new_pos new_dtd new_name new_attlist =
+	(* ONLY FOR T_Element NODES!!! *)
+	(* resets the contents of the object *)
+	parent <- None;
+	rev_nodes <- [];
+	nodes <- None;
+	ntype <- T_element new_name;
+	position <- new_pos;
+	comment <- None;
 
 	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
 	let sadecl = new_dtd # standalone_declaration in
@@ -776,7 +857,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 	      [] -> ()
 	    | (n, av) :: al' ->
 		if List.mem_assoc n al' then
-		  raise (WF_error("Attribute `" ^ n ^ "' occurs twice in element `" ^ name ^ "'"));
+		  raise (WF_error("Attribute `" ^ n ^ "' occurs twice in element `" ^ new_name ^ "'"));
 		check_uniqueness al'
 	in
 	check_uniqueness new_attlist;
@@ -811,7 +892,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 		     raise
 		       (Validation_error
 			  ("Attribute `" ^ n ^ "' of element type `" ^
-			   name ^ "' violates standalone declaration"));
+			   new_name ^ "' violates standalone declaration"));
 		   (* If the default is "fixed", check that. *)
 		   begin match adefault with
 		       (D_required | D_implied) -> ()
@@ -853,7 +934,7 @@ class ['ext] element_impl an_ext : ['ext] node =
 			 raise
 			   (Validation_error
 			      ("Attribute `" ^ n ^ "' of element type `" ^
-			       name ^ "' violates standalone declaration"));
+			       new_name ^ "' violates standalone declaration"));
 		       (* add default value or Implied *)
 		       let atype, adefault = eltype # attribute n in
 		       match adefault with
@@ -887,7 +968,8 @@ class ['ext] element_impl an_ext : ['ext] node =
 		  ~use_dfa:dfa
 		  content_model 
 		  (self : 'ext #node :> 'ext node)) then
-	  raise(Validation_error("Element `" ^ name ^ "' does not match its content model"))
+	  raise(Validation_error(self # error_name ^ 
+				 " does not match its content model"))
 
 
       method create_data _ _ =
@@ -901,26 +983,29 @@ class ['ext] element_impl an_ext : ['ext] node =
 	let wms = 
 	  write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
-	let invisible = (name = "-vr" || name = "-pi") in
-	if not invisible then begin
-	  wms ("<" ^ name);
-	  List.iter
-	    (fun (aname, avalue) ->
-	       match avalue with
-		   Implied_value -> ()
-		 | Value v ->
-		     wms ("\n" ^ aname ^ "=\"");
-		     write_data_string ~from_enc:encoding ~to_enc:enc os v;
-		     wms "\"";
-		 | Valuelist l ->
-		     let v = String.concat " " l in
-		     wms ("\n" ^ aname ^ "=\"");
-		     write_data_string ~from_enc:encoding ~to_enc:enc os v;
-		     wms "\"";
-	    )
-	    attributes;
-	  wms "\n>";
+	begin match ntype with
+	    T_element name ->
+	      wms ("<" ^ name);
+	      List.iter
+		(fun (aname, avalue) ->
+		   match avalue with
+		       Implied_value -> ()
+		     | Value v ->
+			 wms ("\n" ^ aname ^ "=\"");
+			 write_data_string ~from_enc:encoding ~to_enc:enc os v;
+			 wms "\"";
+		     | Valuelist l ->
+			 let v = String.concat " " l in
+			 wms ("\n" ^ aname ^ "=\"");
+			 write_data_string ~from_enc:encoding ~to_enc:enc os v;
+			 wms "\"";
+		)
+		attributes;
+	      wms "\n>";
+	  | _ ->
+	      ()
 	end;
+
 	Hashtbl.iter
 	  (fun n pi ->
 	     pi # write os enc
@@ -929,9 +1014,18 @@ class ['ext] element_impl an_ext : ['ext] node =
 	List.iter 
 	  (fun n -> n # write os enc)
 	  (self # sub_nodes);
-	if not invisible then begin
-	  wms ("</" ^ name ^ "\n>");
+
+	begin match ntype with
+	    T_element name ->
+	      wms ("</" ^ name ^ "\n>");
+	  | _ ->
+	      ()
 	end
+
+	(* TODO: How to write comments? The comment string may contain
+	 * illegal characters or "--".
+	 *)
+
 
       method write_compact_as_latin1 os =
 	self # write os `Enc_iso88591
@@ -964,6 +1058,64 @@ let create_element_node ?position spec dtd eltype atts =
 ;;
 
 
+let create_super_root_node ?position spec dtd =
+    match spec with
+      Spec_table tab ->
+	( match tab.super_root_node with
+	      None -> 
+		failwith "Pxp_document.create_super_root_node: No exemplar"
+	    | Some x -> 
+		x # create_element ?position:position dtd T_super_root []
+	)
+;;
+
+let create_no_node ?position spec dtd =
+    match spec with
+      Spec_table tab ->
+	let x = tab.default_element in
+	x # create_element ?position:position dtd T_none []
+;;
+
+
+let create_comment_node ?position spec dtd text =
+  match spec with
+      Spec_table tab ->
+	( match tab.comment_node with
+	      None ->
+		failwith "Pxp_document.create_comment_node: No exemplar"
+	    | Some x ->
+		let e = x # create_element ?position:position dtd T_comment [] 
+		in
+		e # set_comment (Some text);
+		e
+	)
+;;
+	
+    
+let create_pinstr_node ?position spec dtd pi =
+  let target = pi # target in
+  let exemplar =
+    match spec with
+	Spec_table tab ->
+	  ( try 
+	      Hashtbl.find tab.pinstr_mapping target
+	    with
+		Not_found ->
+		  ( match tab.default_pinstr_node with
+			None -> 
+			  failwith 
+			    "Pxp_document.create_pinstr_node: No exemplar"
+		      | Some x -> x
+		  )
+	  )
+  in
+  let el = 
+    exemplar # create_element ?position:position dtd (T_pinstr target) [] in
+  el # add_pinstr pi;
+  el
+;;
+
+
 class ['ext] document the_warner =
   object (self)
     val mutable xml_version = "1.0"
@@ -981,44 +1133,56 @@ class ['ext] document the_warner =
     method init_root r = 
       let dtd_r = r # dtd in
       match r # node_type with
-	  T_element root_element_name ->
+
+	(**************** CASE: We have a super root element ***************)
+
+	| T_super_root ->
 	    if not (dtd_r # arbitrary_allowed) then begin
 	      match dtd_r # root with
 		  Some declared_root_element_name ->
+		    let real_root_element =
+		      try
+			List.find
+			  (fun r' -> 
+			     match r' # node_type with
+			       | T_element _     -> true
+			       | _               -> false)
+			  (r # sub_nodes)
+		      with
+			  Not_found ->
+			    failwith "Pxp_document.document#init_root: Super root does not contain root element"
+			      (* TODO: Check also that there is at most one
+			       * element in the super root node
+			       *)
+
+		    in
 		    let real_root_element_name =
-		      (* -------------------------------------------------*)
-		      (* We must handle the special case that 'r' is the
-		       * virtual root and not the real root.
-		       *)
-		      if root_element_name = "-vr" then begin
-			(* The real root is the first son of 'r' that is
-			 * not "-pi".
-			 *)
-			let real_r =
-			  try
-			    List.find
-			      (fun r' -> 
-				 match r' # node_type with
-				     T_element "-pi" -> false
-				   | T_element _     -> true
-				   | _               -> assert false)
-			      (r # sub_nodes)
-			  with
-			      Not_found ->      (* should not happen *)
-				assert false
-			in
-			match real_r # node_type with 
-			    T_element name -> name
-			  | _              -> assert false
-		      end
-		      (* -------------------------------------------------*)
-		      (* NORMAL CASE: *)
-		      else root_element_name
+		      match real_root_element # node_type with 
+			  T_element name -> name
+			| _              -> assert false
 		    in
 		    if real_root_element_name <> declared_root_element_name then
 		      raise
 			(Validation_error ("The root element is `" ^ 
 					   real_root_element_name ^ 
+					   "' but is declared as `" ^
+					   declared_root_element_name))
+		| None -> ()
+	    end;
+	    (* All is okay, so store dtd and root node: *)
+	    dtd <- Some dtd_r;
+	    root <- Some r
+
+	(**************** CASE: No super root element **********************)
+
+	| T_element root_element_name ->
+	    if not (dtd_r # arbitrary_allowed) then begin
+	      match dtd_r # root with
+		  Some declared_root_element_name ->
+		    if root_element_name <> declared_root_element_name then
+		      raise
+			(Validation_error ("The root element is `" ^ 
+					   root_element_name ^ 
 					   "' but is declared as `" ^
 					   declared_root_element_name))
 		| None ->
@@ -1033,8 +1197,8 @@ class ['ext] document the_warner =
 	    dtd <- Some dtd_r;
 	    root <- Some r
 
-	| T_data ->
-	    failwith "Pxp_document.document#init_root: the root node must be an element"
+	| _ ->
+	    failwith "Pxp_document.document#init_root: the root node must be an element or super-root"
 
     method xml_version = xml_version
 
@@ -1112,6 +1276,10 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.12  2000/08/18 20:14:00  gerd
+ * 	New node_types: T_super_root, T_pinstr, T_comment, (T_attribute),
+ * (T_none), (T_namespace).
+ *
  * Revision 1.11  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.
