@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_defs_drv_utf8.def,v 1.2 2000/08/26 19:58:08 gerd Exp $
+(* $Id: pxp_lex_defs_drv_utf8.def,v 1.3 2002/07/14 23:06:04 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -99,8 +99,12 @@ let comment_string = character_except_minus*
 
 
 let normal_character = 
-  (* Character except '&' = '\038', '<' = '\060', ']' = '\093', and CR LF *)
-  [ '\009' '\032'-'\037' '\039'-'\059' '\061'-'\092' '\094'-'\127' ]
+  (* Character except '&' = '\038', '<' = '\060', ']' = '\093', 
+   * '{' = '\123', '}' = '\125', and CR LF 
+   *)
+  [ '\009' '\032'-'\037' '\039'-'\059' '\061'-'\092' '\094'-'\122'
+    '\124' '\126' '\127'
+  ]
 | non_ascii_character
 
 
@@ -146,6 +150,10 @@ let character_except_special =
  * History:
  * 
  * $Log: pxp_lex_defs_drv_utf8.def,v $
+ * Revision 1.3  2002/07/14 23:06:04  gerd
+ * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
+ * contents context
+ *
  * Revision 1.2  2000/08/26 19:58:08  gerd
  * 	Bugfix in character_except_apos. The bug caused that attribute
  * values delimited by &apos; could not be scanned at all.

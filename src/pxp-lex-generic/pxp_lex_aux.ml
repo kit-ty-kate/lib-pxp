@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_aux.ml,v 1.1 2001/06/14 14:15:20 gerd Exp $
+(* $Id: pxp_lex_aux.ml,v 1.2 2002/07/14 23:06:01 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -31,6 +31,10 @@
   let tok_LineEndCR__Content     = LineEnd "\r", Content
   let tok_LineEndLF__Content     = LineEnd "\n", Content
   let tok_CharDataRBRACKET__Content = CharData "]", Content
+  let tok_Lcurly__Content        = Lcurly, Content
+  let tok_LLcurly__Content       = LLcurly, Content
+  let tok_Rcurly__Content        = Rcurly, Content
+  let tok_RRcurly__Content       = RRcurly, Content
   let tok_Eq__Within_tag         = Eq, Within_tag
   let tok_Rangle__Content        = Rangle, Content
   let tok_Rangle_empty__Content  = Rangle_empty, Content
@@ -144,6 +148,10 @@
  * History:
  * 
  * $Log: pxp_lex_aux.ml,v $
+ * Revision 1.2  2002/07/14 23:06:01  gerd
+ * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
+ * contents context
+ *
  * Revision 1.1  2001/06/14 14:15:20  gerd
  * 	Initial revision
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.8 2002/03/13 22:45:45 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.9 2002/07/14 23:06:01 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -53,6 +53,14 @@ rule scan_content = parse
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
       }
+  | "{{"
+      { tok_LLcurly__Content }
+  | "}}"
+      { tok_RRcurly__Content }
+  | "{"
+      { tok_Lcurly__Content }
+  | "}"
+      { tok_Rcurly__Content }
 
   (* LineEnd: Depending on whether we are reading from a primary source
    * (file) or from the replacement text of an internal entity, line endings
@@ -86,6 +94,10 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.9  2002/07/14 23:06:01  gerd
+ * 	Support for Lcurly, LLcurly, Rcurly, and RRcurly in
+ * contents context
+ *
  * Revision 1.8  2002/03/13 22:45:45  gerd
  * 	Improved Pxp_lexing.
  *
