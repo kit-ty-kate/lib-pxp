@@ -1,4 +1,4 @@
-(* $Id: pxp_dtd.ml,v 1.2 2000/06/14 22:19:06 gerd Exp $
+(* $Id: pxp_dtd.ml,v 1.3 2000/07/04 22:10:55 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -35,7 +35,7 @@ class dtd  the_warner init_encoding =
     val mutable validated = false
 
     initializer
-    let w = new collect_warnings in
+    let w = new drop_warnings in
     self # add_gen_entity 
       (new internal_entity self "lt"   w "&#38;#60;" false false false encoding)
       false;
@@ -724,6 +724,8 @@ and dtd_notation the_name the_xid init_encoding =
 		write os " " 0 1;
 		write_sysid s;
 	      end;
+	  | Anonymous ->
+	      failwith "External ID Anonymous cannot be represented"
       );
       write os ">\n" 0 2;
 
@@ -763,6 +765,10 @@ and proc_instruction the_target the_value init_encoding =
  * History:
  *
  * $Log: pxp_dtd.ml,v $
+ * Revision 1.3  2000/07/04 22:10:55  gerd
+ * 	Update: collect_warnings -> drop_warnings.
+ * 	Update: Case ext_id = Anonymous.
+ *
  * Revision 1.2  2000/06/14 22:19:06  gerd
  * 	Added checks such that it is impossible to mix encodings.
  *
