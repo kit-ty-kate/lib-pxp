@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.mli,v 1.22 2002/10/22 23:29:48 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.23 2003/01/21 00:19:40 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -359,6 +359,8 @@ type config =
 type source = Pxp_dtd.source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (ext_id * Pxp_reader.resolver)
+  | XExtID of (ext_id * string option * Pxp_reader.resolver)
+      (* (ext_id, system_base, resolver) *)
 
 val from_channel : 
       ?alt:Pxp_reader.resolver list ->
@@ -367,6 +369,12 @@ val from_channel :
 
 val from_string :
       ?fixenc:encoding -> string -> source
+
+val from_obj_channel :
+      ?alt:Pxp_reader.resolver list ->
+      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
+      Netchannels.in_obj_channel -> source
+
 
 val from_file :
        ?alt:Pxp_reader.resolver list ->
@@ -747,6 +755,9 @@ val create_pull_parser :
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.23  2003/01/21 00:19:40  gerd
+ * 	Support for the new resolvers.
+ *
  * Revision 1.22  2002/10/22 23:29:48  gerd
  * 	More docs for process_entity
  *

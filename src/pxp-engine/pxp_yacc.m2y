@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.44 2002/10/22 14:23:12 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.45 2003/01/21 00:19:40 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -13,6 +13,7 @@ open Pxp_entity_manager
 open Pxp_document
 open Pxp_aux
 open Pxp_reader
+open Netchannels
 
 (* Some types from the interface definition: *)
 
@@ -58,6 +59,7 @@ type config =
 type source = Pxp_dtd.source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (ext_id * Pxp_reader.resolver)
+  | XExtID of (ext_id * string option * Pxp_reader.resolver)
 
 
 type event =
@@ -134,74 +136,69 @@ let make_context ?first_token entity_manager =
 ;;
 
 
-let from_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
+let from_obj_channel ?(alt = []) ?system_encoding ?id:init_id ?fixenc ch =
   let channel_id = allocate_private_id() in
-  match init_id with
-      None ->
-	(* The simple case: already implemented by resolve_read_this_channel *)
-	let r = new resolve_read_this_channel
-		  ~id: (Private channel_id)
-		  ?fixenc
-		  ch
-	in
-	ExtID(Private channel_id, new combine (r :: alt))
-    | Some (System sysname) ->
-	(* Here we use a specially configured resolve_as_file. The private
-	 * ID channel_id is mapped to the URL sysid and to the channel
-	 * ch
-	 *)
-	let url_syntax =
-	  { Neturl.null_url_syntax with
-	      Neturl.url_enable_scheme = Neturl.Url_part_allowed;
-	      Neturl.url_enable_host   = Neturl.Url_part_allowed;
-	      Neturl.url_enable_path   = Neturl.Url_part_required;
-	      Neturl.url_accepts_8bits = true;
-	  }
-	in
-	let url =
-	  try
-	    Neturl.url_of_string url_syntax sysname
-              (* may raise Malformed_URL *)
-	  with
-	      Neturl.Malformed_URL ->
-		failwith "Pxp_yacc.from_channel: Bad ~id option (malformed URL)"
-	in
-	let r =
-	  new resolve_as_file
-	    ?system_encoding
-	    ~map_private_id: (fun pid ->
-				if pid = channel_id then
-				  url
-				else raise Not_competent)
-  	    ~open_private_id: (fun pid ->
-				 if pid = channel_id then
-				   ch, fixenc
-				 else
-				   raise Not_competent
-			      )
+  let r = new resolve_to_any_obj_channel
+	    ~channel_of_id:(fun rid ->
+			      if rid.rid_private = Some channel_id then begin
+				let active_id =
+				  match init_id with
+				      None -> 
+					None
+				    | Some xid ->
+					Some (resolver_id_of_ext_id xid)
+				in
+				(ch, fixenc, active_id)
+			      end
+			      else
+				raise Not_competent)
 	    ()
-	in
-	ExtID(Private channel_id, new combine (r :: alt))
-    | Some _ ->
-	failwith "Pxp_yacc.from_channel: Bad ~id option (must be System)"
+  in
+  let r_total = new combine 
+		  ( [r] @
+		    (if init_id <> None then 
+		       [ new resolve_as_file 
+			   ?system_encoding 
+			   ~base_url_defaults_to_cwd:false
+			   ()
+		       ] 
+		     else
+		       []) @
+		    alt) in
+  ExtID(Private channel_id, r_total)
 ;;
 
 
-let from_file ?(alt = []) ?system_encoding ?enc utf8_filename =
+let from_channel ?alt ?system_encoding ?id ?fixenc ch =
+  from_obj_channel 
+    ?alt ?system_encoding ?id ?fixenc 
+    (new input_channel ch)
+;;
+    
+
+let from_file ?(alt = []) ?(system_encoding = `Enc_utf8) ?enc utf8_filename =
   let r =
     new resolve_as_file
-    ?system_encoding:system_encoding
+      ~system_encoding
+      ~base_url_defaults_to_cwd:false
       ()
   in
 
   let url = make_file_url
-	      ?system_encoding
+	      ~system_encoding
 	      ?enc
 	      utf8_filename in
 
   let xid = System (Neturl.string_of_url url) in
 
-  ExtID(xid, new combine (r :: alt))
+  let sysbase =
+    let cwd = Sys.getcwd() in
+    let cwd_slash = if cwd = "/" then cwd else cwd ^ "/" in
+    let sysbase_url = make_file_url 
+			~system_encoding ~enc:system_encoding cwd_slash in
+    Some(Neturl.string_of_url sysbase_url) 
+  in
+  XExtID(xid, sysbase, new combine (r :: alt))
 ;;
 
 
@@ -1227,6 +1224,8 @@ doctypedecl_material(doctype_entid):
 			     root_name ^ "'"));
 	    let resolver = 
 	      context.manager # current_resolver # clone in
+	    let system_base =
+	      (context.manager # current_resolver # active_id).rid_system in
 	    let pobj =
 	      new tree_parser
 		(new document config.warner config.encoding)
@@ -1238,7 +1237,7 @@ doctypedecl_material(doctype_entid):
 		(-1)
 	    in
 	    let en = new external_entity resolver dtd "[dtd]"
-		         config.warner id false
+		         config.warner id system_base false
 		         config.encoding
 	    in
 	    en # set_debugging_mode (config.debugging_mode);
@@ -1900,8 +1899,10 @@ entitydecl(decl_entity_entid):
 	  | (None,   Some xid, None)   ->
 	      let resolver = 
 		context.manager # current_resolver # clone in
+	      let system_base = 
+		(context.manager # current_resolver # active_id).rid_system in
 	      new external_entity resolver dtd name config.warner
-                                  xid false
+                                  xid system_base false
 		                  config.encoding
 
 	  | (None,   Some xid, Some n) ->
@@ -1939,8 +1940,10 @@ entitydecl(decl_entity_entid):
 	  | (None,   Some xid)   ->
 	      let resolver = 
 		context.manager # current_resolver # clone in
+	      let system_base = 
+		(context.manager # current_resolver # active_id).rid_system in
 	      new external_entity resolver dtd name config.warner
-                                  xid true
+                                  xid system_base true
 		                  config.encoding
 	  | _ -> assert false
       in
@@ -2806,12 +2809,21 @@ let call_tree_parser ~configuration:cfg
       | ExtID(xid,r') -> r',
 	                 if use_document_entity then
                            new document_entity
-			     r' dtd "[toplevel]" w xid
+			     r' dtd "[toplevel]" w xid None
                              cfg.encoding
 			 else
                            new external_entity
-			     r' dtd "[toplevel]" w xid false
+			     r' dtd "[toplevel]" w xid None false
                              cfg.encoding
+      | XExtID(xid,sysbase,r') -> r',
+	                          if use_document_entity then
+				    new document_entity
+				      r' dtd "[toplevel]" w xid sysbase
+				      cfg.encoding
+				  else
+				    new external_entity
+				      r' dtd "[toplevel]" w xid sysbase false
+				      cfg.encoding
   in
   r # init_rep_encoding cfg.encoding;
   r # init_warner w;
@@ -3092,12 +3104,21 @@ let create_entity_manager ?(is_document=true) cfg src =
       | ExtID(xid,r') -> r',
 	                 if is_document then
                            new document_entity
-			     r' dtd "[toplevel]" w xid
+			     r' dtd "[toplevel]" w xid None
                              cfg.encoding
 			 else
                            new external_entity
-			     r' dtd "[toplevel]" w xid false
+			     r' dtd "[toplevel]" w xid None false
                              cfg.encoding
+      | XExtID(xid,sysbase,r') -> r',
+	                          if is_document then
+				    new document_entity
+				      r' dtd "[toplevel]" w xid sysbase
+				      cfg.encoding
+				  else
+				    new external_entity
+				      r' dtd "[toplevel]" w xid sysbase false
+				      cfg.encoding
   in
   r # init_rep_encoding cfg.encoding;
   r # init_warner w;
@@ -3294,6 +3315,9 @@ let create_pull_parser
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.45  2003/01/21 00:19:40  gerd
+ * 	Support for the new resolvers.
+ *
  * Revision 1.44  2002/10/22 14:23:12  gerd
  * 	Fix: Closing the topmost entities
  *
