@@ -1,5 +1,5 @@
 .PHONY: all
-all: README INSTALL ABOUT-FINDLIB SPEC PRERELEASE EXTENSIONS
+all: README INSTALL ABOUT-FINDLIB SPEC EXTENSIONS dev
 
 README: README.xml common.xml config.xml
 	readme -text README.xml >README
@@ -16,8 +16,9 @@ SPEC: SPEC.xml common.xml config.xml
 EXTENSIONS: EXTENSIONS.xml common.xml config.xml
 	readme -text EXTENSIONS.xml >EXTENSIONS
 
-PRERELEASE: PRERELEASE.xml common.xml config.xml
-	readme -text PRERELEASE.xml >PRERELEASE
+.PHONY: dev
+dev: DEV.xml
+	readme -html DEV.xml >$$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.hzml
 
 config.xml:
 	touch config.xml

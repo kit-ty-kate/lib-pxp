@@ -44,6 +44,11 @@ href="&url.pxp-download;">tarball</a>. The parser needs the <a
 href="&url.netstring-project;">Netstring</a> package (0.9.3). Note that PXP
 requires O'Caml 3.00.
 </p>
+
+    <p>
+Information about the latest development version is available
+<a href="&url.pxp-project-dev;">here</a>.
+</p>
   </sect1>
 
   <sect1>
