@@ -169,8 +169,24 @@ This is done as follows:
 
 You may refer to repeated or optional symbols by labels. In this case,
 the label is associated with lists of values, or optional values, 
-respectively.
+respectively:
 
+rule():
+  A  lab:other()*  lab':unlikely()?
+    {{ let n = List.length lab in ... 
+       match lab' with
+         None -> ...
+       | Some v -> ... 
+    }}
+
+A different scheme is applied if the symbol is a token without
+associated value (%token Name, and NOT %token <> Name):
+
+rule():
+  A lab:B* lab':C?
+
+Here, "lab" becomes an integer variable counting the number of Bs, and
+"lab'" becomes a boolean variable denoting whether there is a C or not.
 
 
 *** Early let-binding ***
@@ -189,6 +205,29 @@ rule1():
 
 This code is executed once the branch is selected.
 
+
+*** Very early let-binding ***
+
+This is also possible:
+
+rule():
+  $ {{ CODE }}
+  A
+  ...
+
+The CODE is executed right when the branch is selected, and before any
+other happens. (Only for hacks!)
+
+
+
+*** Computed rules ***
+
+rule():
+  A $ {{ let followup = ... some function ... in }} [ followup ]() 
+    {{ ... }}
+
+Between [ and ], you can refer to the O'Caml name of *any* function.
+Here, the function "followup" is bound in the let-binding.
 
 
 *** Error handling ***
