@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.3 2000/07/08 16:23:50 gerd Exp $
+(* $Id: pxp_types.ml,v 1.4 2000/07/14 21:25:27 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -69,32 +69,13 @@ type att_value =
 class type collect_warnings =
   object 
     method warn : string -> unit
-    method print_warnings : string
-    method reset : unit
   end
 ;;
-
-
-(*
-class collect_warnings =
-  object 
-    val mutable wlist = []
-    method warn w =
-      wlist <- ("WARNING: " ^ w) :: wlist
-    method print_warnings =
-      String.concat "\n" (List.rev wlist)
-    method reset =
-      wlist <- []
-  end
-;;
-*)
 
 
 class drop_warnings =
   object 
     method warn (w:string) = ()
-    method print_warnings = ""
-    method reset = ()
   end
 ;;
 
@@ -203,6 +184,9 @@ let write os str pos len =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.4  2000/07/14 21:25:27  gerd
+ * 	Simplified the type 'collect_warnings'.
+ *
  * Revision 1.3  2000/07/08 16:23:50  gerd
  * 	Added the exception 'Error'.
  *
