@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_types.mli,v 1.2 2000/07/04 22:08:26 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -8,10 +8,18 @@
 type ext_id =
     System of string
   | Public of (string * string)
+  | Anonymous
 
   (* external identifiers are either "system identifiers" (filenames or URLs),
    * or "public identifiers" Public(id,sysid) where "id" is the representation
    * of the public ID, and "sysid" a fallback system ID, or the empty string.
+   *
+   * New in PXP: Sometimes the external ID is not known. This case can be
+   * referred to as Anonymous ID.
+   *
+   * Encoding: The identifiers are _always_ encoded as UTF8 strings,
+   * regardless of whether another encoding is configured for the parser.
+   * TODO: umsetzen
    *)
 
 
@@ -78,13 +86,16 @@ type att_value =
 ;;
 
 
-class collect_warnings :
+class type collect_warnings =
   object 
     method warn : string -> unit
     method print_warnings : string
     method reset : unit
   end
 ;;
+
+
+class drop_warnings : collect_warnings;;
 
 
 type encoding =
@@ -102,9 +113,20 @@ type rep_encoding =
    * of strings.
    *)
   [ `Enc_utf8       (* UTF-8 *)
-  |  `Enc_iso88591   (* ISO-8859-1 *)
+  | `Enc_iso88591   (* ISO-8859-1 *)
   ]
 ;;
+
+
+val encoding_of_string : string -> encoding;;
+    (* Returns the encoding of the name of the encoding. Fails if the 
+     * encoding is unknown.
+     * E.g. encoding_of_string "iso-8859-1" = `Enc_iso88591
+     *)
+
+val string_of_encoding : encoding -> string;;
+    (* Returns the name of the encoding. *)
+
 
 
 exception Illegal_character of int
@@ -146,6 +168,13 @@ val write : output_stream -> string -> int -> int -> unit
  * History:
  * 
  * $Log: pxp_types.mli,v $
+ * Revision 1.2  2000/07/04 22:08:26  gerd
+ * 	type ext_id: New variant Anonymous. - The System and Public
+ * variants are now encoded as UTF-8.
+ * 	collect_warnings is now a class type only. New class
+ * drop_warnings.
+ * 	New functions  encoding_of_string and string_of_encoding.
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
