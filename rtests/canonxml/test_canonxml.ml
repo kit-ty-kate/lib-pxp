@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.4 2000/07/09 01:06:20 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.5 2000/07/14 14:17:58 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -11,14 +11,19 @@ open Pxp_types;;
 let error_happened = ref false;;
 
 let rec prerr_error e =
-  match e with
-      Pxp_types.At(where,what) ->
-	prerr_endline where;
-	prerr_error what
-    | _ ->
-	prerr_endline (Printexc.to_string e)
+  prerr_endline (string_of_exn e)
 ;;
 
+class warner =
+  object 
+    method warn w =
+      prerr_endline ("WARNING: " ^ w)
+    method print_warnings =
+      ""
+    method reset =
+      ()
+  end
+;;
 
 let outbuf = String.create 8192;;
 
@@ -119,29 +124,32 @@ let parse debug wf iso88591 filename =
   in
   let config =
       { default_config with 
+	  warner = new warner;
 	  debugging_mode = debug;
 	  processing_instructions_inline = true;
 	  virtual_root = true;
 	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
+	  idref_pass = true;
       }
   in
   try 
+    let parse_fn =
+      if wf then parse_wfdocument_entity 
+      else 
+	let index = new hash_index in
+	parse_document_entity 
+	  ?transform_dtd:None 
+	  ~id_index:(index :> 'ext index)
+    in
     let tree =
-      (if wf then parse_wfdocument_entity
-             else parse_document_entity ?transform_dtd:None )
+      parse_fn
         config
 	(from_file filename)
 	spec 
     in
-    let s = config.warner # print_warnings in
-    if s <> "" then prerr_endline s;
-    config.warner # reset;
     output_xml config (tree # root)
   with
       e ->
-	let s = config.warner # print_warnings in
-	if s <> "" then prerr_endline s;
-	config.warner # reset;
 	error_happened := true;
 	prerr_error e
 ;;
@@ -174,6 +182,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.5  2000/07/14 14:17:58  gerd
+ * 	Updated because of iterface changes.
+ *
  * Revision 1.4  2000/07/09 01:06:20  gerd
  * 	Updated.
  *
