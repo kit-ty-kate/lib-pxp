@@ -1,0 +1,2615 @@
+<!DOCTYPE book PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+<!ENTITY markup "<acronym>Markup</acronym>">
+<!ENTITY % readme.code.to-html SYSTEM "readme.ent">
+<!ENTITY apos "&#39;">
+%readme.code.to-html;
+]>
+
+
+<book>
+
+  <title>The Markup user's guide</title>
+  <bookinfo>
+    <!-- <bookbiblio> -->
+    <authorgroup>
+      <author>
+	<firstname>Gerd</firstname>
+	<surname>Stolpmann</surname>
+	<authorblurb>
+	  <para>
+        <address>
+          <email>Gerd.Stolpmann@darmstadt.netsurf.de</email>
+        </address>
+      </para>
+	</authorblurb>
+      </author>
+    </authorgroup>
+    
+    <copyright>
+      <year>1999</year><holder>Gerd Stolpmann</holder>
+    </copyright>
+    <!-- </bookbiblio> -->
+
+    <abstract>
+      <para>
+&markup; is a validating parser for XML-1.0 which has been
+written entirely and from scratch in Objective Caml.
+</para>
+      <formalpara>
+	<title>Download &markup;: </title>
+	<para>
+The free &markup; library can be downloaded at
+<ulink URL="http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml">
+http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml
+</ulink>. The user's guide is included.
+Newest releases of &markup; will be announced in
+<ulink URL="http://www.npc.de/ocaml/linkdb/">The OCaml Link
+Database</ulink>.
+</para>
+      </formalpara>
+    </abstract>
+
+    <legalnotice>
+      <title>License</title>
+      <para>
+This document, and the described software, "&markup;", are copyright by
+Gerd Stolpmann. 
+</para>
+
+<para>
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this document and the "&markup;" software (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+</para>
+      <para>
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+</para>
+      <para>
+The Software is provided ``as is'', without warranty of any kind, express
+or implied, including but not limited to the warranties of
+merchantability, fitness for a particular purpose and noninfringement.
+In no event shall Gerd Stolpmann be liable for any claim, damages or
+other liability, whether in an action of contract, tort or otherwise,
+arising from, out of or in connection with the Software or the use or
+other dealings in the software.
+</para>
+    </legalnotice>
+
+  </bookinfo>
+
+
+<!-- ********************************************************************** -->
+
+  <part>
+    <title>User's guide</title>
+    
+    <chapter>
+      <title>What is XML?</title>
+
+      <sect1>
+	<title>Introduction</title>
+
+	<para>XML (short for <emphasis>Extensible Markup Language</emphasis>)
+generalizes the idea that text documents are typically structured in sections,
+sub-sections, paragraphs, and so on. The format of the document is not fixed
+(as, for example, in HTML), but can be declared by a so-called DTD (document
+type definition). The DTD describes only the rules how the document can be
+structured, but not how the document can be processed. For example, if you want
+to publish a book that uses XML markup, you will need a processor that converts
+the XML file into a printable format such as Postscript. On the one hand, the
+structure of XML documents is configurable; on the other hand, there is no
+longer a canonical interpretation of the elements of the document, i.e. for
+every DTD a new formatter is required.
+</para>
+
+	<para>
+Although XML can be used to express structured text documents it is not limited
+to this kind of application. For example, XML can also be used to exchange
+structured data over a network, or to simply store structured data in
+files. Note that XML documents cannot contain arbitrary binary data because
+some characters are forbidden; for some applications you need to encode binary
+data as text (e.g. the base 64 encoding).
+</para>
+
+
+	<sect2>
+	  <title>The "hello world" example</title>
+	<para>
+The following example shows a very simple DTD, and a corresponding document
+instance. The document is structured such that it consists of sections, and
+that sections consist of paragraphs, and that paragraphs contain plain text:
+</para>
+
+	<programlisting>
+<![CDATA[<!ELEMENT document (section)+>
+<!ELEMENT section (paragraph)+>
+<!ELEMENT paragraph (#PCDATA)>
+]]>
+</programlisting>
+
+	<para>The following document is an instance of this DTD:</para>
+      
+	<programlisting>
+<![CDATA[<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE document SYSTEM "simple.dtd">
+<document>
+  <section>
+    <paragraph>This is a paragraph of the first section.</paragraph>
+    <paragraph>This is another paragraph of the first section.</paragraph>
+  </section>
+  <section>
+    <paragraph>This is the only paragraph of the second section.</paragraph>
+  </section>
+</document>
+]]>
+</programlisting>
+
+	<para>As in HTML (and, of course, in grand-father SGML), the "pieces" of
+the document are denoted by element braces, i.e. such a piece begins with
+<literal>&lt;name-of-the-type-of-the-piece&gt;</literal> and ends with
+<literal>&lt;/name-of-the-type-of-the-piece&gt;</literal>, and the pieces are
+called <emphasis>elements</emphasis>. Unlike HTML and SGML, both begin tags and
+end tags (i.e. the delimiters written in angle brackets) can never be left
+out. For example, HTML calls the paragraphs simply <literal>p</literal>, and
+because paragraphs never contain paragraphs, a sequence of several paragraphs
+can be written as:
+
+<programlisting><![CDATA[<p>First paragraph 
+<p>Second paragraph]]></programlisting>
+
+This is not possible in XML; continuing our example above we must always write
+
+<programlisting><![CDATA[<paragraph>First paragraph</paragraph>
+<paragraph>Second paragraph</paragraph>]]></programlisting>
+
+The first line of our sample document,
+
+<programlisting>
+<![CDATA[<?xml version="1.0" encoding="ISO-8859-1"?>]]>
+</programlisting>
+
+is the so-called <emphasis>XML declaration</emphasis>. It expresses that the
+document follows the conventions of XML version 1.0, and that the document is
+encoded using characters from the ISO-8859-1 character set (often known as
+"Latin 1", mostly used in Western Europe). Although the XML declaration is not
+mandatory, it is good style to include it; everybody sees at the first glance
+that the document uses XML markup and not the similar-looking HTML and SGML
+markup languages. You must include an XML declaration if the document does not
+encode its characters in UTF-8 or UTF-16 (these are Unicode formats), but in a
+different character set.
+</para>
+
+<para>
+The second line,
+
+<programlisting>
+<![CDATA[<!DOCTYPE document SYSTEM "simple.dtd">]]>
+</programlisting>
+
+names the DTD that is going to be used for the rest of the document. In
+general, it is possible that the DTD consists of two parts, the so-called
+external and the internal subset. "External" means that the DTD exists as a
+second file; "internal" means that the DTD is included in the same file. In
+this example, there is only an external subset, and the system identifier
+"simple.dtd" specifies where the DTD file can be found. System identifiers are
+interpreted as URLs; for instance this would be legal:
+
+<programlisting>
+<![CDATA[<!DOCTYPE document SYSTEM "http://host/location/simple.dtd">]]>
+</programlisting>
+
+Please note that &markup; cannot interpret URL identifiers by default, but it is
+possible to change the interpretation of system identifiers.
+</para>
+
+	<para>
+The word immediately following <literal>DOCTYPE</literal> determines which of
+the declared element types (here "document", "section", and "paragraph") is
+used for the outermost element, the <emphasis>root element</emphasis>. In this
+example it is <literal>document</literal> because the outermost element is
+delimited by <literal>&lt;document&gt;</literal> and
+<literal>&lt;/document&gt;</literal>. 
+</para>
+
+	<para>
+The DTD consists of three declarations for element types:
+<literal>document</literal>, <literal>section</literal>, and
+<literal>paragraph</literal>. Such a declaration has three parts:
+
+<programlisting>
+&lt;!ELEMENT <replaceable>name</replaceable> <replaceable>content-model</replaceable>&gt;
+</programlisting>
+
+The content model is a regular expression which describes the possible inner
+structure of the element. Here, <literal>document</literal> contains one or
+more sections, and a <literal>section</literal> contains one or more
+paragraphs. Note that these two element types are not allowed to contain
+arbitrary text. Only the <literal>paragraph</literal> element type is declared
+such that parsed character data (indicated by the symbol
+<literal>#PCDATA</literal>) is permitted.
+</para>
+
+	<para>
+See below for a detailed discussion of content models. 
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>XML parsers and processors</title>
+	  <para>
+XML documents are human-readable, but this is not the main purpose of this
+language. XML has been designed such that documents can be read by a program
+called an <emphasis>XML parser</emphasis>. The parser checks that the document
+is well-formatted, and it represents the document as objects of the programming
+language. There are two aspects when checking the document: First, the document
+must follow some basic syntactic rules, such as that tags are written in angle
+brackets, that for every start tag there must be a corresponding end tag and so
+on. A document respecting these rules is
+<emphasis>well-formed</emphasis>. Second, the document must match the DTD in
+which case the document is <emphasis>valid</emphasis>. Many parsers check only
+on well-formedness and ignore the DTD; &markup; is designed such that it can
+validate the document (this is not yet fully implemented, but the parser is
+already very close to completely validating the documents).
+</para>
+
+	  <para>
+A parser does not make up a useable application, it only reads XML
+documents. The whole application working with XML-formatted data is called an
+<emphasis>XML processor</emphasis>. Often XML processors convert documents into
+another format, such as HTML or Postscript. Sometimes processors extract data
+of the documents and output the processed data again XML-formatted. The parser
+can help the application processing the document; for example it can provide
+means to access the document in a specific manner. &markup; supports an
+object-oriented access layer specially.
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Discussion</title>
+	  <para>
+As we have seen, there are two levels of description: On the one hand, XML can
+define rules about the format of a document (the DTD), on the other hand, XML
+expresses structured documents. There are a number of possible applications:
+</para>
+
+	  <itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>
+XML can be used to express structured texts. Unlike HTML, there is no canonical
+interpretation; one would have to write a backend for the DTD that translates
+the structured texts into a format that existing browsers, printers
+etc. understand. The advantage of a self-defined document format is that it is
+possible to design the format in a more problem-oriented way. For example, if
+the task is to extract reports from a database, one can use a DTD that reflects
+the structure of the report or the database. A possible approach would be to
+have an element type for every database table and for every column. Once the
+DTD has been designed, the report procedure can be splitted up in a part that
+selects the database rows and outputs them as an XML document according to the
+DTD, and in a part that translates the document into other formats. Of course,
+the latter part can be solved in a generic way, e.g. there may be configurable
+backends for all DTDs that follow the approach and have element types for
+tables and columns.
+</para>
+	      
+	      <para>
+XML plays the role of a configurable intermediate format. The database
+extraction function can be written without having to know the details of
+typesetting; the backends can be written without having to know the details of
+the database.
+</para>
+
+	      <para>
+Of course, there are traditional solutions. One can define an ad hoc
+intermediate text file format. This disadvantage is that there are no names for
+the pieces of the format, and that such formats usually lack of documentation
+because of this. Another solution would be to have a binary representation,
+either as language-dependent or language-independent structure (example of the
+latter can be found in RPC implementations). The disadvantage is that it is
+harder to view such representations, one has to write pretty printers for this
+purpose. It is also more difficult to enter test data; XML is plain text that
+can be written using an arbitrary editor (Emacs has even a good XML mode,
+PSGML). All these alternatives suffer from a missing structure checker,
+i.e. the programs processing these formats usually do not check the input file
+or input object in detail; XML parsers check the syntax of the input (the
+so-called well-formedness check), and the advanced parsers like &markup; even
+verify that the structure matches the DTD (the so-called validation).
+</para>
+	      
+	    </listitem>
+
+	    <listitem>
+	      <para>
+XML can be used as configurable communication language. A fundamental problem
+of every communication is that sender and receiver must follow the same
+conventions about the language. For data exchange, the question is usually
+which data records and fields are available, how they are syntactically
+composed, and which values are possible for the various fields. Similar
+questions arise for text document exchange. XML does not answer these problems
+completely, but it reduces the number of ambiguities for such conventions: The
+outlines of the syntax are specified by the DTD (but not necessarily the
+details), and XML introduces canonical names for the components of documents
+such that it is simpler to describe the rest of the syntax and the semantics
+informally.
+</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>
+XML is a data storage format. Currently, every software product tends to use
+its own way to store data; commercial software often does not describe such
+formats, and it is a pain to integrate such software into a bigger project. 
+XML can help to improve this situation when several applications share the same
+syntax of data files. DTDs are then neutral instances that check the format of
+data files independent of applications. 
+</para>
+	    </listitem>
+
+	  </itemizedlist>
+	</sect2>
+      </sect1>
+
+
+      <!-- ================================================== -->
+
+
+      <sect1>
+	<title>Highlights of XML</title>
+
+	<para>
+This section explains many of the features of XML, but not all, and some
+features not in detail. For a complete description, see the <ulink
+url="http://www.w3.org/TR/1998/REC-xml-19980210.html">XML
+specification</ulink>.
+</para>
+
+	<sect2>
+	  <title>The DTD and the instance</title>
+	  <para>
+The DTD contains various declarations; in general you can only use a feature if
+you have previously declared it. The document instance file may contain the
+full DTD, but it is also possible to split the DTD into an internal and an
+external subset. A document must begin as follows if the full DTD is included:
+
+<programlisting>
+&lt;?xml version="1.0" encoding="<replaceable>Your encoding</replaceable>"?&gt;
+&lt;!DOCTYPE <replaceable>root</replaceable> [
+  <replaceable>Declarations</replaceable>
+]&gt;
+</programlisting>
+
+These declarations are called the <emphasis>internal subset</emphasis>. Note
+that the usage of entities and conditional sections is restricted within the
+internal subset.
+</para>
+	  <para>
+If the declarations are located in a different file, you can refer to this file
+as follows:
+
+<programlisting>
+&lt;?xml version="1.0" encoding="<replaceable>Your encoding</replaceable>"?&gt;
+&lt;!DOCTYPE <replaceable>root</replaceable> SYSTEM "<replaceable>file name</replaceable>"&gt;
+</programlisting>
+
+The declarations in the file are called the <emphasis>external
+subset</emphasis>. The file name is called the <emphasis>system
+identifier</emphasis>. 
+It is also possible to refer to the file by a so-called
+<emphasis>public identifier</emphasis>, but most XML applications won't use
+this feature.
+</para>
+	  <para>
+You can also specify both internal and external subsets. In this case, the
+declarations of both subsets are mixed, and if there are conflicts, the
+declaration of the internal subset overrides those of the external subset with
+the same name. This looks as follows:
+
+<programlisting>
+&lt;?xml version="1.0" encoding="<replaceable>Your encoding</replaceable>"?&gt;
+&lt;!DOCTYPE <replaceable>root</replaceable>  SYSTEM "<replaceable>file name</replaceable>" [
+  <replaceable>Declarations</replaceable>
+]&gt;
+</programlisting>
+</para>
+
+	  <para>
+The XML declaration (the string beginning with <literal>&lt;?xml</literal> and
+ending at <literal>?&gt;</literal>) should specify the encoding of the
+file. Common values are ISO-8859-1, and UTF-8. Note that every file parsed by
+the XML processor can begin with an XML declaration and that every file may
+have its own encoding.
+</para>
+
+	  <para>
+The name of the root element must be mentioned directly after the
+<literal>DOCTYPE</literal> string. This means that a full document instance
+looks like
+
+<programlisting>
+&lt;?xml version="1.0" encoding="<replaceable>Your encoding</replaceable>"?&gt;
+&lt;!DOCTYPE <replaceable>root</replaceable>  SYSTEM "<replaceable>file name</replaceable>" [
+  <replaceable>Declarations</replaceable>
+]&gt;
+
+&lt;<replaceable>root</replaceable>&gt;
+  <replaceable>inner contents</replaceable>
+&lt;/<replaceable>root</replaceable>&gt;
+</programlisting>
+</para>
+	</sect2>
+
+        <!-- ======================================== -->
+
+	<sect2>
+	  <title>Reserved characters</title>
+	  <para>
+Some characters are generally reserved to indicate markup such that they cannot
+be used for character data. These characters are &lt;, &gt;, and
+&amp;. Furthermore, single and double quotes are sometimes reserved. If you
+want to include such a character as character, write it as follows:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>&amp;lt;</literal> instead of &lt;
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>&amp;gt;</literal> instead of &gt;
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>&amp;amp;</literal> instead of &amp;
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>&amp;apos;</literal> instead of '
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>&amp;quot;</literal> instead of "
+</para>
+	      </listitem>
+	    </itemizedlist>
+
+All other characters are free in the document instance. It is possible to
+include a character by its position in the Unicode alphabet: 
+
+<programlisting>
+&amp;#<replaceable>n</replaceable>;
+</programlisting>
+
+where <replaceable>n</replaceable> is the decimal number of the
+character. Alternatively, you can specify the character by its hexadecimal
+number: 
+
+<programlisting>
+&amp;#x<replaceable>n</replaceable>;
+</programlisting>
+
+In the scope of declarations, the character % is no longer free. To include it
+as character, you must use the notations <literal>&amp;#37;</literal> or
+<literal>&amp;#x25;</literal>.
+</para>
+	</sect2>
+
+
+        <!-- ======================================== -->
+
+	<sect2>
+	  <title>Elements and ELEMENT declarations</title>
+
+	  <para>
+Elements structure the document instance in a hierarchical way. There is a
+top-level element, the <emphasis>root element</emphasis>, which contains a
+sequence of inner elements and character sections. The inner elements are
+structured in the same way. Every element has an <emphasis>element
+type</emphasis>. The beginning of the element is indicated by a <emphasis>start
+tag</emphasis>, written
+
+<programlisting>
+&lt;<replaceable>element-type</replaceable>&gt;
+</programlisting>
+
+and the element continues until the corresponding <emphasis>end tag</emphasis>
+is reached:
+
+<programlisting>
+&lt;/<replaceable>element-type</replaceable>&gt;
+</programlisting>
+
+In XML, it is not allowed to omit start or end tags, even if the DTD would
+permit this. Note that there are no special rules how to interpret spaces or
+newlines near start or end tags; all spaces and newlines count.
+</para>
+
+	  <para>
+Every element type must be declared before it can be used. The declaration
+consists of two parts: the ELEMENT declaration describes the content model,
+i.e. which inner elements are allowed; the ATTLIST declaration describes the
+attributes of the element.
+</para>
+
+	  <para>
+An element can simply allow everything as content. This is written:
+
+<programlisting>
+&lt!ELEMENT <replaceable>name</replaceable> ANY&gt;
+</programlisting>
+
+On the opposite, an element can be forced to be empty; declared by:
+
+<programlisting>
+&lt!ELEMENT <replaceable>name</replaceable> EMPTY&gt;
+</programlisting>
+
+Note that there is an abbreviated notation for empty element instances:
+<literal>&lt;<replaceable>name</replaceable>/&gt;</literal>. 
+</para>
+
+	  <para>
+There are two more sophisticated forms of declarations: so-called
+<emphasis>mixed declarations</emphasis>, and <emphasis>regular
+expressions</emphasis>. An element with mixed content contains character data
+interspersed with inner elements, and the set of allowed inner elements can be
+specified. In contrast to this, a regular expression declaration does not allow
+character data, but the inner elements can be described by the more powerful
+means of regular expressions.
+</para>
+
+	  <para>
+A declaration for mixed content looks as follows:
+
+<programlisting>
+&lt;!ELEMENT <replaceable>name</replaceable> (#PCDATA | <replaceable>element<subscript>1</subscript></replaceable> | ... | <replaceable>element<subscript>n</subscript></replaceable> )*&gt;
+</programlisting>
+
+or if you do not want to allow any inner element, simply
+
+<programlisting>
+&lt;!ELEMENT <replaceable>name</replaceable> (#PCDATA)&gt;
+</programlisting>
+</para>
+
+
+<blockquote>
+	      <title>Example</title>
+	      <para>
+If element type <literal>q</literal> is declared as
+
+<programlisting>
+<![CDATA[<!ELEMENT q (#PCDATA | r | s)*>]]>
+</programlisting>
+
+this is a legal instance:
+
+<programlisting>
+<![CDATA[<q>This is character data<r></r>with <s></s>inner elements</q>]]>
+</programlisting>
+
+But this is illegal because <literal>t</literal> has not been enumerated in the
+declaration:
+
+<programlisting>
+<![CDATA[<q>This is character data<r></r>with <t></t>inner elements</q>]]>
+</programlisting>
+</para>
+	    </blockquote>
+	  
+	  <para>
+The other form uses a regular expression to describe the possible contents:
+
+<programlisting>
+&lt;!ELEMENT <replaceable>name</replaceable> <replaceable>regexp</replaceable>&gt;
+</programlisting>
+
+The following well-known regexp operators are allowed:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal><replaceable>element-name</replaceable></literal>
+</para>
+	      </listitem>
+	      
+	      <listitem>
+		<para>
+<literal>(<replaceable>subexpr<subscript>1</subscript></replaceable> ,</literal> ... <literal>, <replaceable>subexpr<subscript>n</subscript></replaceable> )</literal>
+</para>
+	      </listitem>
+	      
+	      <listitem>
+		<para>
+<literal>(<replaceable>subexpr<subscript>1</subscript></replaceable> |</literal> ... <literal>| <replaceable>subexpr<subscript>n</subscript></replaceable> )</literal>
+</para>
+	      </listitem>
+	      
+	      <listitem>
+		<para>
+<literal><replaceable>subexpr</replaceable>*</literal>
+</para>
+	      </listitem>
+	      
+	      <listitem>
+		<para>
+<literal><replaceable>subexpr</replaceable>+</literal>
+</para>
+	      </listitem>
+	      
+	      <listitem>
+		<para>
+<literal><replaceable>subexpr</replaceable>?</literal>
+</para>
+	      </listitem>
+	    </itemizedlist>
+
+The <literal>,</literal> operator indicates a sequence of sub-models, the
+<literal>|</literal> operator describes alternative sub-models. The
+<literal>*</literal> indicates zero or more repetitions, and
+<literal>+</literal> one or more repetitions. Finally, <literal>?</literal> can
+be used for optional sub-models. As atoms the regexp can contain names of
+elements; note that it is not allowed to include <literal>#PCDATA</literal>.
+</para>
+
+	  <para>
+Please note that the exact syntax of the regular expressions is rather
+strange. The outermost expression must not be a plain element name, as in
+<literal>&lt;!ELEMENT x y&gt;</literal>; but a sequence or alternative with n=1
+is allowed: <literal>&lt;!ELEMENT x (y)&gt;</literal> is correct. Similarly, it
+is not allowed that the outermost expression is a repeated or optional element;
+again additional parantheses solve the problem. This means that if you have
+trouble with the syntax of regular expressions, try to add further
+parantheses. Another strange feature is where spaces are allowed and where
+not. You can put additional spaces everywhere, but not between a closing
+parenthesis and <literal>*</literal>, <literal>+</literal>, or
+<literal>?</literal>.
+</para>
+
+	  <para>
+Note that there is another restriction on regular expressions which must be
+deterministic. This means that the parser must be able to see by looking at the
+next token which alternative is actually used, or whether the repetition
+stops. The reason for this is simply compatability with SGML.
+</para>
+
+	  <blockquote>
+	    <title>Example</title>
+	    <para>
+The elements are declared as follows:
+
+<programlisting>
+<![CDATA[<!ELEMENT q (r?, (s | t)+)>
+<!ELEMENT r (#PCDATA)>
+<!ELEMENT s EMPTY>
+<!ELEMENT t (q | r)>
+]]></programlisting>
+
+This is a legal instance:
+
+<programlisting>
+<![CDATA[<q><r>Some characters</r><s/></q>]]>
+</programlisting>
+
+It would be illegal to leave <literal><![CDATA[<s/>]]></literal> out because at
+least one instance of <literal>s</literal> or <literal>t</literal> must be
+present. It would be illegal, too, if characters existed outside the
+<literal>r</literal> element; the only exception is white space. -- This is
+legal, too:
+
+<programlisting>
+<![CDATA[<q><s/><t><q><s/></q></t></q>]]>
+</programlisting>
+</para>
+	  </blockquote>
+
+	</sect2>
+
+        <!-- ======================================== -->
+
+	<sect2>
+	  <title>Attribute lists and ATTLIST declarations</title>
+	  <para>
+Elements may have attributes. These are put into the start tag of an element as
+follows:
+
+<programlisting>
+&lt;<replaceable>element-name</replaceable> <replaceable>attribute<subscript>1</subscript></replaceable>="<replaceable>value<subscript>1</subscript></replaceable>" ... <replaceable>attribute<subscript>n</subscript></replaceable>="<replaceable>value<subscript>n</subscript></replaceable>"&gt;
+</programlisting>
+
+Instead of
+<literal>"<replaceable>value<subscript>k</subscript></replaceable>"</literal>
+it is also possible to use single quotes as in
+<literal>'<replaceable>value<subscript>k</subscript></replaceable>'</literal>.
+Note that you cannot use double quotes literally within the value of the
+attribute if double quotes are the delimiters; the same applies to single
+quotes. You can generally not use &lt; and &amp; as characters in attribute
+values. It is possible to include the paraphrases &amp;lt;, &amp;gt;,
+&amp;amp;, &amp;apos;, and &amp;quot; (and any other reference to a general
+entity as long as the entity is not defined by an external file) as well as
+&amp;#<replaceable>n</replaceable>;.
+</para>
+
+	  <para>
+Before you can use an attribute you must declare it. An ATTLIST declaration
+looks as follows:
+
+<programlisting>
+&lt;!ATTLIST <replaceable>element-name</replaceable> 
+          <replaceable>attribute-name</replaceable> <replaceable>attribute-type</replaceable> <replaceable>attribute-default</replaceable>
+          ...
+          <replaceable>attribute-name</replaceable> <replaceable>attribute-type</replaceable> <replaceable>attribute-default</replaceable>
+&gt;
+</programlisting>
+
+There are a lot of types, but most important are:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>CDATA</literal>: Every string is allowed as attribute value.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>NMTOKEN</literal>: Every nametoken is allowed as attribute
+value. Nametokens consist (mainly) of letters, digits, ., :, -, _ in arbitrary
+order.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>NMTOKENS</literal>: A space-separated list of nametokens is allowed as
+attribute value.
+</para>
+	      </listitem>
+	    </itemizedlist>
+
+The most interesting default declarations are:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>#REQUIRED</literal>: The attribute must be specified.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>#IMPLIED</literal>: The attribute can be specified but also can be
+left out. The application can find out whether the attribute was present or
+not. 
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>"<replaceable>value</replaceable>"</literal> or
+<literal>'<replaceable>value</replaceable>'</literal>: This particular value is
+used as default if the attribute is omitted in the element.
+</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+
+	  <blockquote>
+	    <title>Example</title>
+	    <para>
+This is a valid attribute declaration for element type <literal>r</literal>:
+
+<programlisting>
+<![CDATA[<!ATTLIST r 
+          x CDATA    #REQUIRED
+          y NMTOKEN  #IMPLIED
+          z NMTOKENS "one two three">
+]]></programlisting>
+
+This means that <literal>x</literal> is a required attribute that cannot be
+left out, while <literal>y</literal> and <literal>z</literal> are optional. The
+XML parser indicates the application whether <literal>y</literal> is present or
+not, but if <literal>z</literal> is missing the default value
+"one two three" is returned automatically. 
+</para>
+
+	    <para>
+This is valid usage of these attributes:
+
+<programlisting>
+<![CDATA[<r x="He said: &quot;I don't like quotes!&quot;" y='1'>]]>
+</programlisting>
+</para>
+	  </blockquote>
+
+	</sect2>
+
+	<sect2>
+	  <title>Parsed entities</title>
+	  <para>
+Elements describe the logical structure of the document, while
+<emphasis>entities</emphasis> determine the physical structure. Entities are
+the pieces of text the parser operates on, mostly files and macros. Entities
+may be <emphasis>parsed</emphasis> in which case the parser reads the text and
+interprets it as XML markup, or <emphasis>unparsed</emphasis> which simply
+means that the data of the entity has a foreign format (e.g. a GIF icon).
+</para>
+
+	  <para>If the parsed entity is going to be used as part of the DTD, it
+is called a <emphasis>parameter entity</emphasis>. You can declare a parameter
+entity with a fixed text as content by:
+
+<programlisting>
+&lt;!ENTITY % <replaceable>name</replaceable> "<replaceable>value</replaceable>"&gt;
+</programlisting>
+
+Within the DTD, you can <emphasis>refer to</emphasis> this entity, i.e. read
+the text of the entity, by:
+
+<programlisting>
+%<replaceable>name</replaceable>;
+</programlisting>
+
+Such entities behave like macros, i.e. when they are referred to, the
+macro text is inserted and read instead of the original text.
+
+<blockquote>
+	      <title>Example</title>
+	      <para>
+For example, you can declare two elements with the same content model by:
+
+<programlisting>
+<![CDATA[
+<!ENTITY % model "a | b | c">
+<!ELEMENT x (%model;)>
+<!ELEMENT y (%model;)>
+]]>
+</programlisting>
+
+</para>
+	    </blockquote>
+
+If the contents of the entity are given as string constant, the entity is
+called an <emphasis>internal</emphasis> entity. It is also possible to name a
+file to be used as content (an <emphasis>external</emphasis> entity):
+
+<programlisting>
+&lt;!ENTITY % <replaceable>name</replaceable> SYSTEM "<replaceable>file name</replaceable>"&gt;
+</programlisting>
+
+There are some restrictions on parameter entities:
+
+<itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+If the internal parameter entity contains the first token of a declaration
+(i.e. <literal>&lt;!</literal>), it must also contain the last token of the
+declaration, i.e. the <literal>&gt;</literal>. This means that the entity
+either contains a whole number of complete declarations, or some text from the
+middle of one declaration.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+If the internal parameter entity contains a left paranthesis, it must also
+contains the corresponding right paranthesis.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+An external parameter entity must always consist of a whole number of complete
+declarations.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+In the internal subset of the DTD, a reference to a parameter entity (internal
+or external) is only allowed at positions where a new declaration can start.
+</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+
+	  <para>
+If the parsed entity is going to be used in the document instance, it is called
+a <emphasis>general entity</emphasis>. Such entities can be used as
+abbreviations for frequent phrases, or to include external files. Internal
+general entities are declared as follows:
+
+<programlisting>
+&lt;!ENTITY <replaceable>name</replaceable> "<replaceable>value</replaceable>"&gt;
+</programlisting>
+
+External general entities are declared this way:
+
+<programlisting>
+&lt;!ENTITY <replaceable>name</replaceable> SYSTEM "<replaceable>file name</replaceable>"&gt;
+</programlisting>
+
+References to general entities are written as:
+
+<programlisting>
+&<replaceable>name</replaceable>;
+</programlisting>
+
+The main difference between parameter and general entities is that the former
+are only recognized in the DTD and that the latter are only recognized in the
+document instance. As the DTD is parsed before the document, the parameter
+entities are expanded first; for example it is possible to use the content of a
+parameter entity as the name of a general entity:
+<literal>&amp;#38;%name;;</literal><footnote><para>This construct is only
+allowed within the definition of another entity. It is not recommended.</para>
+</footnote>.
+</para>
+	  <para>
+General entities must respect the element hierarchy. This means that there must
+be an end tag for every start tag in the entity value, and that end tags
+without corresponding start tags are not allowed.
+</para>
+
+	  <blockquote>
+	    <title>Example</title>
+	    <para>
+If the author of a document changes sometimes, it is worthwhile to set up a
+general entity containing the names of the authors. If the author changes, you
+need only to change the definition of the entity, and do not need to check all
+occurrences of authors' names:
+
+<programlisting>
+<![CDATA[
+<!ENTITY authors "Gerd Stolpmann">
+]]>
+</programlisting>
+
+In the document text, you can now refer to the author names by writing
+<literal>&amp;authors;</literal>.
+</para>
+
+	    <para>
+The following two entities are illegal because the elements in the definition
+do not nest properly:
+
+<programlisting>
+<![CDATA[
+<!ENTITY lengthy-tag "<section textcolor='white' background='graphic'>">
+<!ENTITY nonsense    "<a></b>">
+]]></programlisting>
+</para>
+	  </blockquote>
+
+	  <para>
+Earlier in this introduction we explained that there are substitutes for
+reserved characters: &amp;lt;, &amp;gt;, &amp;amp;, &amp;apos;, and
+&amp;quot;. These are simply predefined general entities; note that they are
+the only predefined entities. It is allowed to define these entities again
+as long as the meaning is unchanged.
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Notations and unparsed entities</title>
+	  <para>
+Unparsed entities have a foreign format and can thus not be read by the XML
+parser. Unparsed entities are always external. The format of an unparsed entity
+must have been declared, such a format is called a
+<emphasis>notation</emphasis>. The entity can then be declared by referring to
+this notation. As unparsed entities do not contain XML text, it is not possible
+to include them directly into the document; you can only declare attributes
+such that names of unparsed entities are acceptable values.
+</para>
+
+	  <para>
+As you can see, unparsed entities are too complicated in order to have any
+purpose. It is almost always better to simply pass the name of the data file as
+normal attribute value, and let the application recognize and process the
+foreign format. 
+</para>
+	</sect2>
+
+      </sect1>
+
+
+      <!-- ================================================== -->
+
+
+      <sect1 id="sect.readme.dtd">
+	<title>A complete example: The <emphasis>readme</emphasis> DTD</title>
+	<para>
+The reason for <emphasis>readme</emphasis> was that I often wrote two versions
+of files such as README and INSTALL which explain aspects of a distributed
+software archive; one version was ASCII-formatted, the other was written in
+HTML. Maintaining both versions means double amount of work, and changes
+of one version may be forgotten in the other version. To improve this situation
+I invented the <emphasis>readme</emphasis> DTD which allows me to maintain only
+one source written as XML document, and to generate the ASCII and the HTML
+version from it.
+</para>
+
+	<para>
+In this section, I explain only the DTD. The <emphasis>readme</emphasis> DTD is
+contained in the &markup; distribution together with the two converters to
+produce ASCII and HTML. Another <link
+linkend="sect.readme.to-html">section</link> of this manual describes the HTML
+converter.
+</para>
+
+	<para>
+The documents have a simple structure: There are up to three levels of nested
+sections, paragraphs, item lists, footnotes, hyperlinks, and text emphasis. The
+outermost element has usually the type <literal>readme</literal>, it is
+declared by
+
+<programlisting>
+<![CDATA[<!ELEMENT readme (sect1+)>
+<!ATTLIST readme
+          title CDATA #REQUIRED>
+]]></programlisting>
+
+This means that this element contains one or more sections of the first level
+(element type <literal>sect1</literal>), and that the element has a required
+attribute <literal>title</literal> containing character data (CDATA). Note that
+<literal>readme</literal> elements must not contain text data.
+</para>
+
+	<para>
+The three levels of sections are declared as follows:
+
+<programlisting>
+<![CDATA[<!ELEMENT sect1 (title,(sect2|p|ul)+)>
+
+<!ELEMENT sect2 (title,(sect3|p|ul)+)>
+
+<!ELEMENT sect3 (title,(p|ul)+)>
+]]></programlisting>
+
+Every section has a <literal>title</literal> element as first subelement. After
+the title an arbitrary but non-empty sequence of inner sections, paragraphs and
+item lists follows. Note that the inner sections must belong to the next higher
+section level; <literal>sect3</literal> elements must not contain inner
+sections because there is no next higher level.
+</para>
+
+	<para>
+Obviously, all three declarations allow paragraphs (<literal>p</literal>) and
+item lists (<literal>ul</literal>). The definition can be simplified at this
+point by using a parameter entity:
+
+<programlisting>
+<![CDATA[<!ENTITY % p.like "p|ul">
+
+<!ELEMENT sect1 (title,(sect2|%p.like;)+)>
+
+<!ELEMENT sect2 (title,(sect3|%p.like;)+)>
+
+<!ELEMENT sect3 (title,(%p.like;)+)>
+]]></programlisting>
+
+Here, the entity <literal>p.like</literal> is nothing but a macro abbreviating
+the same sequence of declarations; if new elements on the same level as
+<literal>p</literal> and <literal>ul</literal> are later added, it is
+sufficient only to change the entity definition. Note that there are some
+restrictions on the usage of entities in this context; most important, entities
+containing a left paranthesis must also contain the corresponding right
+paranthesis. 
+</para>
+
+	<para>
+Note that the entity <literal>p.like</literal> is a
+<emphasis>parameter</emphasis> entity, i.e. the ENTITY declaration contains a
+percent sign, and the entity is referred to by
+<literal>%p.like;</literal>. This kind of entity must be used to abbreviate
+parts of the DTD; the <emphasis>general</emphasis> entities declared without
+percent sign and referred to as <literal>&amp;name;</literal> are not allowed
+in this context.
+</para>
+
+	<para>
+The <literal>title</literal> element specifies the title of the section in
+which it occurs. The title is given as character data, optionally interspersed
+with line breaks (<literal>br</literal>):
+
+<programlisting>
+<![CDATA[<!ELEMENT title (#PCDATA|br)*>
+]]></programlisting>
+
+Compared with the <literal>title</literal> <emphasis>attribute</emphasis> of
+the <literal>readme</literal> element, this element allows inner markup
+(i.e. <literal>br</literal>) while attribute values do not: It is an error if
+an attribute value contains the left angle bracket &lt; literally such that it
+is impossible to include inner elements. 
+</para>
+
+	<para>
+The paragraph element <literal>p</literal> has a structure similar to
+<literal>title</literal>, but it allows more inner elements:
+
+<programlisting>
+<![CDATA[<!ENTITY % text "br|code|em|footnote|a">
+
+<!ELEMENT p (#PCDATA|%text;)*>
+]]></programlisting>
+
+Line breaks do not have inner structure, so they are declared as being empty:
+
+<programlisting>
+<![CDATA[<!ELEMENT br EMPTY>
+]]></programlisting>
+
+This means that really nothing is allowed within <literal>br</literal>; you
+must always write <literal><![CDATA[<br></br>]]></literal> or abbreviated
+<literal><![CDATA[<br/>]]></literal>.
+</para>
+
+	<para>
+Code samples should be marked up by the <literal>code</literal> tag; emphasized
+text can be indicated by <literal>em</literal>:
+
+<programlisting>
+<![CDATA[<!ELEMENT code (#PCDATA)>
+
+<!ELEMENT em (#PCDATA|%text;)*>
+]]></programlisting>
+
+That <literal>code</literal> elements are not allowed to contain further markup
+while <literal>em</literal> elements do is a design decision by the author of
+the DTD.
+</para>
+
+	<para>
+Unordered lists simply consists of one or more list items, and a list item may
+contain paragraph-level material:
+
+<programlisting>
+<![CDATA[<!ELEMENT ul (li+)>
+
+<!ELEMENT li (%p.like;)*>
+]]></programlisting>
+
+Footnotes are described by the text of the note; this text may contain
+text-level markup. There is no mechanism to describe the numbering scheme of
+footnotes, or to specify how footnote references are printed.
+
+<programlisting>
+<![CDATA[<!ELEMENT footnote (#PCDATA|%text;)*>
+]]></programlisting>
+
+Hyperlinks are written as in HTML. The anchor tag contains the text describing
+where the link points to, and the <literal>href</literal> attribute is the
+pointer (as URL). There is no way to describe locations of "hash marks". If the
+link refers to another <emphasis>readme</emphasis> document, the attribute
+<literal>readmeref</literal> should be used instead of <literal>href</literal>.
+The reason is that the converted document has usually a different system
+identifier (file name), and the link to a converted document must be
+converted, too.
+
+<programlisting>
+<![CDATA[<!ELEMENT a (#PCDATA)*>
+<!ATTLIST a 
+          href      CDATA #IMPLIED
+          readmeref CDATA #IMPLIED
+>
+]]></programlisting>
+
+Note that although it is only sensible to specify one of the two attributes,
+the DTD has no means to express this restriction.
+</para>
+
+<para>
+So far the DTD. Finally, here is a document for it:
+
+<programlisting>
+<![CDATA[
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd">
+<readme title="How to use the readme converters">
+<sect1>
+  <title>Usage</title>
+  <p>
+    The <em>readme</em> converter is invoked on the command line by:
+  </p>
+  <p>
+    <code>readme [ -text | -html ] input.xml</code>
+  </p>
+  <p>
+    Here a list of options:
+  </p>
+  <ul>
+    <li>
+      <p><code>-text</code>: specifies that ASCII output should be produced</p>
+    </li>
+    <li>
+      <p><code>-html</code>: specifies that HTML output should be produced</p>
+    </li>
+  </ul>
+  <p>
+    The input file must be given on the command line. The converted output is
+    printed to <em>stdout</em>.
+  </p>
+</sect1>
+<sect1>
+  <title>Author</title>
+  <p>
+    The program has been written by
+    <a href="mailto:Gerd.Stolpmann@darmstadt.netsurf.de">Gerd Stolpmann</a>.
+  </p>
+</sect1>
+</readme>
+]]></programlisting>
+
+</para>
+
+
+      </sect1>
+    </chapter>
+
+<!-- ********************************************************************** -->
+
+    <chapter>
+      <title>Using &markup;</title>
+
+      <sect1>
+	<title>Validation</title>
+	<para>
+The parser can be used to <emphasis>validate</emphasis> a document. This means
+that all the constraints that must hold for a valid document are actually
+checked. Validation is the default mode of &markup;, i.e. every document is
+validated while it is being parsed.
+</para>
+
+	<para>
+In the <literal>examples</literal> directory of the distribution you find the
+<literal>validate</literal> application. It is invoked in the following way:
+
+<programlisting>
+validate [ -wf ] <replaceable>file</replaceable>...
+</programlisting>
+
+The files mentioned on the command line are validated, and every warning and
+every error messages are printed to stderr.
+</para>
+
+	<para>
+The -wf switch modifies the behaviour such that a well-formedness parser is
+simulated. In this mode, the ELEMENT, ATTLIST, and NOTATION declarations of the
+DTD are ignored, and only the ENTITY declarations will take effect. This mode
+is intended for documents lacking a DTD. Please note that the parser still
+operates as validator, with some features switched off; the average
+well-formedness parser that is currently being offered everywhere simply
+ignores declarations.
+</para>
+
+	<para>
+The <literal>validate</literal> application is the simplest sensible program
+using &markup;, you may consider it as "hello world" program. 
+</para>
+      </sect1>
+
+
+      <!-- ================================================== -->
+
+
+      <sect1>
+	<title>How to parse a document from an application</title>
+	<para>
+Let me first give a rough overview of the object model of the parser. The
+following items are represented by objects:
+
+<itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>
+<emphasis>Documents:</emphasis> The document representation is more or less the
+anchor for the application; all accesses to the parsed entities start here. It
+is described by the class <literal>document</literal> contained in the module
+<literal>Markup_document</literal>. You can get some global information, such
+as the XML declaration the document begins with, the DTD of the document,
+global processing instructions, and most important, the document tree. 
+</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>
+<emphasis>The contents of documents:</emphasis> The contents have the structure
+of a tree: Elements contain other elements and text<footnote><para>Elements may
+also contain processing instructions. Unlike other document models, &markup;
+separates processing instructions from the rest of the text and provides a
+second interface to access them.</para> </footnote>. The common type to
+represent both kinds of content is <literal>node</literal> which is a class
+type that unifies the properties of elements and character data. Every node has
+a list of children (which is empty if the element is empty or the node
+represents text); nodes may have attributes; nodes have always text
+contents. There are two implementations of <literal>node</literal>, the class
+<literal>element_impl</literal> for elements, and the class
+<literal>data_impl</literal> for text data. You find these classes and class
+types in the module <literal>Markup_document</literal>, too.
+</para>
+
+	      <para>
+Note that attribute lists are represented by non-class values.
+</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>
+<emphasis>The node extension:</emphasis> For advanced usage, every node of the
+document may have an associated <emphasis>extension</emphasis> which is simply
+a second object. This object must have the three methods
+<literal>clone</literal>, <literal>node</literal>, and
+<literal>set_node</literal> as bare minimum, but you are free to add methods as
+you want. This is the preferred way to add functionality to the document
+tree<footnote><para>Due to the type system it is more or less impossible to
+derive recursive classes in O'Caml. To get around this, it is common practice
+to put the modifiable or extensible part of recursive objects into parallel
+objects.</para> </footnote>. The class type <literal>extension</literal> is
+defined in <literal>Markup_document</literal>, too.
+</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>
+<emphasis>The DTD:</emphasis> Sometimes it is necessary to access the DTD of a
+document; the average application does not need this feature. The class
+<literal>dtd</literal> describes DTDs, and makes it possible to get
+representations of element, entity, and notation declarations as well as
+processing instructions contained in the DTD. This class, and
+<literal>dtd_element</literal>, <literal>dtd_notation</literal>, and
+<literal>proc_instruction</literal> can be found in the module
+<literal>Markup_dtd</literal>. There are a couple of classes representing
+different kinds of entities; these can be found in the module
+<literal>Markup_entity</literal>. 
+</para>
+	    </listitem>
+	  </itemizedlist>
+
+Additionally, the following modules play a role:
+
+<itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>
+<emphasis>Markup_yacc:</emphasis> Here the main parsing functions such as
+<literal>parse_document_entity</literal> are located. Some additional types and
+functions allow the parser to be configured in a non-standard way.
+</para>
+	    </listitem>
+
+	    <listitem>
+	      <para>
+<emphasis>Markup_types:</emphasis> This is a collection of basic types and
+exceptions. 
+</para>
+	    </listitem>
+	  </itemizedlist>
+
+There are some further modules that are needed internally but are not part of
+the API.
+</para>
+
+	<para>
+Let the document to be parsed be stored in a file called
+<literal>doc.xml</literal>. The parsing process is started by calling the
+function
+
+<programlisting>
+val parse_document_entity : config -> source -> 'ext domspec -> 'ext document
+</programlisting>
+
+defined in the module <literal>Markup_yacc</literal>. The first argument
+specifies some global properties of the parser; it is recommended to start with
+the <literal>default_config</literal>. The second argument determines where the
+document to be parsed comes from; this may be a file, a channel, or an entity
+ID. To parse <literal>doc.xml</literal>, it is sufficient to pass <literal>File
+"doc.xml"</literal>. 
+</para>
+
+	<para>
+The third argument specifies the document object model to use. Roughly
+speaking, it determines which classes implement the node objects of which
+element types, and which extensions are to be used. The <literal>'ext</literal>
+polymorphic variable is the type of the extension. For the moment, let us
+simply pass <literal>default_dom</literal> as this argument, and ignore it.
+</para>
+
+	<para>
+So the following expression parses <literal>doc.xml</literal>:
+
+<programlisting>
+open Markup_yacc
+let d = parse_document_entity default_config (File "doc.xml") default_dom
+</programlisting>
+
+Note that <literal>default_config</literal> implies that warnings are collected
+but not printed. Errors raise one of the exception defined in
+<literal>Markup_types</literal>; to get readable errors and warnings catch the
+exceptions as follows:
+
+<programlisting>
+<![CDATA[let rec print_error e =
+  match e with
+      Markup_types.At(where,what) ->
+        print_endline where;
+        print_error what
+    | _ ->
+        print_endline (Printexc.to_string e)
+
+try
+  let d = parse_document_entity default_config (File "doc.xml") default_dom
+  in
+    let s = default_config.warner # print_warnings in
+    if s <> "" then print_endline s;
+    default_config.warner # reset
+    ...
+with
+   e ->
+     let s = default_config.warner # print_warnings in
+     if s <> "" then print_endline s;
+     default_config.warner # reset;
+     print_error e
+]]></programlisting>
+
+Now <literal>d</literal> is an object of the <literal>document</literal>
+class. If you want the node tree, you can get the root element by
+
+<programlisting>
+let root = d # root
+</programlisting>
+
+and if you would rather like to access the DTD, determine it by
+
+<programlisting>
+let dtd = d # dtd
+</programlisting>
+
+As it is more interesting, let us investigate the node tree now. Given the root
+element, it is possible to recursively traverse the whole tree. The children of
+a node <literal>n</literal> are returned by the method
+<literal>sub_nodes</literal>, and the type of a node is returned by
+<literal>node_type</literal>. This function traverses the tree, and prints the
+type of each node:
+
+<programlisting>
+<![CDATA[let rec print_structure n =
+  let ntype = n # node_type in
+  match ntype with
+    T_element name ->
+      print_endline ("Element of type " ^ name);
+      let children = n # sub_nodes in
+      List.iter print_structure children
+  | T_data ->
+      print_endline "Data"
+]]></programlisting>
+
+You can call this function by
+
+<programlisting>
+print_structure root
+</programlisting>
+
+The type returned by <literal>node_type</literal> is either <literal>T_element
+name</literal> or <literal>T_data</literal>. The <literal>name</literal> of the
+element type is the string included in the angle brackets. Note that only
+elements have children; data nodes are always leaves of the tree.
+</para>
+
+	<para>
+There are some more methods in order to access a parsed node tree:
+
+<itemizedlist mark="bullet" spacing="compact">
+	    <listitem>
+	      <para>
+<literal>n # parent</literal>: Returns the parent node, or raises
+<literal>Not_found</literal>
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>
+<literal>n # root</literal>: Returns the root of the node tree. 
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>
+<literal>n # attribute a</literal>: Returns the value of the attribute with
+name <literal>a</literal>. If <literal>a</literal> has been declared, one of
+the following values are possible: <literal>Value s</literal>
+indicating that the attribute contains a single value;
+<literal>Valuelist sl</literal> indicating that this attribute has a token list
+as value (this is possible for the attribute types IDREFS, ENTITIES, and
+NMTOKENS); <literal>Implied_value</literal> indicating that the attribute has
+been left out and was declared in the DTD as <literal>#IMPLIED</literal>. Note
+that if the attribute is absent and the DTD declared a default value, this
+method will always return the default value. Only if you try to get a
+non-declared attribute, <literal>Not_found</literal> will be raised.
+</para>
+
+	      <para>
+Note that attibute values are normalized while being parsed. Most important,
+newline characters are turned into plain spaces.
+</para>
+	    </listitem>
+	    <listitem>
+	      <para>
+<literal>n # data</literal>: Returns the character data contained in the
+node. For data nodes, the meaning is obvious as this is the main content of
+data nodes. For element nodes, this method returns the concatenated contents of
+all inner data nodes.
+</para>
+	      <para>
+Note that entity references included in the text are resolved while they are
+being parsed; for example the text <![CDATA["a &lt;&gt; b"]]> will be returned
+as <![CDATA["a <> b"]]> by this method. Spaces of data nodes are always
+preserved. Newlines are preserved, but always converted to \n characters even
+if newlines are encoded as \r\n or \r.
+</para>
+	      <para>
+Note that elements that do <emphasis>not</emphasis> allow #PCDATA as content
+will not have data nodes as children. This means that spaces and newlines, the
+only character material allowed for such elements, are silently dropped.
+</para>
+	    </listitem>
+	  </itemizedlist>
+
+For example, if the task is to print all contents of elements with type
+"valuable" whose attribute "priority" is "1", this function can help:
+
+<programlisting>
+<![CDATA[let rec print_valuable_prio1 n =
+  let ntype = n # node_type in
+  match ntype with
+    T_element "valuable" when n # attribute "priority" = Value "1" ->
+      print_endline "Valuable node with priotity 1 found:";
+      print_endline (n # data)
+  | _ ->
+      let children = n # sub_nodes in
+      List.iter print_valuable_prio1 children
+]]></programlisting>
+
+You can call this function by:
+
+<programlisting>
+print_valuable_prio1 root
+</programlisting>
+
+If you like a DSSSL-like style, you can make the function
+<literal>process_children</literal> explicit:
+
+<programlisting>
+<![CDATA[let rec print_valuable_prio1 n =
+
+  let process_children n =
+    let children = n # sub_nodes in
+    List.iter print_valuable_prio1 children 
+  in
+
+  let ntype = n # node_type in
+  match ntype with
+    T_element "valuable" when n # attribute "priority" = Value "1" ->
+      print_endline "Valuable node with priotity 1 found:";
+      print_endline (n # data)
+  | _ ->
+      process_children n
+]]></programlisting>
+
+So far, O'Caml is now a simple "style-sheet language": You can form a big
+"match" expression to distinguish between all significant cases, and provide
+different reactions on different conditions. But this technique has
+limitations; the "match" expression tends to get larger and larger, and it is
+difficult to store intermediate values as there is only one big
+recursion. Alternatively, it is also possible to represent the various cases as
+classes, and to use dynamic method lookup to find the appropiate class. The
+next section explains this technique in detail.
+
+</para>
+      </sect1>
+
+
+      <!-- ================================================== -->
+
+
+      <sect1>
+	<title>Class-based processing of the node tree</title>
+	<para>
+By default, the parsed node tree consists of objects of the same class; this is
+a good design as long as you want only to access selected parts of the
+document. For complex transformations, it may be better to use different
+classes for objects describing different element types.
+</para>
+
+	<para>
+For example, if the DTD declares the element types <literal>a</literal>,
+<literal>b</literal>, and <literal>c</literal>, and if the task is to convert
+an arbitrary document into a printable format, the idea is to define for every
+element type a separate class that has a method <literal>print</literal>. The
+classes are <literal>eltype_a</literal>, <literal>eltype_b</literal>, and
+<literal>eltype_c</literal>, and every class implements
+<literal>print</literal> such that elements of the type corresponding to the
+class are converted to the output format.
+</para>
+
+	<para>
+The parser supports such a design directly. As it is impossible to derive
+recursive classes in O'Caml<footnote><para>The problem is that the subclass is
+usually not a subtype in this case because O'Caml has a contravariant subtyping
+rule. </para> </footnote>, the specialized element classes cannot be formed by
+simply inheriting from the built-in classes of the parser and adding methods
+for customized functionality. To get around this limitation, every node of the
+document tree is represented by <emphasis>two</emphasis> objects, one called
+"the node" and containing the recursive definition of the tree, one called "the
+extension". Every node object has a reference to the extension, and the
+extension has a reference to the node. The advantage of this model is that it
+is now possible to customize the extension without affecting the typing
+constraints of the recursive node definition.
+</para>
+
+	<para>
+Every extension must have the three methods <literal>clone</literal>,
+<literal>node</literal>, and <literal>set_node</literal>. The method
+<literal>clone</literal> creates a deep copy of the extension object and
+returns it; <literal>node</literal> returns the node object for this extension
+object; and <literal>set_node</literal> is used to tell the extension object
+which node is associated with it, this method is automatically called when the
+node tree is initialized. The following definition is a good starting point
+for these methods; usually <literal>clone</literal> must be further refined
+when instance variables are added to the class:
+
+<programlisting>
+<![CDATA[class custom_extension =
+  object (self)
+
+    val mutable node = (None : custom_extension node option)
+
+    method clone = {< >} 
+    method node =
+      match node with
+          None ->
+            assert false
+        | Some n -> n
+    method set_node n =
+      node <- Some n
+
+  end
+]]>
+</programlisting>
+
+This part of the extension is usually the same for all classes, so it is a good
+idea to consider <literal>custom_extension</literal> as the super-class of the
+further class definitions. Continuining the example of above, we can define the
+element type classes as follows:
+
+<programlisting>
+<![CDATA[class virtual abstract_extension =
+  object (self)
+    ... clone, node, set_node defined as above ...
+
+    method virtual print : out_channel -> unit
+  end
+
+class eltype_a =
+  object (self)
+    inherit abstract_extension
+    method print ch = ...
+  end
+
+class eltype_b =
+  object (self)
+    inherit abstract_extension
+    method print ch = ...
+  end
+
+class eltype_c =
+  object (self)
+    inherit abstract_extension
+    method print ch = ...
+  end
+]]></programlisting>
+
+The method <literal>print</literal> can now be implemented for every element
+type separately. Note that you get the associated node by invoking
+
+<programlisting>
+self # node
+</programlisting>
+
+and you get the extension object of a node <literal>n</literal> by writing 
+
+<programlisting>
+n # extension
+</programlisting>
+
+It is guaranteed that 
+
+<programlisting>
+self # node # extension == self
+</programlisting>
+
+always holds.
+</para>
+
+	<para>
+The remaining task is to configure the parser such that these extension classes
+are actually used. Here another problem arises: It is not possible to
+dynamically select the class of an object to be created. As workaround,
+&markup; allows the user to specify <emphasis>exemplar objects</emphasis> for
+the various element types; instead of creating the nodes of the tree by
+applying the <literal>new</literal> operator the nodes are produced by
+duplicating the exemplars. As object duplication preserves the class of the
+object, one can create fresh objects of every class for which previously an
+exemplar has been registered.
+</para>
+
+	<para>
+Exemplars are meant as objects without contents, the only interesting thing is
+that exemplars are instances of a certain class. The creation of an exemplar
+for an element node can be done by:
+
+<programlisting>
+let element_exemplar = new element_impl extension_exemplar
+</programlisting>
+
+And a data node exemplar is created by:
+
+<programlisting>
+let data_exemplar = new data_impl extension_exemplar ""
+</programlisting>
+
+The classes <literal>element_impl</literal> and <literal>data_impl</literal>
+are defined in the module <literal>Markup_document</literal>. The constructors
+initialize the fresh objects as empty objects, i.e. without children, without
+data contents, and so on. The <literal>extension_exemplar</literal> is the
+initial extension object the exemplars are associated with. 
+</para>
+
+	<para>
+Once the exemplars are created and stored somewhere (e.g. in a hash table), you
+can take an exemplar and create a concrete instance (with contents) by
+duplicating it. As user of the parser you are normally not concerned with this
+as this is part of the internal logic of the parser, but as background knowlege
+it is worthwhile to mention that the two methods
+<literal>create_element</literal> and <literal>create_data</literal> actually
+perform the duplication of the exemplar for which they are invoked,
+additionally apply modifications to the clone, and finally return the new
+object. Moreover, the extension object is copied, too, and the new node object
+is associated with the fresh extension object. Note that this is the reason why
+every extension object must have a <literal>clone</literal> method.
+</para>
+
+	<para>
+The configuration of the set of exemplars is passed to the
+<literal>parse_document_entity</literal> function as third argument. In our
+example, this argument can be set up as follows:
+
+<programlisting>
+<![CDATA[let domspec =
+  let map = Hashtbl.create 4 in
+  Hashtbl.add map (T_element "a") (new element_impl (new eltype_a));
+  Hashtbl.add map (T_element "b") (new element_impl (new eltype_b));
+  Hashtbl.add map (T_element "c") (new element_impl (new eltype_c));
+  Hashtbl.add map T_data          (new data_impl (new data_ext));
+  { map = map;
+    default_element = new element_impl (new eltype_a);
+  }
+]]></programlisting>
+
+The <literal>map</literal> component of the record contains a hash table which
+stores the exemplars for several node types. The hash table
+<emphasis>must</emphasis> define an exemplar for data nodes; here data nodes
+have extensions of class <literal>data_ext</literal>. Extensions of data nodes
+work in the same way as extensions of element nodes. If there are element types
+for which entries in the hash table are missing, the exemplar defined in the
+<literal>default_element</literal> component is used.
+</para>
+
+	<para>
+The configuration is now complete. You can still use the same parsing
+functions, only the initialization is a bit different. For example, call the
+parser by:
+
+<programlisting>
+let d = parse_document_entity default_config (File "doc.xml") domspec
+</programlisting>
+
+Note that the resulting document <literal>d</literal> has a usable type;
+especially the <literal>print</literal> method we added is visible. So you can
+print your document by
+
+<programlisting>
+d # print stdout
+</programlisting>
+</para>
+
+	<para>
+This object-oriented approach looks rather complicated; this is mostly caused
+by working around some problems of the strict typing system of O'Caml. Some
+auxiliary concepts such as extensions were needed, but the practical
+consequences of this are low. In the next section, one of the examples of the
+distribution is explained, a converter from <emphasis>readme</emphasis>
+documents to HTML.
+</para>
+
+      </sect1>
+
+
+      <!-- ================================================== -->
+
+
+      <sect1 id="sect.readme.to-html">
+	<title>Example: An HTML backend for the <emphasis>readme</emphasis>
+DTD</title>
+
+	<para>The converter from <emphasis>readme</emphasis> documents to HTML
+documents follows strictly the approach to define one class per element
+type. The HTML code is similar to the <emphasis>readme</emphasis> source,
+because of this most elements can be converted in the following way: Given the
+input element 
+
+<programlisting>
+<![CDATA[<e>content</e>]]>
+</programlisting>
+
+the conversion text is the concatenation of a computed prefix, the recursively
+converted content, and a computed suffix. 
+</para>
+
+	<para>
+Only one element type cannot be handled by this scheme:
+<literal>footnote</literal>. Footnotes are collected while they are found in
+the input text, and they are printed after the main text has been converted and
+printed. 
+</para>
+
+	<sect2>
+	  <title>Header</title>
+	  <para>
+<programlisting>&readme.code.header;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Type declarations</title>
+	  <para>
+<programlisting>&readme.code.footnote-printer;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>store</literal></title>
+	  <para>
+The <literal>store</literal> is a container for footnotes. You can add a
+footnote by invoking <literal>alloc_footnote</literal>; the argument is an
+object of the class <literal>footnote_printer</literal>, the method returns the
+number of the footnote. The interesting property of a footnote is that it can
+be converted to HTML, so a <literal>footnote_printer</literal> is an object
+with a method <literal>footnote_to_html</literal>. The class
+<literal>footnote</literal> which is defined below has a compatible method
+<literal>footnote_to_html</literal> such that objects created from it can be
+used as <literal>footnote_printer</literal>s.
+</para>
+	  <para>
+The other method, <literal>print_footnotes</literal> prints the footnotes as
+definition list, and is typically invoked after the main material of the page
+has already been printed. Every item of the list is printed by
+<literal>footnote_to_html</literal>.
+</para>
+
+	  <para>
+<programlisting>&readme.code.store;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Function <literal>escape_html</literal></title>
+	  <para>
+This function converts the characters &lt;, &gt;, &amp;, and " to their HTML
+representation. For example, 
+<literal>escape_html "&lt;&gt;" = "&amp;lt;&amp;gt;"</literal>. Other
+characters are left unchanged.
+
+<programlisting>&readme.code.escape-html;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Virtual class <literal>shared</literal></title>
+	  <para>
+This virtual class is the abstract superclass of the extension classes shown
+below. It defines the standard methods <literal>clone</literal>,
+<literal>node</literal>, and <literal>set_node</literal>, and declares the type
+of the virtual method <literal>to_html</literal>. This method recursively
+traverses the whole element tree, and prints the converted HTML code to the
+output channel passed as second argument. The first argument is the reference
+to the global <literal>store</literal> object which collects the footnotes.
+
+<programlisting>&readme.code.shared;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>only_data</literal></title>
+	  <para>
+This class defines <literal>to_html</literal> such that the character data of
+the current node is converted to HTML. Note that <literal>self</literal> is an
+extension object, <literal>self # node</literal> is the node object, and
+<literal>self # node # data</literal> returns the character data of the node. 
+
+<programlisting>&readme.code.only-data;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>readme</literal></title>
+	  <para>
+This class converts elements of type <literal>readme</literal> to HTML. Such an
+element is (by definition) always the root element of the document. First, the
+HTML header is printed; the <literal>title</literal> attribute of the element
+determines the title of the HTML page. Some aspects of the HTML page can be
+configured by setting certain parameter entities, for example the background
+color, the text color, and link colors. After the header, the
+<literal>body</literal> tag, and the headline have been printed, the contents
+of the page are converted by invoking <literal>to_html</literal> on all
+children of the current node (which is the root node). Then, the footnotes are
+appended to this by telling the global <literal>store</literal> object to print
+the footnotes. Finally, the end tags of the HTML pages are printed.
+</para>
+
+	  <para>
+This class is an example how to access the value of an attribute: The value is
+determined by invoking <literal>self # node # attribute "title"</literal>. As
+this attribute has been declared as CDATA and as being required, the value has
+always the form <literal>Value s</literal> where <literal>s</literal> is the
+string value of the attribute. 
+</para>
+
+	  <para>
+You can also see how entity contents can be accessed. A parameter entity object
+can be looked up by <literal>self # node # dtd # par_entity "name"</literal>,
+and by invoking <literal>replacement_text</literal> the value of the entity
+is returned after inner parameter and character entities have been
+processed. Note that you must use <literal>gen_entity</literal> instead of
+<literal>par_entity</literal> to access general entities.
+</para>
+
+	  <para>
+<programlisting>&readme.code.readme;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Classes <literal>section</literal>, <literal>sect1</literal>,
+<literal>sect2</literal>, and <literal>sect3</literal></title>
+	  <para>
+As the conversion process is very similar, the conversion classes of the three
+section levels are derived from the more general <literal>section</literal>
+class. The HTML code of the section levels only differs in the type of the
+headline, and because of this the classes describing the section levels can be
+computed by replacing the class argument <literal>the_tag</literal> of
+<literal>section</literal> by the HTML name of the headline tag.
+</para>
+
+	  <para>
+Section elements are converted to HTML by printing a headline and then
+converting the contents of the element recursively. More precisely, the first
+sub-element is always a <literal>title</literal> element, and the other
+elements are the contents of the section. This structure is declared in the
+DTD, and it is guaranteed that the document matches the DTD. Because of this
+the title node can be separated from the rest without any checks.
+</para>
+
+	  <para>
+Both the title node, and the body nodes are then converted to HTML by calling
+<literal>to_html</literal> on them.
+</para>
+
+	  <para>
+<programlisting>&readme.code.section;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Classes <literal>map_tag</literal>, <literal>p</literal>,
+<literal>em</literal>, <literal>ul</literal>, <literal>li</literal></title>
+	  <para>
+Several element types are converted to HTML by simply mapping them to
+correspondent HTML element types. The class <literal>map_tag</literal>
+implements this, and the class argument <literal>the_target_tag</literal>
+determines the tag name to map to. The output consists of the start tag, the
+recursively converted inner elements, and the end tag.
+
+<programlisting>&readme.code.map-tag;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>br</literal></title>
+	  <para>
+Element of type <literal>br</literal> are mapped to the same HTML type. Note
+that HTML forbids the end tag of <literal>br</literal>.
+
+<programlisting>&readme.code.br;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>code</literal></title>
+	  <para>
+The <literal>code</literal> type is converted to a <literal>pre</literal>
+section (preformatted text). As the meaning of tabs is unspecified in HTML,
+tabs are expanded to spaces.
+
+<programlisting>&readme.code.code;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>a</literal></title>
+	  <para>
+Hyperlinks, expressed by the <literal>a</literal> element type, are converted
+to the HTML <literal>a</literal> type. If the target of the hyperlink is given
+by <literal>href</literal>, the URL of this attribute can be used
+directly. Alternatively, the target can be given by
+<literal>readmeref</literal> in which case the ".html" suffix must be added to
+the file name. 
+</para>
+
+	  <para>
+Note that within <literal>a</literal> only #PCDATA is allowed, so the contents
+can be converted directly by applying <literal>escape_html</literal> to the
+character data contents.
+
+<programlisting>&readme.code.a;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>Class <literal>footnote</literal></title>
+	  <para>
+The <literal>footnote</literal> class has two methods:
+<literal>to_html</literal> to convert the footnote reference to HTML, and
+<literal>footnote_to_html</literal> to convert the footnote text itself.
+</para>
+
+	  <para>
+The footnote reference is converted to a local hyperlink; more precisely, to
+two anchor tags which are connected with each other. The text anchor points to
+the footnote anchor, and the footnote anchor points to the text anchor.
+</para>
+
+	  <para>
+The footnote must be allocated in the <literal>store</literal> object. By
+allocating the footnote, you get the number of the footnote, and the text of
+the footnote is stored until the end of the HTML page is reached when the
+footnotes can be printed. The <literal>to_html</literal> method stores simply
+the object itself, such that the <literal>footnote_to_html</literal> method is
+invoked on the same object that encountered the footnote.
+</para>
+
+	  <para>
+The <literal>to_html</literal> only allocates the footnote, and prints the
+reference anchor, but it does not print nor convert the contents of the
+note. This is deferred until the footnotes actually get printed, i.e. the
+recursive call of <literal>to_html</literal> on the sub nodes is done by
+<literal>footnote_to_html</literal>. 
+</para>
+
+	  <para>
+Note that this technique does not work if you make another footnote within a
+footnote; the second footnote gets allocated but not printed.
+</para>
+
+	  <para>
+<programlisting>&readme.code.footnote;</programlisting>
+</para>
+	</sect2>
+
+	<sect2>
+	  <title>The specification of the document model</title>
+	  <para>
+This code sets up the hash table that connects element types with the exemplars
+of the extension classes that convert the elements to HTML.
+
+<programlisting>&readme.code.tag-map;</programlisting>
+</para>
+	</sect2>
+
+<!-- <![RCDATA[&readme.code.to-html;]]> -->
+      </sect1>
+
+    </chapter>
+
+<!-- ********************************************************************** -->
+
+    <chapter>
+      <title>The objects representing the document</title>
+
+      <para>
+<emphasis>This description might be out-of-date. See the module interface files
+for updated information.</emphasis></para>
+
+      <sect1>
+	<title>The <literal>document</literal> class</title>
+	<para>
+<programlisting>
+<![CDATA[
+class [ 'ext ] document :
+  Markup_types.collect_warnings -> 
+  object
+    method init_xml_version : string -> unit
+    method init_xml_standalone : bool -> unit
+    method init_dtd : dtd -> unit
+    method init_root : 'ext node -> unit
+
+    method xml_version : string
+    method xml_standalone : bool
+    method dtd : dtd
+    method root : 'ext node
+
+    method add_pinstr : proc_instruction -> unit
+    method pinstr : string -> proc_instruction list
+
+  end
+;;
+]]>
+</programlisting>
+
+The methods beginning with <literal>init_</literal> are only for internal use
+of the parser.
+</para>
+
+	<itemizedlist mark="bullet" spacing="compact">
+	  <listitem>
+	    <para>
+<literal>xml_version</literal>: returns the version string at the beginning of
+the document. For example, "1.0" is returned if the document begins with
+<literal>&lt;?xml version="1.0"?&gt;</literal>.</para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>xml_standalone</literal>: returns the boolean value of
+<literal>standalone</literal> declaration in the XML declaration. If the
+<literal>standalone</literal> attribute is missing, <literal>false</literal> is
+returned. </para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>dtd</literal>: returns a reference to the global DTD object.</para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>root</literal>: returns a reference to the root element.</para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>pinstr</literal>: returns the processing instructions outside the DTD
+and outside the root element. The argument passed to the method names a
+<emphasis>target</emphasis>, and the method returns all instructions with this
+target. The target is the first word inside <literal>&lt;?</literal> and
+<literal>?&gt;</literal>.</para>
+	  </listitem>
+	  <listitem>
+	    <para>
+<literal>add_pinstr</literal>: adds another processing instruction. This method
+is used by the parser itself to enter the instructions returned by
+<literal>pinstr</literal>, but you can also enter additional instructions.
+</para>
+	  </listitem>
+	</itemizedlist>
+      </sect1>
+
+      <sect1>
+	<title>The <literal>node</literal> class type</title>
+	<para>
+
+<programlisting>
+<![CDATA[
+class type [ 'ext ] node =
+  object ('self)
+    constraint 'ext = 'ext node #extension
+
+    method extension : 'ext
+    method delete : unit
+    method parent : 'ext node
+    method root : 'ext node
+    method orphaned_clone : 'self
+    method add_node : 'ext node -> unit
+    method add_pinstr : proc_instruction -> unit
+    method pinstr : string -> proc_instruction list
+    method sub_nodes : 'ext node list
+    method iter_nodes : ('ext node -> unit) -> unit
+    method iter_nodes_sibl : 
+           ('ext node option -> 'ext node -> 'ext node option -> unit) -> unit
+    method find : string -> 'ext node
+    method reset_finder : unit
+    method set_nodes : 'ext node list -> unit
+    method data : string
+    method node_type : node_type
+    method attribute : string -> Markup_types.att_value
+    method attribute_names : string list
+    method attribute_type : string -> Markup_types.att_type
+    method dtd : dtd
+    method create_element : dtd -> node_type -> (string * string) list 
+                            -> 'ext node
+    method create_data : dtd -> string -> 'ext node
+    method local_validate : unit
+    (* internal methods: *)
+    method internal_adopt : 'ext node option -> unit
+    method internal_delete : 'ext node -> unit
+    method internal_init : dtd -> string -> (string * string) list -> unit
+  end
+;;
+]]>
+</programlisting>
+
+A node represents either an element or a character data section. There are two
+classes implementing the two aspects of nodes: <literal>element_impl</literal>
+and <literal>data_impl</literal>. The latter class does not implement all
+methods because some methods do not make sense for data nodes.
+</para>
+
+	<para>
+These classes implicitly define the semantics of the node tree. There are not
+only references from nodes to sub-nodes, but also references to parents. This
+means that a node cannot be member of two trees; if you try to insert a node
+into two trees the second operation will fail.
+</para>
+
+	<formalpara>
+	  <title>Observers</title>
+
+	  <para>
+   	    <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>extension</literal>: The reference to the extension object which
+belongs to this node.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>parent</literal>: Reference to the father node. Raises
+<literal>Not_found</literal> in the case the node does not have a
+parent.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>root</literal>: Gets a reference to the root node of the tree.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>sub_nodes</literal>: Returns references to the children.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>iter_nodes f</literal>: Iterates over the children, and calls
+<literal>f</literal> for every child in turn.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>iter_nodes_sibl f</literal>: Iterates over the children, and calls
+<literal>f</literal> for every child in turn. <literal>f</literal> gets as
+arguments the previous node, the current node, and the next node.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>node_type</literal>: Returns either <literal>T_data</literal> which
+means that the node is a character data node, or <literal>T_element n</literal>
+which means that the node is an element of type <literal>n</literal>.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>data</literal>: Returns the character data of this node and all
+children, concatenated as one string. The string is ISO-8859-1-encoded. </para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>attribute n</literal>: Returns the value of the attribute with name
+<literal>n</literal>. Possible value are:
+                  <itemizedlist mark="bullet" spacing="compact">
+		    <listitem>
+		      <para>
+<literal>Implied_value</literal>: The attribute has been declared with the
+keyword <literal>#IMPLIED</literal>, and the attribute is missing in the
+attribute list of this element.</para>
+		    </listitem>
+		    <listitem>
+		      <para>
+<literal>Value s</literal>: The attribute has been declared as type
+<literal>CDATA</literal>, <literal>ID</literal>, <literal>IDREF</literal>,
+<literal>ENTITY</literal>, or <literal>NMTOKEN</literal>, or as enumeration or
+notation, and one of the two conditions holds: (1) The attribute value is
+present in the attribute list in which case the value is returned in the string
+<literal>s</literal>. (2) The attribute has been omitted, and the DTD declared
+the attribute with a default value. The default value is returned in
+<literal>s</literal>. </para>
+		    </listitem>
+		    <listitem>
+		      <para>
+<literal>Valuelist l</literal>: The attribute has been declared as type
+<literal>IDREFS</literal>, <literal>ENTITIES</literal>, or
+<literal>NMTOKENS</literal>, and one of the two conditions holds: (1) The
+attribute value is present in the attribute list in which case the
+space-separated tokens of the value are returned in the string list
+<literal>l</literal>. (2) The attribute has been omitted, and the DTD declared
+the attribute with a default value. The default value is returned in
+<literal>l</literal>. </para>
+		    </listitem>
+		  </itemizedlist>
+
+Note that before the attribute value is returned, the value is normalized. This
+means that newlines are converted to spaces, and that references to character
+entities (i.e. <literal>&amp;#<replaceable>n</replaceable>;</literal>) and
+general entities
+(i.e. <literal>&amp;<replaceable>name</replaceable>;</literal>) are expanded;
+if necessary, expansion is performed recursively.
+
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>attribute_names</literal>: returns the list of all attribute names of
+this element.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>attribute_type n</literal>: returns the type of the attribute called
+<literal>n</literal>. See the module <literal>Markup_types</literal> for a
+description of the encoding of the types.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>dtd</literal>: returns a reference to the global DTD.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>pinstr n</literal>: returns all processing instructions that are
+directly contained in this element and that have a <emphasis>target</emphasis>
+specification of <literal>n</literal>.</para>
+	      </listitem>
+
+	    </itemizedlist>
+
+</para>
+	</formalpara>
+
+	<formalpara>
+	  <title>Modifying methods</title>
+
+	  <para>
+   	    <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>add_node sn</literal>: Adds sub node <literal>sn</literal> to the list
+of children. It is required that <literal>sn</literal> must not have a
+parent.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>add_pinstr pi</literal>: Adds the processing instruction
+<literal>pi</literal> to the list of processing instructions.
+</para>
+	      </listitem>
+
+	      <listitem>
+		<para>
+<literal>delete</literal>: Deletes this node from the tree. After this
+operation, this node is no longer the child of the former father node; and the
+node loses the connection to the father as well.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>set_nodes nl</literal>: Sets the list of children to
+<literal>nl</literal>. It is required that no member of <literal>nl</literal>
+has a parent.
+</para>
+	      </listitem>
+
+	    </itemizedlist>
+</para>
+	</formalpara>
+
+	<formalpara>
+	  <title>Cloning methods</title>
+<para>
+   	    <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>orphaned_clone</literal>: Returns a clone of the node and the complete
+tree below this node (deep clone). The clone does not have a parent. It is
+allowed that strings are shared between the original nodes and the copy nodes.
+Whether extension objects are cloned as well depends on the implemention of the
+<literal>clone</literal> method of the extension objects.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>create_element dtd nt al</literal>: Returns a flat copy of this node
+(which must be an element) with the following modifications: The DTD is now
+<literal>dtd</literal>; the node type is <literal>nt</literal>, and the new
+attribute list is <literal>al</literal> (given as list of (name,value)
+pairs). The copy does not have children nor a parent. It does not contain
+processing instructions.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>create_data dtd cdata</literal>: Returns a flat copy of this node
+(which must be a character node) with the following modifications: The DTD is
+now <literal>dtd</literal>; the node type is <literal>T_data</literal>; the
+attribute list is empty (data nodes never have attributes); the list of
+children and PIs is empty, too (same reason). The new node does not have a
+parent. The value <literal>cdata</literal> is the new character content of the
+node. 
+</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+	</formalpara>
+
+	<formalpara>
+	  <title>Weird methods</title>
+<para>
+The following methods will hopefully be replaced by better ones in the next
+release:
+
+   	    <itemizedlist mark="bullet" spacing="compact">
+	      <listitem>
+		<para>
+<literal>find id</literal>: Searches the tree (beginning at the root node) for
+the node with an ID attribute <literal>id</literal>, or raises
+<literal>Not_found</literal>. The method may also cause a Validation_error if
+something is wrong with the IDs.
+</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>reset_finder</literal>: Resets the ID cache. This is necessary after
+new nodes have been added; otherwise <literal>find</literal> would not find
+these nodes.</para>
+	      </listitem>
+	      <listitem>
+		<para>
+<literal>local_validate</literal>: Checks that this node conforms to the
+DTD. (Applications need not to call this method unless they add new nodes
+themselves to the tree.)
+</para>
+	      </listitem>
+	    </itemizedlist>
+</para>
+	</formalpara>
+
+	<sect2>
+	  <title>The class <literal>element_impl</literal></title>
+	  <para>
+This class is an implementation conforming to <literal>node</literal> which
+should be used for all element nodes:
+
+<programlisting>
+<![CDATA[
+class [ 'ext ] element_impl : 'ext -> [ 'ext ] node
+]]>
+</programlisting>
+
+</para>
+	  <formalpara>
+	    <title>Constructor</title>
+	    <para>
+You can create a new instance by
+
+<programlisting>
+new element_impl <replaceable>extension_object</replaceable>
+</programlisting>
+
+which creates an empty element without useful type which is connected to the
+<replaceable>extension_object</replaceable>. Such an element cannot be used to
+form node trees; its only purpose is to serve as exemplar that can be
+cloned. This means that you must invoke <literal>create_element</literal> on
+the exemplar to get a useable empty element.
+
+	  <blockquote><para>
+This interface is a strong candidate for future improvements. 
+</para>
+	  </blockquote>
+</para>
+	  </formalpara>
+
+	</sect2>
+
+	<sect2>
+	  <title>The class <literal>data_impl</literal></title>
+	  <para>
+This class is an implementation conforming to <literal>node</literal> which
+should be used for all character data nodes:
+
+<programlisting>
+<![CDATA[
+class [ 'ext ] data_impl : 'ext -> string -> [ 'ext ] node
+]]>
+</programlisting>
+
+</para>
+
+	  <formalpara>
+	    <title>Constructor</title>
+	    <para>
+You can create a new instance by
+
+<programlisting>
+new data_impl <replaceable>extension_object</replaceable> <replaceable>cdata_string</replaceable>
+</programlisting>
+
+which creates a node filled with the characters
+<replaceable>cdata_string</replaceable> which is connected to
+<replaceable>extension_object</replaceable>. The new node is fully functional.
+</para>
+	  </formalpara>
+	</sect2>
+
+
+      </sect1>
+
+      <sect1>
+	<title>The <literal>extension</literal> class type</title>
+	<para>
+
+<programlisting>
+<![CDATA[
+class type [ 'node ] extension =
+  object ('self)
+    method clone : 'self
+      (* "clone" should return an exact deep copy of the object. *)
+    method node : 'node
+      (* "node" returns the corresponding node of this extension. This method
+       * intended to return exactly what previously has been set by "set_node".
+       *)
+    method set_node : 'node -> unit
+      (* "set_node" is invoked once the extension is associated to a new
+       * node object.
+       *)
+  end
+]]>
+</programlisting>
+
+</para>
+      </sect1>
+
+    </chapter>
+
+<!-- ********************************************************************** -->
+
+    <chapter>
+      <title>Configuring and calling the parser</title>
+
+      <para>
+<emphasis>
+Sorry, this chapter has not yet been written. For an introduction into parser
+configuration, see the previous chapters.
+</emphasis>
+</para>
+
+      <sect1>
+	<title>Overview</title>
+	<para></para>
+      </sect1>
+
+      <sect1>
+	<title>Resolvers and sources</title>
+	<para></para>
+      </sect1>
+
+      <sect1>
+	<title>The DTD classes</title>
+	<para></para>
+      </sect1>
+
+      <sect1>
+	<title>Configuring the class exemplars of the node tree</title>
+	<para></para>
+      </sect1>
+
+      <sect1>
+	<title>Invoking the parser</title>
+	<para></para>
+      </sect1>
+    </chapter>
+ 
+  </part>
+</book>
+
