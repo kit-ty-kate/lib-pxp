@@ -1,4 +1,4 @@
-(* $Id: compile.ml,v 1.1 2000/07/09 00:33:32 gerd Exp $
+(* $Id: compile.ml,v 1.2 2000/07/16 17:54:15 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -11,12 +11,15 @@ open Pxp_types;;
 let error_happened = ref false;;
 
 let rec prerr_error e =
-  match e with
-      Pxp_types.At(where,what) ->
-	prerr_endline where;
-	prerr_error what
-    | _ ->
-	prerr_endline (Printexc.to_string e)
+  prerr_endline (string_of_exn e)
+;;
+
+
+class warner =
+  object 
+    method warn w =
+      prerr_endline ("WARNING: " ^ w)
+  end
 ;;
 
 
@@ -33,6 +36,7 @@ let compile in_filename out_filename print =
 	  processing_instructions_inline = false;
 	  virtual_root = false;
 	  encoding = `Enc_utf8;
+	  warner = new warner;
       }
   in
   try 
@@ -42,22 +46,16 @@ let compile in_filename out_filename print =
 	(from_file in_filename)
 	spec 
     in
-    let s = config.warner # print_warnings in
-    if s <> "" then prerr_endline s;
-    config.warner # reset;
     
     let ch = open_out out_filename in
     Pxp_codewriter.write_document ch tree;
-    output_string ch "(create_document (new Pxp_types.drop_warnings) Pxp_yacc.default_spec) # write_compact_as_latin1 (Pxp_types.Out_channel stdout);;\n";
+    output_string ch "(create_document (new Pxp_types.drop_warnings) Pxp_yacc.default_spec) # write (Pxp_types.Out_channel stdout) `Enc_utf8;;\n";
     close_out ch;
 
     if print then
-      tree # write_compact_as_latin1 (Out_channel stdout);
+      tree # write (Out_channel stdout) `Enc_utf8;
   with
       e ->
-	let s = config.warner # print_warnings in
-	if s <> "" then prerr_endline s;
-	config.warner # reset;
 	error_happened := true;
 	prerr_error e
 ;;
@@ -99,6 +97,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: compile.ml,v $
+ * Revision 1.2  2000/07/16 17:54:15  gerd
+ * 	Updated because of PXP interface changes.
+ *
  * Revision 1.1  2000/07/09 00:33:32  gerd
  * 	Initial revision.
  *
