@@ -1,4 +1,4 @@
-(* $Id: pull.ml,v 1.1 2002/08/17 23:46:15 gerd Exp $
+(* $Id: pull.ml,v 1.2 2002/08/17 23:51:09 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -47,7 +47,7 @@ let parse s =
   let config = default_config in
   let mgr = create_entity_manager config (from_string s) in
   let next_event = 
-    create_pull_parser config (`Entry_document[]) mgr in
+    create_pull_parser config (`Entry_content[]) mgr in
   let event = ref (Some E_end_of_stream) in
   while !event <> None do
     event := next_event();
@@ -129,6 +129,9 @@ let parse_list s =
  * History:
  * 
  * $Log: pull.ml,v $
+ * Revision 1.2  2002/08/17 23:51:09  gerd
+ * 	Always using Entry_content
+ *
  * Revision 1.1  2002/08/17 23:46:15  gerd
  * 	Initial revision.
  *
