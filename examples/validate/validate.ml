@@ -1,4 +1,4 @@
-(* $Id: validate.ml,v 1.1 1999/08/14 22:20:53 gerd Exp $
+(* $Id: validate.ml,v 1.2 1999/09/01 23:09:56 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -24,10 +24,10 @@ let rec print_error e =
 ;;
 
 
-let parse debug filename =
+let parse debug wf filename =
   try 
     let _ =
-      parse_document_entity
+      (if wf then parse_wf_entity else parse_document_entity)
 	{ default_config with debugging_mode = debug }
 	(ExtID (System filename))
 	default_dom 
@@ -46,9 +46,11 @@ let parse debug filename =
 
 let main() =
   let debug = ref false in
+  let wf = ref false in
   let files = ref [] in
   Arg.parse
-      [ "-d", Arg.Set debug, "turn debugging mode on";
+      [ "-d",   Arg.Set debug, "turn debugging mode on";
+	"-wf",  Arg.Set wf,    "check only on well-formedness";
       ]
       (fun x -> files := x :: !files)
       "
@@ -60,7 +62,7 @@ usage: validate [options] file ...
 
 List of options:";
   files := List.rev !files;
-  List.iter (parse !debug) !files
+  List.iter (parse !debug !wf) !files
 ;;
 
 
@@ -71,6 +73,10 @@ main();;
  * History:
  * 
  * $Log: validate.ml,v $
+ * Revision 1.2  1999/09/01 23:09:56  gerd
+ * 	Added the option -wf that switches to well-formedness checking
+ * instead of validation.
+ *
  * Revision 1.1  1999/08/14 22:20:53  gerd
  * 	Initial revision.
  *
