@@ -1,4 +1,4 @@
-(* $Id: pxp_document.mli,v 1.11 2000/09/09 16:41:03 gerd Exp $
+(* $Id: pxp_document.mli,v 1.12 2000/09/21 21:29:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -524,6 +524,28 @@ val create_no_node :
        ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
   (* Creates a T_none node with limited functionality *)
 
+val get_data_exemplar :
+      'ext spec -> 'ext node
+val get_element_exemplar :
+      'ext spec -> string -> (string * string) list -> 'ext node
+val get_super_root_exemplar :
+      'ext spec -> 'ext node
+val get_comment_exemplar :
+      'ext spec -> 'ext node
+val get_pinstr_exemplar :
+      'ext spec -> proc_instruction -> 'ext node
+  (* These functions just return the exemplars (or raise Not_found).
+   * Notes:
+   * (1) In future versions, it may be possible that the element exemplar 
+   *     depends on attributes, too, so the attlist must be passed
+   *     to get_element_exemplar
+   * (2) In future versions, it may be possible that the pinstr exemplar
+   *     depends on the full value of the processing instruction and
+   *     not only on the target, so the full proc_instruction must be
+   *     passed to get_pinstr_exemplar.
+   *)
+
+
 (*********************** Ordering of nodes ******************************)
 
 val compare : 'ext node -> 'ext node -> int
@@ -734,6 +756,9 @@ class [ 'ext ] document :
  * History:
  *
  * $Log: pxp_document.mli,v $
+ * Revision 1.12  2000/09/21 21:29:41  gerd
+ * 	New functions get_*_exemplar.
+ *
  * Revision 1.11  2000/09/09 16:41:03  gerd
  * 	Effort to reduce the amount of allocated memory: The number of
  * instance variables in document nodes has been miminized; the class

@@ -1,4 +1,4 @@
-(* $Id: pxp_document.ml,v 1.15 2000/09/09 16:41:03 gerd Exp $
+(* $Id: pxp_document.ml,v 1.16 2000/09/21 21:29:41 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -1531,6 +1531,13 @@ let create_data_node spec dtd str =
 ;;
 
 
+let get_data_exemplar spec =
+  match spec with
+      Spec_table tab ->
+	tab.data_node
+;;
+
+
 let create_element_node ?name_pool_for_attribute_values ?position spec dtd eltype atts =
    match spec with
       Spec_table tab ->
@@ -1542,6 +1549,13 @@ let create_element_node ?name_pool_for_attribute_values ?position spec dtd eltyp
 ;;
 
 
+let get_element_exemplar spec eltype atts =
+   match spec with
+      Spec_table tab ->
+	spec_table_find_exemplar tab eltype
+;;
+
+
 let create_super_root_node ?position spec dtd =
     match spec with
       Spec_table tab ->
@@ -1550,6 +1564,18 @@ let create_super_root_node ?position spec dtd =
 		failwith "Pxp_document.create_super_root_node: No exemplar"
 	    | Some x -> 
 		x # create_element ?position:position dtd T_super_root []
+	)
+;;
+
+
+let get_super_root_exemplar spec =
+    match spec with
+      Spec_table tab ->
+	( match tab.super_root_node with
+	      None -> 
+		raise Not_found
+	    | Some x -> 
+		x
 	)
 ;;
 
@@ -1574,7 +1600,19 @@ let create_comment_node ?position spec dtd text =
 		e
 	)
 ;;
-	
+
+
+let get_comment_exemplar spec =
+  match spec with
+      Spec_table tab ->
+	( match tab.comment_node with
+	      None ->
+		raise Not_found
+	    | Some x ->
+		x
+	)
+;;
+
     
 let create_pinstr_node ?position spec dtd pi =
   let target = pi # target in
@@ -1597,6 +1635,23 @@ let create_pinstr_node ?position spec dtd pi =
     exemplar # create_element ?position:position dtd (T_pinstr target) [] in
   el # add_pinstr pi;
   el
+;;
+
+
+let get_pinstr_exemplar spec pi =
+  let target = pi # target in
+  match spec with
+      Spec_table tab ->
+	( try 
+	    Hashtbl.find tab.pinstr_mapping target
+	  with
+	      Not_found ->
+		( match tab.default_pinstr_node with
+		      None -> 
+			raise Not_found
+		    | Some x -> x
+		)
+	)
 ;;
 
 
@@ -2010,6 +2065,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.16  2000/09/21 21:29:41  gerd
+ * 	New functions get_*_exemplar.
+ *
  * Revision 1.15  2000/09/09 16:41:03  gerd
  * 	Effort to reduce the amount of allocated memory: The number of
  * instance variables in document nodes has been miminized; the class
