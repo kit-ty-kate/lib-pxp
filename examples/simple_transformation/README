@@ -1,0 +1,7 @@
+Usage:
+	sort -by phone <sample.xml | print
+
+once sort and print are compiled.
+
+These examples illustrate iter_tree, map_tree and find_element.
+
