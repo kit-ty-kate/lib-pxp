@@ -158,11 +158,20 @@ let transform config dtd filename =
 	      (from_file filename)
 	      default_namespace_spec in
   let root = doc # root in
-  (* Collect the macro definitions: *)
+  (* Collect the macro definitions: 
+   * (As a side effect, remove the definitions from the tree [root].)
+   *)
   let definitions = collect_macro_define root in
   (* Expand the macro calls: *)
   let root' = replace_macro_use definitions root in
   (* Output the result: *)
+  let root_element = find (fun node ->
+			     match node # node_type with
+				 T_element _ -> true 
+			       | _ -> false
+			  ) 
+		          root' in
+  let default_prefix = root_element # normprefix in
   print_string "<?xml version='1.0'?>\n";
   (* Output the DOCTYPE line, if needed. This is a bit delicate. *)
   ( match !found_dtd_id with
@@ -177,9 +186,12 @@ let transform config dtd filename =
 	   * silently dropped.
 	   *)
 	  print_string "<!DOCTYPE ";
-	  ( match !found_root with
-		Some r -> print_string r;
-	      | None   -> assert false
+	  ( match root_element # node_type with
+		T_element r -> 
+		  (* Remove the default prefix: *)
+		  let p, l = Pxp_aux.namespace_split r in
+		  print_string (if p = default_prefix then l else r);
+	      | _           -> assert false
 	  );
 	  ( match id with
 		System sysid ->
@@ -201,13 +213,6 @@ let transform config dtd filename =
 	  (* Internal DTDs are silently dropped *)
 	  ()
   );
-  let root_element = find (fun node ->
-			     match node # node_type with
-				 T_element _ -> true 
-			       | _ -> false
-			  ) 
-		          root' in
-  let default_prefix = root_element # normprefix in
   root' # write ~default:default_prefix (`Out_channel stdout) `Enc_utf8
 ;;
 

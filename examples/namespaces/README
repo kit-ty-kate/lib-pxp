@@ -3,6 +3,12 @@ You can put <macro:define> statements into your XML code, and later
 expand macros by <macro:use> statements. See macro.dtd for the DTD
 and sample.xml for an example in XHTML.
 
+Using the preprocessor: Do
+
+	./preprocess sample.xml
+
+which prints the converted text to stdout.
+
 Note that the preprocessor runs in a mode which is more than
 well-formedness mode and less than validating mode. The DTD 
 contained in the preprocessed XML text is replaced by macro.dtd
@@ -12,8 +18,54 @@ and that all other elements and attributes are not validated.
 For example, the preprocessor does not check whether sample.xml
 is valid XHTML.
 
-Using the preprocessor: Do
+The replacement of the DTD is performed by the ~transform_dtd
+parameter of parse_document_entity (see preprocess.ml).
 
-	./preprocess sample.xml
+Notes to the namespaces:
 
-which prints the converted text to stdout.
+(1) The program uses two namespaces for its own purposes:
+    "http://www.ocaml-programming.de/macro" is the identifier for the
+    namespace containing the <macro:define> and <macro:use> statements.
+
+    "http://www.ocaml-programming.de/macro/use" is the identifier for
+    the namespace containing the defined macros.
+
+(2) In preprocess.ml you will find something like
+
+    if node # node_type = T_element "macro:define" then ...
+
+    This works even if the namespace "http://www.ocaml-programming.de/macro"
+    is bound to a different prefix than "macro", because the parser
+    rewrites the prefixes automatically. The DTD macro.dtd contains a
+    processing instruction 
+
+    <?pxp:dtd namespace prefix="macro" 
+                        uri="http://www.ocaml-programming.de/macro"?>
+
+    letting the parser replace all prefixes declared for the
+    namespace identifier "http://www.ocaml-programming.de/macro"
+    by "macro".
+
+    The namespaces chapter of the manual explains the rationale
+    behind that.
+
+(3) You find another test
+
+    node # namespace_uri = macro_use_uri
+
+    where macro_use_uri is "http://www.ocaml-programming.de/macro/use".
+    This is just another way to check whether an element belongs
+    to a certain namespace.
+
+Other comments:
+
+(1) The preprocessor outputs the file always in UTF-8 encoding.
+
+(2) If the input file has a DOCTYPE line, this line is reproduced
+    in the output. However, the preprocessor does never output
+    the internal subset of the DTD, if any.
+
+(3) Although the preprocessor does not validate the input fully,
+    the specified DTD is completely read in. This is necessary to
+    get all the general entities.
+
