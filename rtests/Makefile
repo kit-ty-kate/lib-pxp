@@ -5,6 +5,7 @@ all:
 	$(MAKE) -C codewriter
 	$(MAKE) -C canonxml
 	$(MAKE) -C negative
+	$(MAKE) -C dynamic
 
 .PHONY: clean
 clean:
@@ -17,6 +18,7 @@ CLEAN: clean
 	$(MAKE) -C codewriter clean
 	$(MAKE) -C canonxml clean
 	$(MAKE) -C negative clean
+	$(MAKE) -C dynamic clean
 
 .PHONY: distclean
 distclean: clean
@@ -27,6 +29,7 @@ distclean: clean
 	$(MAKE) -C codewriter distclean
 	$(MAKE) -C canonxml distclean
 	$(MAKE) -C negative distclean
+	$(MAKE) -C dynamic distclean
 
 dumpfiles: dumpfiles.ml
 	ocamlc -o dumpfiles dumpfiles.ml

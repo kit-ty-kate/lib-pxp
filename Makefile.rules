@@ -16,7 +16,7 @@ TOOLS_DIR = $(TOP_DIR)/tools
 M2PARSERGEN    = $(TOOLS_DIR)/m2parsergen
 UCS2_TO_UTF8   = $(TOOLS_DIR)/ucs2_to_utf8
 COLLECT_FILES  = $(TOOLS_DIR)/collect_files
-INSERT_VARIANT = $(TOOLS_DIR)/insert_variant
+INSERT_VARIANT = ocaml $(TOOLS_DIR)/insert_variant
 
 # Files to remove everywhere by "make clean":
 

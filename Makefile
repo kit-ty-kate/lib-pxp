@@ -5,6 +5,8 @@
 
 # Inclusion of Makefile.conf may fail when cleaning up:
 
+NAME=pxp
+
 -include Makefile.conf
 
 all:
