@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.19 2002/02/20 00:25:23 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.20 2002/03/08 14:37:15 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -499,10 +499,12 @@ class resolve_as_file
   in
 
   let default_base_url =
+    let cwd = Sys.getcwd() in
+    let cwd_slash = if cwd = "/" then cwd else cwd ^ "/" in
     Neturl.make_url
       ~scheme: "file"
       ~host:   ""
-      ~path:   (Neturl.split_path (Sys.getcwd() ^ "/"))
+      ~path:   (Neturl.split_path cwd_slash)
       base_url_syntax
   in
 
@@ -589,10 +591,10 @@ let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
       let cwd_utf8 =
 	Netconversion.recode_string
 	~in_enc: system_encoding
-	~out_enc: `Enc_utf8 in
-      cwd ^ "/" ^ utf8_filename
+	~out_enc: `Enc_utf8 cwd in
+      if cwd = "/" then "/" ^ utf8_filename else cwd_utf8 ^ "/" ^ utf8_filename
   in
-  
+
   let syntax = { Neturl.ip_url_syntax with Neturl.url_accepts_8bits = true } in
   let url = Neturl.make_url
 	    ~scheme:"file"
@@ -912,6 +914,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.20  2002/03/08 14:37:15  gerd
+ * 	Fixed the case that cwd=/
+ *
  * Revision 1.19  2002/02/20 00:25:23  gerd
  * 	using Pxp_lexing instead of Lexing.
  *
