@@ -1,0 +1,1029 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Fri, 5 May 2000 18:55:13 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Fri, 05 May 2000 20:00:12 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx04 with esmtp (Exim 2.12 #3)
+	id 12nlNd-0008EC-00
+	for gerd@gerd-stolpmann.de; Fri, 5 May 2000 18:55:09 +0200
+Received: from pagadebit.students.cs.unibo.it (root@pagadebit.students.cs.unibo.it [130.136.3.115])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id SAA22463
+	for <gerd@gerd-stolpmann.de>; Fri, 5 May 2000 18:55:05 +0200
+Received: (from sacerdot@localhost)
+	by pagadebit.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) id SAA05315
+	for gerd@gerd-stolpmann.de; Fri, 5 May 2000 18:54:34 +0200
+Date: Fri, 5 May 2000 18:54:34 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: gerd@gerd-stolpmann.de
+Subject: Resolvers in markup: what a little great work!
+Message-ID: <20000505185434.A5205@students.cs.unibo.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+ Hello Gerd,
+
+ do you remember me? No bugs this time ;-)
+
+ I was about to complain about the lack of a way to define a function to
+ resolve my own uris inside Markup, when I downloaded the latest version
+ of Markup and found out the resolver stuff. It's exactly what I need!
+
+ Now I'll go working at it, but before, some little questions:
+
+ What will be the future of Markup? Are you still working at it?
+ On what exactly are you working?
+ We are quite satisfied by markup, but, as I told you, we really
+ need to use an XSLT processor and, for now, we have had to bound
+ to a Java estremely slow one. Moreover, we are using also unicode
+ in an heavy way an markup is not very happy with it.
+
+ I'll be glad to help with markup or to write an XSLT processor on top
+ of it, but now we have a lot of work and a few time (as anyone, I
+ think ;-), so I'll have to wait for many months for it.
+
+			                  Regards,
+					  C.S.C.
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Resolvers in markup: what a little great work!
+Date: Fri, 5 May 2000 22:43:04 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000505185434.A5205@students.cs.unibo.it>
+In-Reply-To: <20000505185434.A5205@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <00050600274303.11187@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Fri, 05 May 2000, you wrote:
+>Hello Gerd,
+>
+> do you remember me? No bugs this time ;-)
+>
+> I was about to complain about the lack of a way to define a function to
+> resolve my own uris inside Markup, when I downloaded the latest version
+> of Markup and found out the resolver stuff. It's exactly what I need!
+
+Resolvers existed in Markup from the very beginning, but I had not enough time 
+to document them. After another user had complained about a missing feature 
+(not URIs but something similar) I decided to move them into a separate module
+and to write down the most necessary facts about them. 
+
+Sometimes discussions with users drive the development...
+
+> Now I'll go working at it, but before, some little questions:
+>
+> What will be the future of Markup? Are you still working at it?
+> On what exactly are you working?
+
+Yes, I am still working on it. I use XML currently to describe Web interfaces
+on a relatively high level; a processor exists that transforms these XML
+descriptions into HTML on-the-fly. The processor bases on Markup. I have one
+big problem with it: it is too slow. The current application is a software
+catalogue, and on the development system every click takes 3 seconds.
+Fortunately, the production system is three times faster (so it is currently
+tolerable), but the application will grow a lot.
+
+So my first goal is simply: make Markup faster. I try to combine it with
+another goal: make Markup more modular, and the code should become more
+comprehensive. The first step will be a replacement of ocamlyacc
+by a self-written parser generator generating top-down parsers. These have
+the advantage that I can pass values from a grammar rule to its subrules, and
+this will simplify the code a lot. I hope that I can integrate many special
+cases that are currently checked separately into the grammar, and that the
+parser becomes faster because of this.
+
+I have already mentioned that processor for Web interfaces. I hope that I can
+publish it under an open source license because it is really cool. The Web
+interface is described by concepts like objects, variables, pages, templates and
+so on, and these are converted to plain old HTML. This processor is already
+almost complete, but I developed it explicitly for a commercial purpose.
+However, the chances are good that I can make it available for all, because my
+boss does not like to sell "products".
+
+> We are quite satisfied by markup, but, as I told you, we really
+> need to use an XSLT processor and, for now, we have had to bound
+> to a Java estremely slow one. 
+
+I have currently no plans on XSLT. But I suppose that it is not very difficult
+to write an XSLT processor.
+
+> Moreover, we are using also unicode
+> in an heavy way an markup is not very happy with it.
+
+I have alrady some thoughts on this point. I think that it would be enough for
+many applications if the parser represented unicode strings as UTF8 strings.
+Most string operations work with UTF8 transparently; especially string
+concatenation, string comparison, and regular expressions. Only character-based
+operations would be either more complicated (e.g. iterating over all characters
+of a string) or would require more time complexity (e.g. addressing characters
+by their position in the string). It is relatively simple to change Markup such
+that it reads UTF8 and represents strings as UTF8; it is mostly a matter of how
+the lexical scanners recognize character boundaries. (This is of course also
+true for the UCS2 and UCS4 representations, and I can change the lexers such
+that they recognize the boundaries using UCS2 or UCS4, but I suppose that the
+application would have an additional burden with this representation as 
+the available implementations of regular expressions would not work any longer.)
+
+I did not implement an UTF8-based lexical scanner because it would be a pain if
+I wrote such a lexer directly. I would have to take into consideration that
+characters have a different length depending on the position in the character
+set. Fortunately, it is possible to automate this kind of transformation. A
+tool could convert input files where characters are addressed by their
+ordinal number (e.g. '#1234') into output files in which the regular
+expressions are changed such that the different representations for characters
+are taken into account.
+
+Example: A lexical rule matching a sequence of digits. The appendix of the XML
+specification lists which characters must be recognized as digits:
+
+Digit ::= [#0030-#0039] | [#0660-#0669] | [#06F0-#06F9] | ... (12 more regions)
+
+The source file that I am personally able to write must allow THIS
+KIND of definition. The file is then input to the converter, and the result is
+an ugly expression like
+
+Digit ::= [#30-#39] | (#D9 [#A0-#A9]) | (#DB [#B0-#B9]) | ...
+
+that is the UTF8 representation of the same. (The first set is represented by
+only one byte, the other two sets are represented by two bytes where the first
+is constant. The higher the numerical position of the characters are the more
+complicated is the conversion. I think the conversion is non-trivial but not
+really difficult.)
+
+Once I have this converter, full UTF8 support is simple to achieve.
+
+Currently, UTF8 support has only second priority for me because my applications
+do not need it.
+
+> I'll be glad to help with markup or to write an XSLT processor on top
+> of it, but now we have a lot of work and a few time (as anyone, I
+> think ;-), so I'll have to wait for many months for it.
+
+If you have only little time, the UTF8 converter could be a task for you. The
+converter has to scan the lexer definition for the strings #nnnn and 
+[#nnnn-#nnnn] (we can assure that these patterns are "reserved", so the
+simplest possible method is right), and to output:
+
+- in ISO-8859-1 mode: The corresponding expression in which the non-existing 
+  characters are deleted
+- in UTF8 mode: The converted regexp for the UTF8 representation
+
+I can then write a new lexer definition, do the other necessary changes, and
+Markup is UTF8-ready.
+
+But is is only a suggestion...
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Tue, 9 May 2000 09:23:55 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Tue, 09 May 2000 20:00:11 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx04 with esmtp (Exim 2.12 #3)
+	id 12p4Mr-0005Y6-00
+	for gerd@gerd-stolpmann.de; Tue, 9 May 2000 09:23:45 +0200
+Received: from marsala.students.cs.unibo.it (root@marsala.students.cs.unibo.it [130.136.3.208])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id JAA17543
+	for <gerd@gerd-stolpmann.de>; Tue, 9 May 2000 09:23:34 +0200
+Received: (from sacerdot@localhost)
+	by marsala.students.cs.unibo.it (8.9.3/8.9.3/Debian 8.9.3-6) id JAA28502
+	for gerd@gerd-stolpmann.de; Tue, 9 May 2000 09:23:09 +0200
+Date: Tue, 9 May 2000 09:23:09 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: Resolvers in markup: what a little great work!
+Message-ID: <20000509092309.A28492@students.cs.unibo.it>
+References: <20000505185434.A5205@students.cs.unibo.it> <00050600274303.11187@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+In-Reply-To: <00050600274303.11187@ice>; from gerd@gerd-stolpmann.de on Fri, May 05, 2000 at 10:43:04PM +0200
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+On Fri, May 05, 2000 at 22:43:04 +0200, Gerd Stolpmann wrote:
+> ...
+> Yes, I am still working on it. I use XML currently to describe Web interfaces
+> on a relatively high level; a processor exists that transforms these XML
+> descriptions into HTML on-the-fly. The processor bases on Markup. I have one
+> big problem with it: it is too slow. The current application is a software
+> catalogue, and on the development system every click takes 3 seconds.
+> Fortunately, the production system is three times faster (so it is currently
+> tolerable), but the application will grow a lot.
+
+I understand. Something similar to Cocoon, but fast and reliable ;-)
+
+> ... 
+
+> I have already mentioned that processor for Web interfaces. I hope that I can
+> publish it under an open source license because it is really cool. The Web
+> interface is described by concepts like objects, variables, pages, templates and
+> so on, and these are converted to plain old HTML. This processor is already
+> almost complete, but I developed it explicitly for a commercial purpose.
+> However, the chances are good that I can make it available for all, because my
+> boss does not like to sell "products".
+
+As a commercial product, I think it will have to fight with solutions
+that have a lot of manpower behind them, as Cocoon, for example. So it
+would be an odd struggle.
+
+> I have alrady some thoughts on this point. I think that it would be enough for
+> many applications if the parser represented unicode strings as UTF8 strings.
+> Most string operations work with UTF8 transparently; especially string
+> concatenation, string comparison, and regular expressions. Only character-based
+> operations would be either more complicated (e.g. iterating over all characters
+> of a string) or would require more time complexity (e.g. addressing characters
+> by their position in the string).
+
+Yes, this is also my need... and my opinion too.
+
+> ...
+> I did not implement an UTF8-based lexical scanner because it would be a pain if
+> I wrote such a lexer directly. I would have to take into consideration that
+> characters have a different length depending on the position in the character
+> set. Fortunately, it is possible to automate this kind of transformation. A
+> tool could convert input files where characters are addressed by their
+> ordinal number (e.g. '#1234') into output files in which the regular
+> expressions are changed such that the different representations for characters
+> are taken into account.
+
+I understand. There is also a T.R. at www.unicode.org on r.e. and Unicode,
+but I think that this could be a sufficient tool for now.
+
+> Example: A lexical rule matching a sequence of digits. The appendix of the XML
+> specification lists which characters must be recognized as digits:
+> 
+> Digit ::= [#0030-#0039] | [#0660-#0669] | [#06F0-#06F9] | ... (12 more regions)
+> 
+> The source file that I am personally able to write must allow THIS
+> KIND of definition. The file is then input to the converter, and the result is
+> an ugly expression like
+> 
+> Digit ::= [#30-#39] | (#D9 [#A0-#A9]) | (#DB [#B0-#B9]) | ...
+> 
+> that is the UTF8 representation of the same. (The first set is represented by
+> only one byte, the other two sets are represented by two bytes where the first
+> is constant. The higher the numerical position of the characters are the more
+> complicated is the conversion. I think the conversion is non-trivial but not
+> really difficult.)
+
+I agree.
+
+> If you have only little time, the UTF8 converter could be a task for you. The
+> converter has to scan the lexer definition for the strings #nnnn and 
+> [#nnnn-#nnnn] (we can assure that these patterns are "reserved", so the
+> simplest possible method is right), and to output:
+> 
+> - in ISO-8859-1 mode: The corresponding expression in which the non-existing 
+>   characters are deleted
+> - in UTF8 mode: The converted regexp for the UTF8 representation
+> 
+> I can then write a new lexer definition, do the other necessary changes, and
+> Markup is UTF8-ready.
+> 
+> But is is only a suggestion...
+
+OK, this will be my little contribution to Markup. Only I need some time
+(that I think I'll find soon) and some more explanation.
+
+If I understand well, I must take in input a file where I could find
+chuncks of r.e. matching (#nnnn | [#nnnn-#nnnn])('|' #nnnn | [#nnnn-#nnnn])*
+and I must substitute them with the appropriate r.e.
+
+The preprocessor is called once and for all during compilation, so speed
+is not my first target.
+
+I'll only have to find the "official" specification of UTF8 (I thought
+I had find it on www.unicode.org but I have not). I'll search again.
+(Or do you know where it is? I have found many, but not the official one).
+
+						Regards,
+						C.S.C.
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Resolvers in markup: what a little great work!
+Date: Tue, 9 May 2000 23:00:47 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000505185434.A5205@students.cs.unibo.it> <00050600274303.11187@ice> <20000509092309.A28492@students.cs.unibo.it>
+In-Reply-To: <20000509092309.A28492@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <00051000275606.11187@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Tue, 09 May 2000, you wrote:
+>
+>As a commercial product, I think it will have to fight with solutions
+>that have a lot of manpower behind them, as Cocoon, for example. So it
+>would be an odd struggle.
+
+My business (and that of the small firm I'm working for) are projects, not
+products. The development of UIobjects (the name of the processor) was
+relatively cheap (thanks OCaml), and so it was possible to develop such a tool
+(or framework). But NPC (the firm) is not interested in selling products (it's
+boring); we will use UIobjects to develop faster and  more reliable than our
+competitors. (And to have more fun.)
+
+>> ...
+>> I did not implement an UTF8-based lexical scanner because it would be a pain if
+>> I wrote such a lexer directly. I would have to take into consideration that
+>> characters have a different length depending on the position in the character
+>> set. Fortunately, it is possible to automate this kind of transformation. A
+>> tool could convert input files where characters are addressed by their
+>> ordinal number (e.g. '#1234') into output files in which the regular
+>> expressions are changed such that the different representations for characters
+>> are taken into account.
+>
+>I understand. There is also a T.R. at www.unicode.org on r.e. and Unicode,
+>but I think that this could be a sufficient tool for now.
+
+I had a quick look on this TR. It discusses some special themes that are
+important for a general Unicode regexp engine, but not for our project. E.g.
+what is meant if you write [[:alpha:]] as abbreviation for any alphanumeric
+character.
+
+The interesting point is the compatibility of UTF8 with existing regexp
+implementations:
+
+- Every ASCII character (codes 0 to 127) is represented by the same single byte
+  in UTF8; and the bytes 0 to 127 are reserved for that purpose.
+
+- The characters with higher codes are represented by sequences of 2 to 6 bytes.
+  The first byte of such sequences is from 0xC0 to 0xFD; and the other bytes
+  are in the range 0x80 to 0xBF.
+
+- The first byte of sequences expresses how many bytes follow.
+
+This means: If you match a UTF8-encoded string with a UTF8-encoded pattern, the
+character boundaries will automatically synchronize, i.e. the first byte of a
+string character can only match the first byte of a pattern character because
+the code range of first bytes is distinct from the code range of other bytes.
+This is the reason why ocamllex is also applicable to scan UTF8-encoded strings
+without any change in the implementation.
+
+>> If you have only little time, the UTF8 converter could be a task for you. The
+>> converter has to scan the lexer definition for the strings #nnnn and 
+>> [#nnnn-#nnnn] (we can assure that these patterns are "reserved", so the
+>> simplest possible method is right), and to output:
+>> 
+>> - in ISO-8859-1 mode: The corresponding expression in which the non-existing 
+>>   characters are deleted
+>> - in UTF8 mode: The converted regexp for the UTF8 representation
+>> 
+>> I can then write a new lexer definition, do the other necessary changes, and
+>> Markup is UTF8-ready.
+>> 
+>> But is is only a suggestion...
+>
+>OK, this will be my little contribution to Markup. Only I need some time
+>(that I think I'll find soon) and some more explanation.
+
+Good news.
+
+>If I understand well, I must take in input a file where I could find
+>chuncks of r.e. matching (#nnnn | [#nnnn-#nnnn])('|' #nnnn | [#nnnn-#nnnn])*
+>and I must substitute them with the appropriate r.e.
+
+Yes. The input syntax is more or less free; it must be possible to write the
+rules of Appendix B of the XML specification 
+(http://www.w3.org/TR/1998/REC-xml-19980210.html), it is even okay to put these
+rules into a separate file. (The other string literals occuring in the lexer
+definition of Markup are uncritical because they only contain ASCII characters,
+and these are represented by the same bytes in UTF8.)
+
+The output must be accepted by ocamllex. Ocamllex allows let-bindings, i.e.
+
+let whitespace = [' ' '\t' '\r' '\n']
+
+The definitions of Appendix B should be transformed to the corresponding
+let-bindings such that it is simple to refer to these definitions in the lexer
+rules.
+
+>The preprocessor is called once and for all during compilation, so speed
+>is not my first target.
+
+Yes.
+
+>I'll only have to find the "official" specification of UTF8 (I thought
+>I had find it on www.unicode.org but I have not). I'll search again.
+>(Or do you know where it is? I have found many, but not the official one).
+
+As far as I know, UTF8 was invented by the Unicode consortium. It is unlikely
+to find the specification on Unicode's web page because they want to sell their
+Unicode book (this is always the same with standard committees; you must always
+BUY specs - let the organization be Unicode, ISO, ITU or others (the only
+exception is IETF/W3C)).
+
+There is also a semi-official UTF8 specification contained in the Java
+definition; but Java UTF8 differs from Unicode UTF8 in the representation of
+the NULL character (Unicode: 0x00 - Java: 0xC0 0x80); see the readUTF and
+writeUTF methods of some java.IO classes, or the spec of the virtual machine.
+
+Another source is RFC-2279 (http://www.ietf.org/rfc/rfc2279.txt) which is
+publicly accessible.
+
+I append a short but relatively exact definition of UTF-8 from the Linux
+Documentation Project.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+
+
+UTF-8(7)            Linux Programmer's Manual            UTF-8(7)
+
+
+NAME
+       UTF-8 - an ASCII compatible multibyte Unicode encoding
+
+DESCRIPTION
+       The  Unicode  character  set occupies a 16-bit code space.
+       The most obvious Unicode encoding (known  as  UCS-2)  con­
+       sists of a sequence of 16-bit words. Such strings can con­
+       tain as parts of many 16-bit characters bytes like '\0' or
+       '/'  which have a special meaning in filenames and other C
+       library function parameters.  In addition, the majority of
+       UNIX tools expects ASCII files and can't read 16-bit words
+       as characters without major modifications. For these  rea­
+       sons, UCS-2 is not a suitable external encoding of Unicode
+       in filenames, text files, environment variables, etc.  The
+       ISO  10646  Universal  Character  Set (UCS), a superset of
+       Unicode, occupies even a 31-bit code space and the obvious
+       UCS-4  encoding   for  it (a sequence of 32-bit words) has
+       the same problems.
+
+       The UTF-8 encoding of Unicode and UCS does not have  these
+       problems  and is the way to go for using the Unicode char­
+       acter set under Unix-style operating systems.
+
+PROPERTIES
+       The UTF-8 encoding has the following nice properties:
+
+       * UCS characters 0x00000000 to 0x0000007f  (the  classical
+         US-ASCII characters) are encoded simply as bytes 0x00 to
+         0x7f (ASCII compatibility). This means  that  files  and
+         strings  which  contain only 7-bit ASCII characters have
+         the same encoding under both ASCII and UTF-8.
+
+       * All UCS characters > 0x7f are  encoded  as  a  multibyte
+         sequence  consisting  only of bytes in the range 0x80 to
+         0xfd, so no ASCII byte can appear  as  part  of  another
+         character  and  there  are no problems with e.g. '\0' or
+         '/'.
+
+       * The lexicographic sorting order of UCS-4 strings is pre­
+         served.
+
+       * All  possible 2^31 UCS codes can be encoded using UTF-8.
+
+       * The bytes 0xfe and 0xff are  never  used  in  the  UTF-8
+         encoding.
+
+       * The  first byte of a multibyte sequence which represents
+         a single non-ASCII UCS character is always in the  range
+         0xc0  to  0xfd  and  indicates  how  long this multibyte
+         sequence is. All further bytes in a  multibyte  sequence
+         are  in  the range 0x80 to 0xbf. This allows easy resyn­
+         chronization and makes the encoding stateless and robust
+         against missing bytes.
+
+       * UTF-8  encoded  UCS  characters  may  be up to six bytes
+         long, however Unicode characters can only be up to three
+         bytes long. As Linux uses only the 16-bit Unicode subset
+         of UCS, under Linux, UTF-8 multibyte sequences can  only
+         be one, two or three bytes long.
+
+ENCODING
+       The following byte sequences are used to represent a char­
+       acter. The sequence to be used depends  on  the  UCS  code
+       number of the character:
+
+       0x00000000 - 0x0000007F:
+           0xxxxxxx
+
+       0x00000080 - 0x000007FF:
+           110xxxxx 10xxxxxx
+
+       0x00000800 - 0x0000FFFF:
+           1110xxxx 10xxxxxx 10xxxxxx
+
+       0x00010000 - 0x001FFFFF:
+           11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+       0x00200000 - 0x03FFFFFF:
+           111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+       0x04000000 - 0x7FFFFFFF:
+           1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+       The  xxx  bit  positions  are  filled with the bits of the
+       character code number in binary representation.  Only  the
+       shortest  possible  multibyte sequence which can represent
+       the code number of the character can be used.
+
+EXAMPLES
+       The Unicode character 0xa9  =  1010  1001  (the  copyright
+       sign) is encoded in UTF-8 as
+
+              11000010 10101001 = 0xc2 0xa9
+
+       and  character  0x2260  =  0010  0010  0110 0000 (the "not
+       equal" symbol) is encoded as:
+
+              11100010 10001001 10100000 = 0xe2 0x89 0xa0
+
+STANDARDS
+       ISO 10646, Unicode 1.1, XPG4, Plan 9.
+
+AUTHOR
+       Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+
+SEE ALSO
+       unicode(7)
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Mon, 15 May 2000 14:38:26 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 15 May 2000 20:00:20 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx02.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 12rK8V-0008K3-00
+	for gerd@gerd-stolpmann.de; Mon, 15 May 2000 14:38:16 +0200
+Received: from pagadebit.students.cs.unibo.it (root@pagadebit.students.cs.unibo.it [130.136.3.115])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id OAA29178
+	for <gerd@gerd-stolpmann.de>; Mon, 15 May 2000 14:37:56 +0200
+Received: (from sacerdot@localhost)
+	by pagadebit.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) id OAA01885
+	for gerd@gerd-stolpmann.de; Mon, 15 May 2000 14:37:45 +0200
+Date: Mon, 15 May 2000 14:37:45 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Here it is!
+Message-ID: <20000515143745.A1817@students.cs.unibo.it>
+References: <20000505185434.A5205@students.cs.unibo.it> <00050600274303.11187@ice> <20000509092309.A28492@students.cs.unibo.it> <00051000275606.11187@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+In-Reply-To: <00051000275606.11187@ice>; from gerd@gerd-stolpmann.de on Tue, May 09, 2000 at 11:00:47PM +0200
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+ Hy Gerd,
+
+  I have found a little time to write the processor from ucs2 regular
+  expressions to utf8 ones. You find the code in attachment. But first
+  some remarks:
+
+ 1. The processor takes from stdin some definitions of regular expression
+    and outputs on stdout. The syntax of the input file is a small subset
+    of the one understood by ocamllext but for ucs2 characters that are
+    written in #x____ form. You can understand the syntax simply reading
+    parser.mly ;-)
+    The output syntax is already understandable by ocamllex
+ 2. The output regular expressions are not "minimal", but are a very good
+    approximation if the input ones are. The only waste of space is in
+    cases as this one:
+
+        '\0128' ['\0128'-'\0191'] | ['\0129'-'\0132'] ['\0128'-'\0191'] |
+	'\0129' ['\0128'-'\0191']
+
+    i.e. only the extremes of the interals could be treated in a suboptimal
+    way. So the waste of space is only linear in the number of intervals
+    given in input. I should solve the problems in two different ways:
+
+    a) Not producing the suboptimal sequences ;-)  But this would complicate
+       the code a lot
+    b) Implementing a "peephole optimization". This seems good to me, only
+       I have no time now (I have worked during my week-end).
+
+    Let me know if you really need the optimization.
+ 3. I don't recognize (= I throw an exception) UCS2 Surrogate Pairs.
+    This is really something that should be implemented. I have not done
+    it because
+    
+    a) It would complicate the code a lot
+    b) I don't think (have I read it in the XML reccomendation?) that
+       Surrogate Pairs are valid XML characters, but I'm not sure. Could
+       you check, please?
+
+ I think it should be very easy to integrate the little tool into something
+ bigger.
+
+ Let me know what you think about my work.
+
+						Regards,
+						C.S.C.
+
+P.S: A mail with some new markup bugs will follow
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Here it is!
+Date: Tue, 16 May 2000 01:31:54 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000505185434.A5205@students.cs.unibo.it> <00051000275606.11187@ice> <20000515143745.A1817@students.cs.unibo.it>
+In-Reply-To: <20000515143745.A1817@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <0005160307230G.11187@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 15 May 2000, you wrote:
+>Hy Gerd,
+>
+>  I have found a little time to write the processor from ucs2 regular
+>  expressions to utf8 ones. You find the code in attachment. 
+
+Great!
+
+>But first
+>  some remarks:
+>
+> 1. The processor takes from stdin some definitions of regular expression
+>    and outputs on stdout. The syntax of the input file is a small subset
+>    of the one understood by ocamllext but for ucs2 characters that are
+>    written in #x____ form. You can understand the syntax simply reading
+>    parser.mly ;-)
+>    The output syntax is already understandable by ocamllex
+> 2. The output regular expressions are not "minimal", but are a very good
+>    approximation if the input ones are. The only waste of space is in
+>    cases as this one:
+>
+>        '\0128' ['\0128'-'\0191'] | ['\0129'-'\0132'] ['\0128'-'\0191'] |
+>	'\0129' ['\0128'-'\0191']
+>
+>    i.e. only the extremes of the interals could be treated in a suboptimal
+>    way. So the waste of space is only linear in the number of intervals
+>    given in input. I should solve the problems in two different ways:
+>
+>    a) Not producing the suboptimal sequences ;-)  But this would complicate
+>       the code a lot
+>    b) Implementing a "peephole optimization". This seems good to me, only
+>       I have no time now (I have worked during my week-end).
+>
+>    Let me know if you really need the optimization.
+
+I've done some experiments. I added the following lines to the transformed
+input.mll to be able to estimate the size of the resulting lexers:
+
+rule scan = parse
+    '*' letter+
+      { 0 }
+  | [ ' ' '\t' '\r' '\n' ]+
+      { 2 }
+  | eof
+      { 3 }
+
+The lexer had about 8000 transitions. If I additionally define
+
+    '#' letter+
+       { 1 }
+
+the lexer becomes twice as big: 16000 transitions. If I replace "letter+"
+by nmtoken (as defined in XML), the lexers become bigger but not much.
+
+These numbers are important because ocamllex only supports 32767 transitions.
+This means that if I have only three occurrences of the expensive productions 
+"nmtoken" and "name" it will be likely that the resulting lexer is small
+enough. The only critical lexer I have is scan_content (in markup_lexers.mll),
+but there are simple ways to make it smaller:
+
+- The rule for PIs can be simplified
+- The rules for '<' name and '&' name ';' can be merged to
+  ('<'|'&') name ';'?
+- If really necessary, the rule for "</" name can be merged into this
+  "super rule", too.
+
+I hope that we do not need these tricks, but I am relatively sure that the
+lexers will not exceed the limit, with or without tricks.
+
+I also tried to optimize the results manually, but I did not gain very much.
+The lexers are complicated by definition. So I would suggest not to optimize
+further, and to do nicer things at weekends.
+
+> 3. I don't recognize (= I throw an exception) UCS2 Surrogate Pairs.
+>    This is really something that should be implemented. I have not done
+>    it because
+>    
+>    a) It would complicate the code a lot
+>    b) I don't think (have I read it in the XML reccomendation?) that
+>       Surrogate Pairs are valid XML characters, but I'm not sure. Could
+>       you check, please?
+
+The production for "Char" in the XML spec says:
+
+Char ::= ... | [ #x10000-#10FFFF ]
+
+Only 16 bit implementations need surrogate pairs to represent these characters
+(e.g. Java); as we are using UTF-8 we can represent them already in UTF-8. I do
+not know if it is allowed at all to combine the surrogate representation and
+UTF-8 representation. If yes: It is better to normalize the representation
+before anything else happens (the resolver can do this, but it should be
+possible to switch this off).
+
+This is not a very hot theme; even Unicode says that currently nobody is using
+surrogates.
+
+> I think it should be very easy to integrate the little tool into something
+> bigger.
+>
+> Let me know what you think about my work.
+>
+
+It looks very good (at least at the first glance). I will have a closer look in
+the next days.
+
+There is already an important result: The resulting lexers do not need tables
+with more than 32K transitions (as posted by John Max Skaller on the mailing
+list). I expect that the UTF-8 port will be successful.
+
+By the way: I worked on the parser, too. I replaced ocamlyacc by a self-written
+tool, and the result is:
+
+- The parser is 30 % faster
+- The module Markup_entity is MUCH simpler
+- The build procedure does not need all the "sed" hacks any longer
+
+There are still some ways to optimize the parser further. The parser will be
+faster and simpler; there will be some new possibilities (for example, it will
+be possible to store the line and column of elements together with the element
+nodes; perhaps I will add an optional check on the "standalone" attribute).
+
+I plan to rename Markup into PXP (polymorphic XML parser) to emphasize its
+strengths. I hope it gets more users by better "marketing".
+
+Of course: Thanks for your work!
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Tue, 16 May 2000 10:16:43 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Tue, 16 May 2000 20:00:26 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx04 with esmtp (Exim 2.12 #3)
+	id 12rcWU-0007Uy-00
+	for gerd@gerd-stolpmann.de; Tue, 16 May 2000 10:16:15 +0200
+Received: from marsala.students.cs.unibo.it (root@marsala.students.cs.unibo.it [130.136.3.208])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id KAA21210
+	for <gerd@gerd-stolpmann.de>; Tue, 16 May 2000 10:16:11 +0200
+Received: (from sacerdot@localhost)
+	by marsala.students.cs.unibo.it (8.9.3/8.9.3/Debian 8.9.3-6) id KAA02328
+	for gerd@gerd-stolpmann.de; Tue, 16 May 2000 10:16:11 +0200
+Date: Tue, 16 May 2000 10:16:11 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: Here it is!
+Message-ID: <20000516101611.B2225@students.cs.unibo.it>
+References: <20000505185434.A5205@students.cs.unibo.it> <00051000275606.11187@ice> <20000515143745.A1817@students.cs.unibo.it> <0005160307230G.11187@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+In-Reply-To: <0005160307230G.11187@ice>; from gerd@gerd-stolpmann.de on Tue, May 16, 2000 at 01:31:54AM +0200
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+On Tue, May 16, 2000 at 01:31:54 +0200, Gerd Stolpmann wrote:
+> ...
+> the lexer becomes twice as big: 16000 transitions. If I replace "letter+"
+> by nmtoken (as defined in XML), the lexers become bigger but not much.
+
+ I was just getting worried!
+
+> These numbers are important because ocamllex only supports 32767 transitions.
+
+ Yes, I know. I only hoped it was not a problem, as it seems.
+
+> ...
+
+> I also tried to optimize the results manually, but I did not gain very much.
+
+Yes, I know. As I said, the loss is really small. By the way, optimizing the 
+input representation of the regular expressions you reduce the processing
+time of ocamllex, but the result (= the automaton produces) should be
+exactly the same. Actually, it's only an aestetic matter ;-)
+
+> The lexers are complicated by definition. So I would suggest not to optimize
+> further, and to do nicer things at weekends.
+
+ ;-) I'd like to do, but I fear my next weekends would be worst. ;-(
+ I have some articles to write and only 15 days to do it.
+
+> The production for "Char" in the XML spec says:
+> 
+> Char ::= ... | [ #x10000-#10FFFF ]
+> 
+> Only 16 bit implementations need surrogate pairs to represent these characters
+> (e.g. Java); as we are using UTF-8 we can represent them already in UTF-8. I do
+> not know if it is allowed at all to combine the surrogate representation and
+> UTF-8 representation.
+
+ Yes, it is. In the RFC is clearly stated that surrogate pairs _must_ be
+ decoded from UTF-16 before the processing to UTF-8. This is the reason
+ because I have not implemented them: I would have to implement event
+ the UTF-16 to UCS4 conversion.
+
+> If yes: It is better to normalize the representation
+> before anything else happens (the resolver can do this, but it should be
+> possible to switch this off).
+> 
+> This is not a very hot theme; even Unicode says that currently nobody is using
+> surrogates.
+
+ Yes, I think the same thing.
+
+> It looks very good (at least at the first glance). I will have a closer look in
+> the next days.
+> 
+> There is already an important result: The resulting lexers do not need tables
+> with more than 32K transitions (as posted by John Max Skaller on the mailing
+> list). I expect that the UTF-8 port will be successful.
+> 
+> By the way: I worked on the parser, too. I replaced ocamlyacc by a self-written
+> tool, and the result is:
+> 
+> - The parser is 30 % faster
+
+ Great! Speed is ever welcomed.
+
+> - The module Markup_entity is MUCH simpler
+> - The build procedure does not need all the "sed" hacks any longer
+
+ This also is great. In fact I have ever thought that ocamlyacc is
+ not a very good work for a language particularly successfull in
+ compiler writing. And the "sed" stuff to get an oo output was only
+ a proof.
+
+> There are still some ways to optimize the parser further. The parser will be
+> faster and simpler; there will be some new possibilities (for example, it will
+> be possible to store the line and column of elements together with the element
+> nodes; perhaps I will add an optional check on the "standalone" attribute).
+> 
+> I plan to rename Markup into PXP (polymorphic XML parser) to emphasize its
+> strengths. I hope it gets more users by better "marketing".
+
+Polymorphic XML Parser? Where is the polymorphism?
+Only in marketing, I suppose ;-)
+
+> Of course: Thanks for your work!
+
+ As I said, only a little contribution to a good work.
+ I'd like to do more, but from now to october I'm sure I have almost
+ no time. Than I will probably be at INRIA for some time and only then
+ I will have time again.
+
+						Have a good time,
+						     C.S.C.
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Here it is!
+Date: Sun, 21 May 2000 00:50:43 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000505185434.A5205@students.cs.unibo.it> <0005160307230G.11187@ice> <20000516101611.B2225@students.cs.unibo.it>
+In-Reply-To: <20000516101611.B2225@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <0005210106330J.11187@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+Hi,
+
+I was successful with UTF-8. The transition tables are all very big, but below
+the 32 K limit (after some modifications). I've also updated the rest of the
+code such that the parser can already be invoked with enabled UTF-8 support.
+
+There is a pre-release: 
+	http://www.ocaml-programming/packages/pxp-pre.html
+
+In order to enable the UTF-8 lexers you must set the new config parameter
+"encoding" to Enc_utf8. In the programs coming with the distribution,
+I enabled UTF-8 only for rtests/canoncvs/test_canonxml, the regression test
+that compares parsed XML with a canonical XML string. You may look there
+for an example.
+
+It takes very long to generate the lexers: about 10 minutes on a 400 Mhz
+Pentium II. The resulting program is rather large; the UTF-8 transition tables
+allocate about 500K of memory.
+
+There is currently a bug that prevents compilation with ocamlopt (you cannot
+recursively compose cmxa archives).
+
+I have only done some initial tests with the new code; many things work but
+I know already some bugs. For example, you can use a DTD and a document 
+together even if they encode their strings differently.
+
+A lot of fun with the new toy,
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+

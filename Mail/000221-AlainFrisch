@@ -1,0 +1,227 @@
+From ???@??? 00:00:00 1997 +0000
+X-From_: frisch@clipper.ens.fr Mon Feb 21 00:45:17 2000
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 21 Feb 2000 20:00:17 +0100 (MET)
+Received: from nef.ens.fr (nef.ens.fr [129.199.96.32])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id AAA07404
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 21 Feb 2000 00:45:16 +0100 (MET)
+Received: from paquebot.ens.fr (paquebot.ens.fr [129.199.133.1])
+          by nef.ens.fr (8.9.3/1.01.28121999) with ESMTP id AAA23731
+          for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 21 Feb 2000 00:45:15 +0100 (CET)
+Received: from oumiak.ens.fr (frisch@oumiak [129.199.133.2]) by paquebot.ens.fr (8.9.0/jb-1.1)
+	id AAA11997 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 21 Feb 2000 00:45:14 +0100 (MET)
+Received: from localhost (frisch@localhost) by oumiak.ens.fr (8.9.0/jb-1.1)
+	id AAA18757 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 21 Feb 2000 00:45:13 +0100 (MET)
+X-Authentication-Warning: oumiak.ens.fr: frisch owned process doing -bs
+Date: Mon, 21 Feb 2000 00:45:12 +0100 (MET)
+From: Alain Frisch <frisch@clipper.ens.fr>
+X-Sender: frisch@oumiak.ens.fr
+To: Gerd.Stolpmann@darmstadt.netsurf.de
+Subject: About Markup
+Message-ID: <Pine.GSO.4.04.10002210037430.18720-100000@oumiak.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: RO
+X-Status: A
+
+Hi,
+
+I've just tried your XML parser for OCaml, and it's really great.
+After 4 hours of hacking with XML::Parser [XML parser for Perl], I
+decided to rewrite all my stuff in OCaml, and it tooks me 35 minutes.
+Thank you for providing the OCaml community with such a tool !
+
+A little question, concerning the "source" parameter of parse_*_entity:
+when I use (Channel stdin), I get the error:
+
+In entity [toplevel document] = SYSTEM "", at line 2, column 33: 
+Failure("This resolver for external references cannot open this entity")
+
+Is there something special to do in order to use (Channel stdin) ?
+
+
+Vielen Dank !
+
+
+Alain Frisch
+
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: About Markup
+Date: Tue, 22 Feb 2000 01:35:03 +0100
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10002210037430.18720-100000@oumiak.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10002210037430.18720-100000@oumiak.ens.fr>
+MIME-Version: 1.0
+Message-Id: <0002220134220A.30469@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 21 Feb 2000, you wrote:
+>Hi,
+>
+>I've just tried your XML parser for OCaml, and it's really great.
+>After 4 hours of hacking with XML::Parser [XML parser for Perl], I
+>decided to rewrite all my stuff in OCaml, and it tooks me 35 minutes.
+>Thank you for providing the OCaml community with such a tool !
+>
+>A little question, concerning the "source" parameter of parse_*_entity:
+>when I use (Channel stdin), I get the error:
+>
+>In entity [toplevel document] = SYSTEM "", at line 2, column 33: 
+>Failure("This resolver for external references cannot open this entity")
+>
+>Is there something special to do in order to use (Channel stdin) ?
+
+Hi Alain,
+
+yes, reading from channels (and from strings) is a bit different. The problem
+are references to external entities. Consider you have a reference like
+
+&myref;
+
+to parse, and the entity myref was declared as
+
+<!ENTITY myref SYSTEM "whereever/this/is.xml">
+
+The XML specificication says that the file representing &myref; is located
+relative to the file containing the reference. To get the name of the file
+which is referenced you must already know the name of the file containing the
+reference. If you read from channels or strings, there is no name or the name
+is unknown. Because of this, the implementation of the "reader" for channels
+and strings refuses to follow references to files (even if the file name is
+absolute).
+
+Perhaps it would be better to enhance the API such that the user CAN specify a
+name. The API isn't perfect - there are still many open questions; for example,
+the XML spec also says that SYSTEM denotes URLs, not only file names, and this
+makes resolution of relative file names more complicated, too. These weaknesses
+are the reason why Markup_entity (containing all this code) has still no
+interface definition.
+
+If you really need to read from channels, there is of course a way to do it,
+but it is not documented, and please be prepared that the interfaces will
+change.
+
+What you need is a customized "resolver" (an object mapping names of entities
+to character streams). The resolver resolve_read_channel is almost perfect, but
+as pointed out, it is not able to resolve relative names. The resolver
+resolve_as_file can read from files given by their names, but not from channels.
+I think it is the simplest way to derive from resolve_as_file.
+So override some methods:
+
+class customized_resolver the_channel the_directory the_warner =
+  object (self)
+    inherit resolve_as_file the_warner as super
+
+    val mutable channel_already_open = true
+
+    initializer
+      ch <- the_channel;
+      directory <- the_directory
+
+    method private init_in xid =
+      if not channel_already_open then super # init_in xid
+
+    method clone =
+      {< encoding = "";
+         encoding_requested = false;
+         ch = stdin;
+	 channel_already_open = false;
+      >}
+  end                          (* may contain minor typing errors *)
+;;
+
+This means that this object behaves like resolve_as_file, but the first
+initialization is abbreviated because we have already an open channel. Once
+this object is cloned (and this happens if an external reference is followed),
+the abbreviation is turned off. - The "directory" parameter must contain the
+directory of the file the channel reads from. This is the minimum information
+in order to be able to handle relative names.
+
+Second, we have to pass this new resolver to the parser. This is a bit tricky.
+Create a new configuration (type config), and initialize the "resolver"
+component with an instance of the customized class, i.e.
+
+let config = { default_config with 
+               resolver = new customized_resolver ch dir warner }
+
+Use this configuration together with an arbitrary ExtID source, e.g.
+System "blah", it really does not matter what it contains. ExtID, and this is
+again undocumented, takes the resolver always from the configuration.
+
+>Vielen Dank !
+
+Ich hoffe, ich habe dir geholfen. But your question is also important for me,
+because designing APIs without analysis of use cases only leads to bloated and
+impractical APIs.
+
+Another note: I've detected a serious bug which prevents that an entity
+can be referenced twice in the same document. There will be a fix in the next
+days.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: frisch@clipper.ens.fr Fri Mar  3 16:26:59 2000
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Fri, 03 Mar 2000 19:54:45 +0100 (MET)
+Received: from nef.ens.fr (nef.ens.fr [129.199.96.32])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id QAA11957
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Fri, 3 Mar 2000 16:26:57 +0100 (MET)
+Received: from paquebot.ens.fr (paquebot.ens.fr [129.199.133.1])
+          by nef.ens.fr (8.9.3/1.01.28121999) with ESMTP id QAA44580
+          for <Gerd.Stolpmann@darmstadt.netsurf.de>; Fri, 3 Mar 2000 16:26:55 +0100 (CET)
+Received: from localhost (frisch@localhost) by paquebot.ens.fr (8.9.0/jb-1.1)
+	id QAA22191 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Fri, 3 Mar 2000 16:26:54 +0100 (MET)
+Date: Fri, 3 Mar 2000 16:26:54 +0100 (MET)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: Re: About Markup 
+In-Reply-To: <Pine.GSO.4.04.10003031618200.2307-100000@clipper.ens.fr>
+Message-ID: <Pine.GSO.4.04.10003031618360.22131-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
+Status: RO
+X-Status: O
+
+> ...
+> If you really need to read from channels, there is of course a way to do it,
+> but it is not documented, and please be prepared that the interfaces will
+> change.
+> ...
+
+Ok, thanks a lot for your help. I will probably need to patch Markup to
+add some features:
+- improve verbosity of error reports (when an element doesn't match its 
+  content model for instance ...)
+- bypass the DTD definition in a document and use instead a DTD provided
+  by the program
+(actually, I will have to handle XML documents submitted by end-users,
+and I don't want them to modify the DTD or to link to another DTD ...)
+
+
+Tschüß !
+
+
+Alain
+
+
+

@@ -1,0 +1,385 @@
+From ???@??? 00:00:00 1997 +0000
+X-From_: sacerdot@students.cs.unibo.it Mon Oct 25 19:19:41 1999
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.0.3)
+	for gerd@localhost (single-drop); Mon, 25 Oct 1999 20:00:15 +0200 (MEST)
+Received: from cantina.students.cs.unibo.it (cantina.students.cs.unibo.it [130.136.3.110])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id TAA27029
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 25 Oct 1999 19:19:40 +0200 (MET DST)
+Received: from lambrusco.students.cs.unibo.it (root@lambrusco.students.cs.unibo.it [130.136.3.201])
+	by cantina.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) with ESMTP id TAA17658
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 25 Oct 1999 19:19:25 +0200
+Received: (from sacerdot@localhost)
+	by lambrusco.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) id TAA00479
+	for Gerd.Stolpmann@darmstadt.netsurf.de; Mon, 25 Oct 1999 19:19:23 +0200
+Date: Mon, 25 Oct 1999 19:19:23 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd.Stolpmann@darmstadt.netsurf.de
+Subject: A bug in Markup
+Message-ID: <19991025191923.A466@students.cs.unibo.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+X-Mailer: Mutt 0.95.3i
+Status: RO
+X-Status: A
+
+Hi Gerd,
+
+I think I have found a little bug in markup 0.2
+
+If I define an ELEMENT before it's ATTLIST than a warning is issued; but
+I think that it is not something to warn against! I have looked at
+markup_yacc.mly and, from the comments, I think that you also think so and
+that there is a little mistake in the code. But I could have misunderstood
+you and the reccomendation.
+
+Here is an example: 
+
+dtd:
+
+...
+<!ELEMENT ABST (term)*>
+<!ATTLIST ABST
+          value CDATA #REQUIRED>
+...
+
+Output of the validate example:
+
+WARNING: More than one ATTLIST declaration for element type `ABST'
+
+								T.I.A.
+                                                                C.S.C.
+
+-- 
+-----------------------------------------
+Real Name: Claudio Sacerdoti Coen
+Address: via del Colle n.6
+	 S. Lazzaro di Savena (BO)
+	 Italy
+e-mail:  sacerdot@cs.unibo.it
+-----------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: A bug in Markup
+Date: Tue, 26 Oct 1999 01:53:18 +0200
+X-Mailer: KMail [version 1.0.21]
+Content-Type: text/plain
+References: <19991025191923.A466@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <99102602041900.08194@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 25 Oct 1999, you wrote:
+>Hi Gerd,
+>
+>I think I have found a little bug in markup 0.2
+>
+>If I define an ELEMENT before it's ATTLIST than a warning is issued; but
+>I think that it is not something to warn against! I have looked at
+>markup_yacc.mly and, from the comments, I think that you also think so and
+>that there is a little mistake in the code. But I could have misunderstood
+>you and the reccomendation.
+
+It is clearly a bug. The correction is very simple and I found it immediately.
+The improved archive is now
+
+http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml/markup-0.2.1.tar.gz
+
+By the way, getting bug reports is one way of coming into contact with users of
+my software. What are you doing with XML? I'm interested because I've currently
+some discussions with colleagues about the pros and cons of XML, and perhaps
+you know something we don't...
+
+Gerd
+--
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: sacerdot@students.cs.unibo.it Tue Oct 26 10:31:01 1999
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.0.3)
+	for gerd@localhost (single-drop); Tue, 26 Oct 1999 20:00:29 +0200 (MEST)
+Received: from cantina.students.cs.unibo.it (cantina.students.cs.unibo.it [130.136.3.110])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id KAA27147
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Tue, 26 Oct 1999 10:31:00 +0200 (MET DST)
+Received: from pagadebit.students.cs.unibo.it (root@pagadebit.students.cs.unibo.it [130.136.3.115])
+	by cantina.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) with ESMTP id KAA02091
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Tue, 26 Oct 1999 10:30:59 +0200
+Received: (from sacerdot@localhost)
+	by pagadebit.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) id KAA03931
+	for Gerd.Stolpmann@darmstadt.netsurf.de; Tue, 26 Oct 1999 10:30:57 +0200
+Date: Tue, 26 Oct 1999 10:30:56 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: Re: A bug in Markup
+Message-ID: <19991026103055.A3884@students.cs.unibo.it>
+References: <19991025191923.A466@students.cs.unibo.it> <99102602041900.08194@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+X-Mailer: Mutt 0.95.3i
+In-Reply-To: <99102602041900.08194@ice>; from Gerd Stolpmann on Tue, Oct 26, 1999 at 01:53:18 +0200
+Status: RO
+X-Status: A
+
+On Tue, Oct 26, 1999 at 01:53:18 +0200, Gerd Stolpmann wrote:
+> What are you doing with XML? I'm interested because I've currently
+> some discussions with colleagues about the pros and cons of XML, and perhaps
+> you know something we don't...
+
+I'm using it for my thesis: do you know Coq, the proof assistant written in
+OCaml at Inria? It is not at all modular and it has an awful interface to the
+user. You can't publish in any way your proofs, nor you can check it with
+other tools; it also has not a valid search engine on theories, only on terms
+inside the loaded theory. My working group is using XML to export the
+lambda-terms of the calculus of coinductive constructions on which Coq is based:
+once the terms are exported from Coq, we can type-check it, annotate it and
+render it with tools self/-build.
+
+Is XML the right tool for doing this? Hhhmmm. I do not really think so. I mean,
+it is great as an intermediate language for exchange between different tools,
+but it is _really_ too heavy for us: I think the library of Coq will take up
+to 1000 times more space on disk than the native coded solution. So, probably,
+we would have to use also another format for storing the data once exported and
+reimported.
+
+I think also that XML is of very little use if you have not an XSLT parser.
+Is someone writing one using markup or some other OCaml tool? It would be a
+great thing to do, but now we have not time to do this.
+
+What is your opinion on this?
+
+								Thank you again
+								    C.S.C.
+-- 
+-----------------------------------------
+Real Name: Claudio Sacerdoti Coen
+Address: via del Colle n.6
+	 S. Lazzaro di Savena (BO)
+	 Italy
+e-mail:  sacerdot@cs.unibo.it
+-----------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: A bug in Markup
+Date: Tue, 26 Oct 1999 21:59:58 +0200
+X-Mailer: KMail [version 1.0.21]
+Content-Type: text/plain
+References: <19991026103055.A3884@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <99102623503500.10901@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Tue, 26 Oct 1999, you wrote:
+>On Tue, Oct 26, 1999 at 01:53:18 +0200, Gerd Stolpmann wrote:
+>> What are you doing with XML? I'm interested because I've currently
+>> some discussions with colleagues about the pros and cons of XML, and perhaps
+>> you know something we don't...
+>
+>I'm using it for my thesis: do you know Coq, the proof assistant written in
+>OCaml at Inria? 
+
+I do not know Coq but I have studied other proof assistants, especially
+Nuprl.
+
+>It is not at all modular and it has an awful interface to the
+>user. You can't publish in any way your proofs, nor you can check it with
+>other tools; it also has not a valid search engine on theories, only on terms
+>inside the loaded theory. My working group is using XML to export the
+>lambda-terms of the calculus of coinductive constructions on which Coq is based:
+>once the terms are exported from Coq, we can type-check it, annotate it and
+>render it with tools self/-build.
+>
+>Is XML the right tool for doing this? Hhhmmm. I do not really think so. I mean,
+>it is great as an intermediate language for exchange between different tools,
+>but it is _really_ too heavy for us: I think the library of Coq will take up
+>to 1000 times more space on disk than the native coded solution. So, probably,
+>we would have to use also another format for storing the data once exported and
+>reimported.
+
+The big advantage of XML is that it is a standard, so you can use standard
+modules to load it into other programs (whatever the programming language is).
+This means that you can use languages and tools which are more problem-oriented.
+
+That XML files tend to become big is not really a problem because disk space is
+cheap. I think the real problem is how to *access* such big files because you
+usually do not want all of it. For example, you can store every theorem and
+every definition into a separate file, such that you can directly load those
+parts of the library you currently need. The drawback is that you may run into
+consistency problems, for example, if changes are only partially stored.
+Perhaps an alternative is to use a database management system which guarantees
+consistency, but I think this makes only sense if several users share the same
+database. (And to read from a database is MUCH slower than to read from a file.)
+
+I left university two years ago, and at that time it was an open problem how to
+store a theorem library; the library was loaded into memory at the beginning of
+the session and written back at the end. I do not know if something changed
+since that; but the situation is not satisfactory because you cannot
+really collect bigger amounts of theorems (or better, axioms, because it is one
+problem to collect them, and another to prove them formally), because it costs
+memory, and the whole system becomes slower and slower. At that time I thought
+about indexing of theorems, and about storing them into databases together with
+their prooves, but I had no interchangeable representation, and the typical SQL
+database seemed to be too slow. Now we have XML, and I think it is a good
+representation for that purpose. If databases are good is still open.
+
+>I think also that XML is of very little use if you have not an XSLT parser.
+>Is someone writing one using markup or some other OCaml tool? It would be a
+>great thing to do, but now we have not time to do this.
+
+Do you mean XSL (extensible stylesheet language)? There are so many
+abbreviations floating around.
+
+XSL is too leightweight for many purposes; it is often simpler to write a
+transformation directly in Ocaml than in XSL (many transformations have an
+algorithmic element which is very hard to express in XSL).
+
+I think we should first consider to make tree pattern matching available within
+Ocaml, for example by adding special notations to Ocaml using the preprocessor
+camlp4. Then it should be possible to translate many XSL templates directly to
+readable Ocaml code (okay, you must put one recursion around the pattern
+matching rules to traverse the tree). 
+
+Perhaps I have time for that in the next millennium.
+
+Gerd
+--
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: sacerdot@students.cs.unibo.it Wed Oct 27 09:38:43 1999
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.0.3)
+	for gerd@localhost (single-drop); Wed, 27 Oct 1999 20:00:16 +0200 (MEST)
+Received: from cantina.students.cs.unibo.it (cantina.students.cs.unibo.it [130.136.3.110])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id JAA15258
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Wed, 27 Oct 1999 09:38:40 +0200 (MET DST)
+Received: from lambrusco.students.cs.unibo.it (root@lambrusco.students.cs.unibo.it [130.136.3.201])
+	by cantina.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) with ESMTP id JAA32729
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Wed, 27 Oct 1999 09:38:37 +0200
+Received: (from sacerdot@localhost)
+	by lambrusco.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) id JAA02202
+	for Gerd.Stolpmann@darmstadt.netsurf.de; Wed, 27 Oct 1999 09:38:35 +0200
+Date: Wed, 27 Oct 1999 09:38:35 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: Re: A bug in Markup
+Message-ID: <19991027093835.A2184@students.cs.unibo.it>
+References: <19991026103055.A3884@students.cs.unibo.it> <99102623503500.10901@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+X-Mailer: Mutt 0.95.3i
+In-Reply-To: <99102623503500.10901@ice>; from Gerd Stolpmann on Tue, Oct 26, 1999 at 21:59:58 +0200
+Status: RO
+X-Status: O
+
+On Tue, Oct 26, 1999 at 21:59:58 +0200, Gerd Stolpmann wrote:
+> ... 
+> That XML files tend to become big is not really a problem because disk space is
+> cheap.
+
+I know this, but very huge file on disks require also a lot of time to parse:
+a file that is 1000 times bigger than the original could take even more than
+1000 times more to parse. And then there are also the problem you cite:
+
+> I think the real problem is how to *access* such big files because you
+> usually do not want all of it. For example, you can store every theorem and
+> every definition into a separate file, such that you can directly load those
+> parts of the library you currently need. The drawback is that you may run into
+> consistency problems, for example, if changes are only partially stored.
+> Perhaps an alternative is to use a database management system which guarantees
+> consistency, but I think this makes only sense if several users share the same
+> database. (And to read from a database is MUCH slower than to read from a file.)
+
+These are exactly the most impelling problems we are facing now. We have
+not decided yet what will be our ultimate solution, but I think that consistency
+problems are not very dangerous to us: If something get corrupted, we can
+know it from the type-checking algorithm and we can rebuild the XML file
+starting from the original Coq's file. The problem is that if we put each
+theorem in a different file (that seems the best), it is then difficult
+to record a whole theory in a natural way: what becomes a section, for example? 
+A directory? And what is it's signature?
+The database solution seems heavy and it seems also to overkill the problem.
+
+> I left university two years ago, and at that time it was an open problem how to
+> store a theorem library; the library was loaded into memory at the beginning of
+> the session and written back at the end. I do not know if something changed
+> since that; but the situation is not satisfactory because you cannot
+> really collect bigger amounts of theorems (or better, axioms, because it is one
+> problem to collect them, and another to prove them formally), because it costs
+> memory, and the whole system becomes slower and slower.
+
+Nothing new.
+
+> ...
+
+> >I think also that XML is of very little use if you have not an XSLT parser.
+> >Is someone writing one using markup or some other OCaml tool? It would be a
+> >great thing to do, but now we have not time to do this.
+> 
+> Do you mean XSL (extensible stylesheet language)? There are so many
+> abbreviations floating around.
+
+Yes, I mean the transformation part of XSL (without formatting objects). 
+
+> XSL is too leightweight for many purposes; it is often simpler to write a
+> transformation directly in Ocaml than in XSL (many transformations have an
+> algorithmic element which is very hard to express in XSL).
+
+It is often simpler to write a parser for a proprietary format directly in Ocaml
+than in XML ;-)
+
+I think that XSL (ore something similar, but with a lighter computational
+complessity) is needed to use XML fruitfully. XML without XSL is as a
+data-strucutre without a library of functions to use it. Any way, now
+a standard library to do pattern matching on XML trees seems more urgent.
+
+> I think we should first consider to make tree pattern matching available within
+> Ocaml, for example by adding special notations to Ocaml using the preprocessor
+> camlp4. Then it should be possible to translate many XSL templates directly to
+> readable Ocaml code (okay, you must put one recursion around the pattern
+> matching rules to traverse the tree). 
+
+A very good starting point.
+
+> Perhaps I have time for that in the next millennium.
+
+So I'll ask you again in 2999.
+
+Thank you for the hints (and for having written markup, too!).
+
+							C.S.C.
+
+-- 
+-----------------------------------------
+Real Name: Claudio Sacerdoti Coen
+Address: via del Colle n.6
+	 S. Lazzaro di Savena (BO)
+	 Italy
+e-mail:  sacerdot@cs.unibo.it
+-----------------------------------------
+
+

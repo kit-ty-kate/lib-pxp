@@ -1,0 +1,332 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Thu, 27 Jul 2000 12:17:04 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Thu, 27 Jul 2000 20:00:27 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx06.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13HkiI-0002hI-00
+	for gerd@gerd-stolpmann.de; Thu, 27 Jul 2000 12:16:26 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e6RAGPT93091
+          for <gerd@gerd-stolpmann.de>; Thu, 27 Jul 2000 12:16:25 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id MAA00245 for <gerd@gerd-stolpmann.de>; Thu, 27 Jul 2000 12:16:24 +0200 (MET DST)
+Date: Thu, 27 Jul 2000 12:16:24 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: gerd@gerd-stolpmann.de
+Subject: PXP and XPath/XSLT data model
+Message-ID: <Pine.GSO.4.04.10007271152040.23326-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+Hello,
+
+I had a look at XPath and XSLT recommendations and I realize that the
+Markup/PXP document model is quite different from the one needed by these
+specifications. Actually, PXP discards some information such as
+the position of processing instructions and the comments. There are other
+differences which make difficult to use XPath with a PXP parsed document:
+(in the XPath data model, attributes are nodes; no built-in handling of
+namespaces; difficult to retrieve document order).
+
+I think that it wouln't be too hard to add support of this data model to
+PXP. Basically, you have to extend node_type with T_root, T_attribute,
+(T_namespace ?), T_processing, T_comment and define new implementations
+of node. Of course, many methods are irrelevant for these new node types
+so this may lead to other design modification.
+
+I understand that for many applications, the position of processing
+instructions or the comments aren't necessary, but the choice of a
+specific data model for PXP make it difficult to use it with standard
+specifications. Also, the functional aspect of OCaml impose some natural
+design issues, but I think that the XPath document model fits well too.
+
+Having attributes (optionnaly ?) as nodes doesn't mean that you
+don't have "attribute accessor methods" in element nodes (same remark for 
+processing instructions), so in fact, you could take the best of the
+current PXP model and the XPath model.
+
+
+Even if implementing a XSLT processor is not so important (we can simply
+an existing one), XPath is a convenient and standard way to
+access parts of an XML document. What I have in mind is a CamlP4 quotation
+expander to deal with XPath expression, so you could write someting like:
+
+let nodes = XPath.eval context <:xpath<para[5][@type="warning"]>> in
+...
+
+
+Is the PXP DOM frozen or do you still consider modifying it to allow
+implementation of standard XML applications ?
+
+
+Sincerely,
+
+Alain Frisch
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: PXP and XPath/XSLT data model
+Date: Fri, 28 Jul 2000 01:10:34 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10007271152040.23326-100000@clipper.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10007271152040.23326-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Message-Id: <00072803120804.12644@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Thu, 27 Jul 2000, you wrote:
+>Hello,
+>
+>I had a look at XPath and XSLT recommendations and I realize that the
+>Markup/PXP document model is quite different from the one needed by these
+>specifications. Actually, PXP discards some information such as
+>the position of processing instructions and the comments. There are other
+>differences which make difficult to use XPath with a PXP parsed document:
+>(in the XPath data model, attributes are nodes; no built-in handling of
+>namespaces; difficult to retrieve document order).
+>
+>I think that it wouln't be too hard to add support of this data model to
+>PXP. Basically, you have to extend node_type with T_root, T_attribute,
+>(T_namespace ?), T_processing, T_comment and define new implementations
+>of node. Of course, many methods are irrelevant for these new node types
+>so this may lead to other design modification.
+
+Yes, this is generally possible.
+
+>I understand that for many applications, the position of processing
+>instructions or the comments aren't necessary, but the choice of a
+>specific data model for PXP make it difficult to use it with standard
+>specifications. Also, the functional aspect of OCaml impose some natural
+>design issues, but I think that the XPath document model fits well too.
+>
+>Having attributes (optionnaly ?) as nodes doesn't mean that you
+>don't have "attribute accessor methods" in element nodes (same remark for 
+>processing instructions), so in fact, you could take the best of the
+>current PXP model and the XPath model.
+
+I think we should distinguish between two aspects: (1) The actual way the XML
+tree is stored, and (2) The view of an application on this tree. These aspects
+may but need not be identical.
+
+Regarding (1), the main requirement is that there should be no loss of
+information. In PXP, processing instructions and comments are reordered or
+thrown away; this should be changed such that it is possible to include them
+into the XML tree.
+
+Of course, the requirements for (2) vary from application to application. Many
+applications need neither PIs nor comments, so they should not see them. Most
+applications access attributes in an "attributive" way (as a mapping from
+properties to values), but some want to see them in a structural manner (as
+attribute nodes). Even elements may require different views; often elements are
+used for bigger attribute values, so it may be useful to access them in an
+attributive way, too.
+
+I think, PXP should provide a good compromise for (2). This means, it must be
+possible to define your own view on the tree with little means.
+
+Possible compromise:
+
+- node_type is extended by T_root, T_attribute, T_namespace, T_pinstr, T_comment
+
+- Following (1), it must be possible that the tree contains
+  all element, text, pinstr, and comment nodes at their right positions.
+  But it can be configured that some types of nodes are not included into the
+  tree.
+
+  If you want pinstr nodes, actually element nodes are inserted into the tree,
+  but their node type is set to T_pinstr to indicate their special role.
+  The T_pinstr nodes work as wrappers for the proc_instruction objects.
+
+  If you want comment nodes, actually text nodes are inserted into the tree,
+  but their node type is set to T_comment.
+
+- The XML tree does physically never contain T_root, T_namespace, and
+  T_attribute nodes. For roots, there is already the "document" class
+  representing them. For attributes, I prefer the current lightweight
+  implementation. 
+
+- The sole purpose of the types T_root, T_namespace and T_attribute is to
+  simplify views on the tree in which these types are included.
+
+  For example, you can define a method 'xpath_children' which returns the set of
+  all children in the xpath view, including namespace and attribute nodes. This
+  means this method takes the real children stored in the physical tree, and
+  adds virtual children modeling the nodes missing in the physical tree. Of
+  course, both namespace and attribute nodes must then be represented as "node"
+  objects. To simplify this, PXP could support "atom" objects which means that
+  such objects are empty except that they have a node type and that it is
+  possible to specify the fully configurable extension object which is
+  used to implement the properties of the object.
+
+  Could look as follows:
+
+  let attribute_node = new atom 
+                         (T_attribute "my_att") 
+                         (new attribute_extension ...)
+
+  "atom" plays the role of a wildcard, being able to create every type of node
+  that is not already being created by PXP itself. From PXP's view, the atom is
+  atomic because it does not have any structure; not even a parent, and no
+  children. 
+
+  Any structure that should be visible from a specific view can only be
+  accessed by the methods of the extension object.
+
+I'm relatively sure that it is not very difficult to implement any type
+of read-only access to the tree using such views. Write access is more
+complicated because constructors must be simulated, but I think it is possible,
+too.
+
+Of course, it would alternatively also be possible to put everything into the
+physical tree, and the more leightweight forms of access would be considered as
+simplified views on the tree. However, this approach would make the parser much
+more complicated, because the class type "node" must unify more aspects of
+nodes, and because there would be more communication between objects. I prefer
+to make the core of the parser as lightweight as possible, and to offer enough
+hooks to extend it as necessary for a specific problem.
+
+>Even if implementing a XSLT processor is not so important (we can simply
+>an existing one), XPath is a convenient and standard way to
+>access parts of an XML document. What I have in mind is a CamlP4 quotation
+>expander to deal with XPath expression, so you could write someting like:
+>
+>let nodes = XPath.eval context <:xpath<para[5][@type="warning"]>> in
+>...
+>
+
+The notation looks interesting. Do you think it will be fast enough for real
+programming? 
+
+>Is the PXP DOM frozen or do you still consider modifying it to allow
+>implementation of standard XML applications ?
+
+No, it is not frozen. Perhaps it will be never frozen, as I consider PXP as an
+experimental parser. For practical reasons, I currently try to define a base
+DOM that can be seen as intermediate result; if the DOM is later extended,
+applications should not break. Up to your mail, I mainly focused on the way
+objects are created (resulting in the new, extensible "spec" type), and I had
+some thoughts how to implement namespaces (by normalizing the prefixes). Now,
+I think there should be more preparatory modifications that simplify later
+extensions. At least, I should already extend node_type such that programmers
+must already take into account that there are more values than just T_element
+and T_data. Furthermore, it should be possible to include processing
+instructions and comments into the tree (a simple task; I actually did it
+already for processing instructions, but the node_type is not T_pinstr but
+T_element "-pi").
+
+My next goal is to release PXP-1.0. It should be absolutely XML-1.0-compliant
+(I am _very_ close to this); it should have a good base API that has enough
+room for later extensions. I have planned to release it within the next three
+weeks (and updating the regression tests and the documentation until then); now
+I will first revise the DOM before the release.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <frisch@clipper.ens.fr>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Fri, 28 Jul 2000 14:07:19 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Fri, 28 Jul 2000 15:59:05 +0200 (MEST)
+Received: from [129.199.96.32] (helo=nef.ens.fr)
+	by mx02.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13I8el-00082x-00
+	for gerd@gerd-stolpmann.de; Fri, 28 Jul 2000 13:50:23 +0200
+Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
+          by nef.ens.fr (8.10.1/1.01.28121999) with ESMTP id e6SBoIT42291
+          for <gerd@gerd-stolpmann.de>; Fri, 28 Jul 2000 13:50:18 +0200 (CEST)
+Received: from localhost (frisch@localhost) by clipper.ens.fr (8.9.2/jb-1.1)
+	id NAA16364 for <gerd@gerd-stolpmann.de>; Fri, 28 Jul 2000 13:50:17 +0200 (MET DST)
+Date: Fri, 28 Jul 2000 13:50:17 +0200 (MET DST)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: PXP and XPath/XSLT data model
+In-Reply-To: <00072803120804.12644@ice>
+Message-ID: <Pine.GSO.4.04.10007281253120.10872-100000@clipper.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: R 
+X-Status: N
+
+Hello,
+
+> I think we should distinguish between two aspects: (1) The actual way the XML
+> tree is stored, and (2) The view of an application on this tree. These aspects
+> may but need not be identical.
+> 
+> Regarding (1), the main requirement is that there should be no loss of
+> information. In PXP, processing instructions and comments are reordered or
+> thrown away; this should be changed such that it is possible to include them
+> into the XML tree.
+
+no loss of information: it depends on what you call information. For
+instance, the parser expands entities, throws out collapsable spaces,
+make CDATA sections indistinguishable; the same for attribute delimiters
+(' or "). It would make sense to ignore comments too.
+
+A parser which induces absolutely no loss of information (its output
+allows to re-build exactly the initial XML document) would be too heavy.
+So you have to make choice and decides which information to keep.
+
+>   For example, you can define a method 'xpath_children' which returns the set of
+>   all children in the xpath view, including namespace and attribute nodes. This
+>   means this method takes the real children stored in the physical tree, and
+>   adds virtual children modeling the nodes missing in the physical tree. Of
+>   course, both namespace and attribute nodes must then be represented as "node"
+>   objects. To simplify this, PXP could support "atom" objects which means that
+>   such objects are empty except that they have a node type and that it is
+>   possible to specify the fully configurable extension object which is
+>   used to implement the properties of the object.
+
+I think this is a good solution (compromise).
+
+> >let nodes = XPath.eval context <:xpath<para[5][@type="warning"]>> in
+> >...
+> >
+> 
+> The notation looks interesting. Do you think it will be fast enough for real
+> programming? 
+
+Oh yes. The quotation expander could actually compile the XPath expression
+to OCaml code. I didn't study the XPath semantic very carefully, but I
+think that in most cases, it is possible to detect statically when an
+expression returns at most one node, in order to manipulate nodes instead
+of node sets. 
+
+The expression could *very* naively compile to something like :  
+
+let nl = [context.current_node] in
+let nl = List.concat (List.map (fun n -> List.filter (fun n -> n # name = 
+"para") n # element_children) nl) in
+let nl = [List.nth nl 5] in
+let nl = List.filter (fun n -> ...
+
+
+XSLT matching are more difficult to implement efficiently.
+
+
+--
+Alain
+
+

@@ -1,0 +1,262 @@
+From ???@??? 00:00:00 1997 +0000
+X-From_: sacerdot@students.cs.unibo.it Mon Nov  8 12:01:57 1999
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.0.3)
+	for gerd@localhost (single-drop); Mon, 08 Nov 1999 20:00:16 +0100 (MET)
+Received: from cantina.students.cs.unibo.it (cantina.students.cs.unibo.it [130.136.3.110])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id MAA03366
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 8 Nov 1999 12:01:43 +0100 (MET)
+Received: from marsala.students.cs.unibo.it (root@marsala.students.cs.unibo.it [130.136.3.208])
+	by cantina.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) with ESMTP id MAA05362
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 8 Nov 1999 12:01:41 +0100
+Received: (from sacerdot@localhost)
+	by marsala.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) id MAA15210
+	for Gerd.Stolpmann@darmstadt.netsurf.de; Mon, 8 Nov 1999 12:01:39 +0100
+Date: Mon, 8 Nov 1999 12:01:39 +0100
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd.Stolpmann@darmstadt.netsurf.de
+Subject: Another bug in markup and some statistics
+Message-ID: <19991108120138.A15171@students.cs.unibo.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+X-Mailer: Mutt 0.95.3i
+Status: RO
+X-Status: F
+
+Hi Gerd,
+
+I think I have found another bug in markup.
+
+The file at the end of the mail is reported to be error-free,
+but the root element is "Variable" when it should be "InductiveDefinition".
+Do you check this in markup?  If not, why not?
+
+
+And now, some statistics that may interest you:
+
+I have parsed 1.3 Mb of XML Files with markup, a Perl interface to expat and
+nsgml. Only markup and the last one are validating. These are the timings
+I got:
+
+markup (interpreted): 45 s
+markup (native-code): 13 s
+Perl + expat        : 13 s
+nsgml               : 75 s
+
+Now I'm parsing 76 Mb of XML Files and the timings I'm getting are
+
+markup (interpreted): 20 m
+markup (native-code):  6 m
+
+The timings are not great, but markup is not too bad if faced with other
+broad-used XML parsers. I think you have done quite a good job.
+
+								T.I.A.
+								C.S.C.
+
+
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE InductiveDefinition SYSTEM "/really_very_local/helm/PARSER/examples/definition.dtd">
+
+<Variable name="A">
+  <type>
+    <CAST>
+      <term>
+        <SORT value="Prop(Null)"/>
+      </term>
+      <type>
+        <SORT value="Type(???)"/>
+      </type>
+    </CAST>
+  </type>
+</Variable>
+
+
+-- 
+-----------------------------------------
+Real Name: Claudio Sacerdoti Coen
+Address: via del Colle n.6
+	 S. Lazzaro di Savena (BO)
+	 Italy
+e-mail:  sacerdot@cs.unibo.it
+-----------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Another bug in markup and some statistics
+Date: Mon, 8 Nov 1999 20:28:10 +0100
+X-Mailer: KMail [version 1.0.21]
+Content-Type: text/plain
+References: <19991108120138.A15171@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <99110820403100.20690@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 08 Nov 1999, you wrote:
+>Hi Gerd,
+>
+>I think I have found another bug in markup.
+>
+>The file at the end of the mail is reported to be error-free,
+>but the root element is "Variable" when it should be "InductiveDefinition".
+>Do you check this in markup?  If not, why not?
+
+No, the file at the end has an error: The root element is declared as
+"InductiveDefinition", but actually it is "Variable".
+
+>And now, some statistics that may interest you:
+>
+>I have parsed 1.3 Mb of XML Files with markup, a Perl interface to expat and
+>nsgml. Only markup and the last one are validating. These are the timings
+>I got:
+>
+>markup (interpreted): 45 s
+>markup (native-code): 13 s
+>Perl + expat        : 13 s
+>nsgml               : 75 s
+>
+>Now I'm parsing 76 Mb of XML Files and the timings I'm getting are
+>
+>markup (interpreted): 20 m
+>markup (native-code):  6 m
+>
+>The timings are not great, but markup is not too bad if faced with other
+>broad-used XML parsers. I think you have done quite a good job.
+
+Really interesting. There are still some optimizations possible; for example
+everything is actually scanned twice, first for the tokens, and in a second pass
+the linefeeds are counted; this could be done in a single job. 
+
+Were the files ISO-8859-1- or UTF-8 encoded? This makes really a difference
+because the latter is much slower.
+
+Did you use only XML::Parser for your Perl benchmark or XML::DOM?
+XML::Parser is much more low-level than Markup whereas XML::DOM has more or
+less the same functionality.
+
+Perhaps you can get some speed-up by switching the validator off, i.e. using
+Markup_yacc.parse_wf_entity. Depending on the DTD, validation can be
+time-consuming.
+
+
+Gerd
+
+--
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: sacerdot@students.cs.unibo.it Tue Nov  9 09:44:26 1999
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.0.3)
+	for gerd@localhost (single-drop); Tue, 09 Nov 1999 18:53:39 +0100 (MET)
+Received: from cantina.students.cs.unibo.it (cantina.students.cs.unibo.it [130.136.3.110])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id JAA25028
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Tue, 9 Nov 1999 09:44:26 +0100 (MET)
+Received: from marsala.students.cs.unibo.it (root@marsala.students.cs.unibo.it [130.136.3.208])
+	by cantina.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) with ESMTP id JAA29811
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Tue, 9 Nov 1999 09:44:14 +0100
+Received: (from sacerdot@localhost)
+	by marsala.students.cs.unibo.it (8.9.3/8.9.3/Debian/GNU) id JAA17876
+	for Gerd.Stolpmann@darmstadt.netsurf.de; Tue, 9 Nov 1999 09:44:12 +0100
+Date: Tue, 9 Nov 1999 09:44:12 +0100
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: Re: Another bug in markup and some statistics
+Message-ID: <19991109094412.A17848@students.cs.unibo.it>
+References: <19991108120138.A15171@students.cs.unibo.it> <99110820403100.20690@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+X-Mailer: Mutt 0.95.3i
+In-Reply-To: <99110820403100.20690@ice>; from Gerd Stolpmann on Mon, Nov 08, 1999 at 20:28:10 +0100
+Status: RO
+X-Status: A
+
+On Mon, Nov 08, 1999 at 20:28:10 +0100, Gerd Stolpmann wrote:
+> >The file at the end of the mail is reported to be error-free,
+> >but the root element is "Variable" when it should be "InductiveDefinition".
+> >Do you check this in markup?  If not, why not?
+> 
+> No, the file at the end has an error: The root element is declared as
+> "InductiveDefinition", but actually it is "Variable".
+
+Perhaps I didn't explain myself well. I know that the file had that error.
+I'm saying that markupt DOES NOT tell me that there's an error.
+You can check yourself by using the example "validate" distributed with markup.
+
+Am I right or not?
+
+> Were the files ISO-8859-1- or UTF-8 encoded? This makes really a difference
+> because the latter is much slower.
+
+ISO-8859-1
+
+> Did you use only XML::Parser for your Perl benchmark or XML::DOM?
+> XML::Parser is much more low-level than Markup whereas XML::DOM has more or
+> less the same functionality.
+
+I used only XML::Parser with style Tree.
+
+						Thank you again,
+						     C.S.C.
+
+-- 
+-----------------------------------------
+Real Name: Claudio Sacerdoti Coen
+Address: via del Colle n.6
+	 S. Lazzaro di Savena (BO)
+	 Italy
+e-mail:  sacerdot@cs.unibo.it
+-----------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Another bug in markup and some statistics
+Date: Tue, 9 Nov 1999 23:35:28 +0100
+X-Mailer: KMail [version 1.0.21]
+Content-Type: text/plain
+References: <19991109094412.A17848@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <99110923422400.23873@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Tue, 09 Nov 1999, you wrote:
+>Perhaps I didn't explain myself well. I know that the file had that error.
+>I'm saying that markupt DOES NOT tell me that there's an error.
+>You can check yourself by using the example "validate" distributed with markup.
+>
+>Am I right or not?
+
+You are. I strongly believed that I included such a check, but I didn't...
+Unfortunately, all test samples that could have proved that the check is missing
+also have other errors, and these other errors are found first.
+
+The updated archive, now version 0.2.2, is at the usual place
+(http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml/markup-0.2.2.tar.gz).
+
+
+Gerd
+--
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+

@@ -1,0 +1,140 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <richie@escher.research.bell-labs.com>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Wed, 5 Jul 2000 17:40:48 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Wed, 05 Jul 2000 20:00:16 +0200 (MEST)
+Received: from [137.193.10.21] (helo=gatesrv.rz.unibw-muenchen.de)
+	by mx03.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 139rHZ-0006ID-00
+	for gerd@gerd-stolpmann.de; Wed, 5 Jul 2000 17:40:13 +0200
+Received: from kommsrv.rz.unibw-muenchen.de (kommsrv [137.193.10.8])
+	by gatesrv.rz.unibw-muenchen.de (8.9.1b+Sun/8.9.3) with ESMTP id RAA23989
+	for <gerd@gerd-stolpmann.de>; Wed, 5 Jul 2000 17:40:12 +0200 (MET DST)
+Received: from escher.research.bell-labs.com (kommsrv [137.193.10.8])
+	by kommsrv.rz.unibw-muenchen.de (8.9.3+Sun/8.9.3) with ESMTP id RAA12120
+	for <gerd@gerd-stolpmann.de>; Wed, 5 Jul 2000 17:40:11 +0200 (MET DST)
+Received: from richie by escher.research.bell-labs.com with local (Exim 3.03 #1)
+	id 139rGj-0001rK-00
+	for gerd@gerd-stolpmann.de; Wed, 05 Jul 2000 11:39:21 -0400
+Date: Wed, 5 Jul 2000 11:39:21 -0400
+From: Volker Renneberg <volker.renneberg@acm.org>
+To: gerd@gerd-stolpmann.de
+Subject: problem with "markup"-package
+Message-ID: <20000705113921.A7140@escher>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+sender: volker.renneberg@acm.org
+Status: R 
+X-Status: N
+
+Hi Gerd!
+
+I'm having a problem with the new markup-0.2.10-package. It seems to
+behave different thatn 0.2.7 in that respect that text lines divided
+by returns ('\n') are put into different textnodes. 
+
+So for
+
+<xxx>
+a
+b
+</xxx>
+
+the method 'parse_wf_entity' generates two text nodes inside, for
+
+<xxx>
+a b
+</xxx>
+
+only one.
+
+Because I'm actually just using an implementation of a programming
+language and not programming this in ocaml I don't have a small test
+programm demonstrating this. The actual package of the language is
+bigger. If you cannot reproduce this bug I'll try to extract the
+problem.
+
+ciao
+Volker
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Volker Renneberg <volker.renneberg@acm.org>
+Subject: Re: problem with "markup"-package
+Date: Sun, 9 Jul 2000 15:12:02 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000705113921.A7140@escher>
+In-Reply-To: <20000705113921.A7140@escher>
+MIME-Version: 1.0
+Message-Id: <0007091545420G.14914@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Wed, 05 Jul 2000, you wrote:
+>Hi Gerd!
+>
+>I'm having a problem with the new markup-0.2.10-package. It seems to
+>behave different thatn 0.2.7 in that respect that text lines divided
+>by returns ('\n') are put into different textnodes. 
+>
+>So for
+>
+><xxx>
+>a
+>b
+></xxx>
+>
+>the method 'parse_wf_entity' generates two text nodes inside, for
+>
+><xxx>
+>a b
+></xxx>
+>
+>only one.
+>
+>Because I'm actually just using an implementation of a programming
+>language and not programming this in ocaml I don't have a small test
+>programm demonstrating this. The actual package of the language is
+>bigger. If you cannot reproduce this bug I'll try to extract the
+>problem.
+
+You are right, the behaviour changed. It was originally a bugfix; the lexical
+analyzer stops now after every line and returns the end-of-line character(s)
+separately. The way the different possible end-of-line characters are converted
+to only LF complies now to the standard; however, the parser generates now more
+data nodes. I never specified this; already 0.2.7 had questionable behaviour.
+For example, <xxx>a <![CDATA[b]]></xxx> created two nodes inside the
+element.
+
+I fixed the problem in the current development version pxp-0.99.4: Consecutive
+text material is collected and represented as one data node. PXP is the new
+name of Markup, and re-implements the core of the parser in a different way.
+Because it has a more ambitious design (and because the documentation is
+completely out of date), the current PXP version is still flagged as
+"experimental". However, 0.99.4 seems to work rather well in my tests; so I
+suggest that you try it. PXP itself has a new API (new = almost identical with
+some incompatible changes), but the distribution contains an emulation of the
+old Markup API. More information:
+http://www.ocaml-programming.de/packages/pxp-pre.html
+
+I hope this helps; if there are major problems with PXP I can alternatively
+backport the necessary changes to 0.2.10; the changes are relatively small but
+I want to avoid two development branches.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+

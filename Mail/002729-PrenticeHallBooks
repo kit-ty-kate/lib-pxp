@@ -1,0 +1,136 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <Lisa_Iarkowski@prenhall.com>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Sat, 29 Jul 2000 21:39:15 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Sun, 30 Jul 2000 17:07:24 +0200 (MEST)
+Received: from [198.4.159.40] (helo=usrlms006.prenhall.com)
+	by mxi05.schlund.de with esmtp (Exim 2.12 #3)
+	id 13IcRp-00039u-00
+	for gerd@gerd-stolpmann.de; Sat, 29 Jul 2000 21:39:02 +0200
+Received: from usrlms004.prenhall.com (168.146.69.20) by usrlms006.prenhall.com (NPlex 2.0.123) for gerd@gerd-stolpmann.de; Sat, 29 Jul 2000 15:39:01 -0400
+Received: by usrlms004.prenhall.com (NPlex 2.0.119); Sat, 29 Jul 2000 15:40:27 -0400
+From: Lisa_Iarkowski@prenhall.com
+To: gerd@gerd-stolpmann.de
+cc: Peter_Snell@prenhall.com
+Subject: Markup, Permission Request for XML Handbook, 3rd Ed., Charles Goldfarb
+X400-Content-Identifier: Markup, Permissi
+Message-Id: <"/GUID:QyWtt9ORk1BG5EwAQS4zudw*/G=Lisa/S=Iarkowski/OU=exchange/O=pearsontc/PRMD=pearson/ADMD=telemail/C=us/"@MHS>
+Date: 29 Jul 2000 15:42:42 -0400
+X-Priority: 3 (Normal)
+Status: R 
+X-Status: N
+
+Charles F. Goldfarb and Paul Prescod, authors of the forthcoming Prentice Hall book, "The XML Handbook, Third Edition," would like to include the documentation and code for Markup on the CD-ROM accompanying the book. The agreement will appear on the CD-ROM.
+
+We would very much appreciate hearing from you on this matter via return e-mail prior to August 18, our due date for including software on the CD-ROM. Please direct your response to Peter S. Snell at peter_snell@prenhall.com.
+
+If you are not the appropriate person to consider this request, I would be grateful if you would direct this message to that person and notify me so that I can update our records.
+
+Thank you in advance.
+____________________________________________________________
+
+TO: Charles F. Goldfarb and Paul Prescod
+c/o Peter S. Snell - Prentice Hall Publishers
+
+I(we) grant you permission to include documentation and code for Markup in the book "The XML Handbook, Third Edition" to be published by Prentice Hall publishers in the Charles F. Goldfarb Series on Open Information Management, and grant you non-exclusive worldwide distribution rights. 
+
+I(we) also grant you permission to include documentation and code for Markup on any future book in the Charles F. Goldfarb Series on Open Information Management published by Prentice Hall Publishers, and grant you non-exclusive worldwide distribution rights.
+
+Peter S. Snell
+peter_snell@prenhall.com
+PTR Production
+Pearson Education
+1 Lake Street
+Upper Saddle River, NJ 07458
+
+
+
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Peter_Snell@prenhall.com
+Subject: Re: Markup, Permission Request for XML Handbook, 3rd Ed., Charles Goldfarb
+Date: Sun, 30 Jul 2000 17:16:06 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <"/GUID:QyWtt9ORk1BG5EwAQS4zudw*/G=Lisa/S=Iarkowski/OU=exchange/O=pearsontc/PRMD=pearson/ADMD=telemail/C=us/"@MHS>
+In-Reply-To: <"/GUID:QyWtt9ORk1BG5EwAQS4zudw*/G=Lisa/S=Iarkowski/OU=exchange/O=pearsontc/PRMD=pearson/ADMD=telemail/C=us/"@MHS>
+MIME-Version: 1.0
+Message-Id: <00073017510900.04964@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+Dear Mr. Snell,
+
+On Sat, 29 Jul 2000, Lisa_Iarkowski@prenhall.com wrote:
+>Charles F. Goldfarb and Paul Prescod, authors of the forthcoming Prentice Hall book, 
+>"The XML Handbook, Third Edition," would like to include the documentation and
+>code for Markup on the CD-ROM accompanying the book. The agreement will appear
+>on the CD-ROM. 
+>We would very much appreciate hearing from you on this matter
+>via return e-mail prior to August 18, our due date for including software on
+>the CD-ROM. Please direct your response to Peter S. Snell at
+>peter_snell@prenhall.com. 
+>If you are not the appropriate person to consider
+>this request, I would be grateful if you would direct this message to that
+>person and notify me so that I can update our records. 
+>Thank you in advance.
+
+I'm really surprised that my code is good enough to be mentioned in your book.
+Of course, I'll grant you the permissions you need.
+
+However, I would like you to call your attention to the fact that the "Markup" 
+project has been superseded by the PXP project. More or less, "PXP" is the new
+name for "Markup", and any updates of the code are released under the name
+"PXP". 
+
+There are currently two versions of the project:
+
+- Markup version 0.2.10: This version is flagged as "stable", and I still
+  recommend people who start using an XML parser to try this version first. I'm
+  currently using it in some business projects, and it works very well.
+
+- PXP version 0.99.6: This is the current development version. It has much more
+  features, and complies much better to the XML-1.0 standard. However, the API
+  of this version still changes from time to time, and it is not yet used for
+  critical applications.
+
+You can find additional information about PXP at this URL:
+http://www.ocaml-programming.de/packages/pxp-pre.html
+
+I do not know the criterions on which you select code for inclusion into the
+CDROM. Personally, I would like to see both parser versions on the CDROM.
+
+Best regards,
+
+Gerd Stolpmann
+
+____________________________________________________________
+TO: Charles F. Goldfarb and Paul Prescod
+c/o Peter S. Snell - Prentice Hall Publishers
+
+I grant you permission to include documentation and code for Markup/PXP in the
+book "The XML Handbook, Third Edition" to be published by Prentice Hall
+publishers in the Charles F. Goldfarb Series on Open Information Management,
+and grant you non-exclusive worldwide distribution rights.  
+
+I also grant you permission to include documentation and code for Markup/PXP on
+any future book in the Charles F. Goldfarb Series on Open Information
+Management published by Prentice Hall Publishers, and grant you non-exclusive
+worldwide distribution rights. 
+
+Gerd Stolpmann
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+

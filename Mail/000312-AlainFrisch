@@ -1,0 +1,513 @@
+From ???@??? 00:00:00 1997 +0000
+X-From_: frisch@clipper.ens.fr Sun Mar 12 15:40:09 2000
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Sun, 12 Mar 2000 20:00:18 +0100 (MET)
+Received: from nef.ens.fr (nef.ens.fr [129.199.96.32])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id PAA21491
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 15:40:08 +0100 (MET)
+Received: from paquebot.ens.fr (paquebot.ens.fr [129.199.133.1])
+          by nef.ens.fr (8.9.3/1.01.28121999) with ESMTP id PAA30908
+          for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 15:40:06 +0100 (CET)
+Received: from localhost (frisch@localhost) by paquebot.ens.fr (8.9.0/jb-1.1)
+	id PAA01288 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 15:40:04 +0100 (MET)
+Date: Sun, 12 Mar 2000 15:40:04 +0100 (MET)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: About resolvers in Markup
+Message-ID: <Pine.GSO.4.04.10003121532190.847-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: RO
+X-Status: A
+
+Hi again,
+
+there is a point I don't understand about the design of resolvers
+in Markup. The clone method must return a resolver of the same type, and
+sometimes this is not convenient.
+
+For instance, I want to use a resolver like resolve_read_string for the
+toplevel xml file and a special resolver for dtd.
+
+class my_resolver content dtd_dir =
+  object (self)
+    inherit resolve_read_string content
+
+    method clone =
+      new dtd_resolver warner dtd_dir
+  end
+
+
+I don't know much about the class system of OCaml, and maybe the problem 
+comes from a limitation of this system.
+
+How would you implement a resolver whose type change when it is cloned ?
+
+
+
+Alain
+
+
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: frisch@clipper.ens.fr Sun Mar 12 16:48:11 2000
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Sun, 12 Mar 2000 20:00:18 +0100 (MET)
+Received: from nef.ens.fr (nef.ens.fr [129.199.96.32])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id QAA25434
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 16:48:10 +0100 (MET)
+Received: from paquebot.ens.fr (paquebot.ens.fr [129.199.133.1])
+          by nef.ens.fr (8.9.3/1.01.28121999) with ESMTP id QAA33943
+          for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 16:48:08 +0100 (CET)
+Received: from localhost (frisch@localhost) by paquebot.ens.fr (8.9.0/jb-1.1)
+	id QAA02410 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Sun, 12 Mar 2000 16:48:07 +0100 (MET)
+Date: Sun, 12 Mar 2000 16:48:07 +0100 (MET)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: About resolvers in Markup (again)
+In-Reply-To: <Pine.GSO.4.04.10003121532190.847-100000@paquebot.ens.fr>
+Message-ID: <Pine.GSO.4.04.10003121640440.2371-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: RO
+X-Status: O
+
+I wonder how to simply use a given resolver with parse_document_entity.
+cfg.resolver is ignored unless src matches Entity or ExtID. With Entity,
+we have to build the Entity outside the function (so build another dtd).
+With ExtID, the resolver is immediatly cloned.
+
+I would suggest to add something like:
+      | File ""     -> cfg.resolver,
+		      new document_entity cfg.resolver a_dtd "[toplevel document]" w (System "") e
+
+in parse_*_entity functions. Or maybe did I miss the point ?
+
+
+Alain
+
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: About resolvers in Markup
+Date: Sun, 12 Mar 2000 22:39:47 +0100
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10003121532190.847-100000@paquebot.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10003121532190.847-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Message-Id: <0003122328330A.15222@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Sun, 12 Mar 2000, you wrote:
+>For instance, I want to use a resolver like resolve_read_string for the
+>toplevel xml file and a special resolver for dtd.
+>
+>class my_resolver content dtd_dir =
+>  object (self)
+>    inherit resolve_read_string content
+>
+>    method clone =
+>      new dtd_resolver warner dtd_dir
+>  end
+>
+
+>How would you implement a resolver whose type change when it is cloned ?
+>
+
+Unfortunately, the type must not change; otherwise the resolver would not be
+compatible to the type expected by the functions processing resolvers.
+
+Fortunately, O'Caml distinguishes between types and classes. The method clone
+can return an instance of any class as long as it has the same type. If the
+object created by "new dtd_resolver warner dtd_dir" has the right type, the
+type checker will not complain. It has the right type, if it has the same
+methods as the class type "resolver" declares.
+
+Perhaps your problem is that you have defined extra methods. In this case,
+try
+	method clone =
+	  (new dtd_resolver warner dtd_dir :> resolver)
+
+or, if this does not work,
+
+	method clone =
+	  (new dtd_resolver warner dtd_dir : #resolver :> resolver)
+
+or, if this does not work, too,
+
+	method clone =
+	  (new dtd_resolver warner dtd_dir : t :> resolver)
+
+where t is the real type of the object to return. It might also be necessary to
+add such a coercion to the "clone" method in dtd_resolver, too (but I suppose
+that it is not necessary because of the contravariance rule).
+
+>I wonder how to simply use a given resolver with
+>parse_document_entity.cfg.resolver is ignored unless src matches Entity or
+>ExtID. With Entity, we have to build the Entity outside the function (so build
+>another dtd). With ExtID, the resolver is immediatly cloned.
+>
+>I would suggest to add something like:
+>| File ""     -> cfg.resolver,
+>               new document_entity cfg.resolver a_dtd "[toplevel document]" w
+>                   (System "") e
+>
+>in parse_*_entity functions. Or maybe did I miss the point ?
+
+The reason for cloning is that the resolver will be in a sane state, and that
+this better fits to what one expects from a functional interface (no side
+effects).
+
+The more I reason about your problem the more I am convinced that it is wrong
+to pass the resolver in the config record. It should be better a second
+parameter of ExtID and Entity.
+
+As Entity is the "hacker option", I think it is better to extend this option:
+
+type source = ...
+ | Entity of ((dtd -> entity) * resolver)
+
+The left component is a function that gets the DTD object that is going to be
+used, and that returns the entity object. You can pass something like
+
+Entity( fun dtd -> 
+          new document_entity r dtd "[toplevel document]" w (System "") e,
+        r
+      )
+
+and it behaves as you suggest.
+
+As far as I understood, you want to force the users to use a fixed DTD.
+Why don't you compare the DTD, after the full document has been parsed, with the
+demanded DTD? Comparing DTDs is not very complicated. And do not forget that
+the DTD not only consists of the separated DTD file given in the DOCTYPE
+header, but also of the declarations directly after DOCTYPE; it is possible to
+change the declarations of the DTD here (these declarations override the
+declarations in a separated file). So using a fixed DTD file isn't a proper
+solution.
+
+I'm currently planning another minor release of Markup in the next days (mostly
+additional documentation), and I can include changes that help you.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+X-From_: frisch@clipper.ens.fr Mon Mar 13 01:17:59 2000
+Received: from xpop
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 13 Mar 2000 20:00:16 +0100 (MET)
+Received: from nef.ens.fr (nef.ens.fr [129.199.96.32])
+	by beach.frankfurt.netsurf.de (8.8.5/8.8.5) with ESMTP id BAA27397
+	for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 13 Mar 2000 01:17:58 +0100 (MET)
+Received: from paquebot.ens.fr (paquebot.ens.fr [129.199.133.1])
+          by nef.ens.fr (8.9.3/1.01.28121999) with ESMTP id BAA58741
+          for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 13 Mar 2000 01:17:56 +0100 (CET)
+Received: from localhost (frisch@localhost) by paquebot.ens.fr (8.9.0/jb-1.1)
+	id BAA08199 for <Gerd.Stolpmann@darmstadt.netsurf.de>; Mon, 13 Mar 2000 01:17:55 +0100 (MET)
+Date: Mon, 13 Mar 2000 01:17:55 +0100 (MET)
+From: Alain Frisch <frisch@clipper.ens.fr>
+To: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Subject: Re: About resolvers in Markup
+In-Reply-To: <0003122328330A.15222@ice>
+Message-ID: <Pine.GSO.4.04.10003130045430.7242-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Status: RO
+X-Status: A
+
+> Fortunately, O'Caml distinguishes between types and classes. The method clone
+> can return an instance of any class as long as it has the same type. If the
+> object created by "new dtd_resolver warner dtd_dir" has the right type, the
+> type checker will not complain. It has the right type, if it has the same
+> methods as the class type "resolver" declares.
+
+Well, I must admit that I'm a bit confused about objects and classes in
+OCaml. I'd better read the documentation ...
+
+> 	method clone =
+> 	  (new dtd_resolver warner dtd_dir :> resolver)
+> 	method clone =
+> 	  (new dtd_resolver warner dtd_dir : #resolver :> resolver)
+
+It seems that it doesn't work.
+Here's the code:
+
+class dtd_resolver the_warner dtd_dir =
+  object (self)
+    inherit resolve_general the_warner as super
+
+    val mutable ch = stdin
+
+    method clone = failwith "Can't clone a dtd_resolver"
+
+    method private init_in xid =
+      match xid with
+      | System fname     -> ch <- open_in (dtd_dir ^ fname)
+      | Public (_,fname) -> failwith "DTD must be local"
+
+    method private next_string s ofs len =
+      input ch s ofs len
+
+    method close_in =
+      close_in ch
+  end
+
+
+class my_resolver content dtd_dir =
+  object
+    inherit resolve_read_string content
+
+    method clone =
+      (new dtd_resolver warner dtd_dir  #resolver :> resolver)
+  end
+
+Which produces the error:
+This expression has type
+  Markup_entity.resolver =
+    < change_encoding : string -> unit; clone : Markup_entity.resolver;
+      close_in : unit; open_in : Markup_types.ext_id -> Lexing.lexbuf >
+but is here used with type
+  < change_encoding : string -> unit; clone : 'a; close_in : unit;
+    open_in : Markup_types.ext_id -> Lexing.lexbuf; .. > as 'a
+Self type cannot be unified with a closed object type
+
+
+> The reason for cloning is that the resolver will be in a sane state, and that
+> this better fits to what one expects from a functional interface (no side
+> effects).
+> 
+> The more I reason about your problem the more I am convinced that it is wrong
+> to pass the resolver in the config record. It should be better a second
+> parameter of ExtID and Entity.
+
+Yes, I agree. Entity, Channel, File, Latin1, ExtID are basically method
+to resolve entity references. Only Entity and ExtID need an external
+resolver.
+
+> As Entity is the "hacker option", I think it is better to extend this option:
+> 
+> type source = ...
+>  | Entity of ((dtd -> entity) * resolver)
+
+Yes, it looks fine.
+
+> As far as I understood, you want to force the users to use a fixed DTD.
+
+Yes. Moreover, I don't want them to be able to access other
+files on my system (they submit XML files via http).
+The temporary solution I've chosen is ugly: the program just looks
+at the first two lines of the XML files and verify that they
+match:
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE page SYSTEM "page.dtd">
+
+or something like that (I told you it was ugly).
+
+Also, DTD files aren't in the same directory as XML files.
+
+
+> Why don't you compare the DTD, after the full document has been parsed, with the
+> demanded DTD? Comparing DTDs is not very complicated. And do not forget that
+> the DTD not only consists of the separated DTD file given in the DOCTYPE
+> header, but also of the declarations directly after DOCTYPE; it is possible to
+> change the declarations of the DTD here (these declarations override the
+> declarations in a separated file). So using a fixed DTD file isn't a proper
+> solution.
+
+Well, the DTD is fixed, and even if it is not in the spirit of XML to
+prevent users from specifying their own DTD, I have no choice here (the
+programs relies on some assumptions about the structure of XML files).
+Allowing the users to put their own DTD, and then check that this DTD is
+exactly the good one will be disappointing ("Why do you allow us to
+specify a DTD if you reject any modification ?").
+
+I guess that many programs that use XML have the same problem: the DTD
+is application dependant, not file dependant. Actually, it would be useful
+to be able to give to the parser 1) the DTD    2) the XML file without
+the <?xml .. and <!DOCTYPE .. declaration (that is, only the root
+element part).
+
+Well, as I write this, I realize that the parse_content_entity function
+may do exactly what I want. I'll have a closer look at it ...
+
+
+Thanks again for your help !
+
+
+Alain Frisch
+
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <Gerd.Stolpmann@darmstadt.netsurf.de>
+Reply-To: Gerd.Stolpmann@darmstadt.netsurf.de
+Organization: privat
+To: Alain Frisch <frisch@clipper.ens.fr>
+Subject: Re: About resolvers in Markup
+Date: Tue, 14 Mar 2000 01:00:21 +0100
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <Pine.GSO.4.04.10003130045430.7242-100000@paquebot.ens.fr>
+In-Reply-To: <Pine.GSO.4.04.10003130045430.7242-100000@paquebot.ens.fr>
+MIME-Version: 1.0
+Message-Id: <0003140144170B.15222@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 13 Mar 2000, you wrote:
+>It seems that it doesn't work.
+>Here's the code:
+> ...
+>Which produces the error:
+>This expression has type
+>  Markup_entity.resolver =
+>    < change_encoding : string -> unit; clone : Markup_entity.resolver;
+>      close_in : unit; open_in : Markup_types.ext_id -> Lexing.lexbuf >
+>but is here used with type
+>  < change_encoding : string -> unit; clone : 'a; close_in : unit;
+>    open_in : Markup_types.ext_id -> Lexing.lexbuf; .. > as 'a
+>Self type cannot be unified with a closed object type
+
+My error. I defined resolve_general in a way such that it is impossible to
+inherit from it and override the clone method. What I wrote is something like
+
+class resolve_general ... =
+  object
+    method clone = 
+	{< var = value; ... >}
+  end
+
+which has the type 
+
+class type resolve_general =
+  object('a)
+    method clone : 'a
+    ...
+  end
+
+When you inherit from such a class, some restrictions of the type system apply:
+While the subclass is being processed it is assumed that it has an open class
+type (i.e. it is assumed that it has an unknown number of methods). When you
+try to define the clone method, it is expected that it has the same type as the
+whole class (i.e. 'a); furthermore the class is assumed to be open such that 
+the clone method must also have an open class type. This contradicts the fact
+that the type 'resolver' is closed (it has a fixed set of methods).
+Unfortunately, there is no way out; it is impossible to coerce the closed
+'resolver' type to the expected open class type; the recursive nature of the
+type dependency prevents this.
+
+This is a weakness of the type system; it already caused some headaches while I
+was developing Markup.
+
+There is a workaround: If I change the definition of resolve_general, the
+recursive type dependency is avoided at all; it looks then like
+
+class resolve_general ... =
+  object
+    method clone = 
+	( {< var = value; ... >} : #resolver :> resolver )
+  end
+
+which has the type 
+
+class type resolve_general =
+  object('a)
+    method clone : resolver
+    ...
+  end
+
+
+It is no longer a problem to inherit from the changed class.
+
+As I try to learn from my errors I separated the resolver classes from the other
+entity processing classes and put them into the new module Markup_reader. This
+has the advantage that I can write an mli file which only covers the resolvers
+(and not the entity classes, it is too early for that) such that I better
+control the types of the classes.
+
+>> The more I reason about your problem the more I am convinced that it is wrong
+>> to pass the resolver in the config record. It should be better a second
+>> parameter of ExtID and Entity.
+>
+>Yes, I agree. Entity, Channel, File, Latin1, ExtID are basically method
+>to resolve entity references. Only Entity and ExtID need an external
+>resolver.
+
+I will do this change.
+
+>> As Entity is the "hacker option", I think it is better to extend this option:
+>> 
+>> type source = ...
+>>  | Entity of ((dtd -> entity) * resolver)
+>
+>Yes, it looks fine.
+
+And this one, too.
+
+I've already made a new archive containing the changes; you find it here:
+
+http://people.darmstadt.netsurf.de/Gerd.Stolpmann/ocaml/markup-0.2.8-l2.tar.gz
+
+It is an "inofficial" version and will not be announced elsewhere. There are
+some other changes which are not complete yet; mostly in the documentation, but
+there is also a new module Markup_codewriter which generates O'Caml source
+code from an XML tree such that execution of the code creates the tree. This is
+very experimental; you need MUCH memory and time to compile the generated
+source code. (The approach is a bit questionable.)
+
+>> Why don't you compare the DTD, after the full document has been parsed, with the
+>> demanded DTD? Comparing DTDs is not very complicated. And do not forget that
+>> the DTD not only consists of the separated DTD file given in the DOCTYPE
+>> header, but also of the declarations directly after DOCTYPE; it is possible to
+>> change the declarations of the DTD here (these declarations override the
+>> declarations in a separated file). So using a fixed DTD file isn't a proper
+>> solution.
+>
+>Well, the DTD is fixed, and even if it is not in the spirit of XML to
+>prevent users from specifying their own DTD, I have no choice here (the
+>programs relies on some assumptions about the structure of XML files).
+>Allowing the users to put their own DTD, and then check that this DTD is
+>exactly the good one will be disappointing ("Why do you allow us to
+>specify a DTD if you reject any modification ?").
+
+Because you can also define entities, for example to spread the whole
+document over several files. Of course, I don't know if this argument counts
+for your case.
+
+>I guess that many programs that use XML have the same problem: the DTD
+>is application dependant, not file dependant. Actually, it would be useful
+>to be able to give to the parser 1) the DTD    2) the XML file without
+>the <?xml .. and <!DOCTYPE .. declaration (that is, only the root
+>element part).
+>
+>Well, as I write this, I realize that the parse_content_entity function
+>may do exactly what I want. I'll have a closer look at it ...
+
+In deed, this function might solve your problem.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   Gerd.Stolpmann@darmstadt.netsurf.de (privat)
+Germany                     
+----------------------------------------------------------------------------
+

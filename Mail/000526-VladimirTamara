@@ -1,0 +1,138 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <tamara@informatik.uni-kl.de>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Fri, 26 May 2000 17:13:04 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Fri, 26 May 2000 19:22:14 +0200 (MEST)
+Received: from [131.246.137.51] (helo=news.uni-kl.de)
+	by mx04 with smtp (Exim 2.12 #3)
+	id 12vLnK-0006Fg-00
+	for gerd@gerd-stolpmann.de; Fri, 26 May 2000 17:13:03 +0200
+Received: from mailinf.rhrk.uni-kl.de
+           ( mailinf.rhrk.uni-kl.de [131.246.137.54] ) by news.uni-kl.de
+          id aa13335 for <gerd@gerd-stolpmann.de>; 26 May 2000 17:13 MESZ
+Received: from irz1.informatik.uni-kl.de (root@irz1.informatik.uni-kl.de [131.246.161.6])
+	by mailinf.rhrk.uni-kl.de (8.9.3/8.9.3) with ESMTP id RAA24807
+	for <gerd@gerd-stolpmann.de>; Fri, 26 May 2000 17:13:00 +0200 (MET DST)
+Received: from informatik.uni-kl.de (gateway1-nehmer.informatik.uni-kl.de [131.246.19.252])
+	by irz1.informatik.uni-kl.de (8.9.1a/8.9.1) with ESMTP id RAA19064
+	for <gerd@gerd-stolpmann.de>; Fri, 26 May 2000 17:13:00 +0200 (MET DST)
+Received: from informatik.uni-kl.de ([192.168.19.37]) by gateway1-nehmer.informatik.uni-kl.de with ESMTP id <119041>; Fri, 26 May 2000 17:18:51 +0200
+Sender: tamara@informatik.uni-kl.de
+Message-ID: <392E9479.A28239C6@informatik.uni-kl.de>
+Date:  Fri, 26 May 2000 17:12:57 +0200
+From: Vladimir Tamara <tamara@informatik.uni-kl.de>
+Reply-To: vtamara@gnu.org
+Organization: Universitat Kaiserslautern
+X-Mailer: Mozilla 4.51 [en] (X11; I; Linux 2.2.11 i686)
+X-Accept-Language: en
+MIME-Version: 1.0
+To: gerd@gerd-stolpmann.de
+Subject: About Markup
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+X-MIME-Autoconverted: from 8bit to quoted-printable by mailinf.rhrk.uni-kl.de id RAA24807
+Status: R 
+X-Status: N
+
+Hi
+
+First let me congratulate you for your work with the Ocaml Link
+Database, your  Ocaml code contributions and in particular your library
+Markup.
+
+I have been trying to use Markup to make a small translator from XML to
+another format.
+However, I think that Markup has some problems with some DTD.  For
+example it cannot parse the following small DTD:
+http://www.w3.org/XML/2000/04schema-hacking/html.dtd
+
+Am I right?
+
+Do you recommend me to upgrade to "Polymorphic XML Parser" ?
+
+Best regards
+    Vladimir T=E1mara
+
+
+
+
+
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: vtamara@gnu.org
+Subject: Re: About Markup
+Date: Sun, 28 May 2000 19:43:40 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <392E9479.A28239C6@informatik.uni-kl.de>
+In-Reply-To: <392E9479.A28239C6@informatik.uni-kl.de>
+MIME-Version: 1.0
+Message-Id: <00052819572104.14391@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Fri, 26 May 2000, you wrote:
+>First let me congratulate you for your work with the Ocaml Link
+>Database, your  Ocaml code contributions and in particular your library
+>Markup.
+
+Thank you.
+
+>I have been trying to use Markup to make a small translator from XML to
+>another format.
+>However, I think that Markup has some problems with some DTD.  For
+>example it cannot parse the following small DTD:
+>http://www.w3.org/XML/2000/04schema-hacking/html.dtd
+>
+>Am I right?
+
+Yes, the DTD is incorrect. If you correct it to
+
+<!ELEMENT html (head, body)>
+<!ELEMENT head (title)>
+<!ELEMENT title (#PCDATA)>
+<!ELEMENT body (h1|h2|h3|p|address)*>
+<!ELEMENT h1 (#PCDATA|a)*>
+<!ELEMENT h2 (#PCDATA|a)*>
+<!ELEMENT h3 (#PCDATA|a)*>
+<!ELEMENT p (#PCDATA|a)*>
+<!ELEMENT address (#PCDATA|a|img)*>
+<!ELEMENT a (#PCDATA)>
+<!ATTLIST a
+  href CDATA #IMPLIED
+  name NMTOKENS #IMPLIED>
+<!ELEMENT img EMPTY>
+<!ATTLIST img
+  src CDATA #REQUIRED>
+
+Markup can parse the DTD. I really do not know why so many DTDs of the W3C are 
+wrong, but I suppose that these DTDs were experiments during the development
+of XML. Even the file containing the XML-1.0 specification as XML is wrong!
+
+My only primary source for XML is the official XML-1.0 specification; it is
+very comprehensive and relatively unambiguous, so I am very sure about what is
+correct XML and what not.
+
+>Do you recommend me to upgrade to "Polymorphic XML Parser" ?
+
+No, please wait some weeks until you try PXP unless for experiments. PXP works
+already very well, but I know a number of bugs that must be fixed. Furthermore,
+I plan to change the API until the final release.
+
+Best regards,
+	Gerd Stolpmann
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+

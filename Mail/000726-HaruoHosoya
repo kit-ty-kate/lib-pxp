@@ -1,0 +1,91 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <hahosoya@saul.cis.upenn.edu>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Wed, 26 Jul 2000 23:21:10 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Thu, 27 Jul 2000 20:00:26 +0200 (MEST)
+Received: from [158.130.12.4] (helo=saul.cis.upenn.edu)
+	by mx06.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 13HYbs-0004Vi-00
+	for gerd@gerd-stolpmann.de; Wed, 26 Jul 2000 23:21:00 +0200
+Received: from localhost (localhost [127.0.0.1])
+	by saul.cis.upenn.edu (8.10.1/8.10.1) with ESMTP id e6QLKwR21297
+	for <gerd@gerd-stolpmann.de>; Wed, 26 Jul 2000 17:20:58 -0400 (EDT)
+To: gerd@gerd-stolpmann.de
+Subject: PXP
+X-Mailer: Mew version 1.94 on Emacs 20.2 / Mule 3.0 (MOMIJINOGA)
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Message-Id: <20000726172058D.hahosoya@saul.cis.upenn.edu>
+Date: Wed, 26 Jul 2000 17:20:58 -0400
+From: Haruo Hosoya <hahosoya@saul.cis.upenn.edu>
+X-Dispatcher: imput version 990905(IM130)
+Lines: 16
+Status: R 
+X-Status: N
+
+Dear Gerd,
+
+Today I switched from Markup to PXP.  I report some small problems in
+Makefile.  
+
+You use the find command at "install" target.  The find command I use
+in Solaris doesn't seem to support -maxdepth option.  So I needed to
+use GNU's find command, which worked fine.  
+
+Also, it seems to me that "pxp_utf8.o" also has to be copied in the
+install directory.
+
+Regards,
+
+Haruo
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Haruo Hosoya <hahosoya@saul.cis.upenn.edu>
+Subject: Re: PXP
+Date: Thu, 27 Jul 2000 23:11:38 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000726172058D.hahosoya@saul.cis.upenn.edu>
+In-Reply-To: <20000726172058D.hahosoya@saul.cis.upenn.edu>
+MIME-Version: 1.0
+Message-Id: <00072723144102.12644@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Wed, 26 Jul 2000, you wrote:
+>Dear Gerd,
+>
+>Today I switched from Markup to PXP.  I report some small problems in
+>Makefile.  
+>
+>You use the find command at "install" target.  The find command I use
+>in Solaris doesn't seem to support -maxdepth option.  So I needed to
+>use GNU's find command, which worked fine.  
+
+You are right, -maxdepth is GNU-specific.
+
+>Also, it seems to me that "pxp_utf8.o" also has to be copied in the
+>install directory.
+
+This is an error, too. I'm normally only testing with bytecode executables
+(because of the debugger), so I did not run into the problem.
+
+Thank you, the next release will contain fixes.
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+

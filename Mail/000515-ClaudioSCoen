@@ -1,0 +1,304 @@
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Mon, 15 May 2000 14:49:26 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Mon, 15 May 2000 20:00:20 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx04 with esmtp (Exim 2.12 #3)
+	id 12rKJG-0006uJ-00
+	for gerd@gerd-stolpmann.de; Mon, 15 May 2000 14:49:23 +0200
+Received: from pagadebit.students.cs.unibo.it (root@pagadebit.students.cs.unibo.it [130.136.3.115])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id OAA29836
+	for <gerd@gerd-stolpmann.de>; Mon, 15 May 2000 14:49:20 +0200
+Received: (from sacerdot@localhost)
+	by pagadebit.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) id OAA01910
+	for gerd@gerd-stolpmann.de; Mon, 15 May 2000 14:49:20 +0200
+Date: Mon, 15 May 2000 14:49:20 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Some new problems with markup
+Message-ID: <20000515144920.B1817@students.cs.unibo.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+ Hi Gerd,
+
+ now we are using Markup also with namespaces-aware XML files. So some new
+ "bugs" (or perhaps only problems ;-) start to occur:
+
+ 1. <PROBLEM>
+   If in an XML file I have this entity tag
+
+    <Variable name="A" xmlns:m="http://www.w3.org/1998/Math/MathML">
+
+   I get "correctly" this error
+
+   In entity [toplevel document] = SYSTEM "pro.xml", at line 7, column 66:
+   Markup_types.Validation_error("Attribute `xmlns:m' of element `Variable'
+   not found")
+   </PROBLEM>
+
+   <PROPOSED_SOLUTION>
+   Markup should at least ignore every "xmlns:*" attribute not appearing in
+   the DTD.
+   </PROPOSED_SOLUTION>
+
+ 2. <PROBLEM>
+   Validating with markup this line:
+
+    <!ENTITY amp              "&#x26;&#x00026;" ><!--=ampersand -->
+
+    give rise to the error:
+    Markup_types.WF_error("The character '&' must be written as '&amp;'")
+
+   The entity declaration is taken by an official W3C DTD, even if I
+   can't really understand it myself. So Markup is wrong ;-)
+   </PROBLEM>
+
+    <NO_PROPOSED_SOLUTION/>
+
+ 3. <PROBLEM>
+    It seems that markup recognizes this two entity declaration as being
+    the same:
+
+    <!ENTITY annotation (EMPTY)>
+    <!ENTITY %prefix;annotation (EMPTY)>
+
+    where %prefix; should be expanded to "m:"
+
+    I have not checked this myself, so the example could be a bit
+    different. Ask me for more information when you need them.
+
+
+					Thanks in advance,
+					      C.S.C.
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
+From ???@??? 00:00:00 1997 +0000
+From: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Reply-To: gerd@gerd-stolpmann.de
+Organization: privat
+To: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+Subject: Re: Some new problems with markup
+Date: Tue, 16 May 2000 03:07:30 +0200
+X-Mailer: KMail [version 1.0.28]
+Content-Type: text/plain
+References: <20000515144920.B1817@students.cs.unibo.it>
+In-Reply-To: <20000515144920.B1817@students.cs.unibo.it>
+MIME-Version: 1.0
+Message-Id: <0005160352480H.11187@ice>
+Content-Transfer-Encoding: 8bit
+Status: RO
+X-Status: S
+
+On Mon, 15 May 2000, you wrote:
+
+> 1. <PROBLEM>
+>   If in an XML file I have this entity tag
+>
+>    <Variable name="A" xmlns:m="http://www.w3.org/1998/Math/MathML">
+>
+>   I get "correctly" this error
+>
+>   In entity [toplevel document] = SYSTEM "pro.xml", at line 7, column 66:
+>   Markup_types.Validation_error("Attribute `xmlns:m' of element `Variable'
+>   not found")
+>   </PROBLEM>
+>
+>   <PROPOSED_SOLUTION>
+>   Markup should at least ignore every "xmlns:*" attribute not appearing in
+>   the DTD.
+>   </PROPOSED_SOLUTION>
+
+I can add an option for that. I must say that I do not know how namespaces and
+validators should interact. (I really do not understand the W3C because it
+would have been much easier if namespaces had been *integrated* into XML; i.e.
+if they had defined XML 1.1 = XML 1.0 + namespaces; in this case namespaces
+could be fully orthogonal not only to elements and attribute instances but also
+to their declarations.)
+
+> 2. <PROBLEM>
+>   Validating with markup this line:
+>
+>    <!ENTITY amp              "&#x26;&#x00026;" ><!--=ampersand -->
+>
+>    give rise to the error:
+>    Markup_types.WF_error("The character '&' must be written as '&amp;'")
+>
+>   The entity declaration is taken by an official W3C DTD, even if I
+>   can't really understand it myself. So Markup is wrong ;-)
+>   </PROBLEM>
+
+This is simple to explain: In the moment when the entity is *defined*, some
+transformations are already applied to the definition string. One
+transformation is: Character references &#n; are replaced by the referenced
+characters. After that, the definition reads
+
+<!ENTITY amp "&&">
+
+which is of course illegal.
+
+I did not invent this rule, but it is fully according to the XML spec (see
+sections 4.5 and 4.6). The only way to define &amp; is
+
+<!ENTITY amp "&#x26;#x26;">
+
+which is immediately rewritten to
+
+<!ENTITY amp "&#x26;">
+
+(the transformation is only applied once), i.e. &#x26 is replaced when &amp; is
+called.
+
+By the way, I already found clearly illegal XML on the W3C pages; my
+explanation is that it must be an earlier version than 1.0.
+
+> 3. <PROBLEM>
+>    It seems that markup recognizes this two entity declaration as being
+>    the same:
+>
+>    <!ENTITY annotation (EMPTY)>
+>    <!ENTITY %prefix;annotation (EMPTY)>
+>
+>    where %prefix; should be expanded to "m:"
+>
+>    I have not checked this myself, so the example could be a bit
+>    different. Ask me for more information when you need them.
+
+You cannot compose tokens in this way. If you write %prefix; outside double
+quotes, the parser implicitly adds one space before the replacement and one
+space after it (see section 4.4.8 of the XML spec). The intention of the spec
+is to prevent the composition of tokens.
+
+There is a workaround:
+
+<!ENTITY % prefixed-annotation "%prefix;annotation">
+
+and then
+
+<!ELEMENT %prefixed-annotation; (EMPTY)>
+
+(you meant ELEMENT not ENTITY, don't you).
+
+This should work.
+
+The implementation of this "extra space rule" was one of the bigger headaches
+in Markup/PXP. (The other was the "Proper Declaration/PE Nesting contraint".)
+
+Gerd
+-- 
+----------------------------------------------------------------------------
+Gerd Stolpmann      Telefon: +49 6151 997705 (privat)
+Viktoriastr. 100             
+64293 Darmstadt     EMail:   gerd@gerd-stolpmann.de
+Germany                     
+----------------------------------------------------------------------------
+
+From ???@??? 00:00:00 1997 +0000
+Return-path: <sacerdot@students.cs.unibo.it>
+Envelope-to: gerd@gerd-stolpmann.de
+Delivery-date: Tue, 16 May 2000 15:40:18 +0200
+Received: from pop.puretec.de
+	by localhost with POP3 (fetchmail-5.1.2)
+	for gerd@localhost (single-drop); Tue, 16 May 2000 20:00:27 +0200 (MEST)
+Received: from [130.136.3.110] (helo=cantina.students.cs.unibo.it)
+	by mx00.kundenserver.de with esmtp (Exim 2.12 #3)
+	id 12rha4-0003bw-00
+	for gerd@gerd-stolpmann.de; Tue, 16 May 2000 15:40:17 +0200
+Received: from marsala.students.cs.unibo.it (root@marsala.students.cs.unibo.it [130.136.3.208])
+	by cantina.students.cs.unibo.it (8.9.3+3.2W/8.9.3/Debian 8.9.3-21) with ESMTP id PAA20664
+	for <gerd@gerd-stolpmann.de>; Tue, 16 May 2000 15:40:06 +0200
+Received: (from sacerdot@localhost)
+	by marsala.students.cs.unibo.it (8.9.3/8.9.3/Debian 8.9.3-6) id PAA03778
+	for gerd@gerd-stolpmann.de; Tue, 16 May 2000 15:40:05 +0200
+Date: Tue, 16 May 2000 15:40:05 +0200
+From: Claudio Sacerdoti Coen <sacerdot@students.cs.unibo.it>
+To: Gerd Stolpmann <gerd@gerd-stolpmann.de>
+Subject: Re: Some new problems with markup
+Message-ID: <20000516154005.B3664@students.cs.unibo.it>
+References: <20000515144920.B1817@students.cs.unibo.it> <0005160352480H.11187@ice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+User-Agent: Mutt/1.0.1i
+In-Reply-To: <0005160352480H.11187@ice>; from gerd@gerd-stolpmann.de on Tue, May 16, 2000 at 03:07:30AM +0200
+X-Operating-System: Debian GNU/Linux
+X-Organization: Department of computer science, University of Bologna, Eurpean Union
+Status: R 
+X-Status: N
+
+On Tue, May 16, 2000 at 03:07:30 +0200, Gerd Stolpmann wrote:
+> On Mon, 15 May 2000, you wrote:
+> >   <PROPOSED_SOLUTION>
+> >   Markup should at least ignore every "xmlns:*" attribute not appearing in
+> >   the DTD.
+> >   </PROPOSED_SOLUTION>
+
+> I can add an option for that. I must say that I do not know how namespaces and
+> validators should interact. (I really do not understand the W3C because it
+> would have been much easier if namespaces had been *integrated* into XML; i.e.
+> if they had defined XML 1.1 = XML 1.0 + namespaces; in this case namespaces
+> could be fully orthogonal not only to elements and attribute instances but also
+> to their declarations.)
+
+You are completely right here. In the meantime, in this exact moment we seem
+to need no more the option. I still think that it would be nice to add it.
+The solution (for now) is to declare the attribute "xmlns:m" as an attribute
+of an elment trying to understand where the XSL processor will put the
+attribute. Now we are successfull, but this is not a trivial task at all!
+
+> ...
+> The only way to define &amp; is
+> 
+> <!ENTITY amp "&#x26;#x26;">
+> 
+> which is immediately rewritten to
+> 
+> <!ENTITY amp "&#x26;">
+> 
+> (the transformation is only applied once), i.e. &#x26 is replaced when &amp; is
+> called.
+> 
+> By the way, I already found clearly illegal XML on the W3C pages; my
+> explanation is that it must be an earlier version than 1.0.
+
+ May be. In fact we have applied the patch and we are going to submit
+ it to the W3C. (I remember you that we have a member in the MathML
+ Worcking Group, so we are more listened to than others).
+
+ Thanks for the solution.
+
+> ...
+> You cannot compose tokens in this way.
+
+ You are right. In fact I have written the example hastily.
+ The real example not working had not this fault. By the way,
+ we have found the problem: it is with the latest MathML DTD
+ (work in progress) and not with Markup.
+
+						Thanks again,
+						    C.S.C.
+
+-- 
+----------------------------------------------------------------
+Real name: Claudio Sacerdoti Coen
+Undergraduate Computer Science Student at University of Bologna
+E-mail: sacerdot@cs.unibo.it
+http://caristudenti.cs.unibo.it/~sacerdot
+----------------------------------------------------------------
+
+
