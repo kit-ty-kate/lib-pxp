@@ -39,7 +39,7 @@ f doc/DEV
 f doc/EXTENSIONS
 f doc/RELEASE-NOTES
 f doc/SPEC
-f doc/design-txt
+f doc/design.txt
 
 d doc/manual
 f doc/manual/Makefile
@@ -312,8 +312,8 @@ d tools
 f tools/Makefile
 f tools/collect_files
 f tools/insert_variant
-f tools/m2parsergen
-f tools/ucs2_to_utf8
+#f tools/m2parsergen
+#f tools/ucs2_to_utf8
 
 d tools/src
 f tools/src/Makefile
