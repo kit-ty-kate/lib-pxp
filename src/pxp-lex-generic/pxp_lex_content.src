@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.4 2000/08/18 20:19:59 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.5 2000/10/01 19:51:33 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -26,17 +26,17 @@ rule scan_content = parse
       { Comment_begin, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
-      { let s = Lexing.lexeme lexbuf in
-	if s.[1] = '/' then
-	  Tag_end (String.sub s 2 (String.length s - 2), dummy_entity), 
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	if Lexing.lexeme_char lexbuf 1 = '/' then
+	  Tag_end (sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag 
 	else
-	  Tag_beg (String.sub s 1 (String.length s - 1), dummy_entity), 
+	  Tag_beg (sub_lexeme lexbuf 1 (l-1), dummy_entity), 
 	  Within_tag 
       }
   | "<![CDATA[" cdata_string "]]>"
-      { let s = Lexing.lexeme lexbuf in
-	Cdata (String.sub s 9 (String.length s - 12)), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	Cdata (sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -44,14 +44,14 @@ rule scan_content = parse
       { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
       }
   | "&#" ascii_digit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string (String.sub s 2 (String.length s - 3))), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string (sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string ("0x" ^ sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
-      { let s = Lexing.lexeme lexbuf in
-	ERef (String.sub s 1 (String.length s - 2)), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	ERef (sub_lexeme lexbuf 1 (l-2)), Content }
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
       }
@@ -88,6 +88,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.5  2000/10/01 19:51:33  gerd
+ * 	Optimizations.
+ *
  * Revision 1.4  2000/08/18 20:19:59  gerd
  * 	Comments return different comment tokens.
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_wlex.mll,v 1.2 2000/09/21 21:33:16 gerd Exp $
+(* $Id: pxp_wlex.mll,v 1.3 2000/10/01 19:51:50 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -178,17 +178,17 @@ rule scan_content = parse
       { Comment_begin, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
-      { let s = Lexing.lexeme lexbuf in
-	if s.[1] = '/' then
-	  Tag_end (String.sub s 2 (String.length s - 2), dummy_entity), 
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	if Lexing.lexeme_char lexbuf 1 = '/' then
+	  Tag_end (sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag 
 	else
-	  Tag_beg (String.sub s 1 (String.length s - 1), dummy_entity), 
+	  Tag_beg (sub_lexeme lexbuf 1 (l-1), dummy_entity), 
 	  Within_tag 
       }
   | "<![CDATA[" cdata_string "]]>"
-      { let s = Lexing.lexeme lexbuf in
-	Cdata (String.sub s 9 (String.length s - 12)), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	Cdata (sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
       }
@@ -196,14 +196,14 @@ rule scan_content = parse
       { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
       }
   | "&#" ascii_digit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string (String.sub s 2 (String.length s - 3))), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string (sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
-      { let s = Lexing.lexeme lexbuf in
-	CRef (int_of_string ("0x" ^ String.sub s 3 (String.length s - 4))), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	CRef (int_of_string ("0x" ^ sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
-      { let s = Lexing.lexeme lexbuf in
-	ERef (String.sub s 1 (String.length s - 2)), Content }
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	ERef (sub_lexeme lexbuf 1 (l-2)), Content }
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
       }
@@ -250,15 +250,15 @@ and scan_within_tag = parse
   | '='
       { tok_Eq__Within_tag }
   | '"' character_except_quot* '"'
-      { let s = Lexing.lexeme lexbuf in
-	let v = String.sub s 1 (String.length s - 2) in   (* OPTIMIZE *)
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" character_except_apos* "'"
-      { let s = Lexing.lexeme lexbuf in
-	let v = String.sub s 1 (String.length s - 2) in   (* OPTIMIZE *)
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
@@ -290,7 +290,7 @@ and scan_content_string = parse
   | '&'
       { raise(WF_error("The character '&' must be written as '&amp;'")) }
   | printable_character_except_amp_lt+
-      { CharData (Lexing.lexeme lexbuf) }
+      { CharData "" (* (Lexing.lexeme lexbuf) *) }
   | '\009'
       { CRef 32 }
   | '\013' '\010'
@@ -663,6 +663,9 @@ and scan_ignored_section = parse
  * History:
  * 
  * $Log: pxp_wlex.mll,v $
+ * Revision 1.3  2000/10/01 19:51:50  gerd
+ * 	Optimizations.
+ *
  * Revision 1.2  2000/09/21 21:33:16  gerd
  * 	Bugfix: Line counting within tags
  *

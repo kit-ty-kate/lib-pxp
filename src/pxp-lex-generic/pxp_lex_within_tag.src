@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.4 2000/09/21 21:33:14 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.5 2000/10/01 19:51:33 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -30,15 +30,15 @@ rule scan_within_tag = parse
   | '='
       { tok_Eq__Within_tag }
   | '"' character_except_quot* '"'
-      { let s = Lexing.lexeme lexbuf in
-	let v = String.sub s 1 (String.length s - 2) in
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" character_except_apos* "'"
-      { let s = Lexing.lexeme lexbuf in
-	let v = String.sub s 1 (String.length s - 2) in
+      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+	let v = sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"
       { raise (WF_error ("Cannot find the second quotation mark"))
@@ -59,6 +59,9 @@ rule scan_within_tag = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.5  2000/10/01 19:51:33  gerd
+ * 	Optimizations.
+ *
  * Revision 1.4  2000/09/21 21:33:14  gerd
  * 	Bugfix: Line counting within tags
  *
