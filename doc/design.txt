@@ -290,6 +290,51 @@ starts, and the parser returns the (filled) root object. Because of this,
 the user determines the *static* type of the object without the need
 of back coercion (which is not possible in Ocaml).
 
+----------------------------------------------------------------------
+Newline normalization
+----------------------------------------------------------------------
 
+The XML spec states that all of \n, \r, and \r\n must be recognized
+as newline characters/character sequences. Notes:
+- The replacement text of entities always contains the orginal text,
+  i.e. \r and \r\n are NOT converted to \n.
+  It is unclear if this is a violation of the standard or not.
+- Content of elements: Newline characters are converted to \n.
+- Attribute values: Newline characters are converted to spaces.
+- Processing instructions: Newline characters are not converted.
+  It is unclear if this is a violation of the standard or not.
 
+----------------------------------------------------------------------
+Empty entities
+----------------------------------------------------------------------
 
+Many entities are artificially surrounded by a Begin_entity/End_entity pair.
+This is sometimes not done if the entity is empty:
+
+- External parameter entities are parsed entities, i.e. they must match
+  the markupdecl* production. If they are not empty, the Begin_entity/End_entity
+  trick guarantees that they match markupdecl+, and that they are only
+  referred to at positions where markupdecl+ is allowed.
+  If they are empty, they are allowed everywhere just like internal 
+  parameter entities. Because of this, the Begin_entity/End_entity pair
+  is dropped.
+
+- This does not apply to parameter entities (either external or internal)
+  which are referred to in the internal subset, nor applies to internal
+  parameter entities, nor applies to general entities:
+
+  + References in the internal subset are only allowed at positions where
+    markupdecl can occur, so Begin_entity/End_entity is added even if the
+    entity is empty.
+  + References to internal parameter entities are allowed anywhere, so
+    never Begin_entity/End_entity is added.
+  + References to general entities: An empty  Begin_entity/End_entity pair
+    is recognized by the yacc parser, so special handling is not required.
+    Moreover, there is the situation that an empty entity is referred to
+    after the toplevel element:
+    <!DOCTYPE doc ...[
+    <!ENTITY empty "">
+    ]>
+    <doc></doc>&empty;
+    - This is illegal, and the presence of an empty Begin_entity/End_entity pair
+    helps to recognize this.

@@ -14,6 +14,12 @@
 <!ENTITY % common SYSTEM "common.xml">
 %common;
 
+<!-- Special HTML config: -->
+<!ENTITY % readme:html:up '<a href="../..">up</a>'>
+
+<!ENTITY % config SYSTEM "config.xml">
+%config;
+
 ]>
 
 <readme title="README - Markup, the XML parser for O'Caml">
@@ -53,11 +59,16 @@ fulfilled, but this is not yet the case.
 </p>
     
     <p>
-Beginning with the positive properties of this package, already the
-current (initial) release should be able to parse all valid XML documents
-and DTDs as long as they use only ISO-8859-1 characters. This has been
-tested with lots of test documents, including all of James Clark's
-positive <a href="&url.jclark-xmltdata;">test records</a>.
+Beginning with the positive properties of this package, the current release can
+parse all valid XML documents and DTDs as long as they use only ISO-8859-1
+characters, and it rejects most invalid or non-well-formed documents.  This has
+been tested with lots of test documents, including all of James Clark's <a
+href="&url.jclark-xmltdata;">test records</a><footnote>The parser is able to
+read all positive test records with the exception of "valid/sa/051.xml" and
+"valid/sa/063.xml" which contain non-ISO-8859-1 characters within names. The
+parser rejects all negative test records with the exception of
+"not-wf/sa/141.xml" which uses non-ISO-8859-1 characters in a way the parser
+cannot deal with.</footnote>.
 </p>
 
     <p>
@@ -140,49 +151,6 @@ The parser can only handle ISO-8859-1 characters. It can read files
 
 	<li>
 	  <p>
-The definition of XML contains some validation constraints that are
-  not yet checked. Especially the constraints that the opening and 
-  closing tokens of braces must be in the same entity are not checked.
-	  <code><![CDATA[
-  [ EXAMPLE:
-    <!ENTITY % an-element "<!ENTITY x (#PCDATA)">
-    %an-element;>
-    - This is invalid XML but not yet rejected. Not only the < > braces
-    must be checked, but also ( ) inside element declarations.
-  ]
-]]></code>
-</p>
-
-	  <p>
-  Furthermore, if an internal general entity is included into an 
-  attribute value, it is not checked that the entity matches the
-  "content" production.
-	  <code><![CDATA[
-  [ EXAMPLE:
-    <!ENTITY x "<element>This is an element without end-tag">
-    <!ENTITY y "</element>">
-    ...
-    <another-element an-attribute="&x;&y;"/>
-    - This is invalid XML, too. Note that the parser only misses to
-    reject bad entity references inside attribute values.
-  ]
-]]></code>
-</p>
-
-	  <p>
-  --> I'll do my best to include such checks in future releases.
-</p>
-	</li>
-
-	<li>
-	  <p>
-  The <![CDATA[<?xml ...?>]]> header is interpreted rather weakly.
-  --> This will be changed in the future.
-</p>
-	</li>
-
-	<li>
-	  <p>
 The "standalone=yes" attribute is not checked.
 </p>
 	</li>
@@ -194,6 +162,12 @@ That IDs are unique, and that IDREFs reference only existing IDs, are
   the application.
 </p>
 	</li>
+
+	<li>
+	  <p>
+It is not checked if the content models are deterministic.
+</p>
+	</li>
       </ul>
 
       <p>
@@ -203,7 +177,8 @@ the standard:
 
       <ul>
 	<li><p>
-Error messages are sometimes confusing.</p></li>
+Error messages are sometimes confusing (but they are getting better from
+version to version).</p></li>
 
 	<li><p>
 The exact locations of processing instructions are not stored in the
@@ -233,6 +208,27 @@ There is currently no "early parser hook", i.e. a possibility to throw
   away parts of the document that are not needed directly after they have
   been read. (Perhaps this is possible by deriving the document class.)
 </p></li>
+      </ul>
+    </sect2>
+
+    <sect2>
+      <title>Recent Changes</title>
+      <ul>
+	<li>
+	  <p> From 0.1 to 0.2:</p>
+	  <p>
+Much more constraints are checked in the 0.2 release than in 0.1. Especially
+that entities are properly nested is now guaranteed; parsed entities now always
+match the corresponding production of the grammar.</p>
+	  <p>
+Many weak checks have been turned into strong checks. For example, it is now
+detected if the "version", "encoding", and "standalone" attributes of an XML
+declaration are ordered in the right way.
+</p>
+	  <p>
+The error messages have been improved. 
+</p>
+	</li>
       </ul>
     </sect2>
   </sect1>
