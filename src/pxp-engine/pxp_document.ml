@@ -1,10 +1,10 @@
-(* $Id: pxp_document.ml,v 1.33 2003/06/20 15:14:13 gerd Exp $
+(* $Id: pxp_document.ml,v 1.34 2003/10/03 20:59:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_core_types
+open Pxp_types
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_aux
@@ -3752,10 +3752,209 @@ let print_doc (n : 'ext document) =
 ;;
 
 
+(**********************************************************************)
+
+exception Empty_tree
+exception Build_aborted
+
+
+type state =
+    St_start | St_start_doc | St_node | St_end_doc | St_end_of_stream 
+
+let build_node_tree cfg dtd spec next_ev =
+  let return = ref None in
+  let root_found = ref false in
+  let stack = Stack.create() in
+  let state = ref St_start in
+  let doc_state = ref St_start in   (* only St_start/_start_doc/_end_doc *)
+  let pos = ref None in
+  let eof = ref false in
+
+  let unexpected txt =
+    failwith ("Pxp_document.build_node_tree: Unexpected " ^ txt ^ " event")
+  in
+
+  let check_state txt =
+    (* Checks !state for real tree nodes *)
+    ( match !state with
+	  St_start | St_start_doc | St_node -> ()
+	| _ ->
+	    unexpected txt
+    );
+    state := St_node;
+  in
+
+  if cfg.enable_super_root_node && Stack.is_empty stack then begin
+    let n = create_super_root_node spec dtd in
+    Stack.push n stack;
+    return := Some n
+  end;
+
+  while not !eof do
+    let ev = next_ev() in
+    match ev with
+	Some (E_start_doc(_,_,_)) ->
+	  if !state <> St_start || !doc_state <> St_start then
+	    unexpected "E_start_doc";
+	  state := St_start_doc;
+	  doc_state := St_start_doc;
+	  pos := None
+
+      | Some (E_end_doc) ->
+	  ( match !state, !doc_state with
+		St_start_doc, St_start_doc -> ()
+	      | St_node, St_start_doc -> ()
+	      | _ ->
+		  unexpected "E_end_doc"
+	  );
+	  state := St_end_doc;
+	  doc_state := St_end_doc;
+	  pos := None
+
+      | Some (E_start_tag(name,atts,eid)) ->
+	  check_state "E_start_tag";
+	  if Stack.is_empty stack && !root_found then
+	    failwith "Pxp_document.build_node_tree: More than one root element";
+	  let n = create_element_node 
+		    ?name_pool_for_attribute_values:
+		    (if cfg.enable_name_pool_for_attribute_values
+		     then Some cfg.name_pool
+		     else None)
+		    ?position:!pos
+		    spec dtd name atts in
+	  ( try
+	      let parent = Stack.top stack in
+	      parent # append_node n
+	    with
+		Stack.Empty ->
+		  return := Some n
+	  );
+	  Stack.push n stack;
+	  root_found := true;
+	  pos := None
+
+      | Some (E_ns_start_tag(name,oname,atts,eid)) ->
+	  check_state "E_ns_start_tag";
+	  if Stack.is_empty stack && !root_found then
+	    failwith "Pxp_document.build_node_tree: More than one root element";
+
+	  let atts' = List.map (fun (n,v,ov) -> (n,v)) atts in
+	  let n = create_element_node 
+		    ?name_pool_for_attribute_values:
+		    (if cfg.enable_name_pool_for_attribute_values
+		     then Some cfg.name_pool
+		     else None)
+		    ?position:!pos
+		    spec dtd name atts' in
+	  (* CHECK: cfg.enable_namespace_info. Currently it is ignored *)
+	  ( try
+	      let parent = Stack.top stack in
+	      parent # append_node n
+	    with
+		Stack.Empty ->
+		  return := Some n
+	  );
+	  Stack.push n stack;
+	  root_found := true;
+	  pos := None
+
+      | Some (E_end_tag(_,_)) ->
+	  check_state "E_end_tag";
+	  if Stack.is_empty stack then unexpected "E_end_tag";
+	  let top = Stack.pop stack in
+	  ( match top # node_type with
+		T_element _ -> ()
+	      | _ -> unexpected "E_end_tag"
+	  );
+	  if not cfg.disable_content_validation then
+	    top # validate_contents 
+	      ~use_dfa:cfg.validate_by_dfa ~check_data_nodes:false ();
+	  pos := None
+
+      | Some (E_ns_end_tag(_,_,_)) ->
+	  check_state "E_ns_end_tag";
+	  if Stack.is_empty stack then unexpected "E_ns_end_tag";
+	  let top = Stack.pop stack in
+	  ( match top # node_type with
+		T_element _ -> ()
+	      | _ -> unexpected "E_ns_end_tag"
+	  );
+	  pos := None
+
+      | Some (E_char_data data) ->
+	  check_state "E_char_data";
+	  ( try
+	      let n = create_data_node spec dtd data in
+	      (Stack.top stack) # append_node n
+	    with
+		Stack.Empty -> ()
+	  );
+	  pos := None
+
+      | Some (E_pinstr(target,value)) ->
+	  check_state "E_pinstr";
+	  ( try
+	      if cfg.enable_pinstr_nodes then begin
+		let pi = new proc_instruction target value cfg.encoding in
+		let n = create_pinstr_node ?position:!pos spec dtd pi in
+		(Stack.top stack) # append_node n
+	      end
+	    with
+		Stack.Empty -> ()
+	  );
+	  pos := None
+	  
+      | Some (E_comment data) ->
+	  check_state "E_comment";
+	  ( try
+	      if cfg.enable_comment_nodes then begin
+		let n = create_comment_node ?position:!pos spec dtd data in
+		(Stack.top stack) # append_node n
+	      end
+	    with
+		Stack.Empty -> ()
+	  );
+	  pos := None
+
+      | Some (E_position(ent,line,colpos)) ->
+	  check_state "E_position";
+	  pos := Some (ent,line,colpos)
+
+      | Some (E_error err) ->
+	  raise Build_aborted
+
+      | Some E_end_of_stream ->
+	  if !doc_state = St_start_doc then
+	    failwith "Pxp_document.build_node_tree: E_start_doc without E_end_doc event";
+	  ( match !state with
+		St_start -> ()
+	      | St_node -> ()
+	      | St_end_doc -> ()
+	      | _ ->
+		  failwith "Pxp_document.build_node_tree: Unexpected E_end_of_stream event"
+	  );
+	  state := St_end_of_stream;
+	  pos := None
+
+      | None ->
+	  if !state <> St_end_of_stream then
+	    failwith "Pxp_document.build_node_tree: Unexpected end of stream";
+	  eof := true
+  done;
+  ( match !return with
+	Some r -> r
+      | None   -> raise Empty_tree
+  )
+;;
+
+
 (* ======================================================================
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.34  2003/10/03 20:59:07  gerd
+ * 	Added build_node_tree
+ *
  * Revision 1.33  2003/06/20 15:14:13  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants
