@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.6 2000/05/14 20:59:24 gerd Exp $
+(* $Id: generator.ml,v 1.7 2000/08/17 00:33:02 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -405,7 +405,7 @@ let process_branch b file_name tree branch =
 		 * a token, the loop becomes very simple.
 		 *)
 		if (match pat.pat_symbol with 
-			U_symbol(_,_) -> true | _ -> false) 
+			U_symbol(t,_) -> not (is_typed tree t) | _ -> false) 
 		then begin
 		  let tok = match pat.pat_symbol with 
 		               U_symbol(t,_) -> t | _ -> assert false in
@@ -462,7 +462,7 @@ let process_branch b file_name tree branch =
 		 * a token, the loop becomes very simple.
 		 *)
 		if (match pat.pat_symbol with 
-			U_symbol(_,_) -> true | _ -> false) 
+			U_symbol(t,_) -> not (is_typed tree t) | _ -> false) 
 		then begin
 		  let tok = match pat.pat_symbol with 
 		               U_symbol(t,_) -> t | _ -> assert false in
@@ -887,6 +887,10 @@ exit 0;;
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.7  2000/08/17 00:33:02  gerd
+ * 	Bugfix: tok* and tok? work now if tok is an untyped token
+ * without label.
+ *
  * Revision 1.6  2000/05/14 20:59:24  gerd
  * 	Added "phantasy line numbers" to help finding errorneous locations.
  *
