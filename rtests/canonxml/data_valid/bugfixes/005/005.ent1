@@ -1,0 +1,2 @@
+<!ENTITY % e2 SYSTEM "005.ent2">
+%e2;

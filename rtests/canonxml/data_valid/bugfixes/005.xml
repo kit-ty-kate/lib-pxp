@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE x [
+<!ENTITY % e1 SYSTEM "005/005.ent1">
+%e1;
+<!ELEMENT x ANY>
+]>
+
+<x>&f;</x>
