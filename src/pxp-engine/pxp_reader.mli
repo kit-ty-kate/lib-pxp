@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.9 2001/07/01 08:35:23 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.10 2003/01/21 00:18:48 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -99,8 +99,10 @@ class type resolver =
      *
      * A resolver is like a file: it must be opened before one can work
      * with it, and it should be closed after all operations on it have been
-     * done. The method 'open_in' is called with the external ID as argument
+     * done. The method 'open_rid' is called with the resolver ID as argument
      * and it must return the lexbuf reading from the external resource.
+     * (There is also the old method 'open_in' that expects an ext_id as
+     * argument. It is less powerful and should not be used any longer.)
      * The method 'close_in' does not require an argument.
      *
      * It is allowed to re-open a resolver after it has been closed. It is
@@ -108,8 +110,11 @@ class type resolver =
      * It is allowed to close a resolver several times: If 'close_in' is
      * invoked while the resolver is already closed, nothing happens.
      *
-     * The method 'open_in' may raise Not_competent to indicate that this
+     * The method 'open_rid' may raise Not_competent to indicate that this
      * resolver is not able to open this type of IDs.
+     *
+     * If 'open_rid' gets a PUBLIC ID, it can be assumed that the string
+     * is already normalized (whitespace).
      *
      * The method 'change_encoding' is called from the parser after the
      * analysis of case (2) has been done; the argument is either the
@@ -150,9 +155,17 @@ class type resolver =
     method rep_encoding : rep_encoding
 
     method open_in : ext_id -> Lexing.lexbuf
-      (* May raise Not_competent if the object does not know how to handle
-       * this ext_id.
+      (* This is the old method to open a resolver. It is superseded by
+       * open_rid.
+       * This method may raise Not_competent if the object does not know
+       * how to handle this ext_id.
        *)
+
+    method open_rid : resolver_id -> Lexing.lexbuf
+      (* This is the new method to open a resolver. It takes a resolver ID
+       * instead of an ext_id but works in the same way.
+       *)
+
     method close_in : unit
     method change_encoding : string -> unit
 
@@ -162,130 +175,137 @@ class type resolver =
      *)
     method clone : resolver
 
+    method active_id : resolver_id
+      (* Returns the actually used resolver ID. This is the ID passed to
+       * open_rid where unused components have been set to None. The
+       * resolver ID returned by [active_id] plays an important role when
+       * expanding relative URLs.
+       *)
+
     method close_all : unit
       (* Closes this resolver and every clone *)
 
   end
 ;;
 
-(* Note: resolve_general is no longer exported. In most cases, the classes
- * resolve_read_any_channel or resolve_read_any_string are applicable, too,
- * and much easier to configure.
- *)
-
 
 (* The next classes are resolvers for concrete input sources. *)
 
-class resolve_read_this_channel :
-  ?id:ext_id -> ?fixenc:encoding -> ?close:(in_channel -> unit) ->
-  in_channel -> resolver;;
+(* CHANGES IN PXP 1.2:
+ *
+ * All resolve_read_* classes are now deprecated. The new classes 
+ * resolve_to_* base on the Netchannels classes as generalization of
+ * input streams.
+ *
+ * Examples: To read from an in_channel, use:
+ *
+ * let obj_channel = new Netchannels.input_channel in_channel in
+ * new Pxp_reader.resolve_to_this_obj_channel obj_channel
+ *
+ * To read from a string, use:
+ *
+ * let obj_channel = new Netchannels.input_string string in
+ * new Pxp_reader.resolve_to_this_obj_channel obj_channel
+ *
+ * Furthermore, the new classes use the resolver_id record as generalized
+ * names for entities. This solves most problems with relative URLs.
+ *)
 
-  (* Reads from the passed channel (it may be even a pipe). If the ~id
-   * argument is passed to the object, the created resolver accepts only
-   * this ID. Otherwise all IDs are accepted.
-   * Once the resolver has been cloned, it does not accept any ID. This
-   * means that this resolver cannot handle inner references to external
-   * entities. Note that you can combine this resolver with another resolver
-   * that can handle inner references (such as resolve_as_file); see
-   * class 'combine' below.
+class resolve_to_this_obj_channel :
+  ?id:ext_id ->
+  ?rid:resolver_id ->
+  ?fixenc:encoding ->
+  ?close:(Netchannels.in_obj_channel -> unit) ->
+ Netchannels.in_obj_channel -> 
+   resolver;;
+
+  (* Reads from the passed in_obj_channel. If the ~id or ~rid arguments
+   * are passed to the object, the created resolver accepts only
+   * these IDs (all mentioned private, system, or public IDs). Otherwise 
+   * all IDs are accepted.
+   *
+   * This resolver can only be used once (because the in_obj_channel
+   * can only be used once). If it is opened a second time (either
+   * in the base object or a clone), it will raise Not_competent.
+   *
    * If you pass the ~fixenc argument, the encoding of the channel is
    * set to the passed value, regardless of any auto-recognition or
    * any XML declaration.
+   *
    * When the resolver is closed, the function passed by the ~close
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:close_in).
+   * (i.e. the default is: ~close:(fun ch -> ch # close_in)).
    *)
 
+type accepted_id =
+    Netchannels.in_obj_channel * encoding option * resolver_id option
+  (* When a resolver accepts an ID, this triple specifies how to proceed.
+   * The in_obj_channel is the channel to read data from, the encoding option
+   * may enforce a certain character encoding, and the resolver_id option
+   * may detail the ID (this ID will be returned by active_id).
+   *
+   * If None is passed as encoding option, the standard autodetection of
+   * the encoding is performed.
+   *
+   * If None is passed as resolver_id option, the original ID is taken
+   * unchanged.
+   *)
 
-class resolve_read_any_channel :
-  ?close:(in_channel -> unit) ->
-  channel_of_id:(ext_id -> (in_channel * encoding option)) ->
+class resolve_to_any_obj_channel :
+  ?close:(Netchannels.in_obj_channel -> unit) ->
+  channel_of_id:(resolver_id -> accepted_id) ->
   unit ->
   resolver;;
 
-  (* resolve_read_any_channel f_open ():
-   * This resolver calls the function f_open to open a new channel for
-   * the passed ext_id. This function must either return the channel and
-   * the encoding, or it must fail with Not_competent.
-   * The function must return None as encoding if the default mechanism to
-   * recognize the encoding should be used. It must return Some e if it is
-   * already known that the encoding of the channel is e.
+  (* This resolver calls the function channel_of_id to open a new channel for
+   * the passed resolver_id. This function must either return the accepted_id,
+   * or it must fail with Not_competent.
+   *
    * When the resolver is closed, the function passed by the ~close
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:close_in).
+   * (i.e. the default is: ~close:(fun ch -> ch # close_in)).
    *)
 
 
-class resolve_read_url_channel :
-  ?base_url:Neturl.url ->
-  ?close:(in_channel -> unit) ->
-  url_of_id:(ext_id -> Neturl.url) ->
-  channel_of_url:(ext_id -> Neturl.url -> (in_channel * encoding option)) ->
+class resolve_to_url_obj_channel : 
+  ?close:(Netchannels.in_obj_channel -> unit) ->
+  url_of_id:(resolver_id -> Neturl.url) ->
+  base_url_of_id:(resolver_id -> Neturl.url) ->
+  channel_of_url:(resolver_id -> Neturl.url -> accepted_id) ->
   unit ->
     resolver;;
 
-  (* resolve_read_url_channel url_of_id channel_of_url ():
-   *
+  (*
    * When this resolver gets an ID to read from, it calls the function
-   * ~url_of_id to get the corresponding URL. This URL may be a relative
-   * URL; however, a URL scheme must be used which contains a path.
-   * The resolver converts the URL to an absolute URL if necessary.
-   * The second function, ~channel_of_url, is fed with the absolute URL
+   * ~url_of_id to get the corresponding URL (such IDs are normally 
+   * system IDs, but it is also possible to map system IDs to URLs). 
+   * This URL may be a relative URL; however, a URL scheme must be used
+   * which contains a path. The resolver converts the URL to an absolute 
+   * URL if necessary.
+   *
+   * To do so, the resolver calls ~base_url_of_id to get the URL the relative
+   * URL must be interpreted relative to. Usually, this function returns
+   * the rid_system_base as URL. This URL must be absolute.
+   *
+   * The third function, ~channel_of_url, is fed with the absolute URL
    * as input. This function opens the resource to read from, and returns
-   * the channel and the encoding of the resource.
+   * the accepted_id like resolve_to_any_obj_channel. The resolver ID 
+   * passed to ~channel_of_url contains the string representation of the
+   * absolute URL as system ID.
    *
    * Both functions, ~url_of_id and ~channel_of_url, can raise
    * Not_competent to indicate that the object is not able to read from
    * the specified resource. However, there is a difference: A Not_competent
    * from ~url_of_id is left as it is, but a Not_competent from ~channel_of_url
    * is converted to Not_resolvable. So only ~url_of_id decides which URLs
-   * are accepted by the resolver and which not.
-   *
-   * The function ~channel_of_url must return None as encoding if the default
-   * mechanism to recognize the encoding should be used. It must return
-   * Some e if it is already known that the encoding of the channel is e.
+   * are accepted by the resolver and which not, and in the latter case,
+   * other resolver can be tried. If ~channel_of_url raises Not_competent,
+   * the whole resolution procedure will stop, and no other resolver will
+   * be tried.
    *
    * When the resolver is closed, the function passed by the ~close
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:close_in).
-   *
-   * Objects of this class contain a base URL relative to which relative
-   * URLs are interpreted. When creating a new object, you can specify
-   * the base URL by passing it as ~base_url argument. When an existing
-   * object is cloned, the base URL of the clone is the URL of the original
-   * object.
-   *
-   * Note that the term "base URL" has a strict definition in RFC 1808.
-   *)
-
-
-class resolve_read_this_string :
-  ?id:ext_id -> ?fixenc:encoding -> string -> resolver;;
-
-  (* Reads from the passed string. If the ~id
-   * argument is passed to the object, the created resolver accepts only
-   * this ID. Otherwise all IDs are accepted.
-   * Once the resolver has been cloned, it does not accept any ID. This
-   * means that this resolver cannot handle inner references to external
-   * entities. Note that you can combine this resolver with another resolver
-   * that can handle inner references (such as resolve_as_file); see
-   * class 'combine' below.
-   * If you pass the ~fixenc argument, the encoding of the string is
-   * set to the passed value, regardless of any auto-recognition or
-   * any XML declaration.
-   *)
-
-
-class resolve_read_any_string :
-  string_of_id:(ext_id -> (string * encoding option)) -> unit -> resolver;;
-
-  (* resolver_read_any_string f_open ():
-   * This resolver calls the function f_open to get the string for
-   * the passed ext_id. This function must either return the string and
-   * the encoding, or it must fail with Not_competent.
-   * The function must return None as encoding if the default mechanism to
-   * recognize the encoding should be used. It must return Some e if it is
-   * already known that the encoding of the string is e.
+   * (i.e. the default is: ~close:(fun ch -> ch # close_in())).
    *)
 
 
@@ -295,6 +315,7 @@ class resolve_as_file :
   ?system_encoding:encoding ->
   ?map_private_id:  (private_id -> Neturl.url) ->
   ?open_private_id: (private_id -> in_channel * encoding option) ->
+  ?base_url_defaults_to_cwd: bool ->
   unit ->
   resolver;;
 
@@ -322,13 +343,23 @@ class resolve_as_file :
    * Option ~system_encoding: Specifies the encoding of file names of
    * the local file system. Default: UTF-8.
    *
-   * Options ~map_private_id and ~open_private_id: These must always be
+   * Options ~map_private_id and ~open_private_id: THESE OPTIONS ARE
+   * DEPRECATED! IT IS NOW POSSIBLE TO USE A COMBINED RESOLVER TO ACHIEVE
+   * THE SAME EFFECT! - These must always be
    * used together. They specify an exceptional behaviour in case a private
    * ID is to be opened. map_private_id maps the private ID to an URL
    * (or raises Not_competent). However, instead of opening the URL 
    * the function open_private_id is called to get an in_channel to read
    * from and to get the character encoding. The URL is taken into account
    * when subsequently relative SYSTEM IDs must be resolved.
+   *
+   * Option ~base_url_defaults_to_cwd: If true (the default), relative URLs
+   * are interpreted relative to the current working directory at the time
+   * the class is instantiated, but only if there is no parent URL, i.e.
+   * rid_system_base=None. If false, such URLs cannot be resolved. This 
+   * option is selected by default because of backward compatibility. 
+   * In general, it is better to set this option to false, and to
+   * initialize rid_system_base properly.
    *)
 
 val make_file_url :
@@ -357,6 +388,40 @@ val make_file_url :
  * of PUBLIC or SYSTEM identifiers.
  *)
 
+class lookup_id :
+  (ext_id * resolver) list ->    (* catalog *)
+    resolver;;
+  (* The general catalog class. The catalog argument specifies pairs (xid,r)
+   * mapping external IDs xid to subresolvers r. The subresolver is invoked
+   * if an entity with the corresponding xid is to be opened.
+   *)
+
+
+class lookup_id_as_file :
+  ?fixenc:encoding ->
+  (ext_id * string) list ->      (* catalog *)
+    resolver;;
+
+  (* The catalog argument specifies pairs (xid,file) mapping external IDs xid
+   * to files. The file is read  if an entity with the corresponding xid is
+   * to be opened.
+   *
+   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   *     standard rule is applied to find out the encoding of the file.
+   *)
+
+
+class lookup_id_as_string :
+  ?fixenc:encoding ->
+  (ext_id * string) list ->      (* catalog *)
+    resolver;;
+
+  (* The catalog argument specifies pairs (xid,s) mapping external IDs xid
+   * to strings s. The string is read if an entity with the corresponding
+   * xid is to be opened.
+   *)
+
+
 class lookup_public_id :
   (string * resolver) list ->    (* catalog *)
     resolver;;
@@ -370,7 +435,7 @@ class lookup_public_id :
 
 
 
-val lookup_public_id_as_file :
+class lookup_public_id_as_file :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
     resolver;;
@@ -385,7 +450,7 @@ val lookup_public_id_as_file :
    *)
 
 
-val lookup_public_id_as_string :
+class lookup_public_id_as_string :
   ?fixenc:encoding ->
   (string * string) list ->    (* catalog *)
     resolver;;
@@ -403,7 +468,7 @@ class lookup_system_id :
     resolver;;
 
   (* This is the generic builder for SYSTEM id catalog resolvers: The catalog 
-   * argument specifies pairs (pubid, r) mapping PUBLIC identifiers to 
+   * argument specifies pairs (sysid, r) mapping SYSTEM identifiers to 
    * subresolvers.
    * The subresolver is invoked if an entity with the corresponding SYSTEM
    * id is to be opened.
@@ -411,11 +476,11 @@ class lookup_system_id :
    * Important note: Two SYSTEM IDs are considered as equal if they are
    * equal in their string representation. (This may not what you want
    * and may cause trouble... However, I currently do not know how to
-   * implement a "sematical" comparison logic.)
+   * implement a "semantic" comparison logic.)
    *)
 
 
-val lookup_system_id_as_file :
+class lookup_system_id_as_file :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
     resolver;;
@@ -430,7 +495,7 @@ val lookup_system_id_as_file :
    *)
 
 
-val lookup_system_id_as_string :
+class lookup_system_id_as_string :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
     resolver;;
@@ -448,6 +513,7 @@ type combination_mode =
   | System_before_public    (* Try system identifiers first *)
 ;;
 
+
 class combine : 
         ?prefer:resolver -> 
 	?mode:combination_mode ->
@@ -457,24 +523,28 @@ class combine :
   (* Combines several resolver objects. If a concrete entity with an
    * ext_id is to be opened, the combined resolver tries the contained
    * resolvers in turn until a resolver accepts opening the entity
-   * (i.e. it does not raise Not_competent on open_in).
+   * (i.e. it does not raise Not_competent on open_rid).
    *
-   * If the ext_id is a public identifier Public(pubid,sysid), there are 
-   * two possibilities:
+   * If the entity to open has several names, e.g. a public name and
+   * a system name, these names are tried in parallel by default (this
+   * is possible in the PXP 1.2 model). For backward compatibility, the
+   * ~mode argument allows one to specify a different order:
+   *
    * (1) Try first to open as public identifier, and if that fails,
-   *     fall back to the system identifier
+   *     fall back to the system identifier (Public_before_system)
    * (2) Try first to open as system identifier, and if that fails,
-   *     fall back to the public identifier
-   * You can select this by the ~mode argument. The default is to
-   * try public identifiers first.
+   *     fall back to the public identifier (System_before_public)
    *
-   * Clones: If the 'clone' method is invoked before 'open_in', all contained
+   * Clones: If the 'clone' method is invoked before 'open_rid', all contained
    * resolvers are cloned and again combined. If the 'clone' method is
-   * invoked after 'open_in' (i.e. while the resolver is open), only the
+   * invoked after 'open_rid' (i.e. while the resolver is open), only the
    * active resolver is cloned.
    *
    * ~prefer: This is an internally used option.
    *)
+
+
+(* IDEA: class redirect: rewrites the prefix of a system URL *)
 
 (* ====================================================================== *)
 
@@ -564,11 +634,180 @@ class combine :
  * from_string are also applications of the Pxp_reader objects.
  *)
 
+(**********************************************************************)
+(* DEPRECATED CLASSES                                                 *)
+(**********************************************************************)
+
+class resolve_read_this_channel :
+  ?id:ext_id -> ?fixenc:encoding -> ?close:(in_channel -> unit) ->
+  in_channel -> resolver;;
+
+  (* THIS CLASS IS DEPRECATED! USE resolve_to_this_obj_channel INSTEAD!
+   *)
+
+  (* Reads from the passed channel (it may be even a pipe). If the ~id
+   * argument is passed to the object, the created resolver accepts only
+   * this ID. Otherwise all IDs are accepted.
+   * Once the resolver has been cloned, it does not accept any ID. This
+   * means that this resolver cannot handle inner references to external
+   * entities. Note that you can combine this resolver with another resolver
+   * that can handle inner references (such as resolve_as_file); see
+   * class 'combine' below.
+   * If you pass the ~fixenc argument, the encoding of the channel is
+   * set to the passed value, regardless of any auto-recognition or
+   * any XML declaration.
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
+   *)
+
+
+class resolve_read_any_channel :
+  ?close:(in_channel -> unit) ->
+  channel_of_id:(ext_id -> (in_channel * encoding option)) ->
+  unit ->
+  resolver;;
+
+  (* THIS CLASS IS DEPRECATED! USE resolve_to_any_obj_channel INSTEAD!
+   *
+   * Note: The function channel_of_id may be called several times to find
+   * out the right ext_id from the current resolver_id. The first result
+   * is taken that is not Not_competent.
+   *)
+
+  (* resolve_read_any_channel f_open ():
+   * This resolver calls the function f_open to open a new channel for
+   * the passed ext_id. This function must either return the channel and
+   * the encoding, or it must fail with Not_competent.
+   * The function must return None as encoding if the default mechanism to
+   * recognize the encoding should be used. It must return Some e if it is
+   * already known that the encoding of the channel is e.
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
+   *)
+
+class resolve_read_url_channel :
+  ?base_url:Neturl.url ->
+  ?close:(in_channel -> unit) ->
+  url_of_id:(ext_id -> Neturl.url) ->
+  channel_of_url:(ext_id -> Neturl.url -> (in_channel * encoding option)) ->
+  unit ->
+    resolver;;
+
+  (* THIS CLASS IS DEPRECATED! USE resolve_to_url_obj_channel INSTEAD!
+   *
+   * Note: The function url_of_id may be called several times to find
+   * out the right ext_id from the current resolver_id. The first result
+   * is taken that is not Not_competent.
+   *
+   * Note: The optional argument base_url is ignored. The class uses always
+   * the rid_system_base string to interpret relative URLs.
+   *)
+
+  (* resolve_read_url_channel url_of_id channel_of_url ():
+   *
+   * When this resolver gets an ID to read from, it calls the function
+   * ~url_of_id to get the corresponding URL. This URL may be a relative
+   * URL; however, a URL scheme must be used which contains a path.
+   * The resolver converts the URL to an absolute URL if necessary.
+   * The second function, ~channel_of_url, is fed with the absolute URL
+   * as input. This function opens the resource to read from, and returns
+   * the channel and the encoding of the resource.
+   *
+   * Both functions, ~url_of_id and ~channel_of_url, can raise
+   * Not_competent to indicate that the object is not able to read from
+   * the specified resource. However, there is a difference: A Not_competent
+   * from ~url_of_id is left as it is, but a Not_competent from ~channel_of_url
+   * is converted to Not_resolvable. So only ~url_of_id decides which URLs
+   * are accepted by the resolver and which not.
+   *
+   * The function ~channel_of_url must return None as encoding if the default
+   * mechanism to recognize the encoding should be used. It must return
+   * Some e if it is already known that the encoding of the channel is e.
+   *
+   * When the resolver is closed, the function passed by the ~close
+   * argument is called. By default, the channel is closed
+   * (i.e. the default is: ~close:close_in).
+   *
+   * [Does not apply to current implementation but to former ones:]
+   * Objects of this class contain a base URL relative to which relative
+   * URLs are interpreted. When creating a new object, you can specify
+   * the base URL by passing it as ~base_url argument. When an existing
+   * object is cloned, the base URL of the clone is the URL of the original
+   * object.
+   *
+   * Note that the term "base URL" has a strict definition in RFC 1808.
+   *)
+
+
+class resolve_read_this_string :
+  ?id:ext_id -> ?fixenc:encoding -> string -> resolver;;
+
+  (* THIS CLASS IS DEPRECATED! USE resolve_to_this_obj_channel INSTEAD!
+   *)
+
+  (* Reads from the passed string. If the ~id
+   * argument is passed to the object, the created resolver accepts only
+   * this ID. Otherwise all IDs are accepted.
+   * Once the resolver has been cloned, it does not accept any ID. This
+   * means that this resolver cannot handle inner references to external
+   * entities. Note that you can combine this resolver with another resolver
+   * that can handle inner references (such as resolve_as_file); see
+   * class 'combine' below.
+   * If you pass the ~fixenc argument, the encoding of the string is
+   * set to the passed value, regardless of any auto-recognition or
+   * any XML declaration.
+   *)
+
+
+class resolve_read_any_string :
+  string_of_id:(ext_id -> (string * encoding option)) -> unit -> resolver;;
+
+  (* THIS CLASS IS DEPRECATED! USE resolve_to_any_obj_channel INSTEAD!
+   *)
+
+  (* resolver_read_any_string f_open ():
+   * This resolver calls the function f_open to get the string for
+   * the passed ext_id. This function must either return the string and
+   * the encoding, or it must fail with Not_competent.
+   * The function must return None as encoding if the default mechanism to
+   * recognize the encoding should be used. It must return Some e if it is
+   * already known that the encoding of the string is e.
+   *)
+
+val lookup_public_id_as_file :
+  ?fixenc:encoding ->
+  (string * string) list ->     (* catalog *)
+    resolver;;
+  (* Same as the equally named class *)
+
+val lookup_public_id_as_string :
+  ?fixenc:encoding ->
+  (string * string) list ->     (* catalog *)
+    resolver;;
+  (* Same as the equally named class *)
+
+val lookup_system_id_as_file :
+  ?fixenc:encoding ->
+  (string * string) list ->     (* catalog *)
+    resolver;;
+  (* Same as the equally named class *)
+
+val lookup_system_id_as_string :
+  ?fixenc:encoding ->
+  (string * string) list ->     (* catalog *)
+    resolver;;
+  (* Same as the equally named class *)
 
 (* ======================================================================
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.10  2003/01/21 00:18:48  gerd
+ * 	Reimplementation of the reader classes, now basing on the
+ * resolver_id type to identify entities.
+ *
  * Revision 1.9  2001/07/01 08:35:23  gerd
  * 	Instead of the ~auto_close argument, there is now a
  * ~close argument for several functions/classes. This allows some
