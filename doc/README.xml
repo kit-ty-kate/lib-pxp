@@ -196,6 +196,18 @@ There is currently no "early parser hook", i.e. a possibility to throw
       <title>Recent Changes</title>
       <ul>
 	<li>
+	  <p>Changed in 0.99.5:</p>
+	  <p>The handling of ID and IDREF attributes has changed. The
+index of nodes containing an ID attribute is now separated from the document.
+Optionally the parser now checks whether the IDREF attributes refer to
+existing elements.</p>
+	  <p>The element nodes can optionally store the location in the
+source XML code.</p>
+	  <p>The method 'write' writes the XML tree in every supported
+encoding. (Successor of 'write_compact_as_latin1'.)</p>
+	  <p>Several smaller changes and fixes.</p>
+	</li>
+	<li>
 	  <p>Changed in 0.99.4:</p>
 	  <p>The module Pxp_reader has been modernized. The resolver classes
 are simpler to use. There is now support for URLs.</p>

@@ -36,18 +36,16 @@ extend this concept such that arbitrary criterions are possible
     <p>The current development goals of PXP are:</p>
 
     <ul>
-      <li><p><em>Full XML-1.0 conformance:</em> The last stable release
-is not able to handle Unicode characters in a reasonable way. Furthermore,
-some validation checks have been left out.</p>
+      <li><p><em>Full XML-1.0 conformance:</em> The current pre-release
+is now very close to strict XML-1.0 conformance. The only bigger 
+difference to the standard is that PXP sometimes accepts DTDs as legal
+while the standard forbids them (non-deterministic content models).</p>
 
-	<p>The current pre-release can read files encoded as UTF-8,
-UTF-16 and ISO-8859-1, and it can represent the document internally
-using UTF-8 or ISO-8859-1 strings. This was only possible 
-because Claudio Sacerdoti Coen  contributed a special lexer preprocessor
-hiding the details of the UTF-8 encoding.
+<p>One of the more important improvements since 0.2.10 is the possibility to
+represent XML documents internally as UTF-8 strings, not only as ISO-8859-1
+strings. Thanks to Claudio Sacerdoti Coen who contributed a special lexer
+preprocessor hiding the details of the UTF-8 encoding in the lexer definitions.
 </p>
-
-	<p>The current pre-release can now check the standalone declaration.</p>
       </li>
 
       <li><p><em>Correctness of validation:</em> The well-formedness
@@ -61,7 +59,7 @@ process large amounts of data in a reasoable period of time. The last
 stable release had many stages of processing that wasted time.</p>
 
 	<p>The current pre-release is already 30 per cent faster than
-the last stable release.</p>
+0.2.10.</p>
       </li>
 
       <li><p><em>Simplicity of usage:</em> Unlike parsers basing on
@@ -81,8 +79,8 @@ for programs transforming XML trees.</p>
     <title>Download the PXP pre-release</title>
 
     <p>The current pre-release is available under 
-<a href="&url.gps-ocaml-download;/pxp-pre-0.99.4.tar.gz">
-&url.gps-ocaml-download;/pxp-pre-0.99.4.tar.gz</a>. There is currently no
+<a href="&url.gps-ocaml-download;/pxp-pre-0.99.5.tar.gz">
+&url.gps-ocaml-download;/pxp-pre-0.99.5.tar.gz</a>. There is currently no
 documentation for this version of the software; it is recommended to use the <a
 href="&url.markup-manual;">Markup manual</a> and compare it with the current
 module interfaces.</p>
