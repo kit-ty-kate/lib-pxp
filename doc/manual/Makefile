@@ -2,13 +2,13 @@ DOCBOOK_HTML = /usr/share/sgml/docbkdsl/html
 DOCBOOK_PRINT = /usr/share/sgml/docbkdsl/print
 SRC = $(PWD)/src
 
-.PHONY: html tex man
+.PHONY: html ps
 
-default: html man
-# 'tex' still not working
+default: html ps
 
 html: html/book1.htm
-tex: tex/markup.dvi
+
+ps: ps/markup.ps
 
 
 src/readme.ent: ../../examples/readme/to_html.ml
@@ -28,16 +28,21 @@ html/book1.htm: src/*.sgml src/readme.ent
 #	rm -f *.[0-9]; \
 #	db2man <../src/findlib_reference.xml
 
-tex/markup.tex: src/*.sgml src/readme.ent
-	mkdir -p tex
-	cd tex; \
+ps/markup.tex: src/*.sgml src/readme.ent
+	mkdir -p ps
+	cd ps; \
 	jade -t tex -D$(DOCBOOK_PRINT) -D$(SRC) markup.sgml; \
 	true
 
-tex/markup.dvi: tex/markup.tex
-	cd tex; \
+ps/markup.dvi: ps/markup.tex
+	cd ps; \
+	jadetex markup.tex; \
 	jadetex markup.tex; \
 	jadetex markup.tex
+
+ps/markup.ps: ps/markup.dvi
+	cd ps; \
+	dvips -f <markup.dvi >markup.ps
 
 .SUFFIXES: .xml .sgml
 
@@ -47,10 +52,12 @@ tex/markup.dvi: tex/markup.tex
 
 
 clean:
-	rm -rf html man tex
-	rm -f src/*.xml
+	rm -rf html man ps
+	rm -f src/readme.ent
+
+CLEAN: clean
 
 distclean:
-	rm -f src/*.xml
 	rm -f src/*~
 	rm -f *~
+	rm -f ps/*.aux ps/*.dvi ps/*.log ps/*.tex

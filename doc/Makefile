@@ -15,11 +15,14 @@ clean:
 
 .PHONY: CLEAN
 CLEAN: clean
+	$(MAKE) -C manual CLEAN
 
 .PHONY: distclean
 distclean: clean
 	rm -f *~
+	$(MAKE) -C manual distclean
 
 .PHONY: symlinks
 symlinks:
 	ln -s ../examples/readme/readme.dtd .
+

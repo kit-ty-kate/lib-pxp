@@ -40,6 +40,15 @@ You can download <em>Markup</em> as gzip'ed <a
   </sect1>
 
   <sect1>
+    <title>User's Manual</title>
+    <p>
+The manual is included in the distribution both as Postscript document and
+bunch of HTML files. An online version can be found <a
+						       href="&url.markup-manual;">here</a>.
+</p>
+  </sect1>
+
+  <sect1>
     <title>Author, Copying</title>
     <p>
 <em>Markup</em> has been written by &person.gps;. You may copy it as you like,
