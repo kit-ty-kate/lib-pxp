@@ -1,4 +1,4 @@
-(* $Id: sample.ml,v 1.3 2002/08/05 22:36:06 gerd Exp $
+(* $Id: sample.ml,v 1.4 2002/08/17 23:09:47 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -50,7 +50,7 @@ let dump_event =
 let parse s =
   process_entity
     default_config
-    Entry_document
+    (`Entry_document[])
     (create_entity_manager default_config (from_string s))
     dump_event;
   flush stdout
@@ -153,7 +153,7 @@ let curly_parse s =
 	       } in
   process_entity
     config
-    Entry_document
+    (`Entry_document[])
     (create_entity_manager config (from_string s))
     dump_event;
   flush stdout
@@ -203,7 +203,7 @@ let rec_curly_parse s =
 	  mng # push_entity sub_ent;  
 	  process_entity
 	    sub_config
-	    Entry_document
+	    (`Entry_document[])
 	    mng
 	    dump_event;
 	  assert(mng # current_entity = sub_ent);
@@ -245,16 +245,52 @@ let rec_curly_parse s =
 
   process_entity
     config
-    Entry_document
+    (`Entry_document[])
     (create_entity_manager config (from_string s))
     dump_event;
   flush stdout
+;;
+
+
+(* parse_expr: An example for process_expr that parses the expressions
+ * found in a string one after another.
+ * Example:
+ *      parse_expr "<?pi?><abc>def</abc> <qrt>def</qrt> "
+ *
+ * Unfortunately, we need the undocumented methods [open_entity] and
+ * [close_entity] from [Pxp_entity], and we need the knowledge that
+ * a [Begin_entity] token can be found at the beginning of the entity,
+ * and that an [End_entity] token signals the end of the entity. Using
+ * [process_expr] is quite low-level.
+ *)
+
+let parse_expr s =
+  let config =
+    { default_config with
+	enable_pinstr_nodes = true;
+	enable_comment_nodes = true
+    } in
+  let m = create_entity_manager config (from_string s) in
+  m # current_entity # open_entity true Pxp_lexer_types.Content;
+  let begin_entity_token = !(m # yy_get_next_ref)() in
+  assert (begin_entity_token = Begin_entity);
+  let tok = ref Ignore in       (* Ignore does not occur in the token stream *)
+  while !tok <> End_entity do
+    let first_token =
+      if !tok <> Ignore then Some !tok else None in
+    printf "*** Calling process_expr...\n";
+    process_expr ?first_token ~following_token:tok config m dump_event;
+  done;
+  ignore(m # current_entity # close_entity);
 ;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: sample.ml,v $
+ * Revision 1.4  2002/08/17 23:09:47  gerd
+ * 	Updated.
+ *
  * Revision 1.3  2002/08/05 22:36:06  gerd
  * 	escape_attributes has an additional position argument
  *
