@@ -34,3 +34,22 @@ distclean:
 	$(MAKE) -C src distclean
 	$(MAKE) -C examples distclean
 	$(MAKE) -C rtests distclean
+
+RELEASE:
+	echo "$(VERSION)" >RELEASE
+
+.PHONY: dist
+dist: RELEASE
+	cd ..; gtar czf $(NAME)-$(VERSION).tar.gz --exclude='*/CVS*' --exclude="*~" --exclude="*/depend" --exclude="*reptil*" --exclude="*/doc/common.xml" --exclude="*/doc/config.xml" --exclude="*.fig.bak" --exclude="*/ps/pic*" --exclude="*/Mail*" $(NAME)/*
+
+.PHONY: tag-release
+tag-release: RELEASE
+	@echo Checking whether everything is checked in...
+	! cvs -n update 2>&1 | grep '^[MACPU] '
+	r=`head -1 RELEASE | sed -e s/\\\./-/g`; cd ..; cvs tag -F $(NAME)-$$r pxp
+
+.PHONY: release
+release: distclean
+	$(MAKE) tag-release
+	$(MAKE) dist
+
