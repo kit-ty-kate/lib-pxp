@@ -12,6 +12,7 @@ opt:
 	$(MAKE) -f Makefile.code opt
 
 generate: pxp_wlex.ml
+	:
 
 pxp_wlex.ml: pxp_wlex.mll
 	wlex pxp_wlex.mll
