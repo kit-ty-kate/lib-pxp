@@ -62,7 +62,7 @@ tag-release: RELEASE
 	r=`head -1 RELEASE | sed -e s/\\\./-/g`; cd ..; cvs tag -F $(NAME)-$$r pxp
 
 .PHONY: release
-release: distclean
+release: 
 	$(MAKE) tag-release
 	$(MAKE) dist
 

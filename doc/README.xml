@@ -239,6 +239,7 @@ and solutions that are detected shortly before or after the release.</p>
 	  <p>Changed in 1.1.2:</p> <p>Improved  write method
 for whole documents. It can now also output a reference to an external
 DTD.</p>
+	  <p>PXP can be compiled with O'Caml 3.04.</p>
 	</li>
 	<li>
 	  <p>Changed in 1.1.1:</p> <p>Minor changes for O'Caml 3.03-alpha.

@@ -244,7 +244,8 @@ d rtests/canonxml/data_valid/comments/out
 p rtests/canonxml/data_valid/comments/out/.*\.xml
 
 d rtests/canonxml/data_valid/conditional
-p rtests/canonxml/data_valid/conditional/.*\.\(xml|ent\)
+p rtests/canonxml/data_valid/conditional/.*\.xml
+p rtests/canonxml/data_valid/conditional/.*\.ent
 f rtests/canonxml/data_valid/conditional/INDEX
 d rtests/canonxml/data_valid/conditional/out
 p rtests/canonxml/data_valid/conditional/out/.*\.xml
