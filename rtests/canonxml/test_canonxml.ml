@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.10 2001/06/13 18:42:00 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.11 2002/08/05 22:35:44 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -7,6 +7,7 @@
 open Pxp_document;;
 open Pxp_yacc;;
 open Pxp_types;;
+open Pxp_lexer_types;;
 
 let error_happened = ref false;;
 
@@ -117,7 +118,7 @@ let rec output_xml config n =
 ;;
 
 
-let parse debug wf iso88591 comments filename =
+let parse debug wf iso88591 comments eb_atts filename =
   let spec =
     let e = new element_impl default_extension in
     make_spec_from_mapping
@@ -129,6 +130,14 @@ let parse debug wf iso88591 comments filename =
       ~element_mapping:          (Hashtbl.create 1)
       ()
   in
+  let escape_atts tok pos mng =
+    match tok with
+	Lcurly -> "{"
+      | LLcurly -> "{{"
+      | Rcurly -> "}"
+      | RRcurly -> "}}"
+      | _ -> assert false
+  in
   let config =
       { default_config with 
 	  warner = new warner;
@@ -139,6 +148,7 @@ let parse debug wf iso88591 comments filename =
 	  drop_ignorable_whitespace = false;
 	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
 	  idref_pass = true;
+	  escape_attributes = if eb_atts then Some escape_atts else None;
       }
   in
   try 
@@ -169,16 +179,19 @@ let main() =
   let wf = ref false in
   let iso88591 = ref false in
   let comments = ref false in
+  let eb_atts = ref false in
   let files = ref [] in
   Arg.parse
       [ "-d",   Arg.Set debug, 
-	   "          turn debugging mode on";
+	   "                 turn debugging mode on";
 	"-wf",  Arg.Set wf,    
-            "         check only on well-formedness";
+            "                check only on well-formedness";
 	"-iso-8859-1", Arg.Set iso88591, 
-                    " use ISO-8859-1 as internal encoding instead of UTF-8";
+                    "        use ISO-8859-1 as internal encoding instead of UTF-8";
 	"-comments", Arg.Set comments, 
-	          "   output comments, too";
+	          "          output comments, too";
+	"-event-based-atts", Arg.Set eb_atts,
+	                  "  use the event-based attribute parsing algorithm";
       ]
       (fun x -> files := x :: !files)
       "
@@ -186,7 +199,7 @@ usage: test_canonxml [options] file ...
 
 List of options:";
   files := List.rev !files;
-  List.iter (parse !debug !wf !iso88591 !comments) !files;
+  List.iter (parse !debug !wf !iso88591 !comments !eb_atts) !files;
 ;;
 
 
@@ -197,6 +210,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.11  2002/08/05 22:35:44  gerd
+ * 	Testing escape_attributes option.
+ *
  * Revision 1.10  2001/06/13 18:42:00  gerd
  * 	Updated
  *
