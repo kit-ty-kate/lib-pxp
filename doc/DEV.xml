@@ -48,6 +48,10 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>1.0.98.5:</em></p>
+	<p>Bugfix in Pxp_reader.combine.</p>
+	<p>Some changes that could PXP make work under Cygwin.</p>
+      </li>
       <li><p><em>1.0.98.4:</em></p>
 	<p>New support for PUBLIC identifiers in Pxp_reader: The functions
 lookup_public_id_as_file and lookup_public_id_as_string lookup PUBLIC
