@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.6 2000/07/08 16:27:29 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.7 2000/07/09 01:00:35 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -177,6 +177,10 @@ let from_string ?fixenc s =
 ;;
 
 
+type data_collector =
+    String_data of string
+  | Buffer_data of Buffer.t
+
 (**********************************************************************)
 
 class ['ext] parser_object
@@ -267,6 +271,36 @@ class ['ext] parser_object
 	 * types. If an element is parsed, the exemplar is looked up and
 	 * "cloned" (by the "create" method)
 	 *)
+
+    val mutable current_data = String_data ""
+	(* Collects character data. *)
+
+    method collect_data s =
+      (* Collects the character material 's' *)
+      match current_data with
+	  String_data "" ->
+	    current_data <- String_data s
+	| String_data u ->
+	    let b = Buffer.create (2*(String.length u + String.length s)) in
+	    Buffer.add_string b u;
+	    Buffer.add_string b s;
+	    current_data <- Buffer_data b
+	| Buffer_data b ->
+	    Buffer.add_string b s
+
+    method save_data =
+      (* Puts the material collected in 'current_data' into a new
+       * node, and appends this node as new sub node to 'current'
+       *)
+      let str =
+	match current_data with
+	    String_data s -> s
+	  | Buffer_data b -> Buffer.contents b
+      in
+      if str <> "" then
+	self # current # add_node (create_data_node spec dtd str);
+      current_data <- String_data ""
+
 
     method only_whitespace data =
 	(* Checks that the string "data" contains only whitespace. On failure,
@@ -655,6 +689,7 @@ doctypedecl_material(doctype_entid):
 	    with
 		error ->
 		  ignore(en # close_entity);
+		  r' # close_all;
 		  let pos = mgr # position_string in
 		  raise (At(pos, error))
       end;
@@ -1123,7 +1158,7 @@ atttype():
 	| "NMTOKENS" -> A_nmtokens
 	| "NOTATION" ->
 	    (match nota with
-		 None   -> raise(WF_error("NOTATION type is incomplete"))
+		 None   -> raise(WF_error("Error in NOTATION type"))
 	       | Some n -> n
             )
 	| _          -> raise(WF_error("One of CDATA, ID, IDREF, IDREFS, ENTITY, ENTITIES, NMTOKEN, NMTOKENS, NOTATION, or a subexpression expected"))
@@ -1529,6 +1564,7 @@ start_tag():
       end
       else begin
 	(* We have found some inner begin tag. *)
+	self # save_data;        (* Save outstanding data material first *)
 	self # current # add_node d
       end;
 
@@ -1578,23 +1614,26 @@ end_tag():
   /* WS */
   tag:Tag_end  Ignore*  Rangle
     {{ let name, tag_end_entid = tag in
-      if n_tags_open = 0 then
-	raise(WF_error("End-tag without start-tag"));
-      let x, tag_beg_entid = Stack.pop elstack in
-      let x_name =
-	match x # node_type with
-	    T_data -> assert false
-	  | T_element n -> n
-      in
-      if name <> x_name then
-	raise(WF_error("End-tag does not match start-tag"));
-      if tag_beg_entid != tag_end_entid then
-	raise(WF_error("End-tag not in the same entity as the start-tag"));
-      x # local_validate;
+       if n_tags_open = 0 then
+	 raise(WF_error("End-tag without start-tag"));
 
-      n_tags_open <- n_tags_open - 1;
-      
-      assert (n_tags_open >= 0);
+       self # save_data;        (* Save outstanding data material first *)
+
+       let x, tag_beg_entid = Stack.pop elstack in
+       let x_name =
+	 match x # node_type with
+	     T_data -> assert false
+	   | T_element n -> n
+       in
+       if name <> x_name then
+	 raise(WF_error("End-tag does not match start-tag"));
+       if tag_beg_entid != tag_end_entid then
+	 raise(WF_error("End-tag not in the same entity as the start-tag"));
+       x # local_validate;
+       
+       n_tags_open <- n_tags_open - 1;
+       
+       assert (n_tags_open >= 0);
 
     }}
 
@@ -1611,27 +1650,23 @@ char_data():
 	(* only white space is allowed *)
 	self # only_whitespace data
       else
-	self # current # add_node (create_data_node spec dtd data)
+	self # collect_data data
     }}
 | data:Cdata
     {{ 
       if n_tags_open = 0 then
 	raise (WF_error("CDATA section not allowed here"));
-      self # current # add_node (create_data_node spec dtd data)
+      self # collect_data data
     }}
 
 cref():
   /* Parses &#...; and adds the character to the top element of elstack. */
   code:CRef
     {{ 
-      if n_tags_open = 0 then
-	(* No surrounding element: character references are not allowed *)
-	raise(WF_error("Character reference not allowed here"));
-      self # current # add_node
-	                 (create_data_node
-			    spec
-	                    dtd
-	                    (character config.encoding config.warner code))
+       if n_tags_open = 0 then
+	 (* No surrounding element: character references are not allowed *)
+	 raise(WF_error("Character reference not allowed here"));
+       self # collect_data (character config.encoding config.warner code)
     }}
 
 pi():
@@ -1735,6 +1770,7 @@ let call_parser ~configuration:cfg
 		~specification:spec 
 		~process_xmldecl 
 		~transform_dtd
+		~use_document_entity
                 ~entry 
 		~init_lexer =
   let e = cfg.errors_with_line_numbers in
@@ -1743,9 +1779,14 @@ let call_parser ~configuration:cfg
     match src with
 	Entity(m,r')  -> r', m dtd
       | ExtID(xid,r') -> r', 
-                         new external_entity 
-			   r' dtd "[toplevel]" w xid false e
-                           cfg.encoding
+	                 if use_document_entity then
+                           new document_entity 
+			     r' dtd "[toplevel]" w xid e
+                             cfg.encoding
+			 else
+                           new external_entity 
+			     r' dtd "[toplevel]" w xid false e
+                             cfg.encoding
   in
   r # init_rep_encoding cfg.encoding;
   r # init_warner w;
@@ -1773,8 +1814,8 @@ let call_parser ~configuration:cfg
 	ignore(en # close_entity);
 	raise(Return_DTD d)
     | error ->
-	(* TODO: close resolvers as well *)
 	ignore(en # close_entity);
+	r # close_all;
 	let pos = mgr # position_string in
 	raise (At(pos, error))
 
@@ -1796,6 +1837,7 @@ let parse_dtd_entity cfg src =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~use_document_entity:false
       ~entry:Ext_declarations      (* Entry point of the grammar *)
       ~init_lexer:Declaration      (* The initially used lexer *)
   in
@@ -1820,6 +1862,7 @@ let parse_content_entity cfg src dtd spec =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~use_document_entity:false
       ~entry:Ext_element           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
@@ -1845,6 +1888,7 @@ let parse_wfcontent_entity cfg src spec =
 				    * (except 'encoding') 
 				    *)
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~use_document_entity:false
       ~entry:Ext_element           (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
@@ -1878,6 +1922,7 @@ let iparse_document_entity ?(transform_dtd = (fun x -> x)) cfg0 src spec p_wf =
       ~process_xmldecl:true        (* The XML declaration is processed *)
                                    (* TODO: change to 'not p_wf' ? *)
       ~transform_dtd:transform_dtd
+      ~use_document_entity:true
       ~entry:Ext_document          (* Entry point of the grammar *)
       ~init_lexer:Document         (* The initially used lexer *)
   in
@@ -1924,6 +1969,10 @@ let default_config =
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.7  2000/07/09 01:00:35  gerd
+ * 	Improvement: It is now guaranteed that only one data node
+ * is added for consecutive character material.
+ *
  * Revision 1.6  2000/07/08 16:27:29  gerd
  * 	Cleaned up the functions calling the parser.
  * 	New parser argument: transform_dtd.
