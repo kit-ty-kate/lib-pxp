@@ -14,7 +14,13 @@ ps: ps/markup.ps
 src/readme.ent: ../../examples/readme/to_html.ml
 	src/getcode.ml <../../examples/readme/to_html.ml >src/readme.ent
 
-html/book1.htm: src/*.sgml src/readme.ent
+src/yacc.mli.ent: ../../markup_yacc_shadow.mli
+	src/getcode.ml <../../markup_yacc_shadow.mli >src/yacc.mli.ent
+
+src/dtd.mli.ent: ../../markup_dtd.mli
+	src/getcode.ml <../../markup_dtd.mli >src/dtd.mli.ent
+
+html/book1.htm: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	mkdir -p html
 	cp src/markup.css html; \
 	cd html; \
@@ -28,7 +34,7 @@ html/book1.htm: src/*.sgml src/readme.ent
 #	rm -f *.[0-9]; \
 #	db2man <../src/findlib_reference.xml
 
-ps/markup.tex: src/*.sgml src/readme.ent
+ps/markup.tex: src/*.sgml src/readme.ent src/yacc.mli.ent src/dtd.mli.ent
 	mkdir -p ps
 	cd ps; \
 	jade -t tex -D$(DOCBOOK_PRINT) -D$(SRC) markup.sgml; \
