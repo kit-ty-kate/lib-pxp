@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.mli,v 1.10 2003/01/21 00:18:48 gerd Exp $
+(* $Id: pxp_reader.mli,v 1.11 2003/02/01 15:02:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -508,6 +508,84 @@ class lookup_system_id_as_string :
    *)
 
 
+class norm_system_id : resolver -> resolver
+  (* Normalizes the SYSTEM ID, and forwards the open request to the
+   * passed resolver.
+   *
+   * Normalization includes:
+   * - Relative URLs are made absolute if possible
+   * - .. and . and // are removed 
+   * - Escaping of reserved characters is normalized
+   *
+   * Normalization is recommended for catalogs, e.g.
+   * new norm_system_id
+   *   (new lookup_system_id_as_file
+   *      [ "http://h/p1", ...;
+   *        "http://h/p2", ...;
+   *      ])
+   * First, the catalog now even works if the URL is written in an
+   * unsual way, e.g. http://h/p1/../p2, or http://h/p%31. 
+   * Second, relative URLs can be used. For instance, the document
+   * referred to as http://h/p1 can now refer to the other document
+   * as p2.
+   *)
+
+
+class rewrite_system_id :
+        ?forward_unmatching_urls:bool ->
+	(string * string) list ->
+	resolver ->
+	  resolver
+  (* Rewrites the SYSTEM URL according to the list of pairs. The left
+   * component is the pattern, the right component is the substitute.
+   * For example,
+   *
+   * new rewrite_system_id
+   *       [ "http://host/foo/", "file:///dir/" ]
+   *       r
+   *
+   * rewrites all URLs beginning with http://host/foo/ to file:///dir/,
+   * e.g. http://host/foo/x becomes file:///dir/x.
+   *
+   * If the pattern ends with a slash (as in the example), a prefix match
+   * is performed, i.e. the whole directory hierarchy is rewritten.
+   * If the pattern does not end with a slash, an exact match is performed,
+   * i.e. only a single URL is rewritten.
+   *
+   * The class normalizes URLs as norm_system_id does, before the match
+   * is tried.
+   *
+   * By default, URLs that do not match any pattern are rejected.
+   *
+   * The rewritten URL is only visible within the passed subresolver.
+   * If the opened entity accesses other entities by relative URLs,
+   * these will be resolved relative to the original URL as it was before
+   * rewriting it. This gives some protection against unwanted accesses.
+   * For example, if you map http://host/contents to file:///data/contents,
+   * it will not be possible to access files outside this directory,
+   * even if tricks are used like opening ../../etc/passwd relative to
+   * http://host/contents.  Of course, this protection works only if
+   * the resolver opening the file is a subresolver of rewrite_system_id.
+   *
+   * CHECK: Does this really work?
+   *
+   * Another application of this class is to use the identity as rewriting
+   * rule. This resolver
+   * 
+   * new rewrite_system_id
+   *       [ "file:///data/", "file:///data/" ]
+   *       ( new resolve_as_file() )
+   *
+   * has the effect that only files under /data can be accessed, and
+   * other such as /etc/passwd cannot.
+   *
+   * Option ~forward_unmatching_urls: If true, URLs that do not match any
+   *   pattern are forwarded to the inner resolver. These URLs are not
+   *   rewritten. NOTE THAT THE MENTIONED ACCESS RESTRICTIONS USUALLY DO
+   *   NOT WORK ANYMORE IF THIS OPTION IS TURNED ON.
+   *)
+
+
 type combination_mode =
     Public_before_system    (* Try public identifiers first *)
   | System_before_public    (* Try system identifiers first *)
@@ -543,8 +621,6 @@ class combine :
    * ~prefer: This is an internally used option.
    *)
 
-
-(* IDEA: class redirect: rewrites the prefix of a system URL *)
 
 (* ====================================================================== *)
 
@@ -804,6 +880,11 @@ val lookup_system_id_as_string :
  * History:
  *
  * $Log: pxp_reader.mli,v $
+ * Revision 1.11  2003/02/01 15:02:09  gerd
+ * 	New: norm_system_id, rewrite_system_id.
+ * 	Fixed: The empty system name is regarded as "NIL" value. It
+ * never matches with itself.
+ *
  * Revision 1.10  2003/01/21 00:18:48  gerd
  * 	Reimplementation of the reader classes, now basing on the
  * resolver_id type to identify entities.

@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.21 2003/01/21 00:18:48 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.22 2003/02/01 15:02:09 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -275,14 +275,24 @@ end
 let rid_rid_intersection bound_rid actual_rid =
   (* Returns a resolver_id where unequal IDs are reset to None. The
    * rid_system_base is set corresponding to rid_system.
+   *
+   * Notes: 
+   * (1) an empty SYSTEM name does not match another empty SYSTEM name
+   * (2) PUBLIC names must be normalized
    *)
   let isect opt1 opt2 =
     if opt1 = opt2 then opt1 else None
   in
+  let sys_isect opt1 opt2 =
+    if opt1 = opt2 && opt1 <> Some "" then opt1 else None
+  in
   { rid_private = isect bound_rid.rid_private actual_rid.rid_private;
     rid_public  = isect bound_rid.rid_public actual_rid.rid_public;
-    rid_system  = isect bound_rid.rid_system actual_rid.rid_system;
-    rid_system_base = if bound_rid.rid_system = actual_rid.rid_system then
+    rid_system  = sys_isect bound_rid.rid_system actual_rid.rid_system;
+    rid_system_base = if bound_rid.rid_system = actual_rid.rid_system  &&
+                         bound_rid.rid_system <> None &&
+                         bound_rid.rid_system <> Some ""
+                      then
                         actual_rid.rid_system_base
                       else
 			None;
@@ -294,13 +304,15 @@ let rid_matches_rid bound_rid actual_rid =
   (* definition:
    * rid_matches_rid r1 r2 =def= 
    * rid_rid_intersection r1 r2 <> null_resolver
+   *
+   * See also the notes for rid_rid_intersection
    *)
-  (* CHECK: Do we need to normalize PUBLIC Ids first? *)
   (bound_rid.rid_private <> None && 
    bound_rid.rid_private = actual_rid.rid_private) ||
   (bound_rid.rid_public <> None && 
    bound_rid.rid_public = actual_rid.rid_public) ||
   (bound_rid.rid_system <> None && 
+   bound_rid.rid_system <> Some "" && 
    bound_rid.rid_system = actual_rid.rid_system)
 ;;
 
@@ -314,12 +326,15 @@ let xid_matches_rid bound_xid actual_rid =
   (* definition:
    * xid_matches_rid x r =def= 
    * xid_rid_intersection x r <> null_resolver
+   *
+   * See also the notes for rid_rid_intersection
    *)
   match bound_xid with
       System sys -> 
-	actual_rid.rid_system = Some sys
+	sys <> "" && actual_rid.rid_system = Some sys
     | Public(pub,sys) ->
-	actual_rid.rid_public = Some pub || actual_rid.rid_system = Some sys
+	(actual_rid.rid_public = Some pub) || 
+	(sys <> "" && actual_rid.rid_system = Some sys)
     | Anonymous ->
 	false
     | Private p ->
@@ -413,9 +428,9 @@ class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
 ;;
 
 
-class resolve_to_this_obj_channel =
+class resolve_to_this_obj_channel ?id ?rid ?fixenc ?close ch =
   let is_stale = ref false in
-  resolve_to_this_obj_channel1 is_stale
+  resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch
 ;;
 
 
@@ -932,6 +947,231 @@ class combine ?prefer ?mode rl =
 ;;
 
 
+let norm_url_syntax =
+  { Neturl.null_url_syntax with
+      Neturl.url_enable_scheme = Neturl.Url_part_allowed;
+      Neturl.url_enable_user = Neturl.Url_part_allowed;
+      Neturl.url_enable_password = Neturl.Url_part_allowed;
+      Neturl.url_enable_host = Neturl.Url_part_allowed;
+      Neturl.url_enable_port = Neturl.Url_part_allowed;
+      Neturl.url_enable_path = Neturl.Url_part_required;
+      (* rest: Url_part_not_recognized *)
+      Neturl.url_accepts_8bits = true;
+  }
+;;
+
+
+class norm_system_id (subresolver : resolver) =
+object(self)
+  val subresolver = subresolver
+  val mutable current_rid = null_resolver  (* for rewrite_system_id *)
+
+  method init_rep_encoding enc =
+    subresolver # init_rep_encoding enc
+
+  method init_warner w =
+    subresolver # init_warner w
+
+  method rep_encoding =
+    subresolver # rep_encoding
+
+  method open_in xid =
+    (* It is not possible to normalize the SYSTEM id of a xid *)
+    subresolver # open_in xid
+
+  method open_rid rid =
+    (* (1) check that the system name is a URL
+     * (2) if the URL is relative: make it absolute (use system base name)
+     * (3) remove .. and . from the URL path as much as possible
+     * (4) all other names are left unmodified
+     *)
+
+    let norm sysname =
+      try
+	(* prerr_endline ("sysname=" ^ sysname); *)
+	let sysurl = Neturl.url_of_string norm_url_syntax sysname in
+	let sysurl_abs =
+	  if Neturl.url_provides ~scheme:true sysurl then
+	    sysurl
+	  else
+	    match rid.rid_system_base with
+		None -> sysurl (* CHECK *)
+	      | Some sysbase -> 
+		  let baseurl = Neturl.url_of_string norm_url_syntax sysbase in
+		  Neturl.apply_relative_url baseurl sysurl
+	in
+	let path = Neturl.url_path sysurl_abs in
+	let path' = Neturl.norm_path path in  (* remove .., ., // *)
+	let sysurl' = Neturl.modify_url ~path:path' sysurl_abs in
+	(* prerr_endline ("Before rewrite: " ^ Neturl.string_of_url sysurl');
+	 *)
+	let sysurl'' = self # rewrite sysurl' in
+	let sysname' = Neturl.string_of_url sysurl'' in
+	(* prerr_endline ("sysname'=" ^ sysname'); *)
+	sysname'
+      with
+	  Neturl.Malformed_URL ->
+	    raise Not_competent
+    in
+      
+    let rid' =
+      { rid with
+	  rid_system = ( match rid.rid_system with
+			     None -> 
+			       None
+			   | Some sysname ->
+			       Some(norm sysname)
+		       )
+      }
+    in
+    let lex = subresolver # open_rid rid' in
+    current_rid <- rid;   (* the original, unmodified version! *)
+    lex
+
+  method private rewrite sysurl = sysurl
+
+  method close_in =
+    subresolver # close_in
+
+  method close_all =
+    subresolver # close_all
+
+  method change_encoding enc =
+    subresolver # change_encoding enc
+
+  method active_id =
+    subresolver # active_id
+
+  method clone =
+    let c = subresolver # clone in
+    ( {< subresolver = c >} :> resolver )
+end
+;;
+
+
+let try_to_get f arg =
+  try Some(f arg) with Not_found -> None
+;;
+
+
+let remove_trailing_slash p =
+  match p with
+      [] -> []
+    | [""] -> [""]
+    | _ -> 
+	let p' = List.rev p in
+	if List.hd p' = "" then
+	  List.rev(List.tl p')
+	else
+	  p
+;;
+
+
+let rec path_matches pattern p =
+  match (pattern, p) with
+      ( [], [] ) ->
+	(* Case: pattern = p *)
+	true
+    | ( [""], (_::_) ) ->
+	(* Case: pattern ends with slash, and is a prefix of p *)
+	true
+    | ( (pat :: pattern'), (p0 :: p') ) when pat = p0 ->
+	path_matches pattern' p'
+    | _ ->
+	false
+;;
+
+
+let rec path_subst pattern subst p =
+  match (pattern, p) with
+      ( [], [] ) ->
+	(* Case: pattern = p *)
+	subst
+    | ( [""], (_::_) ) ->
+	(* Case: pattern ends with slash, and is a prefix of p *)
+	(* If subst ends with a slash, remove it *)
+	let subst' = remove_trailing_slash subst in
+	subst' @ p
+    | ( (pat :: pattern'), (p0 :: p') ) when pat = p0 ->
+	path_subst pattern' subst p'
+    | _ ->
+	assert false  (* no match *)
+;;
+
+
+class rewrite_system_id ?(forward_unmatching_urls=false) rw_spec subresolver =
+object(self)
+  inherit norm_system_id subresolver
+  val forward_unmatching_urls = forward_unmatching_urls
+  val rw_spec = 
+    List.map
+      (fun (sysfrom, systo) ->
+	 let sysfrom_url = 
+	   Neturl.url_of_string norm_url_syntax sysfrom in
+	 let systo_url =
+	   Neturl.url_of_string norm_url_syntax systo in
+	 (* if sysfrom_url ends with a slash, systo_url must end with it, too
+	  *)
+	 let ends_with_slash url =
+	   let path = Neturl.url_path url in
+	   List.hd (List.rev path) = ""
+	 in
+	 if ends_with_slash sysfrom_url && not(ends_with_slash systo_url) then
+	   failwith "Illegal rewrite specification: Cannot map directory to non-directory";
+	 (sysfrom_url, systo_url)
+      )
+      rw_spec
+
+  method private rewrite url =
+    try
+      let sysfrom_url, systo_url =
+	List.find                              (* may raise Not_found *)
+	  (fun (sysfrom_url, systo_url) ->
+	     (* Check whether url matches sysfrom_url *)
+	     (try_to_get Neturl.url_scheme sysfrom_url =
+		try_to_get Neturl.url_scheme url) &&
+	     (try_to_get Neturl.url_user sysfrom_url =
+		try_to_get Neturl.url_user url) &&
+	     (try_to_get Neturl.url_password sysfrom_url =
+		try_to_get Neturl.url_password url) &&
+	     (try_to_get Neturl.url_host sysfrom_url =
+		try_to_get Neturl.url_host url) &&
+	     (try_to_get Neturl.url_port sysfrom_url =
+		try_to_get Neturl.url_port url) &&
+	     (let sysfrom_p = Neturl.url_path sysfrom_url in
+	      let p = Neturl.url_path url in
+	      (List.hd sysfrom_p = "") &&   (* i.e. sysfrom_p is absolute *)
+	      (List.hd p = "") &&           (* i.e. p is absolute *)
+	      (path_matches sysfrom_p p))
+	  )
+	  rw_spec
+      in
+      (* prerr_endline("sysfrom_url=" ^ Neturl.string_of_url sysfrom_url);
+	 prerr_endline("systo_url=" ^ Neturl.string_of_url systo_url);
+      *)
+      let sysfrom_p = Neturl.url_path sysfrom_url in
+      let systo_p = Neturl.url_path systo_url in
+      let p = Neturl.url_path url in
+      let p' = path_subst sysfrom_p systo_p p in
+      Neturl.modify_url ~path:p' systo_url
+    with
+	Not_found ->
+	  if forward_unmatching_urls then
+	    url
+	  else
+	    raise Not_competent
+
+  method active_id =
+    (* hide the rewritten URL *)
+    let aid = subresolver # active_id in
+    { aid with
+	rid_system = current_rid.rid_system;
+	rid_system_base = current_rid.rid_system_base;
+    }
+end
+;;
+
+
 (**********************************************************************)
 (* EMULATION OF DEPRECATED CLASSES                                    *)
 (**********************************************************************)
@@ -1097,6 +1337,11 @@ let lookup_system_id_as_string ?fixenc catalog =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.22  2003/02/01 15:02:09  gerd
+ * 	New: norm_system_id, rewrite_system_id.
+ * 	Fixed: The empty system name is regarded as "NIL" value. It
+ * never matches with itself.
+ *
  * Revision 1.21  2003/01/21 00:18:48  gerd
  * 	Reimplementation of the reader classes, now basing on the
  * resolver_id type to identify entities.
