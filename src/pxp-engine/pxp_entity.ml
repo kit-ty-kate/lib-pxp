@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.4 2000/07/09 01:05:04 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.5 2000/07/09 17:51:50 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -138,9 +138,11 @@ class virtual entity the_dtd the_name the_warner
     val mutable pos = 0      (* current absolute character position *)
     val errors_with_line_numbers = init_errors_with_line_numbers
 
+    val mutable p_line = 1
+    val mutable p_column = 1
 
-    method line = line
-    method column = column
+    method line = p_line
+    method column = p_column
 
 
     val mutable counts_as_external = false
@@ -261,6 +263,8 @@ class virtual entity the_dtd the_name the_warner
             let this_line = line
             and this_column = column in
 	    let this_pos = pos in
+	    p_line <- this_line;
+	    p_column <- this_column;
 	    (* Read the next token from the appropriate lexer lex_id, and get the
 	     * name lex_id' of the next lexer to be used.
 	     *)
@@ -977,6 +981,7 @@ class entity_manager (init_entity : entity) =
   object (self)
     val mutable entity_stack = Stack.create()
     val mutable current_entity = init_entity
+    val mutable current_entity's_full_name = lazy (init_entity # full_name)
 				   
     val mutable yy_get_next_ref = ref (fun () -> assert false)
 
@@ -994,20 +999,24 @@ class entity_manager (init_entity : entity) =
 		         pop_entity : unit;
 			 push_entity : entity -> unit >
 		      );
-      Stack.push current_entity entity_stack;
+      Stack.push (current_entity, current_entity's_full_name) entity_stack;
       current_entity <- e;
+      current_entity's_full_name <- lazy (e # full_name);
       yy_get_next_ref := (fun () -> e # next_token);
 
     method pop_entity =
       (* May raise Stack.Empty *)
-      let e = Stack.pop entity_stack in
+      let e, e_name = Stack.pop entity_stack in
       current_entity <- e;
+      current_entity's_full_name <- e_name;
       yy_get_next_ref := (fun () -> e # next_token);
 
 
 
     method position_string =
-      (* Gets a string describing the position of the last token *)
+      (* Gets a string describing the position of the last token;
+       * includes an entity backtrace
+       *)
       let b = Buffer.create 200 in
       Buffer.add_string b
 	("In entity " ^ current_entity # full_name
@@ -1015,9 +1024,9 @@ class entity_manager (init_entity : entity) =
 	 ^ ", column " ^ string_of_int (current_entity # column)
 	 ^ ": ");
       Stack.iter
-	(fun e ->
+	(fun (e, e_name) ->
 	   Buffer.add_string b 
-	     ("\nCalled from entity " ^ e # full_name
+	     ("\nCalled from entity " ^ Lazy.force e_name
 	      ^ ", line " ^ string_of_int (e # line)
 	      ^  ", column " ^ string_of_int (e # column)
 	      ^ ":");
@@ -1026,18 +1035,25 @@ class entity_manager (init_entity : entity) =
       Buffer.contents b
 
 
+    method position =
+      (* Returns the triple (full_name, line, column) of the last token *)
+      Lazy.force current_entity's_full_name, 
+      current_entity # line,
+      current_entity # column
+
+
     method current_entity_counts_as_external =
       (* Whether the current entity counts as external to the main
        * document for the purpose of stand-alone checks.
        *)
       (* TODO: improve performance *)
       let is_external = ref false in
-      let check e =
+      let check (e, _) =
 	if e # counts_as_external then begin
 	  is_external := true;
 	end;
       in
-      check current_entity;
+      check (current_entity,());
       Stack.iter check entity_stack;
       !is_external
 
@@ -1055,6 +1071,11 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.5  2000/07/09 17:51:50  gerd
+ * 	Entities return now the beginning of a token as its
+ * position.
+ * 	New method 'position' for entity_manager.
+ *
  * Revision 1.4  2000/07/09 01:05:04  gerd
  * 	Exported methods 'ext_id' and 'notation' anyway.
  *
