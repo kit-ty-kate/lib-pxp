@@ -1,4 +1,4 @@
-(* $Id: pxp_tree_parser.ml,v 1.5 2003/06/29 15:44:30 gerd Exp $
+(* $Id: pxp_tree_parser.ml,v 1.6 2003/11/04 22:45:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -576,6 +576,9 @@ let call_tree_parser ~configuration:cfg
 	mgr # pop_entity_until en;
 	if en # is_open then ignore(en # close_entity);
 	raise (At(pos, Netconversion.Malformed_code))
+    | (Invalid_argument _ | Assert_failure(_,_,_) | Match_failure(_,_,_)
+	   as error) ->
+	raise error    (* Re-raise immediately for simpler debugging *)
     | error ->
 	let pos = mgr # position_string in
 	mgr # pop_entity_until en;
@@ -768,6 +771,9 @@ let extract_dtd_from_document_entity cfg src =
  * History:
  * 
  * $Log: pxp_tree_parser.ml,v $
+ * Revision 1.6  2003/11/04 22:45:07  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.5  2003/06/29 15:44:30  gerd
  * 	New entry flag: `Val_mode_dtd
  *

@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mlp,v 1.8 2003/10/03 21:13:26 gerd Exp $
+(* $Id: pxp_lexing.mlp,v 1.9 2003/11/04 22:45:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -26,6 +26,9 @@ let lexeme = Lexing.lexeme
 let lexeme_char = Lexing.lexeme_char
 let lexeme_start = Lexing.lexeme_start
 let lexeme_end = Lexing.lexeme_end
+
+let lexeme_len lexbuf = 
+  lexbuf.lex_curr_pos - lexbuf.lex_start_pos
 
 let from_string_inplace s =
   (* avoids copying s *)
@@ -79,6 +82,9 @@ let sub_lexeme lexbuf k l =
  * History:
  * 
  * $Log: pxp_lexing.mlp,v $
+ * Revision 1.9  2003/11/04 22:45:07  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.8  2003/10/03 21:13:26  gerd
  * 	Another bugfix
  *

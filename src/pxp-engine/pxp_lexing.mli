@@ -1,4 +1,4 @@
-(* $Id: pxp_lexing.mli,v 1.1 2002/03/13 22:25:51 gerd Exp $
+(* $Id: pxp_lexing.mli,v 1.2 2003/11/04 22:45:07 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -20,11 +20,14 @@ val lexeme : lexbuf -> string
 
 val lexeme_char : lexbuf -> int -> char
 
-val lexeme_start : lexbuf -> int
+(* val lexeme_start : lexbuf -> int *)   (* Removed because of wlex problems *)
 
-val lexeme_end : lexbuf -> int
+(* val lexeme_end : lexbuf -> int *)     (* Removed because of wlex problems *)
 
 (* Extensions: *)
+
+val lexeme_len : lexbuf -> int
+  (* = String.length(lexeme lexbuf) *)
 
 val from_string_inplace : string -> Lexing.lexbuf
   (* Similar to Lexing.from_string, but does not copy the passed string
@@ -47,6 +50,9 @@ val sub_lexeme : Lexing.lexbuf -> int -> int -> string
  * History:
  * 
  * $Log: pxp_lexing.mli,v $
+ * Revision 1.2  2003/11/04 22:45:07  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.1  2002/03/13 22:25:51  gerd
  * 	Initial revision.
  *

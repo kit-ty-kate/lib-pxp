@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_content.src,v 1.10 2002/08/03 17:56:27 gerd Exp $
+(* $Id: pxp_lex_content.src,v 1.11 2003/11/04 22:45:13 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -24,7 +24,7 @@ rule scan_content = parse
       { Comment_begin dummy_entity, Content_comment }
   | '<' '/'? name
       (* One rule for Tag_beg and Tag_end saves transitions. *)
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	if Lexing.lexeme_char lexbuf 1 = '/' then
 	  Tag_end (Pxp_lexing.sub_lexeme lexbuf 2 (l-2), dummy_entity), 
 	  Within_tag_entry
@@ -33,7 +33,7 @@ rule scan_content = parse
 	  Within_tag_entry
       }
   | "<![CDATA[" cdata_string "]]>"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	Cdata (Pxp_lexing.sub_lexeme lexbuf 9 (l-12)), Content }
   | "<!"
       { raise (WF_error "Declaration either malformed or not allowed in this context") 
@@ -42,13 +42,13 @@ rule scan_content = parse
       { raise (WF_error ("The left angle bracket '<' must be written as '&lt;'"))
       }
   | "&#" ascii_digit+ ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string (Pxp_lexing.sub_lexeme lexbuf 2 (l-3))), Content }
   | "&#x" ascii_hexdigit+ ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	CRef (int_of_string ("0x" ^ Pxp_lexing.sub_lexeme lexbuf 3 (l-4))), Content }
   | "&" name ";"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	ERef (Pxp_lexing.sub_lexeme lexbuf 1 (l-2)), Content }
   | "&" 
       { raise (WF_error ("The ampersand '&' must be written as '&amp;'"))
@@ -94,6 +94,9 @@ rule scan_content = parse
  * History:
  * 
  * $Log: pxp_lex_content.src,v $
+ * Revision 1.11  2003/11/04 22:45:13  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.10  2002/08/03 17:56:27  gerd
  * 	Support for event-based parsing of attribute values.
  *

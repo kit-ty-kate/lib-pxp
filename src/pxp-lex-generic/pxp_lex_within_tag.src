@@ -1,4 +1,4 @@
-(* $Id: pxp_lex_within_tag.src,v 1.8 2002/08/03 17:56:27 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.9 2003/11/04 22:45:13 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -28,14 +28,14 @@ rule scan_within_tag = parse
   | '='
       { tok_Eq__Within_tag }
   | '"' character_except_quot* '"'
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | '"'
       { raise (WF_error ("Cannot find the second quotation mark"))
       }
   | "'" character_except_apos* "'"
-      { let l = Lexing.lexeme_end lexbuf - Lexing.lexeme_start lexbuf in
+      { let l = Pxp_lexing.lexeme_len lexbuf in
 	let v = Pxp_lexing.sub_lexeme lexbuf 1 (l-2) in
 	Attval v, Within_tag }
   | "'"
@@ -91,6 +91,9 @@ and scan_tag_eb = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.9  2003/11/04 22:45:13  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.8  2002/08/03 17:56:27  gerd
  * 	Support for event-based parsing of attribute values.
  *

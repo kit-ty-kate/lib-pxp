@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.17 2003/06/20 15:14:13 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.18 2003/11/04 22:45:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -124,8 +124,7 @@ let rec expand_attvalue_with_rec_check lexbuf l lexerset dtd entities norm_crlf 
 	  raise
 	    (WF_error
 	       ("Attribute value contains character '<' literally"));
-	if Lexing.lexeme_start lexbuf = 0 &&
-	   Lexing.lexeme_end lexbuf = l then
+	if Pxp_lexing.lexeme_len lexbuf = l then
 	   raise Quick_exit
 	else
 	  let x = Lexing.lexeme lexbuf in
@@ -788,6 +787,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.18  2003/11/04 22:45:07  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.17  2003/06/20 15:14:13  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants

@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.23 2003/06/20 15:14:14 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.24 2003/11/04 22:45:07 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -205,8 +205,7 @@ let update_content_lines v tok =
 	count_lines v.linecount (Lexing.lexeme v.lexbuf);
 	update_lines v;
     | _ -> 
-	v.column <- v.column + Lexing.lexeme_end v.lexbuf 
-	                     - Lexing.lexeme_start v.lexbuf
+	v.column <- v.column + Pxp_lexing.lexeme_len v.lexbuf
 ;;
 
 let update_lines_within_tag v tok =
@@ -224,8 +223,7 @@ let update_lines_within_tag v tok =
 	v.line <- v.line + 1;
 	v.column <- 0;
     | _ -> 
-	v.column <- v.column + Lexing.lexeme_end v.lexbuf 
-	                     - Lexing.lexeme_start v.lexbuf
+	v.column <- v.column + Pxp_lexing.lexeme_len v.lexbuf 
 ;;
 
 let update_other_lines v tok =
@@ -1317,6 +1315,9 @@ end
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.24  2003/11/04 22:45:07  gerd
+ * 	Problems with Lexing under 3.07 fixed
+ *
  * Revision 1.23  2003/06/20 15:14:14  gerd
  * 	Introducing symbolic warnings, expressed as polymorphic
  * variants
