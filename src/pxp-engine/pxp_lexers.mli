@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.mli,v 1.4 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_lexers.mli,v 1.5 2001/06/14 23:29:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -13,13 +13,17 @@ val get_lexer_set : rep_encoding -> lexer_set
    * encoding.
    *)
 
-val init_utf8 : lexer_set -> unit
-  (* Internally used. *)
+val init : lexer_set -> unit
+  (* Add a new lexerset *)
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lexers.mli,v $
+ * Revision 1.5  2001/06/14 23:29:03  gerd
+ * 	Arbitrary lexical analyzers can be plugged into the parser,
+ * not only for ISO-8859-1 and UTF-8.
+ *
  * Revision 1.4  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux

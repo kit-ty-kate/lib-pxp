@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.5 2000/09/17 00:11:42 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.6 2001/06/14 23:29:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -7,8 +7,10 @@
 
 open Pxp_types
 open Pxp_lexer_types
-open Pxp_lex_link
 
+let lexer_sets = Hashtbl.create 5;;
+
+(*
 let lexer_set_iso88591 = 
   { lex_encoding         = `Enc_iso88591;
     scan_document        = Pxp_lex_document_iso88591.scan_document;
@@ -31,35 +33,63 @@ let lexer_set_iso88591 =
     scan_for_crlf        = Pxp_lex_misc_iso88591.scan_for_crlf;
   }
 ;;
+*)
 
 
-let lexer_set_utf8 = ref None
+let current_lexer_set = 
+  let dummy _ = assert false in
+  ref
+    { lex_encoding         = `Enc_iso88591;
+      scan_document        = dummy;
+      scan_content         = dummy;
+      scan_within_tag      = dummy;
+      scan_document_type   = dummy;
+      scan_declaration     = dummy;
+      scan_content_comment = dummy;
+      scan_decl_comment    = dummy;
+      scan_document_comment= dummy;
+      scan_ignored_section = dummy;
+      scan_xml_pi          = dummy;
+      scan_dtd_string      = dummy;
+      scan_content_string  = dummy;
+      scan_name_string     = dummy;
+      scan_only_xml_decl   = dummy;
+      scan_for_crlf        = dummy;
+    }
 ;;
 
+let current_lexer_set_encoding = ref `Enc_iso88591;;
 
-let init_utf8 ls =
-  lexer_set_utf8 := Some ls
+
+let init ls =
+  Hashtbl.add lexer_sets ls.lex_encoding ls;
+  current_lexer_set_encoding := ls.lex_encoding;
+  current_lexer_set := ls
 ;;
 
 
 let get_lexer_set enc =
-  match enc with
-      `Enc_iso88591 -> lexer_set_iso88591
-    | `Enc_utf8 ->
-	( match !lexer_set_utf8 with
-	      None ->
-		failwith ("Pxp_lexers: UTF-8 lexers not initialized")
-	    | Some ls ->
-		ls
-	)
-    | _ ->
-	failwith ("Pxp_lexers: This type of internal encoding is not supported")
+  if enc = !current_lexer_set_encoding then
+    !current_lexer_set
+  else
+    try
+      let ls = Hashtbl.find lexer_sets enc in
+      current_lexer_set_encoding := ls.lex_encoding;
+      current_lexer_set := ls;
+      ls
+    with
+	Not_found ->
+	  failwith ("Pxp_lexers: This type of internal encoding is not supported")
 ;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.6  2001/06/14 23:29:03  gerd
+ * 	Arbitrary lexical analyzers can be plugged into the parser,
+ * not only for ISO-8859-1 and UTF-8.
+ *
  * Revision 1.5  2000/09/17 00:11:42  gerd
  * 	Updated for wlexers.
  *
