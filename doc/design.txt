@@ -19,7 +19,7 @@ Compilation is non-trivial because:
 
    So the dependency relation of the lexer and the parser is modified;
    in particular the "token" type that is normally defined by the 
-   generated parser is moved to a common prdecessor of both lexer
+   generated parser is moved to a common predecessor of both lexer
    and parser.
 
  - Another modification of the standard way of handling parsers is that
@@ -242,7 +242,7 @@ outputs that the next token must be scanned by Document_type.
 
 It is interesting that this really works. The beginning of every lexical
 context can be recognized by the lexer of the previous context, and there
-is always a token that unambigously indicates that the context ends.
+is always a token that unambiguously indicates that the context ends.
 
 ----------------------------------------------------------------------
 The DTD object
@@ -298,7 +298,7 @@ Newline normalization
 
 The XML spec states that all of \n, \r, and \r\n must be recognized
 as newline characters/character sequences. Notes:
-- The replacement text of entities always contains the orginal text,
+- The replacement text of entities always contains the original text,
   i.e. \r and \r\n are NOT converted to \n.
   It is unclear if this is a violation of the standard or not.
 - Content of elements: Newline characters are converted to \n.

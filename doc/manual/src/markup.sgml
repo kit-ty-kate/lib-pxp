@@ -115,7 +115,7 @@ to publish a book that uses XML markup, you will need a processor that converts
 the XML file into a printable format such as Postscript. On the one hand, the
 structure of XML documents is configurable; on the other hand, there is no
 longer a canonical interpretation of the elements of the document; for example
-one XML DTD might want that paragraphes are delimited by
+one XML DTD might want that paragraphs are delimited by
 <literal>para</literal> tags, and another DTD expects <literal>p</literal> tags
 for the same purpose. As a result, for every DTD a new processor is required.
 </para>
@@ -309,7 +309,7 @@ possible to design the format in a more problem-oriented way. For example, if
 the task is to extract reports from a database, one can use a DTD that reflects
 the structure of the report or the database. A possible approach would be to
 have an element type for every database table and for every column. Once the
-DTD has been designed, the report procedure can be splitted up in a part that
+DTD has been designed, the report procedure can be split up in a part that
 selects the database rows and outputs them as an XML document according to the
 DTD, and in a part that translates the document into other formats. Of course,
 the latter part can be solved in a generic way, e.g. there may be configurable
@@ -714,7 +714,7 @@ unary operator.
       </listitem>
 	      <listitem>
 		<para>
-Between <literal>)</literal> and one of the unary operatory
+Between <literal>)</literal> and one of the unary operators
 <literal>*</literal>, <literal>+</literal>, or <literal>?</literal>, there must
 not be whitespace.</para>
 		<para><emphasis>Illegal:</emphasis> 
@@ -722,7 +722,7 @@ not be whitespace.</para>
 <literal><![CDATA[<!ELEMENT x (y|z)*>]]></literal>.</para>
 	      </listitem>
 	      <listitem><para>There is the additional constraint that the
-right parenthsis must be contained in the same entity as the left parenthesis;
+right parenthesis must be contained in the same entity as the left parenthesis;
 see the section about parsed entities below.</para>
 	      </listitem>
 	    </itemizedlist>
@@ -733,7 +733,7 @@ see the section about parsed entities below.</para>
 Note that there is another restriction on regular expressions which must be
 deterministic. This means that the parser must be able to see by looking at the
 next token which alternative is actually used, or whether the repetition
-stops. The reason for this is simply compatability with SGML (there is no
+stops. The reason for this is simply compatibility with SGML (there is no
 intrinsic reason for this rule; XML can live without this restriction).
 </para>
 
@@ -962,8 +962,8 @@ entity <literal>e</literal>.</para>
 	      </listitem>
 	      <listitem>
 		<para>
-If the internal parameter entity contains a left paranthesis, it must also
-contain the corresponding right paranthesis.
+If the internal parameter entity contains a left parenthesis, it must also
+contain the corresponding right parenthesis.
 </para>
 <para><emphasis>Illegal:</emphasis>
 <programlisting>
@@ -1214,8 +1214,8 @@ the same sequence of declarations; if new elements on the same level as
 <literal>p</literal> and <literal>ul</literal> are later added, it is
 sufficient only to change the entity definition. Note that there are some
 restrictions on the usage of entities in this context; most important, entities
-containing a left paranthesis must also contain the corresponding right
-paranthesis. 
+containing a left parenthesis must also contain the corresponding right
+parenthesis. 
 </para>
 
 	<para>
@@ -1336,7 +1336,7 @@ So far the DTD. Finally, here is a document for it:
     <code>readme [ -text | -html ] input.xml</code>
   </p>
   <p>
-    Here a list of options:
+    Here is a list of options:
   </p>
   <ul>
     <li>
@@ -1448,7 +1448,7 @@ they are ignored by default. Again, there is an option
 The common type to represent both kinds of content is <literal>node</literal>
 which is a class type that unifies the properties of elements and character
 data. Every node has a list of children (which is empty if the element is empty
-or the node represents text); nodes may have attributes; nodes have always text
+or the node represents text); nodes may have attributes; nodes always have text
 contents. There are two implementations of <literal>node</literal>, the class
 <literal>element_impl</literal> for elements, and the class
 <literal>data_impl</literal> for text data. You find these classes and class
@@ -1709,7 +1709,7 @@ For example, if the task is to print all contents of elements with type
   let ntype = n # node_type in
   match ntype with
     T_element "valuable" when n # attribute "priority" = Value "1" ->
-      print_endline "Valuable node with priotity 1 found:";
+      print_endline "Valuable node with priority 1 found:";
       print_endline (n # data)
   | (T_element _ | T_data) ->
       let children = n # sub_nodes in
@@ -1752,7 +1752,7 @@ different reactions on different conditions. But this technique has
 limitations; the "match" expression tends to get larger and larger, and it is
 difficult to store intermediate values as there is only one big
 recursion. Alternatively, it is also possible to represent the various cases as
-classes, and to use dynamic method lookup to find the appropiate class. The
+classes, and to use dynamic method lookup to find the appropriate class. The
 next section explains this technique in detail.
 
 </para>
@@ -1829,7 +1829,7 @@ when instance variables are added to the class:
 
 This part of the extension is usually the same for all classes, so it is a good
 idea to consider <literal>custom_extension</literal> as the super-class of the
-further class definitions. Continuining the example of above, we can define the
+further class definitions. Continuing the example of above, we can define the
 element type classes as follows:
 
 <programlisting>
@@ -2591,7 +2591,7 @@ structured text) is included into the tree.</para>
 data node as possible such that there are normally never two adjacent data
 nodes. This invariant is enforced even if data material is included by entity
 references or CDATA sections, or if a data sequence is interrupted by
-comments. So <literal>a &amp;amp; b &lt;-- comment --&gt; c &lt;![CDATA[
+comments. So <literal>a &amp;amp; b &lt;!-- comment --&gt; c &lt;![CDATA[
 &lt;&gt; d]]&gt;</literal> is represented by only one data node, for
 instance. However, you can create document trees manually which break this
 invariant; it is only the way the parser forms the tree.
@@ -2744,7 +2744,7 @@ mode" and "well-formedness mode". It is possible to allow non-declared elements
 in the document, but to check declared elements against their declaration at
 the same time. Moreover, there is a similar feature for attribute lists; you
 can allow non-declared attributes and check declared attributes. (Well, the
-whole truth is that the parser works always in this mix mode, and that
+whole truth is that the parser always works in this mix mode, and that
 the "validating mode" and the "well-formedness mode" are only the extremes of
 the mix mode.)</para>
 
@@ -2772,7 +2772,7 @@ to determine the namespace URI of the namespace; the element types are still
 simple strings which simplifies programming a lot.</para>
 
 	  <para>
-The same applies to attributes. Attribute names are now either string
+The same applies to attributes. Attribute names are now either strings
 containing a colon like
 "<replaceable>normprefix</replaceable>:<replaceable>localname</replaceable>",
 or they are strings without colons. In the first case, the attribute belongs to
@@ -3531,7 +3531,7 @@ function will only remove the first space.
 	  <para>
 The functions compare and ord_compare implement the so-called
 "document order". The basic principle is that the nodes are linearly
-ordered by their occurence in the textual XML representation of the
+ordered by their occurrence in the textual XML representation of the
 tree. While this is clear for element nodes, data nodes, comments, and
 processing instructions, a more detailed definition is necessary for the
 other node types. In particular, attribute nodes of an element node
@@ -3617,11 +3617,11 @@ called extension because its purpose is extensibility.</para>
 
 	<para>For some reasons, it is impossible to derive the
 <literal>node</literal> classes (i.e. <literal>element_impl</literal> and
-<literal>data_impl</literal>) such that the subclasses can be extended by new
+<literal>data_impl</literal>) such that the subclasses can be extended by
 new methods. But
 subclassing nodes is a great feature, because it allows the user to provide
 different classes for different types of nodes. The extension objects are a
-workaround that is as powerful as direct subclassing, the costs are
+workaround that is as powerful as direct subclassing, but with the cost of
 some notation overhead.
 </para>
 
@@ -3761,7 +3761,7 @@ impossible, and almost never worth-while.</para>
 
 	  <para>Once you have defined your extension classes, you can bind them
 to element types. The simplest case is that you have only one class and that
-this class is to be always used. The parsing functions in the module
+this class is always to be used. The parsing functions in the module
 <literal>Pxp_yacc</literal> take a <literal>spec</literal> argument which
 can be customized. If your single class has the name <literal>c</literal>,
 this argument should be 
@@ -3832,7 +3832,7 @@ contain character data, the following rules apply.</para>
 	  <para>If the element must be empty, i.e. it is declared with the
 keyword <literal>EMPTY</literal>, the element instance must be effectively
 empty (it must not even contain whitespace characters). The parser guarantees
-that a declared <literal>EMPTY</literal> element does never contain a data
+that a declared <literal>EMPTY</literal> element never contains a data
 node, even if the data node represents the empty string.</para>
 
 	  <para>If the element declaration only permits other elements to occur
@@ -3895,7 +3895,7 @@ texts. This parser can be configured such that UTF-8 is used to represent the
 characters internally; however, the default character encoding is
 ISO-8859-1. (Currently, no other encodings are possible for the internal string
 representation; the type <literal>Pxp_types.rep_encoding</literal> enumerates
-the possible encodings. Principially, the parser could use any encoding that is
+the possible encodings. Principally, the parser could use any encoding that is
 ASCII-compatible, but there are currently only lexical analyzers for UTF-8 and
 ISO-8859-1. It is currently impossible to use UTF-16 or UCS-4 as internal
 encodings (or other multibyte encodings which are not ASCII-compatible) unless
@@ -3927,7 +3927,7 @@ trees with adjacent data nodes; however, the parser does not return such trees.
 </para>
 
 	  <para>Note that CDATA sections are not represented specially; such
-sections are added to the current data material that being collected for the
+sections are added to the current data material that is being collected for the
 next data node.</para>
 	</sect2>
 
@@ -3978,7 +3978,7 @@ cannot lookup the exact position within the construct.
 	  <formalpara>
 	    <title>Parser option:</title>
 	    <para>If you require the exact location of PIs, it is possible to
-create extra nodes for them. This mode is controled by the option
+create extra nodes for them. This mode is controlled by the option
 <literal>enable_pinstr_nodes</literal>. The additional nodes have the node type
 <literal>T_pinstr <replaceable>target</replaceable></literal>, and are created
 from special exemplars contained in the <literal>spec</literal> (see
@@ -4303,7 +4303,7 @@ only demands that <literal>SYSTEM</literal> entities are interpreted like URLs
 that this helps overcoming the local peculiarities of the environment; the idea
 is that if you do not know your environment you can refer to other entities by
 denoting URLs for them. I think that this interpretation of
-<literal>SYSTEM</literal> names may have some applications in the internet, but
+<literal>SYSTEM</literal> names may have some applications in the Internet, but
 it is not the first choice in general. Because of this, the resolver is a
 separate module of the parser that can be exchanged by another one if
 necessary; more precisely, the parser already defines several resolvers.
@@ -4378,7 +4378,7 @@ functions that create <literal>source</literal> values:
 	      <listitem>
 		<para><literal>from_file s</literal>: The document is read from
 file <literal>s</literal>; you may specify absolute or relative path names.
-The file name must be encoded as UTF-8 string.
+The file name must be encoded as an UTF-8 string.
 </para>
 
 <para>There is an optional argument <literal>~system_encoding</literal>
@@ -4413,7 +4413,7 @@ from_channel ~id:(System "file:///dir/dir1/") ch
 </programlisting>
 
 There is also the ~system_encoding argument specifying how file names are
-encoded. - The example from above can also be written (but it is no
+encoded. The example from above can also be written (but it is no
 longer possible to interpret relative URLs because there is no ~id argument,
 and computing this argument is relatively complicated because it must
 be a valid URL):
@@ -4454,7 +4454,7 @@ resolver <literal>r</literal>.</para>
 		<para><literal>Entity (get_entity, r)</literal>: The document
 to parse is returned by the function invocation <literal>get_entity
 dtd</literal>, where <literal>dtd</literal> is the DTD object to use (it may be
-empty). Inner external references occuring in this entity are resolved using
+empty). Inner external references occurring in this entity are resolved using
 the resolver <literal>r</literal>.</para>
 		<para>Which character sets are possible depends on the passed
 resolver <literal>r</literal>.</para>
@@ -4472,7 +4472,7 @@ to read from (either a <literal>SYSTEM</literal> or <literal>PUBLIC</literal>
 clause). When opened, the resolver must return the
 <literal>Lexing.lexbuf</literal> that reads the characters.  The resolver can
 be closed, and it can be cloned. Furthermore, it is possible to tell the
-resolver which character set it should assume. - The following from Pxp_reader:
+resolver which character set it should assume. The following from Pxp_reader:
 
 <programlisting><![CDATA[
 exception Not_competent
@@ -4576,7 +4576,7 @@ from_string: ...</para>
 	<sect2>
 	  <title>Predefined resolver components</title>
 	  <para><emphasis>Note that the following section is not yet up to
-date. There are currently much more resolvers, especially resolvers for
+date. There are currently many more resolvers, especially resolvers for
 catalogs of PUBLIC and/or SYSTEM identifiers. See the interface Pxp_reader for details.</emphasis></para>
 
 	  <para>
@@ -4808,7 +4808,7 @@ written. Perhaps the interface definition of Pxp_dtd expresses the same:
       <sect1>
 	<title>Invoking the parser</title>
 
-	<para>Here a description of Pxp_yacc.</para>
+	<para>Here is a description of Pxp_yacc.</para>
 
 	<sect2>
 	  <title>Defaults</title>
@@ -4970,7 +4970,7 @@ the parser creates nodes for comments with type <literal>T_comment</literal>;
 if false, such nodes are not created. (Default: false)</para>
 	      </listitem>
 	      <listitem><para><literal>drop_ignorable_whitespace:</literal>
-Specifies to drop whitespace occuring in elements that are declared not to
+Specifies to drop whitespace occurring in elements that are declared not to
 contain characters. (Default: true)</para>
 	      </listitem>
 	      <listitem><para><literal>encoding:</literal>Specifies the
@@ -4996,7 +4996,7 @@ by invoking the <literal>position</literal> method.
 	      <listitem><para><literal>idref_pass:</literal>If true and if
 there is an ID index, the parser checks whether every IDREF or IDREFS attribute
 refer to an existing node; this requires that the parser traverses the whole
-doument tree. If false, this check is left out. (Default: false)</para>
+document tree. If false, this check is left out. (Default: false)</para>
 	      </listitem>
 	      <listitem><para><literal>validate_by_dfa:</literal>If true and if
 the content model for an element type is deterministic, a deterministic finite

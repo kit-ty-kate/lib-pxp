@@ -24,7 +24,7 @@
       <p><em>Problem description:</em>
 <code>
 "We just install the pxp parser and have trouble in using it. 
-We always obtained an exception that we can not supress. 
+We always obtained an exception that we can not suppress. 
 Do you know if it's a problem of setting configuration options. 
  
 #  let d = parse_dtd_entity default_config (from_file "DAG.xml");; 

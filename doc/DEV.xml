@@ -137,7 +137,7 @@ instruction, only misc* element misc* or whole documents are possible).
 </p>
 
 	<p>A long-standing bug has been found in the entity layer.
-When an external entity A opens an exteral entity B, and B opens C,
+When an external entity A opens an external entity B, and B opens C,
 relative paths of C have been interpreted wrong.</p>
       </li>
 

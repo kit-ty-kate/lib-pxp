@@ -426,7 +426,7 @@ class type [ 'ext ] node =
        * <SIG>    AUTO
        * <DESCR>  Gets the root node of the tree.
        *   Every node is contained in a tree with a root, so this method always 
-       *   succeeds. Note that this method searches the root,
+       *   succeeds. Note that this method searches for the root,
        *   which costs time proportional to the length of the path to the root.
        * <DOMAIN> All node types.
        * </ID>
@@ -613,7 +613,7 @@ class type [ 'ext ] node =
        *      which means here that their positions are counted seperately.
        *      All attribute nodes have positions from 0 to m-1; all namespace
        *      nodes have positions from 0 to n-1.
-       *    - If [obj] is a root, this method raises [Not_found]
+       *    - If [obj] is a root, this method raises [Not_found].
        *      --
        * <DOMAIN> All node types.
        * </ID>
@@ -647,7 +647,7 @@ class type [ 'ext ] node =
        * <CALL>   obj # [sub_nodes]
        * <SIG>    AUTO
        * <DESCR>  Returns the regular children of the node as list. Only
-       *   Elements, data nodes, comments, and processing instructions can
+       *   elements, data nodes, comments, and processing instructions can
        *   occur in this list; attributes and namespace nodes are not
        *   considered as regular nodes, and super root nodes can only
        *   be root nodes and will never be children of another node.
@@ -947,7 +947,7 @@ class type [ 'ext ] node =
 
     method optional_list_attribute : string -> string list
       (* <ID:type-node-optional-list-attribute>
-       * <CALL>    obj # [required_list_attribute] name
+       * <CALL>    obj # [optional_list_attribute] name
        * <SIG>    AUTO
        * <DESCR>   Returns the value of the attribute [name] as string list,
        *    i.e. if the value of the attribute is [Valuelist l], this method
@@ -1109,7 +1109,7 @@ class type [ 'ext ] node =
        *    ([c = None]).
        *
        *    Note that the comment string must not include the delimiters
-       *    [<--] and [-->]. Furthermore, it must not contain any character
+       *    [<!--] and [-->]. Furthermore, it must not contain any character
        *    or character sequence that are forbidden in comments, such
        *    as ["--"]. However, this method does not check this condition.
        * <DOMAIN>  Comment nodes.
@@ -1121,7 +1121,7 @@ class type [ 'ext ] node =
        * <CALL>   obj # [comment]
        * <SIG>    AUTO
        * <DESCR>  Returns [Some text] if the node is a comment node and if
-       *    [text] is the comment string (without the delimiters [<--] and
+       *    [text] is the comment string (without the delimiters [<!--] and
        *    [-->]). Otherwise, [None] is passed back.
        *
        *    Note: The [data] method also returns the comment string, but it
@@ -2296,7 +2296,7 @@ type stripping_mode =
    * - [`Strip_one]: If there is a whitespace character at the beginning/at
    *   the end, it will be removed. If there are more whitespace characters, 
    *   only the  first/the last is removed. Whitespace characters are space, 
-   *   newline, carriage return, tab.
+   *   newline, carriage return, and tab.
    * - [`Strip_seq]: All whitespace characters at the beginning/at the end are
    *   removed.
    * - [`Disabled]: Do not strip whitespace.

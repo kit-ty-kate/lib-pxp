@@ -173,7 +173,7 @@ references</title>
 Stand-alone documents must not refer to entities which are declared in an
 external entity. This parser applies this rule only: to general and NDATA
 entities when they occur in the document body (i.e. not in the DTD); and to
-general and NDATA entities occuring in default attribute values declared in the
+general and NDATA entities occurring in default attribute values declared in the
 internal subset of the DTD.
 </p>
     <p>
@@ -211,12 +211,12 @@ element type "el" is treated as externally declared.
 General entities can occur within the DTD, but they can only be contained in
 the default value of attributes, or in the definition of other general
 entities. The latter can be ignored, because the check will be repeated when
-the entities are expanded. Though, general entities occuring in default
+the entities are expanded. Though, general entities occurring in default
 attribute values are actually checked at the moment when the default is
 used in an element instance.
 </p>
     <p>
-General entities occuring in the document body are always checked.</p>
+General entities occurring in the document body are always checked.</p>
     <p>
 NDATA entities can occur in ENTITY attribute values; either in the element
 instance or in the default declaration. Both cases are checked.
