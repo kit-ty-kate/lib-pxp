@@ -1,11 +1,11 @@
-(* $Id: main.ml,v 1.3 2000/05/01 16:46:40 gerd Exp $
+(* $Id: main.ml,v 1.4 2000/06/04 20:25:38 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-open Markup_types
-open Markup_document
-open Markup_yacc
+open Pxp_types
+open Pxp_document
+open Pxp_yacc
 
 
 let rec print_error e =
@@ -23,7 +23,7 @@ let convert_to_html filename =
   (* read in style definition *)
   let document =
     parse_document_entity
-      default_config
+      { default_config with encoding = `Enc_iso88591 }
       (File filename)
       To_html.tag_map
   in
@@ -87,6 +87,9 @@ main();;
  * History:
  *
  * $Log: main.ml,v $
+ * Revision 1.4  2000/06/04 20:25:38  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.3  2000/05/01 16:46:40  gerd
  * 	Using the new error formatter.
  *

@@ -6,7 +6,7 @@ XOBJECTS = $(OBJECTS:.cmo=.cmx)
 ARCHIVE  = xmlforms.cma
 XARCHIVE = xmlforms.cmxa
 NAME     = xmlforms
-REQUIRES = camltk str markup
+REQUIRES = camltk str pxp
 
 xmlforms: $(ARCHIVE) ds_app.cmo
 	ocamlfind ocamlc -o xmlforms -custom -package "$(REQUIRES)" \

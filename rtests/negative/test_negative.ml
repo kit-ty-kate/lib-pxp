@@ -1,18 +1,18 @@
-(* $Id: test_negative.ml,v 1.2 2000/05/28 17:23:22 gerd Exp $
+(* $Id: test_negative.ml,v 1.3 2000/06/04 20:31:21 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
-open Markup_document;;
-open Markup_yacc;;
-open Markup_types;;
+open Pxp_document;;
+open Pxp_yacc;;
+open Pxp_types;;
 
 let error_happened = ref false;;
 
 let rec print_error e =
   match e with
-      Markup_types.At(where,what) ->
+      Pxp_types.At(where,what) ->
 	print_endline where;
 	print_error what
     | _ ->
@@ -33,7 +33,7 @@ let parse debug wf iso88591 filename =
   let config =
       { default_config with 
           debugging_mode = debug;
-          encoding = if iso88591 then Enc_iso88591 else Enc_utf8;
+          encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
       }
   in
     let tree =
@@ -83,6 +83,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_negative.ml,v $
+ * Revision 1.3  2000/06/04 20:31:21  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.2  2000/05/28 17:23:22  gerd
  * 	Updated.
  *

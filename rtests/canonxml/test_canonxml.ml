@@ -1,18 +1,18 @@
-(* $Id: test_canonxml.ml,v 1.2 2000/05/20 20:34:28 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.3 2000/06/04 20:31:03 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
-open Markup_document;;
-open Markup_yacc;;
-open Markup_types;;
+open Pxp_document;;
+open Pxp_yacc;;
+open Pxp_types;;
 
 let error_happened = ref false;;
 
 let rec prerr_error e =
   match e with
-      Markup_types.At(where,what) ->
+      Pxp_types.At(where,what) ->
 	prerr_endline where;
 	prerr_error what
     | _ ->
@@ -24,9 +24,9 @@ let outbuf = String.create 8192;;
 
 let output_utf8 config s =
   match config.encoding  with
-      Enc_utf8 ->
+      `Enc_utf8 ->
 	print_string s
-    | Enc_iso88591 ->
+    | `Enc_iso88591 ->
 	for i = 0 to String.length s - 1 do
 	  let c = Char.code(s.[i]) in
 	  if c <= 127 then
@@ -123,7 +123,7 @@ let parse debug wf iso88591 filename =
 	  debugging_mode = debug;
 	  processing_instructions_inline = true;
 	  virtual_root = true;
-	  encoding = if iso88591 then Enc_iso88591 else Enc_utf8;
+	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
       }
   in
   try 
@@ -174,6 +174,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.3  2000/06/04 20:31:03  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.2  2000/05/20 20:34:28  gerd
  * 	Changed for UTF-8 support.
  *

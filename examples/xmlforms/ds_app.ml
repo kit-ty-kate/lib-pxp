@@ -1,12 +1,12 @@
-(* $Id: ds_app.ml,v 1.3 2000/05/01 16:48:45 gerd Exp $
+(* $Id: ds_app.ml,v 1.4 2000/06/04 20:29:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 open Tk
-open Markup_types
-open Markup_document
-open Markup_yacc
+open Pxp_types
+open Pxp_document
+open Pxp_yacc
 open Ds_context
 open Ds_style
 
@@ -78,6 +78,9 @@ main();;
  * History:
  *
  * $Log: ds_app.ml,v $
+ * Revision 1.4  2000/06/04 20:29:19  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.3  2000/05/01 16:48:45  gerd
  * 	Using the new error formatter.
  *

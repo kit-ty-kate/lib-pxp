@@ -1,10 +1,10 @@
-(* $Id: to_text.ml,v 1.1 1999/08/22 22:29:32 gerd Exp $
+(* $Id: to_text.ml,v 1.2 2000/06/04 20:25:38 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-open Markup_types
-open Markup_document
+open Pxp_types
+open Pxp_document
 
 
 (**********************************************************************)
@@ -546,7 +546,7 @@ class a =
 
 (**********************************************************************)
 
-open Markup_yacc
+open Pxp_yacc
 
 let tag_map =
   { map =
@@ -592,6 +592,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_text.ml,v $
+ * Revision 1.2  2000/06/04 20:25:38  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.1  1999/08/22 22:29:32  gerd
  * 	Initial revision.
  *

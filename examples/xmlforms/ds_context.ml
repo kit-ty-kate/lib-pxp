@@ -1,14 +1,14 @@
-(* $Id: ds_context.ml,v 1.2 2000/05/30 00:09:08 gerd Exp $
+(* $Id: ds_context.ml,v 1.3 2000/06/04 20:29:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-open Markup_types
-open Markup_document
-open Markup_yacc
+open Pxp_types
+open Pxp_document
+open Pxp_yacc
 
-let empty_record = new element_impl (Markup_yacc.default_extension);;
-let empty_dnode = new data_impl Markup_yacc.default_extension "";;
+let empty_record = new element_impl (Pxp_yacc.default_extension);;
+let empty_dnode = new data_impl Pxp_yacc.default_extension "";;
 
 class context the_filename the_obj_dtd the_root the_topframe =
   object (self)
@@ -183,6 +183,9 @@ class context the_filename the_obj_dtd the_root the_topframe =
  * History:
  *
  * $Log: ds_context.ml,v $
+ * Revision 1.3  2000/06/04 20:29:19  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.2  2000/05/30 00:09:08  gerd
  * 	Minor fix.
  *

@@ -1,12 +1,12 @@
-(* $Id: to_html.ml,v 1.2 1999/09/12 20:09:32 gerd Exp $
+(* $Id: to_html.ml,v 1.3 2000/06/04 20:25:38 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
 (*$ readme.code.header *)
-open Markup_types
-open Markup_document
+open Pxp_types
+open Pxp_document
 (*$-*)
 
 
@@ -375,7 +375,7 @@ class footnote =
 (**********************************************************************)
 
 (*$ readme.code.tag-map *)
-open Markup_yacc
+open Pxp_yacc
 
 let tag_map =
   { map =
@@ -420,6 +420,9 @@ let tag_map =
  * History:
  * 
  * $Log: to_html.ml,v $
+ * Revision 1.3  2000/06/04 20:25:38  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.2  1999/09/12 20:09:32  gerd
  * 	Added section marks.
  *

@@ -6,7 +6,7 @@ XOBJECTS = $(OBJECTS:.cmo=.cmx)
 ARCHIVE  = readme.cma
 XARCHIVE = readme.cmxa
 NAME     = readme
-REQUIRES = str markup
+REQUIRES = str pxp
 
 readme: $(ARCHIVE) main.cmo
 	ocamlfind ocamlc -o readme -custom -package "$(REQUIRES)" \

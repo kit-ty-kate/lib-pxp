@@ -1,10 +1,10 @@
-(* $Id: ds_style.ml,v 1.1 1999/08/21 19:11:05 gerd Exp $
+(* $Id: ds_style.ml,v 1.2 2000/06/04 20:29:19 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
-open Markup_types
-open Markup_document
+open Pxp_types
+open Pxp_document
 open Ds_context
 
 
@@ -717,7 +717,7 @@ class button =
 
 (**********************************************************************)
 
-open Markup_yacc
+open Pxp_yacc
 
 let tag_map =
   { map =
@@ -756,6 +756,9 @@ let tag_map =
  * History:
  *
  * $Log: ds_style.ml,v $
+ * Revision 1.2  2000/06/04 20:29:19  gerd
+ * 	Updates because of renamed PXP modules.
+ *
  * Revision 1.1  1999/08/21 19:11:05  gerd
  * 	Initial revision.
  *
