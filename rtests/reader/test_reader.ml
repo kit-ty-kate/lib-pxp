@@ -293,7 +293,7 @@ let t100 next_s () =
 
 let t101 next_s () =
   (* Reads from a file without recoding it *)
-  let r = new resolve_as_file () in
+  let r = new resolve_as_file ~base_url_defaults_to_cwd:true () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
@@ -311,7 +311,7 @@ let t101 next_s () =
 
 let t102 next_s () =
   (* Reads from a file without recoding it *)
-  let r = new resolve_as_file () in
+  let r = new resolve_as_file ~base_url_defaults_to_cwd:true () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let cwd = Sys.getcwd() in
@@ -329,7 +329,7 @@ let t102 next_s () =
 
 let t103 next_s () =
   (* Reads from a file without recoding it *)
-  let r = new resolve_as_file () in
+  let r = new resolve_as_file ~base_url_defaults_to_cwd:true () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let lsrc = r # open_in (System "t100.dat") in
@@ -349,7 +349,7 @@ let t103 next_s () =
 let t110 () =
   (* Checks whether relative URLs are properly handled *)
   (* Note: Not tested for unicode_lexbuf, no need for that. *)
-  let r = new resolve_as_file () in
+  let r = new resolve_as_file ~base_url_defaults_to_cwd:true () in
   r # init_rep_encoding `Enc_utf8;
   r # init_warner None (new drop_warnings);
   let lsrc = r # open_in (System "t100.dat") in

@@ -352,7 +352,7 @@ let t021 () =
 ;;
 
 let t022 () =
-  let res_a = new resolve_as_file() in
+  let res_a = new resolve_as_file ~base_url_defaults_to_cwd:true () in
   res_a # init_rep_encoding `Enc_iso88591;
   res_a # init_warner None (new drop_warnings);
 
