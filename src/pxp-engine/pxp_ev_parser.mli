@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.mli,v 1.2 2003/06/20 21:00:33 gerd Exp $
+(* $Id: pxp_ev_parser.mli,v 1.3 2003/06/22 14:49:08 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -57,7 +57,8 @@ val process_entity :
    *   Only events for contents are generated. They are terminated
    *   by E_end_of_stream.
    * - Entry_declaration:
-   *   Currently not supported.
+   *   Currently not supported. (But see Pxp_dtd_parser for functions
+   *   parsing DTDs.)
    *
    * Only the following config options have an effect:
    * - warner
@@ -142,10 +143,52 @@ val create_pull_parser :
    * let stream = Stream.from(create_pull_parser cfg entry mng)
    *)
 
+(**********************************************************************)
+(*                            Filters                                 *)
+(**********************************************************************)
+
+(* Filters are currently only available for the pull model (which is 
+ * the more general one).
+ *
+ * Example:
+ * let stream = Stream.from
+ *                (norm_cdata_filter(create_pull_parser cfg entry mng))
+ *)
+
+type 'a filter = ('a -> event option) -> ('a -> event option)
+
+val norm_cdata_filter : 'a filter
+  (* This filter
+   *  - removes empty E_char_data events
+   *  - concatenates adjacent E_char_data events
+   * but does not touch any other parts of the event stream.
+   *)
+
+val drop_ignorable_whitespace_filter : 'a filter
+  (* This filter 
+   *  - checks whether character data between elements in a 
+   *    "regexp" or "non-PCDATA mixed" content model consists 
+   *    only of whitespace, and
+   *  - removes these whitespace characters from the event stream.
+   * If the check fails, a WF_Error will be raised.
+   *
+   * This filter works only if the DTD found in the event stream
+   * actually contains element declarations. This is usually enabled
+   * by including the `Extend_dtd_fully option to the [entry] passed
+   * to the [create_pull_parser] call. Furthermore, there must be
+   * an E_start_doc event.
+   *
+   * This filter does not perform any other validation checks.
+   *)
+
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_ev_parser.mli,v $
+ * Revision 1.3  2003/06/22 14:49:08  gerd
+ * 	Added norm_cdata_filter, drop_ignorable_whitespace_filter
+ *
  * Revision 1.2  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.

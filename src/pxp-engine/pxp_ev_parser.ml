@@ -1,4 +1,4 @@
-(* $Id: pxp_ev_parser.ml,v 1.3 2003/06/20 21:00:33 gerd Exp $
+(* $Id: pxp_ev_parser.ml,v 1.4 2003/06/22 14:49:08 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -96,9 +96,11 @@ object (self)
             self # push_src_norm_mapping mng name attlist in
 	  let mixed_attlist =
 	    List.map (fun (orig_prefix, localname, norm_name, value) ->
-			(orig_prefix ^ ":" ^ localname,
+			(if orig_prefix = "" 
+			 then localname 
+			 else orig_prefix ^ ":" ^ localname),
 			 norm_name,
-			 value)) norm_attlist in
+			 value) norm_attlist in
 	  if not emptiness then
 	    stack_push (position, name, norm_name, tag_beg_entid) ep_elstack;
 	  event_handler(E_ns_start_tag
@@ -195,11 +197,17 @@ end
 
 let create_entity_manager ?(is_document=true) cfg src =
   let dtd = new dtd ?swarner:cfg.swarner cfg.warner cfg.encoding in
+  ( match cfg.enable_namespace_processing with
+	Some mng -> dtd # set_namespace_manager mng
+      | None -> ()
+  );
+(*
   dtd # add_pinstr               (* select well-formedness mode *)
     (new proc_instruction
        "pxp:dtd"
        "optional-element-and-notation-declarations"
        cfg.encoding);
+*)
   let r, en =
     open_source cfg src is_document dtd in
   new entity_manager en dtd
@@ -389,10 +397,126 @@ let create_pull_parser
 	return_result
 ;;
 
+
+type 'a filter = ('a -> event option) -> ('a -> event option)
+
+let norm_cdata_filter get_ev =
+  let q = Queue.create () in
+  let rec get_ev' thing =
+    try
+      Queue.pop q
+    with
+	Queue.Empty ->
+	  let ev = get_ev thing in
+	  match ev with
+	      Some (E_char_data s) ->
+		if s = "" then
+		  get_ev' thing
+		else
+		  gather_string [s] thing
+	    | _ ->
+		ev
+  and gather_string sl thing =
+    let ev = get_ev thing in
+    match ev with
+	Some (E_char_data s) ->
+	  gather_string (s :: sl) thing
+      | _ ->
+	  Queue.add (Some(E_char_data(String.concat "" (List.rev sl)))) q;
+	  Queue.add ev q;
+	  get_ev' thing
+  in
+  get_ev'
+;;
+	
+
+let drop_ignorable_whitespace_filter get_ev =
+  let found_dtd = ref None in
+  let elements = Stack.create() in
+  let pos = ref("",0,0) in
+
+  let has_ignorable_ws elname =
+    match !found_dtd with
+	Some dtd ->
+	  ( try 
+	      let el = dtd # element elname in
+	      let cm = el # content_model  in
+	      ( match cm with
+		    Regexp _ -> true
+		  | Mixed ml -> not (List.mem MPCDATA ml)
+		  | _ -> false
+	      )
+	    with
+		Undeclared -> false
+	      | Validation_error _ -> false   (* element not found *)
+	  )
+      | None ->
+	  false
+  in
+
+  let pop() =
+    try
+      ignore(Stack.pop elements)
+    with
+	Stack.Empty ->
+	  failwith "Pxp_ev_parser.drop_ignorable_whitespace_filter: bad event stream"
+  in
+
+  let rec get_ev' thing =
+    let ev = get_ev thing in
+    match ev with
+	Some(E_start_doc(_,_,dtd)) ->
+	  if !found_dtd <> None then
+	    failwith "Pxp_ev_parser.drop_ignorable_whitespace_filter: More than one E_start_doc event";
+	  found_dtd := Some dtd;
+	  ev
+      | Some(E_position(e,line,col)) ->
+	  pos := (e,line,col);
+	  ev
+      |	Some(E_start_tag(name,_,_)) ->
+	  let ign_ws = has_ignorable_ws name in
+	  Stack.push ign_ws elements;
+	  ev
+      | Some(E_ns_start_tag(_,name,_,_)) ->
+	  let ign_ws = has_ignorable_ws name in
+	  Stack.push ign_ws elements;
+	  ev
+      | Some(E_end_tag(name,_)) ->
+	  pop();
+	  ev
+      | Some(E_ns_end_tag(_,name,_)) ->
+	  pop();
+	  ev
+      | Some(E_char_data s) ->
+	  let ign_ws = try Stack.top elements with Stack.Empty -> true in
+	  if ign_ws then (
+	    if not (Pxp_lib.only_whitespace s) then
+	      let (e,line,col) = !pos in
+	      let where = "In entity " ^ e ^ ", at line " ^ 
+			  string_of_int line ^ ", position " ^ 
+			  string_of_int col ^ ":\n" in
+	      raise(At(where,WF_error("Data not allowed here")))
+	    else
+	      (* drop this event, and continue with next: *)
+	      get_ev' thing
+	  ) 
+	  else ev
+	  
+      | _ ->
+	  ev
+  in
+
+  get_ev'
+;;
+
+
 (* ======================================================================
  * History:
  * 
  * $Log: pxp_ev_parser.ml,v $
+ * Revision 1.4  2003/06/22 14:49:08  gerd
+ * 	Added norm_cdata_filter, drop_ignorable_whitespace_filter
+ *
  * Revision 1.3  2003/06/20 21:00:33  gerd
  * 	Moved events to Pxp_types.
  * 	Implementation of namespaces in event-based parsers.
