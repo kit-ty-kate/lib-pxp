@@ -1,12 +1,12 @@
-(* $Id: pxp_lex_within_tag.src,v 1.1 2000/05/20 20:33:25 gerd Exp $
+(* $Id: pxp_lex_within_tag.src,v 1.2 2000/05/29 23:53:12 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
 
 
 {
-  open Markup_types
-  open Markup_lexer_types
+  open Pxp_types
+  open Pxp_lexer_types
 
 #insert open_pxp_lex_aux_*.src
 #insert pxp_lex_aux.src
@@ -53,6 +53,9 @@ rule scan_within_tag = parse
  * History:
  * 
  * $Log: pxp_lex_within_tag.src,v $
+ * Revision 1.2  2000/05/29 23:53:12  gerd
+ * 	Updated because Markup_* modules have been renamed to Pxp_*.
+ *
  * Revision 1.1  2000/05/20 20:33:25  gerd
  * 	Initial revision.
  *
