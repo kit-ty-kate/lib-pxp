@@ -1,4 +1,4 @@
-(* $Id: pxp_entity.ml,v 1.15 2002/02/20 00:25:23 gerd Exp $
+(* $Id: pxp_entity.ml,v 1.16 2002/03/10 23:39:45 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -591,8 +591,14 @@ class virtual entity the_dtd the_name the_warner init_encoding =
       self # set_encoding ""
 
 
+    method ext_id = 
+      (* Returns the external ID for external and NDATA entities. Raises
+       * Not_found for internal entities
+       *)
+      (raise Not_found : ext_id)
+
+
     (* Methods for NDATA entities only: *)
-    method ext_id = (assert false : ext_id)
     method notation = (assert false : string)
 
   end
@@ -742,6 +748,8 @@ class external_entity the_resolver the_dtd the_name the_warner the_ext_id
 	| Public(p,s) -> " = PUBLIC \"" ^ p ^ "\" \"" ^ s ^ "\""
 	| Anonymous   -> " = ANONYMOUS"
 	| Private _   -> " = PRIVATE"
+
+    method ext_id = ext_id
 
     method open_entity force_parsing init_lex_id =
       (* Note that external entities are always parsed, i.e. Begin_entity
@@ -1169,6 +1177,9 @@ class entity_manager (init_entity : entity) =
  * History:
  *
  * $Log: pxp_entity.ml,v $
+ * Revision 1.16  2002/03/10 23:39:45  gerd
+ * 	ext_id works also for external entities.
+ *
  * Revision 1.15  2002/02/20 00:25:23  gerd
  * 	using Pxp_lexing instead of Lexing.
  *
