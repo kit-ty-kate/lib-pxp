@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.11 2000/08/14 22:24:55 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.12 2000/08/18 20:16:25 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -27,8 +27,9 @@ end
 type config =
     { warner : collect_warnings;
       errors_with_line_numbers : bool;
-      processing_instructions_inline : bool;
-      virtual_root : bool;
+      enable_pinstr_nodes : bool;
+      enable_super_root_node : bool;
+      enable_comment_nodes : bool;
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;
       store_element_positions : bool;
@@ -50,10 +51,10 @@ type start_symbol =
 
 
 type context =
-    { mutable current : unit -> token;
-      mutable get_next : unit -> token;
-      mutable current_token : token;
-      mutable manager : entity_manager;
+    { mutable current : unit -> token;  (* get the current token *)
+      mutable get_next : unit -> token; (* go on to the next token; return it *)
+      mutable current_token : token;    (* This is the current token *)
+      mutable manager : entity_manager; (* The entity manager *)
     }
 
 
@@ -65,6 +66,11 @@ let make_context entity_manager =
       manager = entity_manager;
     }
   in
+  (* Note that the function which is stored in get_next_ref can be changed
+   * as a side-effect when an entity is opened or closed. The function in
+   * c.get_next must be programmed such that always the current "get_next"
+   * function is executed.
+   *)
   let get_next_ref = entity_manager # yy_get_next_ref in
   c.current  <- (fun () -> c.current_token);
   c.get_next <- (fun () -> let tok = !get_next_ref() in
@@ -101,6 +107,19 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
   let init_channel_done = ref false in
     (* Whether the first access to this source has already happened. *)
 
+  (* The task of url_of_id is:
+   * - When it is called the first time, and no init_id is present,
+   *   the URL file:/// is passed back (an_url). This forces that
+   *   absolute path names /path/dir/... will be interpreted as 
+   *   file path names. (But relative path names will not work.)
+   * - If an init_id has been passed, we can assume that the opened URL
+   *   is exactly this init_id. By raising Not_competent it is indicated
+   *   that the standard method is to be used for the interpretation of
+   *   the URL.
+   * - Otherwise, the channel is already being read, and thus cannot again
+   *   opened. (This case is handled in channel_of_url.)
+   *)
+
   let url_of_id xid =
     if !init_channel_done then begin
       (* Use the normal way of determining the URL of the ID: *)
@@ -110,8 +129,8 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
       match init_id with
 	  None -> 
 	    an_url
-	      (* If the channel is not associated with any URL: Simply pass a 
-	       * dummy value back. It will not be interpreted.
+	      (* If the channel is not associated with any URL: Simply pass 
+	       * the URL file:/// back. 
 	       *)
 	| Some the_init_id ->
 	    assert (the_init_id = xid);
@@ -121,6 +140,13 @@ let from_channel ?system_encoding ?id:init_id ?fixenc ch =
 	       *)
     end
   in
+
+  (* The task of channel_of_url:
+   * - If it is called the first time ("else"), the channel is returned
+   * - Otherwise, the channel is already being read, and thus cannot again
+   *   opened. By raising Not_competent it is signaled that the 
+   *   resolve_as_file object must not continue to open the URL.
+   *)
 
   let channel_of_url url =
     if !init_channel_done then
@@ -201,7 +227,8 @@ class ['ext] parser_object
 
     val extend_dtd = init_extend_dtd
 	(* Whether the DTD should be extended by ELEMENT, ATTLIST, and
-	 * NOTATION declarations or not.
+	 * NOTATION declarations or not. (True for validating mode,
+	 * false for well-formedness mode.)
 	 *)
 
     val transform_dtd = transform_dtd
@@ -237,7 +264,7 @@ class ['ext] parser_object
 	* given with the end tag.
 	*
 	* At initialization time, a special element is pushed on the stack,
-	* the so-called virtual root (vr). It is always the bottommost
+	* the so-called super root. It is always the bottommost
 	* element of the stack, and serves as a guard.
 	* [See "initializer" below.]
 	*)
@@ -248,8 +275,8 @@ class ['ext] parser_object
           fst(Stack.top elstack)
 	with
 	    Stack.Empty -> assert false
-		(* Not possible, because the VR is always the element at the
-		 * bottom of the stack.
+		(* Not possible, because the super root is always the element 
+		 * at the bottom of the stack.
 		 *)
 
     val mutable n_tags_open = 0
@@ -258,7 +285,11 @@ class ['ext] parser_object
 	 *)
 
     val mutable p_internal_subset = false
-        (* true while parsing the internal subset *)
+        (* true while parsing the internal subset - there are some additional
+	 * constraints for internal subsets, and because of this it must
+	 * be known whether the current declaration is contained in the
+	 * internal or external subset of the DTD.
+	 *)
 
     val mutable root = None
         (* Contains the root element (topmost element) while it is being parsed
@@ -335,27 +366,22 @@ class ['ext] parser_object
       if config.encoding <> dtd # encoding then
 	failwith("Encoding mismatch");
 
-	(* --- Initialize 'elstack': Push the VR on the stack. *)
-	(* If we are NOT in virtual_root mode, any element serves as VR,
-	 * because no method is ever called on this element. 
-	 * IF we are in virtual_root mode, the VR is created (almost)
-	 * normally.
-	 *)
-      let vr_name = if config.virtual_root then "-vr" else "-no-vr" in
-      let vr =
-	(* A trick: while the 'vr' is being created, the DTD is
-	 * changed such that this is allowed.
-	 *)
-	let aa = dtd # arbitrary_allowed in        (* save old state    *)
-	dtd # allow_arbitrary;
-	let vroot = create_element_node spec dtd vr_name [] in
-	if not aa then dtd # disallow_arbitrary;   (* restore old state *)
-	vroot
+      (* --- Initialize 'elstack': Push the super-root on the stack. *)
+      let super_root = 
+	if config.enable_super_root_node then
+	  create_super_root_node spec dtd 
+	else
+	  (* because spec may not contain an exemplar for the super root: *)
+	  create_no_node spec dtd
       in
-      (* Move it to the stack: *)
-      Stack.push (vr, (self :> entity_id)) elstack;
+      (* Move the super root or the emulation to the stack: *)
+      Stack.push (super_root, (self :> entity_id)) elstack;
 
 
+
+      (********* Here the method "parse" begins. The grammar below is
+       *         transformed to a local function of this method
+       *)
 
       method parse context start_symbol =
 
@@ -363,7 +389,6 @@ class ['ext] parser_object
 	  (* A special parser which should be used after <![IGNORE[.
 	   * It parses until the corresponding ]]> is found.
 	   *)
-          (* WS *)
 
           while yy_current() = Ignore do
 	    ignore(yy_get_next());
@@ -429,11 +454,28 @@ class ['ext] parser_object
 	
 %%
 
-/* See Pxp_types.ml for comments */
+/* The following grammar looks similar to ocamlyacc grammars, but 
+ * ocamlyacc is actually not used to transform the grammar into a parser. 
+ * Instead, the parser generator m2parsergen is applied.
+ *
+ * The format of the grammar is different (see m2parsergen/README), 
+ * but I hope that you can understand most features immediately. 
+ *
+ * The type of the parser is different: m2parsergen creates a top-down
+ * parser while ocamlyacc generates a LALR-1 parser.
+ *
+ * The way the generated code is called is different: ocamlyacc produces
+ * lots of top-level definitions whereas m2parsergen generates only 
+ * a local let-in-phrase. This is explained in the already mentioned
+ * README file.
+ */ 
+
+/* See Pxp_types.ml for comments to the various tokens */
 
 %token Begin_entity
 %token End_entity
-%token Comment
+%token Comment_begin
+%token Comment_end
 %token Ignore
 %token Eq
 %token Rangle
@@ -453,6 +495,7 @@ class ['ext] parser_object
 %token Fixed
 %token Eof
 
+%token <> Comment_material
 %token <> Doctype
 %token <> Doctype_rangle
 %token <> Dtd_begin
@@ -516,7 +559,6 @@ class ['ext] parser_object
 
 
 ext_document():
-  /* WS */
   Begin_entity 
   doc_xmldecl_then_misc_then_prolog_then_rest() End_entity
     {{
@@ -537,7 +579,6 @@ ext_document():
  */
 
 doc_xmldecl_then_misc_then_prolog_then_rest():
-  /* WS */
   pl:PI_xml 
   $ {{ context.manager # current_entity # process_xmldecl pl; 
        check_and_parse_xmldecl pl;
@@ -559,7 +600,6 @@ doc_xmldecl_then_misc_then_prolog_then_rest():
 
 
 doc_prolog_then_rest():
-  /* WS */
   doctypedecl() misc()* contents_start()
     {{ () }}
 | contents_start() 
@@ -567,7 +607,6 @@ doc_prolog_then_rest():
  
 
 ext_element():
-  /* WS */
   Begin_entity el_xmldecl_then_misc_then_rest() End_entity
     {{
       if n_tags_open <> 0 then
@@ -578,7 +617,6 @@ ext_element():
 /* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
 
 el_xmldecl_then_misc_then_rest():
-  /* WS */
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl; }}
   misc()* contents_start() 
@@ -597,7 +635,6 @@ ext_declarations():
   /* Parses a sequence of declarations given by an entity. As side-effect,
    * the parsed declarations are put into the dtd object.
    */
-  /* WS */
   Begin_entity decl_xmldecl_then_rest() 
    {{ () }}
 | Eof
@@ -606,7 +643,6 @@ ext_declarations():
 
 decl_xmldecl_then_rest():
   /* Note: This rule is also called from declaration()! */
-  /* WS */
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl; 
     }}
@@ -623,7 +659,6 @@ decl_xmldecl_then_rest():
 
 
 misc():
-  /* WS */
   pi()
     {{ () }}
 | data: CharData
@@ -633,7 +668,7 @@ misc():
     {{ self # only_whitespace data }}
 | Ignore
     {{ () }}
-| Comment
+| comment()
     {{ () }}
 
 
@@ -641,19 +676,32 @@ misc():
 
 doctypedecl():
   /* parses from <!DOCTYPE to >. As side-effect, first the declarations of
-   * the internal DTD (if any) are put into !!on_dtd, the the declarations
+   * the internal DTD (if any) are put into !!on_dtd, then the declarations
    * of the external DTD (if any) are put into this DTD object.
-   * Note that "internal_dtd_opt" is always reduced before this rule, and
-   * because of this the declarations of the internal DTD are parsed first.
    */
-  /* WS */
   doctype_entid:  Doctype 
                   Ignore Ignore*
                   doctypedecl_material (doctype_entid)
     {{ () }}
 
+
+/* TRICK: 
+ *   ws: Ignore? Ignore* 
+ * is meant seriously. The effect is that ws becomes a boolean variable
+ * which is true if there is an Ignore token and false otherwise.
+ * This construct is faster than just 
+ *   ws: Ignore*
+ * in which case ws becomes an integer variable containing the number of
+ * Ignore tokens. Counting the number of tokens is slower than only checking
+ * the existence.
+ *
+ * We need the information whether there is an Ignore token (representing
+ * white space), because white space is only obligatory if also an identifier
+ * for the external subset is parsed; this conditional syntax constraint is 
+ * simply programmed in the body of the grammar rule.
+ */
+
 doctypedecl_material(doctype_entid):
-  /* WS */
   root_name:             Name
   ws:                    Ignore? Ignore*
   external_subset:       external_id()? 
@@ -714,19 +762,25 @@ doctypedecl_material(doctype_entid):
       dtd # validate
     }}
 
-/* Note that there are no keywords for SYSTEM or PUBLIC, because these would
- * be difficult to recognize in the lexical contexts. 
+/* Note that there are no keywords for SYSTEM or PUBLIC, as these would
+ * be difficult to recognize in the lexical contexts. Because of this, 
+ * SYSTEM/PUBLIC is parsed as name, and the rule for everything after
+ * SYSTEM/PUBLIC is computed dynamically.
  */
 
-
 external_id():
-  /* WS */
   tok:Name 
   $ {{ 
        let followup = 
 	 match tok with
 	     "SYSTEM" -> parse_system_id
+                           (* Apply the rule system_id (below) to parse the
+			    * rest of the ID 
+			    *)
 	   | "PUBLIC" -> parse_public_id
+                           (* Apply the rule public_id (below) to parse the
+			    * rest of the ID 
+			    *)
 	   | _        -> raise(WF_error("SYSTEM or PUBLIC expected"))
        in
      }}
@@ -749,8 +803,13 @@ public_id():
     }}
 
 
+/* The internal subset: "[" declaration* "]". While parsing the declarations
+ * the object variable p_internal_subset must be true; however, if there
+ * are entity references, this variable must be reset to false during
+ * the entity. (See the rule for "declaration" below.)
+ */
+
 internal_dtd():
-  /* WS */
   dtd_begin_entid:    internal_dtd_begin() 
                       declaration()* 
   dtd_end_entid:      internal_dtd_end()
@@ -761,24 +820,21 @@ internal_dtd():
 
 
 internal_dtd_begin():
-  /* WS */
   Dtd_begin
     {{ assert (not p_internal_subset);
-      p_internal_subset <- true }}
+       p_internal_subset <- true }}
 
 
 internal_dtd_end():
-  /* WS */
   Dtd_end
     {{ assert p_internal_subset;
-      p_internal_subset <- false }}
+       p_internal_subset <- false }}
 
 
 declaration():
   /* Parses a single declaration (or processing instruction). As side-effect
-   * the parsed declaration is entered into the dtd object.
+   * the parsed declaration is stored into the dtd object.
    */
-  /* WS */
   elementdecl()
     {{ () }}
 | attlistdecl()
@@ -794,7 +850,7 @@ declaration():
     }}
 | Ignore
     {{ () }}
-| Comment
+| Comment_begin Comment_material* Comment_end
     {{ () }}
 | Begin_entity
   $ {{ (* Set 'p_internal_subset' to 'false' until the matching 'end_entity'
@@ -817,15 +873,20 @@ declaration():
   Ignore*
   conditional_section()  end_entid:Conditional_end
     {{ (* Check whether Conditional_begin and Conditional_end are in the same
-	* entity. (This restriction is explained in SPECS.xml.)
+	* entity. (This restriction is explained in the file SPECS.)
 	*)
        if begin_entid != end_entid then
 	 raise(Validation_error("The first and the last token of conditional sections must be in the same entity (additional restriction of this parser)"));
  }}
 
 
+/* The tokens INCLUDE/IGNORE are scanned as names, and the selection of the
+ * right parsing rule is dynamic.
+ * Note that parse_ignored_section is not defined by a grammar rule but
+ * by a conventional let-binding above.
+ */
+
 conditional_section():
-  /* WS */
   include_or_ignore:Name
   $ {{ let parsing_function =
 	 match include_or_ignore with
@@ -841,7 +902,6 @@ conditional_section():
 
 
 included_section():
-  /* WS */
   Conditional_body declaration()*  
     {{ () }}
 | Ignore Ignore* Conditional_body declaration()*  
@@ -851,10 +911,9 @@ included_section():
 /*************************** ELEMENT DECLARATIONS ********************/
 
 elementdecl():
-  /* parses <!ELEMENT ... >. Puts the parsed element as side-effect into
+  /* parses <!ELEMENT ... >. Puts the parsed element type as side-effect into
    * dtd.
    */
-  /* WS */
   decl_element_entid:      Decl_element 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
      }}
@@ -871,7 +930,7 @@ elementdecl():
 	let el = new dtd_element dtd name in
 	(* It is allowed that an <!ATTLIST...>  precedes the corresponding
 	 * <!ELEMENT...>. Because of this it is possible that there is already
-	 * an element called 'name' in the DTD, and we must set the content
+	 * an element called 'name' in the DTD, and we only must set the content
 	 * model of this element.
 	 *)
 	try
@@ -889,14 +948,8 @@ elementdecl():
 | Decl_element Begin_entity
     {{ raise (Validation_error("This entity reference is not allowed here")) }}
 
-/* Note that the lexers again cannot recognize keywords such as EMPTY or
- * ANY because these identifiers are only keywords if they occur at special
- * positions.
- */
-
 contentspec():
   /* parses a content model and returns it (type content_model_type) */
-  /* WS */
   name: Name   /* EMPTY or ANY */
     {{ match name with
 	  "EMPTY" -> Empty
@@ -907,8 +960,14 @@ contentspec():
     {{ term }}
 
 
+
+/* Many of the following rules have an lparen_entid argument. This is the
+ * internal ID of the entity containing the corresponding left parenthesis;
+ * by comparing it with the ID of the entity of the right parenthesis the
+ * contraint is implemented that both parentheses must be in the same entity.
+ */
+
 mixed_or_regexp(lparen_entid):
-  /* WS */
   re: choice_or_seq(lparen_entid)
     {{ Regexp re }}
 | m: mixed(lparen_entid)
@@ -917,7 +976,6 @@ mixed_or_regexp(lparen_entid):
 
 multiplier():
   /* returns one of the multiplier symbols (?,*,+) */
-  /* WS */
   Plus
     {{ Plus }}
 | Star
@@ -929,7 +987,6 @@ multiplier():
 
 
 mixed (lparen_entid) :
-  /* WS */
                    Pcdata 
                    Ignore*
   material:        mixed_alternatives_top()
@@ -942,7 +999,6 @@ mixed (lparen_entid) :
 
 
 mixed_alternatives_top():
-  /* WS */
   entid: Rparen
     {{ [], entid }}
 | entid: RparenStar
@@ -954,7 +1010,6 @@ mixed_alternatives_top():
 
 
 mixed_alternative() :
-  /* WS */
   Bar Ignore* name:Name Ignore*
     {{ MChild name }}
 
@@ -966,7 +1021,6 @@ choice_or_seq (lparen_entid):
    * after the first subexpression has been parsed; the other subexpressions
    * must be of the same kind.
    */
-  /* WS */
   re:     cp() 
           Ignore*
   factor: choice_or_seq_factor()
@@ -1005,7 +1059,6 @@ choice_or_seq_factor():
    *   Alt non_empty_list  meaning that the subexpressions are separated by '|'
    *   Seq non_empty_list  meaning that the subexpressions are separated by ','
    */
-  /* WS */
   entid:Rparen
     {{ (Ignore, Alt []), entid }}
 | entid:RparenPlus
@@ -1037,7 +1090,6 @@ choice_or_seq_factor():
 
 cp():
   /* parse either a name, or a parenthesized subexpression "(...)"  */
-  /* WS */
   name:Name  m:multiplier()?
     {{ match m with
 	  None       -> Child name
@@ -1056,7 +1108,6 @@ attlistdecl():
   /* parses <!ATTLIST ... >. Enters the attribute list in dtd as side-
    * effect.
    */
-  /* WS */
   decl_attlist_entid: Decl_attlist 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
@@ -1113,7 +1164,6 @@ attdef_factor():
   /* parses a list of triples <name> <type> <default value> and returns the
    * list as (string * att_type * att_default) list.
    */
-  /* WS */
   attdef:attdef()   ws:Ignore?   Ignore*   factor:attdef_factor()
     {{ 
       let attdef_rest, decl_rangle_entid = factor in
@@ -1131,7 +1181,6 @@ attdef_factor():
 
 attdef():
   /* Parses a single triple */
-  /* WS */
   name:     Name 
             Ignore Ignore*
   tp:       atttype() 
@@ -1139,22 +1188,8 @@ attdef():
   default:  defaultdecl()
     {{ (name,tp,default) }}
 
-/* In 'atttype' we again must recognize keywords. Again this is possible:
- * NOTATION is followed by a left parenthesis, and can be recognized by
- * the parser. The other keywords are grammatically equivalent (they do
- * not introduce their own phrases).
- * An enumeration can be recognized by a single left parenthesis. Note that
- * the lexer returns "nmtokens" that match the rules for "names" as Name,
- * not Nametoken.
- *
- * Note: The XML specification does not require that the entities are properly
- * nested with the parantheses of an attribute declaration.
- */
-
-
 atttype():
   /* Parses an attribute type and returns it as att_type. */
-  /* WS */
   name:      Name 
   $ {{ let followup = 
 	 if name = "NOTATION" then 
@@ -1197,7 +1232,6 @@ atttype():
 
 never():
   /* The always failing rule */
-  /* WS */
   $ {{ raise Not_found; }}
   Doctype   /* questionable */
     {{ A_cdata    (* Does not matter *)
@@ -1212,26 +1246,22 @@ notation():
          Ignore* 
   names: notation_factor()* 
          Rparen
-  /* WS */
     {{ A_notation(name :: names) }}
 
 
 notation_factor():
   /* Parse "|<name>" and return the name */
-  /* WS */
   Bar Ignore* name:Name Ignore*
     {{ name }}
 
 
 nmtoken_factor():
   /* Parse "|<nmtoken>" and return the nmtoken */
-  /* WS */
   Bar Ignore* n:name_or_nametoken() Ignore*
     {{ n }}
 
 
 name_or_nametoken():
-  /* WS */
   n:Name      {{ n }}
 | n:Nametoken {{ n }}
 
@@ -1243,7 +1273,6 @@ name_or_nametoken():
 
 defaultdecl():
   /* Parse the default value for an attribute and return it as att_default */
-  /* WS */
   Required
     {{ D_required }}
 | Implied
@@ -1259,10 +1288,9 @@ defaultdecl():
 /**************************** ENTITY DECLARATION ***********************/
 
 entitydecl(decl_entity_entid):
-  /* parses <!ENTITY ... >. The parsed entity declaration is entered into the
-   * dtd object as side-effect.
+  /* parses everything _after_ <!ENTITY until the matching >. The parsed 
+   * entity declaration is entered into the dtd object as side-effect.
    */
-  /* WS */
   name:               Name 
   $ {{ let extdecl = context.manager # current_entity_counts_as_external in
     }}
@@ -1344,7 +1372,6 @@ entitydef():
    * - (None,   Some x, Some n)  meaning that an unparsed entity with
    *                               external ID x and notations n has been found
    */
-  /* WS */
   str:Unparsed_string
     {{ Some str, None, None }}
 | id:external_id()   ws:Ignore?  Ignore*  decl:ndatadecl()?
@@ -1361,7 +1388,6 @@ pedef():
    *                        with (literal) value s has been found
    * - (None,   Some x)   meaning that an external ID x has been found
    */
-  /* WS */
   str:Unparsed_string
     {{ Some str, None }}
 | id:external_id()
@@ -1373,7 +1399,6 @@ ndatadecl():
   /* Parses either NDATA "string" or the empty string; returns Some "string"
    * in the former, None in the latter case.
    */
-  /* WS */
   ndata:Name Ignore Ignore* name:Name
     {{ if ndata = "NDATA" then
 	name
@@ -1390,7 +1415,6 @@ notationdecl():
   /* parses <!NOTATION ... > and enters the notation declaration into the
    * dtd object as side-effect
    */
-  /* WS */
   decl_notation_entid: Decl_notation 
                        Ignore Ignore*
   name:                Name 
@@ -1459,8 +1483,7 @@ contents_start():
    * object only back via a global variable). The only solution is to
    * modify the object that has been passed to the parsing function directly.
    */
-  /* WS */
-    $ {{ dtd <- transform_dtd dtd; }}
+  $ {{ dtd <- transform_dtd dtd; }}
   start_tag() content()*
     {{ () }}
 
@@ -1472,7 +1495,6 @@ content():
    * content is added to the element containing it, and processing instructions
    * are entered into the element embracing them. (All as side-effects.)
    */
-  /* WS */
   start_tag()
     {{ () }}
 | end_tag()
@@ -1485,12 +1507,11 @@ content():
     {{ () }}
 | entity_ref()
     {{ () }}
-| Comment
+| comment()
     {{ () }}
 
 
 entity_ref():
-  /* WS */
    Begin_entity eref_xmldecl_then_rest()
     {{ if n_tags_open = 0 then
 	raise(WF_error("Entity reference not allowed here"))
@@ -1500,7 +1521,6 @@ entity_ref():
 /* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
 
 eref_xmldecl_then_rest():
-  /* WS */
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl; 
     }}
@@ -1528,7 +1548,6 @@ start_tag():
    * If the <element ... /> form has been parsed, no element is pushed
    * on the stack.
    */
-  /* WS */
   tag:        Tag_beg
     $ {{ let position =
 	   if config.store_element_positions then
@@ -1585,11 +1604,12 @@ start_tag():
       if n_tags_open = 0 then begin
 	if root = None then begin
 	  (* We have found the begin tag of the root element. *)
-	  if config.virtual_root then begin
-	    (* The user wants the virtual root instead of the real root.
+	  if config.enable_super_root_node then begin
+	    (* The user wants the super root instead of the real root.
 	     * The real root element becomes the child of the VR.
 	     *)
-	    (* Assertion: self # current is the virtual root *)
+	    (* Assertion: self # current is the super root *)
+	    assert (self # current # node_type = T_super_root);
 	    root <- Some (self # current);
 	    self # current # add_node d;
 	    doc # init_root (self # current);
@@ -1629,13 +1649,11 @@ attribute():
    * - list is the list of (name,value) pairs (both strings); the values
    *   are already expanded
    */
-  /* WS */
   n:Name Ignore* Eq Ignore* v:attval() ws:Ignore? Ignore*
     {{ (n,v), ws }}
 
 
 attval():
-  /* WS */
   v:Attval
     {{ expand_attvalue lexerset dtd v config.warner true }}
 | v:Attval_nl_normalized
@@ -1643,7 +1661,6 @@ attval():
 
 
 start_tag_rangle():
-  /* WS */
   Rangle       {{ false }}
 | Rangle_empty {{ true }}
 
@@ -1653,7 +1670,6 @@ end_tag():
    * Pops the top element from the elstack and checks if it is the same
    * element.
    */
-  /* WS */
   tag:Tag_end  Ignore*  Rangle
     {{ let name, tag_end_entid = tag in
        if n_tags_open = 0 then
@@ -1664,8 +1680,8 @@ end_tag():
        let x, tag_beg_entid = Stack.pop elstack in
        let x_name =
 	 match x # node_type with
-	     T_data -> assert false
 	   | T_element n -> n
+	   | _ -> assert false
        in
        if name <> x_name then
 	 raise(WF_error("End-tag does not match start-tag"));
@@ -1685,7 +1701,6 @@ char_data():
    * If elstack is empty, it is assumed that there is no surrounding
    * element, and any non-white space character is forbidden.
    */
-  /* WS */
   data:CharData
     {{ 
       if n_tags_open = 0 then
@@ -1693,12 +1708,18 @@ char_data():
 	self # only_whitespace data
       else
 	self # collect_data data
+          (* We collect the chardata material until the next end tag is
+	   * reached. Then the collected material will concatenated and
+	   * stored as a single T_data node (see end_tag rule above)
+	   * using save_data.
+	   *)
     }}
 | data:Cdata
     {{ 
       if n_tags_open = 0 then
 	raise (WF_error("CDATA section not allowed here"));
       self # collect_data data
+          (* Also collect CDATA material *)
     }}
 
 cref():
@@ -1709,6 +1730,7 @@ cref():
 	 (* No surrounding element: character references are not allowed *)
 	 raise(WF_error("Character reference not allowed here"));
        self # collect_data (character config.encoding config.warner code)
+          (* Also collect character references *)
     }}
 
 pi():
@@ -1716,33 +1738,29 @@ pi():
    * If there is a top element in elstack, the processing instruction is added
    * to this element.
    */
-  /* WS */
   pi: PI
-    {{ let target,value = pi in
-      if n_tags_open = 0 & not config.virtual_root
+    {{ 
+      let position =
+	if config.store_element_positions then
+	  Some(context.manager # position)
+	else
+	  None
+      in
+      let target,value = pi in
+
+      if n_tags_open = 0 & not config.enable_super_root_node
       then
 	doc # add_pinstr (new proc_instruction target value config.encoding)
       else begin
 	(* Special case: if processing instructions are processed inline,
-	 * they are wrapped into artificial "-pi" objects.
+	 * they are wrapped into T_pinstr nodes.
 	 *)
-	if config.processing_instructions_inline then begin
-	  (* A trick: while the 'wrapper' is being created, the DTD is
-	   * changed such that this is allowed.
-	   *)
-	  let aa = dtd # arbitrary_allowed in        (* save old state    *)
-	  dtd # allow_arbitrary;
-	  let wrapper = create_element_node spec dtd "-pi" [] in
-	  if not aa then dtd # disallow_arbitrary;   (* restore old state *)
-	  (* Put the PI into the 'wrapper' *)
-	  wrapper # add_pinstr 
-	              (new proc_instruction target value config.encoding);
+	if config.enable_pinstr_nodes then begin
+	  let pinstr = new proc_instruction target value config.encoding in
+	  let wrapper = create_pinstr_node 
+			  ?position:position spec dtd pinstr in
 	  wrapper # local_validate();                (* succeeds always   *)
 	  self # current # add_node wrapper;
-	  (* Note that a change in the function validate_content ensures
-	   * that the parser does not complain about the additional elements
-	   * in 'cur'
-	   *)
 	end
 	else
 	  (* Normal behaviour: Add the PI to the parent element. *)
@@ -1752,7 +1770,33 @@ pi():
     }}
 
 
+comment():
+  /* Parses <!-- ... -->
+   */
+  Comment_begin
+  $ {{ 
+      let position =
+	if config.enable_comment_nodes && config.store_element_positions then
+	  Some(context.manager # position)
+	else
+	  None
+      in
+    }}
+  mat: Comment_material*
+  Comment_end
+    {{
+      if config.enable_comment_nodes then begin
+	let comment_text = String.concat "" mat in
+	let wrapper = create_comment_node 
+		        ?position:position spec dtd comment_text in
+	wrapper # local_validate();                (* succeeds always   *)
+	self # current # add_node wrapper;
+      end
+    }}
+
+
 %%
+   (* The method "parse" continues here... *)
 
    try
      match start_symbol with
@@ -1765,6 +1809,8 @@ pi():
    with
        Not_found ->
 	 raise Parsing.Parse_error
+
+  (*********** The method "parse" ends here *************)
 
 
 (**********************************************************************)
@@ -1797,9 +1843,13 @@ let default_extension = new default_ext;;
 
 let default_spec =
   make_spec_from_mapping
+    ~super_root_exemplar:      (new element_impl default_extension)
+    ~comment_exemplar:         (new element_impl default_extension)
+    ~default_pinstr_exemplar:  (new element_impl default_extension)
     ~data_exemplar:            (new data_impl default_extension)
     ~default_element_exemplar: (new element_impl default_extension)
     ~element_mapping:          (Hashtbl.create 1)
+    ()
 ;;
 
 
@@ -1808,7 +1858,7 @@ let idref_pass id_index root =
     let name =
       match t # node_type with
 	  T_element name -> name
-	| T_data -> assert false
+	| _ -> assert false
     in
     let text =
       "Attribute `" ^ att ^ "' of element `" ^ name ^ 
@@ -1851,6 +1901,8 @@ let idref_pass id_index root =
 
 
 exception Return_DTD of dtd;;
+  (* Used by extract_dtd_from_document_entity to jump out of the parser *)
+
 
 let call_parser ~configuration:cfg 
                 ~source:src 
@@ -2077,8 +2129,9 @@ let default_config =
   let w = new drop_warnings in
   { warner = w;
     errors_with_line_numbers = true;
-    processing_instructions_inline = false;
-    virtual_root = false;
+    enable_pinstr_nodes = false;
+    enable_super_root_node = false;
+    enable_comment_nodes = false;
     encoding = `Enc_iso88591;
     recognize_standalone_declaration = true;
     store_element_positions = true;
@@ -2110,6 +2163,10 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.12  2000/08/18 20:16:25  gerd
+ * 	Implemented that Super root nodes, pinstr nodes and comment
+ * nodes are included into the document tree.
+ *
  * Revision 1.11  2000/08/14 22:24:55  gerd
  * 	Moved the module Pxp_encoding to the netstring package under
  * the new name Netconversion.
