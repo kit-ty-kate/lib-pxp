@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.11 2001/04/03 20:22:44 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.12 2001/04/21 17:40:48 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -901,11 +901,13 @@ class combine ?prefer ?(mode = Public_before_system) rl =
       let c =
 	match active_resolver with
 	    None   ->
-	      new combine ?prefer:None (List.map (fun q -> q # clone) resolvers)
+	      new combine ?prefer:None ?mode:(Some mode) 
+                          (List.map (fun q -> q # clone) resolvers)
 	  | Some r ->
 	      let r' = r # clone in
 	      new combine
 		?prefer:(Some r')
+		?mode:(Some mode)
 		(List.map
 		   (fun q -> if q == r then r' else q # clone)
 		   resolvers)
@@ -922,6 +924,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.12  2001/04/21 17:40:48  gerd
+ * 	Bugfix in 'combine'
+ *
  * Revision 1.11  2001/04/03 20:22:44  gerd
  * 	New resolvers for catalogs of PUBLIC and SYSTEM IDs.
  * 	Improved "combine": PUBLIC and SYSTEM IDs are handled
