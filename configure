@@ -186,7 +186,18 @@ fi
 if [ $with_wlex -gt 0 ]; then
 	printf "%s" "Checking for wlexing... "
 	if ocamlfind query wlexing >/dev/null 2>/dev/null; then
-		echo "found"
+		printf "%s" "library found, "
+		
+		out=`wlex -help 2>&1`
+		case "$out" in
+		    usage*) echo "generator found" ;;
+		    *)
+			echo "generator not found"
+			echo "*** It is now required that the full 'wlex' tool is installed, sorry."
+			echo "wlex support is disabled"
+			with_wlex=0
+			with_wlex_compat=0 ;;
+		esac
 	else
 		echo "not found"
 		echo "wlex support is disabled"
@@ -257,38 +268,6 @@ fi
 
 rm -f tmp.*
 
-######################################################################
-# Pregenerated wlex lexers
-
-if [ $with_wlex -gt 0 ]; then
-    printf "%s" "Selecting pregenerated wide lexer... "
-    case `ocamlc -version` in
-	3.06*)
-	    echo "Using 3.06 version"
-	    suffix="306"
-	    ;;
-	3.07*)
-	    echo "Using 3.07 version"
-	    suffix="307"
-	    ;;
-	    *)
-	    echo "No lexer matches"
-	    echo "You need the 'wlex' tool to generate the wide lexer,"
-	    echo "because there is no pregenerated lexer for your"
-	    echo "version of O'Caml."
-	    suffix=""
-	    ;;
-    esac 
-
-    if [ -n "$suffix" ]; then
-	s="gensrc-pre/pxp-wlex-utf8"
-	d="gensrc/pxp-wlex-utf8"
-	cp "$s/pxp_wlex_link_utf8.ml" "$d"
-	cp "$s/pxp_wlex_utf8_01.mll" "$d"
-	cp "$s/pxp_wlex_utf8_01.ml.$suffix" "$d/pxp_wlex_utf8_01.ml"
-	touch "$d/gen_done"
-    fi
-fi
 
 ######################################################################
 # Check cygwin
