@@ -1,0 +1,12 @@
+#! /bin/sh
+
+set -e
+
+version=`./configure -version 2>/dev/null`
+destdir="pxp-$version"
+
+mkdir -p packages
+rm -rf "packages/$destdir"
+makepkg -spec pxp.files -intree . -outtree "packages/$destdir"
+(cd packages; tar czf "$destdir.tar.gz" "$destdir")
+

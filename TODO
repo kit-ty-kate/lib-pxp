@@ -1,6 +1,3 @@
-
-- xmlforms: change from camltk to labltk
-
 - PXP 1.2: Adapter to Nethtml: Parses HTML and converts it to a PXP object
   tree.
 
@@ -15,6 +12,8 @@
 
 - PXP 1.2: Adapter to Netclient
 
+Problem with long DTDs: Forming the DFA for a long DTD takes too long.
+Example: The XHTML-DTD is read in over 10 seconds.
 
 Problems with Pxp_reader: there should be some notion of "relative URI"
 vs. "absolute URI". Currently, processing of relative URIs works only

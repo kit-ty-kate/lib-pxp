@@ -1,0 +1,333 @@
+# SYNTAX OF pxp.files: 
+#
+# d DIRPATH
+# 
+# include this subdirectory
+#
+# f FILEPATH
+#
+# include this file (or symlink)
+#
+# x FILEPATH
+#
+# exclude this file
+#
+# p DIRPATH/FILEPATTERN
+#
+# include all files of the directory that match the regular expression
+# FILEPATTERN (Str-type regexp)
+#
+# w DIRPATH/FILEPATTERN
+#
+# output a warning if one of the matching files matches
+#
+# Exclusions must be mentioned before inclusions.
+
+f README
+f INSTALL
+f ABOUT-FINDLIB
+f LICENSE
+f Makefile
+f Makefile.rules
+f configure
+
+d doc
+f doc/ABOUT-FINDLIB
+f doc/INSTALL
+f doc/README
+f doc/DEV
+f doc/EXTENSIONS
+f doc/RELEASE-NOTES
+f doc/SPEC
+f doc/design-txt
+
+d doc/manual
+f doc/manual/Makefile
+d doc/manual/html
+p doc/manual/html/.*\.html
+p doc/manual/html/.*\.css
+d doc/manual/html/pic
+p doc/manual/html/pic/.*\.gif
+d doc/manual/ps
+f doc/manual/ps/pxp.ps
+d doc/manual/src
+f doc/manual/src/extract.ml
+f doc/manual/src/getcode.ml
+f doc/manual/src/markup.css
+f doc/manual/src/markup.dsl
+f doc/manual/src/markup.sgml
+d doc/manual/src/extracted
+d doc/manual/src/pic
+p doc/manual/src/pic/.*\.fig
+
+d examples
+f examples/Makefile
+
+d examples/namespaces
+f examples/namespaces/Makefile
+f examples/namespaces/README
+f examples/namespaces/macro.dtd
+f examples/namespaces/preprocess.ml
+f examples/namespaces/sample.xml
+f examples/namespaces/sample2.xml
+f examples/namespaces/xhtml-lat1.ent
+f examples/namespaces/xhtml-special.ent
+f examples/namespaces/xhtml-symbol.ent
+f examples/namespaces/xhtml1-strict.dtd
+
+d examples/readme
+f examples/readme/Makefile
+f examples/readme/Makefile.code
+f examples/readme/main.ml
+f examples/readme/readme.dtd
+f examples/readme/to_html.ml
+f examples/readme/to_text.ml
+
+d examples/simple_transformation
+f examples/simple_transformation/Makefile
+f examples/simple_transformation/README
+f examples/simple_transformation/delcol.ml
+f examples/simple_transformation/print.ml
+f examples/simple_transformation/record.dtd
+f examples/simple_transformation/sample.xml
+f examples/simple_transformation/sort.ml
+
+d examples/validate
+f examples/validate/README
+f examples/validate/pxpvalidate.1
+f examples/validate/validate.ml
+f examples/validate/Makefile
+
+d examples/xmlforms
+f examples/xmlforms/Makefile
+f examples/xmlforms/Makefile.code
+f examples/xmlforms/README
+f examples/xmlforms/ds_app.ml
+f examples/xmlforms/ds_context.ml
+f examples/xmlforms/ds_style.ml
+d examples/xmlforms/styles
+f examples/xmlforms/styles/Makefile
+f examples/xmlforms/styles/address-style.xml
+f examples/xmlforms/styles/address
+f examples/xmlforms/styles/crazy-style.xml
+f examples/xmlforms/styles/crazy
+f examples/xmlforms/styles/ds-object.dtd
+f examples/xmlforms/styles/ds-style.dtd
+
+d src
+f src/Makefile
+
+d src/pxp
+f src/pxp/META.in
+f src/pxp/Makefile
+
+d src/pxp-engine
+f src/pxp-engine/META.in
+f src/pxp-engine/Makefile
+f src/pxp-engine/Makefile.code
+f src/pxp-engine/pxp_aux.ml
+f src/pxp-engine/pxp_codewriter.ml
+f src/pxp-engine/pxp_codewriter.mli
+f src/pxp-engine/pxp_dfa.ml
+f src/pxp-engine/pxp_dfa.mli
+f src/pxp-engine/pxp_document.ml
+f src/pxp-engine/pxp_document.mli
+f src/pxp-engine/pxp_dtd.ml
+f src/pxp-engine/pxp_dtd.mli
+f src/pxp-engine/pxp_entity.ml
+f src/pxp-engine/pxp_lexer_types.ml
+f src/pxp-engine/pxp_lexer_types.mli
+f src/pxp-engine/pxp_lexers.ml
+f src/pxp-engine/pxp_lexers.mli
+f src/pxp-engine/pxp_lib.mli
+f src/pxp-engine/pxp_lib_ocamlc.ml
+f src/pxp-engine/pxp_lib_ocamlopt.ml
+f src/pxp-engine/pxp_marshal.ml
+f src/pxp-engine/pxp_marshal.mli
+f src/pxp-engine/pxp_reader.ml
+f src/pxp-engine/pxp_reader.mli
+f src/pxp-engine/pxp_top.ml
+f src/pxp-engine/pxp_top.mli
+f src/pxp-engine/pxp_types.ml
+f src/pxp-engine/pxp_types.mli
+f src/pxp-engine/pxp_yacc.m2y
+f src/pxp-engine/pxp_yacc.mli
+
+d src/pxp-lex-generic
+f src/pxp-lex-generic/pxp_lex_aux.ml
+f src/pxp-lex-generic/pxp_lex_content.src
+f src/pxp-lex-generic/pxp_lex_content_string.src
+f src/pxp-lex-generic/pxp_lex_declaration.src
+f src/pxp-lex-generic/pxp_lex_defs_generic.def
+f src/pxp-lex-generic/pxp_lex_document.src
+f src/pxp-lex-generic/pxp_lex_document_type.src
+f src/pxp-lex-generic/pxp_lex_dtd_string.src
+f src/pxp-lex-generic/pxp_lex_misc.src
+f src/pxp-lex-generic/pxp_lex_name_string.src
+f src/pxp-lex-generic/pxp_lex_within_tag.src
+
+d src/pxp-lex-iso88591
+f src/pxp-lex-iso88591/META.in
+f src/pxp-lex-iso88591/Makefile
+f src/pxp-lex-iso88591/Makefile.code
+f src/pxp-lex-iso88591/open_pxp_lex_aux_iso88591.src
+f src/pxp-lex-iso88591/open_pxp_lex_misc_iso88591.src
+f src/pxp-lex-iso88591/pxp_lex_defs_iso88591.def
+f src/pxp-lex-iso88591/pxp_lex_link_iso88591.ml
+
+d src/pxp-lex-utf8
+f src/pxp-lex-utf8/META.in
+f src/pxp-lex-utf8/Makefile
+f src/pxp-lex-utf8/Makefile.code
+f src/pxp-lex-utf8/open_pxp_lex_aux_utf8.src
+f src/pxp-lex-utf8/open_pxp_lex_misc_utf8.src
+f src/pxp-lex-utf8/pxp_lex_defs_drv_utf8.def
+f src/pxp-lex-utf8/pxp_lex_link_utf8.ml
+
+d src/pxp-wlex
+f src/pxp-wlex/META.in
+f src/pxp-wlex/Makefile
+f src/pxp-wlex/Makefile.code
+f src/pxp-wlex/pxp_wlex.mlw
+f src/pxp-wlex/pxp_wlex.ml
+f src/pxp-wlex/pxp_wlex_aux.ml
+f src/pxp-wlex/pxp_wlex_link.ml
+
+d rtests
+f rtests/Makefile
+f rtests/README
+f rtests/dumpfiles.ml
+f rtests/run
+
+d rtests/canonxml
+f rtests/canonxml/Makefile
+f rtests/canonxml/README
+f rtests/canonxml/test_canonxml.ml
+f rtests/canonxml/run_canonxml
+d rtests/canonxml/data_jclark_valid
+d rtests/canonxml/data_jclark_valid/ext-sa
+p rtests/canonxml/data_jclark_valid/ext-sa/.*\.ent
+p rtests/canonxml/data_jclark_valid/ext-sa/.*\.xml
+d rtests/canonxml/data_jclark_valid/ext-sa/out
+p rtests/canonxml/data_jclark_valid/ext-sa/out/.*\.xml
+#d rtests/canonxml/data_jclark_valid/ext-sa-problems
+d rtests/canonxml/data_jclark_valid/not-sa
+p rtests/canonxml/data_jclark_valid/not-sa/.*\.ent
+p rtests/canonxml/data_jclark_valid/not-sa/.*\.xml
+d rtests/canonxml/data_jclark_valid/not-sa/out
+p rtests/canonxml/data_jclark_valid/not-sa/out/.*\.xml
+d rtests/canonxml/data_jclark_valid/sa
+p rtests/canonxml/data_jclark_valid/sa/.*\.xml
+d rtests/canonxml/data_jclark_valid/sa/out
+p rtests/canonxml/data_jclark_valid/sa/out/.*\.xml
+#d rtests/canonxml/data_jclark_valid/sa-problems
+
+d rtests/canonxml/data_valid
+d rtests/canonxml/data_valid/att_normalization
+p rtests/canonxml/data_valid/att_normalization/.*\.xml
+f rtests/canonxml/data_valid/att_normalization/INDEX
+d rtests/canonxml/data_valid/att_normalization/out
+p rtests/canonxml/data_valid/att_normalization/out/.*\.xml
+
+d rtests/canonxml/data_valid
+d rtests/canonxml/data_valid/bugfixes
+p rtests/canonxml/data_valid/bugfixes/.*\.xml
+f rtests/canonxml/data_valid/bugfixes/INDEX
+d rtests/canonxml/data_valid/bugfixes/out
+p rtests/canonxml/data_valid/bugfixes/out/.*\.xml
+
+d rtests/canonxml/data_valid/comments
+p rtests/canonxml/data_valid/comments/.*\.xml
+f rtests/canonxml/data_valid/comments/INDEX
+d rtests/canonxml/data_valid/comments/out
+p rtests/canonxml/data_valid/comments/out/.*\.xml
+
+d rtests/canonxml/data_valid/conditional
+p rtests/canonxml/data_valid/conditional/.*\.xml
+f rtests/canonxml/data_valid/conditional/INDEX
+d rtests/canonxml/data_valid/conditional/out
+p rtests/canonxml/data_valid/conditional/out/.*\.xml
+
+d rtests/canonxml/data_valid/optional_decls
+p rtests/canonxml/data_valid/optional_decls/.*\.xml
+f rtests/canonxml/data_valid/optional_decls/INDEX
+d rtests/canonxml/data_valid/optional_decls/out
+p rtests/canonxml/data_valid/optional_decls/out/.*\.xml
+
+d rtests/codewriter
+f rtests/codewriter/Makefile
+f rtests/codewriter/compile.ml
+f rtests/codewriter/marshal_namespace.ml
+f rtests/codewriter/marshal_simple.ml
+f rtests/codewriter/run_codewriter
+f rtests/codewriter/test_codewriter
+p rtests/codewriter/sample.*\.xml
+
+d rtests/dynamic
+f rtests/dynamic/Makefile
+f rtests/dynamic/create_element.ml
+f rtests/dynamic/modify.ml
+f rtests/dynamic/strip.ml
+f rtests/dynamic/run
+
+d rtests/negative
+f rtests/negative/README
+f rtests/negative/Makefile
+f rtests/negative/run_negative
+f rtests/negative/test_negative.ml
+d rtests/negative/data_invalid
+f rtests/negative/data_invalid/INDEX
+p rtests/negative/data_invalid/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_jclark_invalid
+p rtests/negative/data_jclark_invalid/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_jclark_notwf
+d rtests/negative/data_jclark_notwf/ext-sa
+p rtests/negative/data_jclark_notwf/ext-sa/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_jclark_notwf/not-sa
+p rtests/negative/data_jclark_notwf/not-sa/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_jclark_notwf/sa
+p rtests/negative/data_jclark_notwf/sa/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_jclark_notwf/sa-problems
+p rtests/negative/data_jclark_notwf/sa-problems/.*\.\(xml\|ent\|out\)
+d rtests/negative/data_notwf
+d rtests/negative/data_notwf/sa
+p rtests/negative/data_notwf/sa/.*\.\(xml\|ent\|out\)
+
+d rtests/reader
+f rtests/reader/Makefile
+f rtests/reader/minilex.mll
+f rtests/reader/test_reader.ml
+f rtests/reader/t100.dat
+
+d rtests/write
+f rtests/write/Makefile
+f rtests/write/run_write
+f rtests/write/test_namespace.ml
+f rtests/write/test_write.ml
+p rtests/write/sample.*\.xml
+
+d tools
+f tools/Makefile
+f tools/collect_files
+f tools/insert_variant
+f tools/m2parsergen
+f tools/ucs2_to_utf8
+
+d tools/src
+f tools/src/Makefile
+
+d tools/src/m2parsergen
+f tools/src/m2parsergen/Makefile
+f tools/src/m2parsergen/README
+f tools/src/m2parsergen/ast.ml
+f tools/src/m2parsergen/generator.ml
+f tools/src/m2parsergen/lexer.mll
+f tools/src/m2parsergen/parser.mly
+
+d tools/src/ucs2_to_utf8
+f tools/src/ucs2_to_utf8/Makefile
+f tools/src/ucs2_to_utf8/README
+f tools/src/ucs2_to_utf8/lexer.mll
+f tools/src/ucs2_to_utf8/parser.mly
+f tools/src/ucs2_to_utf8/types.ml
+f tools/src/ucs2_to_utf8/ucs2_to_utf8.ml
