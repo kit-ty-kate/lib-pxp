@@ -1,4 +1,4 @@
-(* $Id: pxp_reader.ml,v 1.16 2001/07/01 09:46:40 gerd Exp $
+(* $Id: pxp_reader.ml,v 1.17 2001/10/12 21:38:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -224,7 +224,7 @@ class resolve_read_any_channel ?(close=close_in) ~channel_of_id () =
 
     method clone =
       let c = new resolve_read_any_channel
-		?close:(Some close) f_open () in
+		?close:(Some close) ~channel_of_id:f_open () in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
       clones <- c :: clones;
@@ -241,7 +241,7 @@ class resolve_read_this_channel1 is_stale ?id ?fixenc ?close ch =
   object (self)
     inherit resolve_read_any_channel
               ?close
-	      (fun xid -> !getchannel xid)
+	      ~channel_of_id:(fun xid -> !getchannel xid)
 	      ()
 	      as super
 
@@ -331,7 +331,7 @@ class resolve_read_any_string ~string_of_id () =
 	    current_string <- None
 
     method clone =
-      let c = new resolve_read_any_string f_open () in
+      let c = new resolve_read_any_string ~string_of_id:f_open () in
       c # init_rep_encoding internal_encoding;
       c # init_warner warner;
       clones <- c :: clones;
@@ -407,7 +407,7 @@ class resolve_read_url_channel
   object (self)
     inherit resolve_read_any_channel
               ?close
-	      (fun xid -> !getchannel xid)
+	      ~channel_of_id:(fun xid -> !getchannel xid)
 	      ()
 	      as super
 
@@ -912,6 +912,9 @@ class combine ?prefer ?(mode = Public_before_system) rl =
  * History:
  *
  * $Log: pxp_reader.ml,v $
+ * Revision 1.17  2001/10/12 21:38:14  gerd
+ * 	Changes for O'caml 3.03-alpha.
+ *
  * Revision 1.16  2001/07/01 09:46:40  gerd
  * 	Fix: resolve_read_url_channel does not use the base_url if
  * the current URL is already absolute

@@ -1,4 +1,4 @@
-(* $Id: pxp_marshal.ml,v 1.7 2001/06/30 00:05:12 gerd Exp $
+(* $Id: pxp_marshal.ml,v 1.8 2001/10/12 21:38:14 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -73,7 +73,7 @@ type reconstruction_cmd =
  *)
 
 
-let subtree_to_cmd_sequence_nohead ?(omit_positions = false) ~f:f0 n = 
+let subtree_to_cmd_sequence_nohead ?(omit_positions = false) f0 n = 
   let m = 100 in
   let current_array = Array.create m End_node in
   let current_pos = ref 0 in
@@ -220,7 +220,7 @@ let subtree_to_channel ?(omit_positions = false) ch n =
 ;;
 
 
-let subtree_from_cmd_sequence_nohead ~f:f0 dtd spec =
+let subtree_from_cmd_sequence_nohead f0 dtd spec =
   let current_array = ref( [| |] ) in
   let current_pos = ref 0 in
   let rec f() =
@@ -392,7 +392,7 @@ let subtree_from_cmd_sequence_nohead ~f:f0 dtd spec =
 ;;
 
 
-let subtree_from_cmd_sequence ~f dtd spec =
+let subtree_from_cmd_sequence f dtd spec =
   match f() with
       Head(enc_s,_) ->
 	let enc = Netconversion.encoding_of_string enc_s in
@@ -404,7 +404,7 @@ let subtree_from_cmd_sequence ~f dtd spec =
 	if dtd # encoding <> rep_enc then
 	  failwith "Pxp_marshal.subtree_from_cmd_sequence";
 
-	subtree_from_cmd_sequence_nohead ~f dtd spec
+	subtree_from_cmd_sequence_nohead f dtd spec
 
     | _ ->
 	failwith "Pxp_marshal.subtree_from_cmd_sequence"
@@ -424,7 +424,7 @@ let subtree_from_channel ch dtd spec =
 ;;
 
 
-let document_to_cmd_sequence ?(omit_positions = false) ~f 
+let document_to_cmd_sequence ?(omit_positions = false) f 
        (doc : 'ext Pxp_document.document) =
   let enc = Netconversion.string_of_encoding (doc # encoding :> encoding) in
   let sa = doc # dtd # standalone_declaration in
@@ -545,6 +545,9 @@ let document_from_channel ch config spec =
  * History:
  * 
  * $Log: pxp_marshal.ml,v $
+ * Revision 1.8  2001/10/12 21:38:14  gerd
+ * 	Changes for O'caml 3.03-alpha.
+ *
  * Revision 1.7  2001/06/30 00:05:12  gerd
  * 	Fix: When checking the type of the root element, namespace
  * rewritings are taken into account.

@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.6 2001/06/14 23:29:03 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.7 2001/10/12 21:38:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -37,7 +37,7 @@ let lexer_set_iso88591 =
 
 
 let current_lexer_set = 
-  let dummy _ = assert false in
+  let dummy _ = failwith "No lexical analyzer available! (Badly linked executable?)" in
   ref
     { lex_encoding         = `Enc_iso88591;
       scan_document        = dummy;
@@ -86,6 +86,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.7  2001/10/12 21:38:14  gerd
+ * 	Changes for O'caml 3.03-alpha.
+ *
  * Revision 1.6  2001/06/14 23:29:03  gerd
  * 	Arbitrary lexical analyzers can be plugged into the parser,
  * not only for ISO-8859-1 and UTF-8.

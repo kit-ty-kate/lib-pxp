@@ -1,4 +1,4 @@
-(* $Id: pxp_aux.ml,v 1.12 2001/06/27 23:34:54 gerd Exp $
+(* $Id: pxp_aux.ml,v 1.13 2001/10/12 21:38:14 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -631,18 +631,18 @@ let normalize_public_id s =
    * &#32;, and removes leading and trailing white space.
    *)
   let s1 = Netstring_str.global_replace
-	     ~pat:re_multi_ws
-	     ~templ:" "
+	     re_multi_ws
+	     " "
 	     s in
 
   let s2 = Netstring_str.global_replace
-	     ~pat:re_beg_ws
-	     ~templ:""
+	     re_beg_ws
+	     ""
 	     s1 in
 
   let s3 = Netstring_str.global_replace
-	     ~pat:re_end_ws
-	     ~templ:""
+	     re_end_ws
+	     ""
 	     s2 in
   s3
 ;;
@@ -766,6 +766,9 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
  * History:
  *
  * $Log: pxp_aux.ml,v $
+ * Revision 1.13  2001/10/12 21:38:14  gerd
+ * 	Changes for O'caml 3.03-alpha.
+ *
  * Revision 1.12  2001/06/27 23:34:54  gerd
  * 	StringMap now here.
  * 	New function extract_prefix.

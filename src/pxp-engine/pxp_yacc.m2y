@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.32 2001/07/04 21:55:52 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.33 2001/10/12 21:38:14 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -368,20 +368,10 @@ class ['ext] parser_object
 	      (fun s ->
 		 let l = String.length s in
 		 pos := !pos - l;
-		 String.blit
-		   ~src:s
-		   ~src_pos:0
-		   ~dst:str
-		   ~dst_pos:(!pos)
-		   ~len:l
+		 String.blit s 0 str !pos l
 	      )
 	      current_data;
-	    String.blit
-	      ~src:current_string
-	      ~src_pos:0
-	      ~dst:str
-	      ~dst_pos:0
-	      ~len:(String.length current_string);
+	    String.blit current_string 0 str 0 (String.length current_string);
 	    add_node (create_data_node spec dtd str);
 	    current_string <- "";
 	    current_data <- []
@@ -2626,6 +2616,9 @@ end
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.33  2001/10/12 21:38:14  gerd
+ * 	Changes for O'caml 3.03-alpha.
+ *
  * Revision 1.32  2001/07/04 21:55:52  gerd
  * 	Bugfix: Early comments and processing instructions (i.e.
  * if they occur before the first element) are now handled correctly.
