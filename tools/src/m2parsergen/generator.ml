@@ -1,4 +1,4 @@
-(* $Id: generator.ml,v 1.1 2000/05/06 17:36:17 gerd Exp $
+(* $Id: generator.ml,v 1.2 2000/05/06 21:51:08 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -331,6 +331,12 @@ let process_branch b file_name tree branch =
       Buffer.add_string b "\";\n";
     end;
 
+    let this_is_token =
+      match pat.pat_symbol with
+	  U_symbol(_,_)   -> pat.pat_modifier = Exact
+	| L_symbol(_,_,_) -> false
+    in
+
     (* First distinguish between Exact, Option, and Repetition: *)
     begin match pat.pat_modifier with
 	Exact ->
@@ -372,7 +378,11 @@ let process_branch b file_name tree branch =
 		process_symbol pat.pat_symbol previous_was_token true;
 		Buffer.add_string b l;
 		Buffer.add_string b ") in\n";
-		Buffer.add_string b "ignore(yy_get_next());\n";
+
+		if (match pat.pat_symbol with
+			U_symbol(_,_) -> true | _ -> false) then
+		  Buffer.add_string b "ignore(yy_get_next());\n";
+
 		Buffer.add_string b "yy_tok with Not_found -> None in\n";
 	  end
       | Repetition ->
@@ -409,7 +419,13 @@ let process_branch b file_name tree branch =
 		    Buffer.add_string b "ignore(yy_get_next());\n";
 		  Buffer.add_string b "( try while true do (";
 		  process_symbol pat.pat_symbol false true;
-		  Buffer.add_string b "ignore(yy_get_next());\n";
+
+		  if (match pat.pat_symbol with
+			 U_symbol(_,_) -> true | _ -> false) then
+		    Buffer.add_string b "ignore(yy_get_next());\n"
+		  else
+		    Buffer.add_string b "();\n";
+
 		  Buffer.add_string b ") done with Not_found -> ());\n";
 		end
 	    | Some l ->
@@ -422,7 +438,11 @@ let process_branch b file_name tree branch =
 		Buffer.add_string b "yy_list := ";
 		Buffer.add_string b l;
 		Buffer.add_string b " :: !yy_list;\n";
-		Buffer.add_string b "ignore(yy_get_next());\n";
+
+		if (match pat.pat_symbol with
+			U_symbol(_,_) -> true | _ -> false) then
+		  Buffer.add_string b "ignore(yy_get_next());\n";
+
 		Buffer.add_string b "done with Not_found -> ());\n";
 		Buffer.add_string b "let ";
 		Buffer.add_string b l;
@@ -431,11 +451,6 @@ let process_branch b file_name tree branch =
     end;
 
     (* Continue: *)
-    let this_is_token =
-      match pat.pat_symbol with
-	  U_symbol(_,_)   -> pat.pat_modifier = Exact
-	| L_symbol(_,_,_) -> false
-    in
     (new_position, this_is_token)
   in
 
@@ -459,22 +474,32 @@ let process_branch b file_name tree branch =
     Buffer.add_string b "\n";
 
     (* Process the other symbols in turn: *)
-    ignore
+    let (_, previous_was_token') =
       (List.fold_left
 	 process_pattern
 	 (current_position, previous_was_token)
 	 branch.branch_pattern
-      );
+      )
+    in
 
-    (* Special case: *)
-    if branch.branch_pattern = [] then
-      Buffer.add_string b "ignore(yy_get_next());\n";
+    (* Special case: 
+     *
+     * If previous_was_token', we must invoke yy_get_next one more time.
+     * This is deferred until "CODE" is executed to give this code 
+     * the chance to make the next token available (in XML, the next token
+     * might come from a different entity, and "CODE" must switch to this
+     * entity).
+     *)
 
     (* Now output "CODE": *)
-    Buffer.add_string b "\n";
+    Buffer.add_string b "let result = \n";
     output_code b file_name branch.branch_result_code;
-    Buffer.add_string b "\n";
+    Buffer.add_string b "\nin\n";
 
+    if previous_was_token' then
+      Buffer.add_string b "ignore(yy_get_next());\nresult\n"
+    else
+      Buffer.add_string b "result\n"
   in
 
   (* If we have a ? clause, generate now the "try" statement *)
@@ -652,7 +677,9 @@ let count_lines s =
 
 
 type scan_context =
-    { mutable line : int;
+    { mutable old_line : int;
+      mutable old_column : int;
+      mutable line : int;
       mutable column : int;
     }
 ;;
@@ -662,6 +689,8 @@ let rec next_token context lexbuf =
   let t = Lexer.scan_file lexbuf in
   let line = context.line in
   let column = context.column in
+  context.old_line <- line;
+  context.old_column <- column;
   let n_lines, n_columns = count_lines (Lexing.lexeme lexbuf) in
   if n_lines > 0 then begin
     context.line <- line + n_lines;
@@ -684,6 +713,8 @@ let parse_and_generate ch =
     let t = Lexer.scan_header lexbuf in
     let line = context.line in
     let column = context.column in
+    context.old_line <- line;
+    context.old_column <- column;
     let n_lines, n_columns = count_lines (Lexing.lexeme lexbuf) in
     if n_lines > 0 then begin
       context.line <- line + n_lines;
@@ -704,6 +735,8 @@ let parse_and_generate ch =
     let t = Lexer.scan_header lexbuf in
     let line = context.line in
     let column = context.column in
+    context.old_line <- line;
+    context.old_column <- column;
     let n_lines, n_columns = count_lines (Lexing.lexeme lexbuf) in
     if n_lines > 0 then begin
       context.line <- line + n_lines;
@@ -721,7 +754,7 @@ let parse_and_generate ch =
 
   (* First read until '%%' *)
   let lexbuf = Lexing.from_channel ch in
-  let context = { line = 1; column = 0 } in
+  let context = { old_line = 0; old_column = 0; line = 1; column = 0 } in
   let file_name = "stdin" in
   try
     output_code_location b file_name ("", 1, 0);
@@ -738,18 +771,24 @@ let parse_and_generate ch =
   with
       any ->
 	Printf.eprintf 
-	  "Error at position %d: %s\n"
-	  (Lexing.lexeme_start lexbuf)
-	  (Printexc.to_string any)
+	  "Error at line %d column %d: %s\n"
+	  context.old_line
+	  context.old_column
+	  (Printexc.to_string any);
+	exit 1
 ;;
 
 
 parse_and_generate stdin;;
+exit 0;;
 
 (* ======================================================================
  * History:
  * 
  * $Log: generator.ml,v $
+ * Revision 1.2  2000/05/06 21:51:08  gerd
+ * 	Numerous bugfixes.
+ *
  * Revision 1.1  2000/05/06 17:36:17  gerd
  * 	Initial revision.
  *
