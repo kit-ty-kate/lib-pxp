@@ -1,8 +1,10 @@
-(* $Id: pxp_document.ml,v 1.20 2001/05/17 21:38:37 gerd Exp $
+(* $Id: pxp_document.ml,v 1.21 2001/06/08 00:12:56 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
+
+(* TODO: Fehler in internal_adopt? *)
 
 open Pxp_types
 open Pxp_lexer_types
@@ -13,6 +15,14 @@ open Pxp_dfa
 
 let method_na s =
   raise (Method_not_applicable s)
+;;
+
+
+let nsmethod_na s =
+  (* Use this only if the method is not available AND if the method is a
+   * namespace method AND if the class is not namespace-aware
+   *)
+  raise (Namespace_method_not_applicable s)
 ;;
 
 
@@ -30,15 +40,50 @@ type node_type =
 ;;
 
 
+type data_node_classification =
+    CD_normal
+  | CD_other
+  | CD_empty
+  | CD_ignorable
+  | CD_error of exn
+;;
+
+
 class namespace_manager =
 object (self)
-    val uri_of_prefix = Hashtbl.create 10
-    val prefix_of_uri = Hashtbl.create 10
+    val uri_of_prefix = Hashtbl.create 10  (* not unique *)
+    val prefix_of_uri = Hashtbl.create 10  (* unique *)
+    val primary_uri_of_prefix = Hashtbl.create 10  (* unique *)
 
     initializer
-      ignore(self # add "xml" "http://www.w3.org/XML/1998/namespace")
+      ignore(self # add_namespace "xml" "http://www.w3.org/XML/1998/namespace")
 
-    method add prefix (uri:string) =
+    method add_uri (np:string) (uri:string) =
+      if not (Hashtbl.mem uri_of_prefix np) then raise Not_found;
+      try
+	let np' = Hashtbl.find prefix_of_uri uri in
+	if np <> np' then
+	  raise(Namespace_error "add_uri: the URI is already managed")
+      with
+	  Not_found ->
+	    Hashtbl.add uri_of_prefix np uri;
+	    Hashtbl.add prefix_of_uri uri np;
+	    ()
+
+    method add_namespace np uri =
+      let l = Hashtbl.find_all uri_of_prefix np in
+      if l = [] then begin
+	if Hashtbl.mem prefix_of_uri uri then
+	  raise(Namespace_error "add_namespace: the URI is already managed");
+	Hashtbl.add uri_of_prefix np uri;
+	Hashtbl.add primary_uri_of_prefix np uri;
+	Hashtbl.add prefix_of_uri uri np;
+      end
+      else 
+	if l <> [ uri ] then
+	  raise(Namespace_error "add_namespace: the namespace does already exist")
+
+    method lookup_or_add_namespace prefix (uri:string) =
       let rec add_loop n =
 	let p = prefix ^ (if n=0 then "" else string_of_int n) in
 	if Hashtbl.mem uri_of_prefix p then begin
@@ -46,6 +91,7 @@ object (self)
 	end
 	else begin
 	  Hashtbl.add uri_of_prefix p uri;
+	  Hashtbl.add primary_uri_of_prefix p uri;
 	  Hashtbl.add prefix_of_uri uri p;
 	  p
 	end
@@ -57,11 +103,19 @@ object (self)
 	    add_loop (if prefix = "" then 1 else 0)
 	      (* prefix = "": make sure that such a prefix is never added *)
 
-    method get_uri normprefix =
-      Hashtbl.find uri_of_prefix normprefix
+    method get_primary_uri normprefix =
+      Hashtbl.find primary_uri_of_prefix normprefix
+
+    method get_uri_list normprefix =
+      Hashtbl.find_all uri_of_prefix normprefix
 
     method get_normprefix uri =
       Hashtbl.find prefix_of_uri uri
+
+    method iter_namespaces f =
+      Hashtbl.iter 
+	(fun p uri -> f p)
+	primary_uri_of_prefix
   end
 ;;
 
@@ -80,10 +134,14 @@ class type [ 'ext ] node =
     constraint 'ext = 'ext node #extension
     method extension : 'ext
     method delete : unit
+    method delete_nodes : ?pos:int -> ?len:int -> unit -> unit
     method parent : 'ext node
     method root : 'ext node
     method orphaned_clone : 'self
     method orphaned_flat_clone : 'self
+    method classify_data_node : 'ext node -> data_node_classification
+    method append_node : 'ext node -> unit
+    method insert_nodes : ?pos:int -> 'ext node list -> unit
     method add_node : ?force:bool -> 'ext node -> unit
     method add_pinstr : proc_instruction -> unit
     method pinstr : string -> proc_instruction list
@@ -99,6 +157,7 @@ class type [ 'ext ] node =
     method next_node : 'ext node
     method set_nodes : 'ext node list -> unit
     method data : string
+    method set_data : string -> unit
     method node_type : node_type
     method position : (string * int * int)
     method attribute : string -> att_value
@@ -113,6 +172,7 @@ class type [ 'ext ] node =
     method id_attribute_value : string
     method idref_attribute_names : string list
     method quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method set_attributes : (string * Pxp_types.att_value) list -> unit
     method attributes_as_nodes : 'ext node list
     method set_comment : string option -> unit
     method comment : string option
@@ -128,18 +188,23 @@ class type [ 'ext ] node =
     method create_element :
                    ?name_pool_for_attribute_values:pool ->
                    ?position:(string * int * int) ->
+		   ?valcheck:bool ->
+		   ?att_values:( (string * att_value) list) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
     method create_data : dtd -> string -> 'ext node
-    method local_validate : ?use_dfa:bool -> unit -> unit
-    method keep_always_whitespace_mode : unit
+    method local_validate : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+    method validate_contents : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+    method complement_attlist : unit -> unit
+    method validate_attlist : unit -> unit
+    method validate : unit -> unit
     method write : ?prefixes:string list -> output_stream -> encoding -> unit
-    method write_compact_as_latin1 : output_stream -> unit
     method internal_adopt : 'ext node option -> int -> unit
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
     method internal_init : (string * int * int) ->
-                           pool option ->
-                           dtd -> string -> (string * string) list -> unit
+                           pool option -> bool ->
+                           dtd -> string -> (string * string) list -> 
+			   (string * att_value) list -> unit
     method internal_init_other : (string * int * int) ->
                                  dtd -> node_type -> unit
   end
@@ -550,20 +615,24 @@ class virtual ['ext] node_impl an_ext =
 
     method comment : string option                = method_na "comment"
     method set_comment (c : string option) : unit = method_na "set_comment"
-    method normprefix : string                    = method_na "normprefix"
-    method localname : string                     = method_na "localname"
-    method namespace_uri : string                 = method_na "namespace_uri"
-    method namespace_info : 'ext namespace_info   = method_na "namespace_info"
+    method normprefix : string                    = nsmethod_na "normprefix"
+    method localname : string                     = nsmethod_na "localname"
+    method namespace_uri : string                 = nsmethod_na "namespace_uri"
+    method namespace_info : 'ext namespace_info   = nsmethod_na "namespace_info"
     method set_namespace_info (info : 'ext namespace_info option) : unit 
-            = method_na "set_namespace_info"
+            = nsmethod_na "set_namespace_info"
     method namespace_manager                      
-            = method_na "namespace_manager"
+            = nsmethod_na "namespace_manager"
     method set_namespace_manager (m : namespace_manager) 
-            = method_na "set_namespace_manager"
+            = nsmethod_na "set_namespace_manager"
 
 
     (************* METHODS THAT NEED TO BE DEFINED **************)
 
+    method virtual delete_nodes : ?pos:int -> ?len:int -> unit -> unit
+    method virtual classify_data_node : 'ext node -> data_node_classification
+    method virtual append_node : 'ext node -> unit
+    method virtual insert_nodes : ?pos:int -> 'ext node list -> unit
     method virtual add_node : ?force:bool -> 'ext node -> unit
     method virtual add_pinstr : proc_instruction -> unit
     method virtual sub_nodes : 'ext node list
@@ -574,6 +643,7 @@ class virtual ['ext] node_impl an_ext =
     method virtual nth_node : int -> 'ext node
     method virtual set_nodes : 'ext node list -> unit
     method virtual data : string
+    method virtual set_data : string -> unit
     method virtual node_type : node_type
     method virtual position : (string * int * int)
     method virtual attribute : string -> att_value
@@ -585,20 +655,23 @@ class virtual ['ext] node_impl an_ext =
     method virtual optional_string_attribute : string -> string option
     method virtual optional_list_attribute : string -> string list
     method virtual quick_set_attributes : (string * Pxp_types.att_value) list -> unit
+    method virtual set_attributes : (string * Pxp_types.att_value) list -> unit
     method virtual attributes_as_nodes : 'ext node list
     method virtual create_element :
                    ?name_pool_for_attribute_values:pool ->
                    ?position:(string * int * int) ->
+		   ?valcheck:bool ->
+		   ?att_values:((string * att_value) list) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
     method virtual create_data : dtd -> string -> 'ext node
-    method virtual keep_always_whitespace_mode : unit
     method virtual write : ?prefixes:string list -> output_stream -> encoding -> unit
-    method virtual write_compact_as_latin1 : output_stream -> unit
-    method virtual local_validate : ?use_dfa:bool -> unit -> unit
+    method virtual local_validate : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
+    method virtual validate_contents : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
     method virtual internal_delete : 'ext node -> unit
     method virtual internal_init : (string * int * int) ->
-                                   pool option ->
+                                   pool option -> bool -> 
                                    dtd -> string -> (string * string) list ->
+				   (string * Pxp_types.att_value) list ->
                                        unit
     method virtual internal_init_other : (string * int * int) ->
                                          dtd -> node_type -> unit
@@ -621,6 +694,10 @@ class ['ext] data_impl an_ext : ['ext] node =
 
     method position = no_position
 
+    method delete_nodes ?pos ?len () = method_na "delete_nodes"
+    method classify_data_node _ = method_na "classify_data_node"
+    method append_node _ = method_na "append_node"
+    method insert_nodes ?pos _ = method_na "insert_nodes"
     method add_node ?(force=false) _ = method_na "add_node"
     method add_pinstr _ = method_na "add_pinstr"
     method pinstr _ = []
@@ -646,9 +723,11 @@ class ['ext] data_impl an_ext : ['ext] node =
     method id_attribute_value = raise Not_found
     method idref_attribute_names = []
     method quick_set_attributes _ = method_na "quick_set_attributes"
+    method set_attributes _ = method_na "set_attributes"
     method attributes_as_nodes = []
 
-    method create_element ?name_pool_for_attribute_values ?position _ _ _ =
+    method create_element ?name_pool_for_attribute_values ?position 
+                          ?valcheck ?att_values _ _ _ =
       method_na "create_element"
 
     method create_data new_dtd new_str =
@@ -662,8 +741,15 @@ class ['ext] data_impl an_ext : ['ext] node =
 	: 'ext #node :> 'ext node) in
       x # set_node n;
       n
-    method local_validate ?use_dfa () = ()
-    method keep_always_whitespace_mode = ()
+
+    method set_data str =
+      content <- str
+
+    method local_validate ?use_dfa ?check_data_nodes () = ()
+    method validate_contents ?use_dfa ?check_data_nodes () = ()
+    method complement_attlist() = ()
+    method validate_attlist () = ()
+    method validate () = ()
 
 
     method write ?(prefixes = ([]: string list)) os enc =
@@ -671,12 +757,9 @@ class ['ext] data_impl an_ext : ['ext] node =
       write_data_string ~from_enc:encoding ~to_enc:enc os content
 
 
-    method write_compact_as_latin1 os =
-      self # write os `Enc_iso88591
-
-    method internal_delete _ =          assert false
-    method internal_init _ _ _ _ _ =    assert false
-    method internal_init_other _ _ _ =  assert false
+    method internal_delete _ =           assert false
+    method internal_init _ _ _ _ _ _ _ = assert false
+    method internal_init_other _ _ _ =   assert false
   end
 ;;
 
@@ -807,53 +890,84 @@ class ['ext] attribute_impl ~element ~name value dtd =
      method nth_node _ = raise Not_found
      method position = no_position
      method comment = None
-     method local_validate ?use_dfa () = ()
+     method local_validate ?use_dfa ?check_data_nodes () = ()
+     method validate_contents ?use_dfa ?check_data_nodes () = ()
+     method complement_attlist () = ()
+     method validate_attlist () = ()
+     method validate () = ()
 
     (* Non-applicable methods: *)
 
      method extension =          method_na "extension"
      method delete =             method_na "delete"
+     method delete_nodes ?pos ?len _ = method_na "delete_nodes"
      method previous_node =      method_na "previous_node"
      method next_node =          method_na "next_node"
      method internal_set_pos _ = method_na "internal_set_pos"
      method internal_delete _ =  method_na "internal_delete"
-     method internal_init _ _ _ _ _ =   method_na "internal_init"
+     method internal_init _ _ _ _ _ _ _ = method_na "internal_init"
      method internal_init_other _ _ _ = method_na "internal_init_other"
+     method classify_data_node _      = method_na "classify_data_node"
+     method append_node _     =  method_na "append_node"
+     method insert_nodes ?pos _       =  method_na "append_node"
      method add_node ?force _ =  method_na "add_node"
      method add_pinstr _ =       method_na "add_pinstr"
      method set_nodes _ =        method_na "set_nodes"
      method quick_set_attributes _ =    method_na "quick_set_attributes"
+     method set_attributes _ =   method_na "set_attributes"
      method attributes_as_nodes =       method_na "attributes_as_nodes"
      method set_comment c =      method_na "set_comment"
-     method create_element ?name_pool_for_attribute_values ?position _ _ _ =
+     method set_data _ =         method_na "set_data"
+     method create_element ?name_pool_for_attribute_values ?position 
+                           ?valcheck ?att_values _ _ _ =
                                  method_na "create_element"
      method create_data _ _ =    method_na "create_data"
-     method keep_always_whitespace_mode = 
-                                 method_na "keep_always_whitespace_mode"
      method write ?prefixes _ _ = method_na "write"
-     method write_compact_as_latin1 _ =
-                                 method_na "write_compact_as_latin1"
      method id_attribute_name =  method_na "id_attribute_name"
      method id_attribute_value = method_na "id_attribute_value"
      method idref_attribute_names =     method_na "idref_attribute_names"
-     method normprefix =         method_na "normprefix"
-     method localname =          method_na "localname"
-     method namespace_uri =      method_na "namespace_uri"
-     method namespace_info =     method_na "namespace_info"
+     method normprefix =         nsmethod_na "normprefix"
+     method localname =          nsmethod_na "localname"
+     method namespace_uri =      nsmethod_na "namespace_uri"
+     method namespace_info =     nsmethod_na "namespace_info"
      method set_namespace_info info =
-                                 method_na "set_namespace_info"
-     method namespace_manager =  method_na "namespace_manager"
+                                 nsmethod_na "set_namespace_info"
+     method namespace_manager =  nsmethod_na "namespace_manager"
      method set_namespace_manager =
-                                 method_na "set_namespace_manager"
+                                 nsmethod_na "set_namespace_manager"
    end
      : ['ext] node)
 ;;
+
+let attribute_name n =
+  match n # node_type with
+      T_attribute name -> name
+    | _ -> invalid_arg "Pxp_document.attribute_name"
+;;
+
+
+let attribute_value n =
+  match n # node_type with
+      T_attribute name -> n # attribute name
+    | _ -> invalid_arg "Pxp_document.attribute_value"
+;;
+
+
+let attribute_string_value n =
+  match n # node_type with
+      T_attribute name -> n # data
+    | _ -> invalid_arg "Pxp_document.attribute_value"
+;;
+
+
 
 (**********************************************************************)
 
 let flag_ext_decl = 1;;
     (* Whether the element is externally declared *)
-let flag_keep_always_whitespace = 2;;
+
+(* REMOVED in PXP 1.1: *)
+(* let flag_keep_always_whitespace = 2;; *)
     (* Whether the "keep whitespace mode" is on *)
 
 
@@ -878,7 +992,6 @@ type 'a list_or_array =
 ;;
 (* Perhaps we need also the hybrid LA_list_array storing both representations.
  *)
-
 
 type 'ext attlist =
     No_atts
@@ -947,10 +1060,9 @@ let att_add_array l x =
 ;;
 
 
-let att_add_raw_list lexerset mk_pool_value new_dtd l x =
+let att_add_list l x =
   List.iter
-    (fun (n,att_val) ->
-       let v = mk_pool_value (Value att_val) in
+    (fun (n,v) ->
        l := Att(n,v,!l);
     )
     x
@@ -970,6 +1082,31 @@ let rec att_return_nodes l =
       No_atts      -> []
     | Att (n,v,l') -> assert false
     | Att_with_node (_,_,n,l') -> n :: att_return_nodes l'
+;;
+
+
+let rec att_remove_nodes l =
+  match l with
+      No_atts      -> No_atts
+    | Att (n,v,l') -> Att (n,v, att_remove_nodes l')
+    | Att_with_node (n,v,_,l') -> Att(n,v, att_remove_nodes l')
+;;
+
+
+
+let list_split n l =
+  (* Returns l1, l2 with l = List.rev l1 @ l2 and length l1 = n *)
+  let rec split n l h =
+    if n = 0 then
+      h, l
+    else
+      match l with
+	  [] -> 
+	    failwith "list_split"
+	| x :: l' ->
+	    split (n-1) l' (x::h)
+  in
+  split n l []
 ;;
 
 
@@ -1022,7 +1159,7 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	    | Some c -> attributes <- Att ("", Value c, No_atts)
 	end
 	else
-	  failwith "set_comment: not applicable to node types other than T_comment"
+	  method_na "set_comment"
 
       method attributes =
 	att_map (fun an ax -> (an,ax)) attributes
@@ -1033,79 +1170,164 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	match ntype with
 	    T_element n -> "Element `" ^ n ^ "'"
 	  | T_super_root -> "Super root"
-	  | T_pinstr n -> "Wrapper element for processing instruction `" ^ n ^
+	  | T_pinstr n -> "Processing instruction node `" ^ n ^
 	      "'"
-	  | T_comment -> "Wrapper element for comment"
+	  | T_comment -> "Comment node"
 	  | T_none -> "NO element"
 	  | T_attribute _ -> assert false
 	  | T_namespace _ -> assert false
 	  | T_data -> assert false
 
-      method add_node ?(force = false) n =
+      method append_node n =
 	(* general DTD check: *)
 	begin match dtd with
 	    None -> ()
 	  | Some d -> if n # dtd != d then
-	      failwith "Pxp_document.tree_impl # add_node: the sub node has a different DTD";
+	      failwith "Pxp_document.markup_impl # append_node: the sub node has a different DTD";
 	end;
-	(* specific checks: *)
+	(* Add the node: *)
+	n # internal_adopt (Some (self : 'ext #node :> 'ext node)) size;
+	rev_nodes <- n :: rev_nodes;
+	nodes <- LA_not_available;
+	size <- size + 1
+
+
+      method classify_data_node n =
 	try
 	  begin match n # node_type with
 	      T_data ->
 		begin match vr.content_model with
-		    Any         -> ()
-		  | Unspecified -> ()
+		    Any         -> CD_normal
+		  | Unspecified -> CD_normal
 		  | Empty       ->
-		      if not force then begin
-			if n # data <> "" then
-			  raise(Validation_error(self # error_name ^
-						 " must be empty"));
-			raise Skip
-		      end
-		  | Mixed _     -> ()
+		      if n # data <> "" then
+			CD_error(Validation_error(self # error_name ^
+						  " must be empty"))
+		      else
+			CD_empty
+		  | Mixed _     -> CD_normal
 		  | Regexp _    ->
-		      if not force then begin
-			let lexerset =
-			  Pxp_lexers.get_lexer_set (self # dtd # encoding) in
-			only_whitespace (fun()->self # error_name)
-			                (n # data);
-			(* TODO: following check faster *)
-			if n # dtd # standalone_declaration &&
-		          n # data <> ""
-			then begin
-			  (* The standalone declaration is violated if the
-			   * element declaration is contained in an external
-			   * entity.
-			   *)
-			  if flags land flag_ext_decl <> 0 then
-			    raise
-			      (Validation_error
-				 (self # error_name ^
-				  " violates standalone declaration"  ^
-				  " because extra white space separates" ^
-				  " the sub elements"));
-			end;
-			if not (flags land flag_keep_always_whitespace <> 0)
-			then raise Skip
-		      end
+		      (* May raise an exception: *)
+		      only_whitespace (fun()->self # error_name)
+			(n # data);
+ 	 	      (* TODO: following check faster *)
+		      if n # dtd # standalone_declaration &&
+		        n # data <> ""
+		      then begin
+			(* The standalone declaration is violated if the
+			 * element declaration is contained in an external
+			 * entity.
+			 *)
+			if flags land flag_ext_decl <> 0 then
+			  raise
+			    (Validation_error
+			       (self # error_name ^
+				" violates standalone declaration"  ^
+				" because extra white space separates" ^
+				" the sub elements"));
+		      end;
+		      CD_ignorable
 		end
 	    | _ ->
-		()
+		(* n is not a data node: *)
+		CD_other
 	  end;
-	  (* all OK, so add this node: *)
-	  n # internal_adopt (Some (self : 'ext #node :> 'ext node)) size;
-	  rev_nodes <- n :: rev_nodes;
-	  nodes <- LA_not_available;
-	  size <- size + 1
-	with Skip ->
-	  ()
+	with ex ->
+	  CD_error ex
+
+      method add_node ?(force = false) n =
+	(* compatibility with PXP 1.0: *)
+	match self # classify_data_node n with
+	    CD_other
+	  | CD_normal ->
+	      self # append_node n
+	  | CD_empty 
+	  | CD_ignorable ->
+	      ()
+	  | CD_error ex ->
+	      raise ex
+
+      method insert_nodes ?(pos = size) new_nodes =
+	if pos < 0 || pos > size then invalid_arg "insert_nodes: ~pos";
+	List.iter
+	  (fun n ->
+	     try ignore(n # parent);
+	         invalid_arg "insert_nodes: new node is not orphan"
+	     with Not_found -> ()
+	  )
+	  new_nodes;
+	let succ_nodes, rev_pred_nodes =
+	  list_split (size-pos) rev_nodes in
+	(* succ_nodes: the nodes at position pos
+	 * rev_pred_nodes: the nodes before position pos in reverse order
+	 *)
+	rev_nodes <- List.rev_append 
+	               succ_nodes 
+	               (List.rev_append new_nodes rev_pred_nodes);
+	let k = ref 0 in
+	List.iter
+	  (fun n -> 
+	     n # internal_adopt 
+	       (Some (self : 'ext #node :> 'ext node)) 
+	       (pos + !k);
+	     (* internal_adopt cannot fail because of the above orphan check *)
+	     incr k
+	  )
+	  new_nodes;
+	let number_new_nodes = !k in
+	(* renumber succ_nodes: *)
+	List.iter
+	  (fun n -> 
+	     n # internal_set_pos (pos + !k);
+	     incr k
+	  )
+	  succ_nodes;
+	nodes <- LA_not_available;
+	size <- size + number_new_nodes;
+	()
+
+      method delete_nodes ?(pos = 0) ?(len = size) () =
+	if pos < 0 || len < 0 || pos + len > size then 
+	  invalid_arg "delete_node: ~pos or ~len";
+	let succ_nodes, rev_pred_nodes =
+	  list_split (size-pos) rev_nodes in
+	(* succ_nodes: the nodes at position pos
+	 * rev_pred_nodes: the nodes before position pos in reverse order
+	 *                 (nodes to keep)
+	 *)
+	let rev_pred_nodes', succ_nodes' =
+	  list_split len succ_nodes in
+	(* succ_nodes': the nodes at position pos+len
+	 *              (nodes to keep)
+	 * rev_pred_nodes': the nodes from position pos to pos+len-1 (rev order)
+	 *                  (nodes to delete)
+	 *)
+	List.iter
+	  (fun n -> 
+	     n # internal_adopt None (-1)
+	     (* internal_adopt cannot fail because of an invariant *)
+	  )
+	  rev_pred_nodes';
+	rev_nodes <- List.rev_append succ_nodes' rev_pred_nodes;
+	nodes <- LA_not_available;
+	size <- size - len;
+	let k = ref pos in
+	List.iter
+	  (fun n ->
+	     n # internal_set_pos !k;
+	     incr k
+	  )
+	  succ_nodes';
+	()
+
+      method set_data _ = method_na "set_data"
 
       method add_pinstr pi =
 	begin match dtd with
 	    None -> ()
 	  | Some d ->
 	      if pi # encoding <> d # encoding then
-		failwith "Pxp_document.tree_impl # add_pinstr: Inconsistent encodings";
+		failwith "Pxp_document.markup_impl # add_pinstr: Inconsistent encodings";
 	end;
 	let name = pi # target in
 	let l =
@@ -1212,6 +1434,7 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	      a.(p)
 
       method set_nodes nl =
+	(* TODO *)
 	let old_size = size in
 	List.iter
 	  (fun n -> n # internal_adopt None (-1))
@@ -1226,6 +1449,7 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	    nl
 	with
 	    e ->
+	      (* TODO: questionable impl! *)
 	      (* revert action as much as possible *)
 	      List.iter
 		(fun n -> n # internal_adopt None (-1))
@@ -1357,7 +1581,7 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 		      A_cdata
 	      )
 	  | _ ->
-	      failwith "attribute_type: not available for non-element nodes"
+	      method_na "attribute_type"
 
 
       method required_string_attribute n =
@@ -1388,7 +1612,7 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	    | Implied_value -> raise Not_found
 	with
 	    Not_found ->
-	      failwith "Markup.document, method required_list_attribute: not found"
+	      failwith "Pxp_document, method required_list_attribute: not found"
 
       method optional_list_attribute n =
 	try
@@ -1424,7 +1648,14 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	    T_element _ ->
 	      attributes <- att_make atts;
 	  | _ ->
-	      failwith "quick_set_attributes: not applicable for non-element node"
+	      method_na "quick_set_attributes"
+
+      method set_attributes atts =
+	match ntype with
+	    T_element _ ->
+	      attributes <- att_make atts;
+	  | _ ->
+	      method_na "set_attributes"
 
       method private make_attribute_node element_name att_name value dtd =
 	new attribute_impl 
@@ -1464,7 +1695,10 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 
       method create_element
 	               ?name_pool_for_attribute_values
-                       ?(position = no_position) new_dtd new_type new_attlist =
+                       ?(position = no_position) 
+		       ?(valcheck = true)
+		       ?(att_values = [])
+		       new_dtd new_type new_attlist =
 	let x = extension # clone in
 	let obj = ( {< parent = None;
 		       extension = x;
@@ -1472,6 +1706,9 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 		    >}
 	    	    : 'ext #node :> 'ext node
 		  ) in
+	(* It is ok that obj does not reset rev_nodes because the init_*
+	 * methods do that.
+	 *)
 	x # set_node obj;
 	match new_type with
 	    T_data ->
@@ -1479,9 +1716,11 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	  | T_element name ->
 	      obj # internal_init
                       position name_pool_for_attribute_values
-                      new_dtd name new_attlist;
+		      valcheck
+                      new_dtd name new_attlist att_values;
 	      obj
 	  | (T_comment | T_pinstr _ | T_super_root | T_none) ->
+	      (* TODO: is it ok that attlist is silently ignored? *)
 	      obj # internal_init_other position new_dtd new_type;
 	      obj
 	  | _ ->
@@ -1586,8 +1825,10 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
        * Finally, init_att_vals and extra_att_vals are merged.
        *)
 
-      method internal_init new_pos attval_name_pool new_dtd new_name
-                           new_attlist =
+      method internal_init new_pos attval_name_pool 
+                           valcheck_element_exists
+                           new_dtd new_name
+                           new_attlist new_attvalues =
 	(* ONLY FOR T_Element NODES!!! *)
 	(* resets the contents of the object *)
 	parent <- None;
@@ -1616,7 +1857,12 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	let att_vals =
 	  try
 	    (* catch Undeclared in the following block: *)
-	    let eltype = new_dtd # element new_name in (* may raise Undeclared *)
+	    let eltype = 
+	      if valcheck_element_exists then
+		new_dtd # element new_name (* may raise Undeclared *)
+	      else
+		raise Undeclared  (* raise Undeclared anyway *)
+	    in
 	    vr <- eltype # internal_vr;
 	    self # set_flag flag_ext_decl (eltype # externally_declared);
 
@@ -1626,6 +1872,8 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	    if m > 0 then begin
 	      (* round 1 *)
 	      let att_found = Array.create m false in
+	      (* First iterate over new_attlist, then over new_attvalues: *)
+	      (* new_attlist: *)
 	      List.iter
 		(fun (att_name, att_val) ->
 		   let bad = ref false in
@@ -1672,9 +1920,66 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 		       Not_found ->
 			 assert(not !bad);
 			 (* Raised by Hashtbl.find *)
-			 undeclared_atts := (att_name, att_val):: !undeclared_atts
+			 let v = mk_pool_value (Value att_val) in
+			 undeclared_atts := (att_name, v):: !undeclared_atts
 		)
 		new_attlist;
+
+	      (* new_attvalues: Almost the same. *)
+	      List.iter
+		(fun (att_name, v) ->
+		   let bad = ref false in
+		   try
+		     let k = Str_hashtbl.find vr.att_lookup att_name in
+		             (* or raise Not_found *)
+		     bad := true;
+		     if att_found.(k) then
+		       raise (WF_error("Attribute `" ^ att_name ^
+				       "' occurs twice in element `" ^
+				       new_name ^ "'"));
+		     let att_type, att_fixed = vr.att_info.(k) in
+		     check_value_of_attribute
+		       lexerset new_dtd att_name att_type v;
+
+		     (* Check: Only atts flagged as #IMPLIED
+		      * can be set to Implied_value
+		      *)
+
+		     if v = Implied_value then begin
+		       let _, d = init_att_vals.(k) in
+		       if d = Implied_value then begin
+			 if List.mem k vr.att_required then
+			   raise
+			     (Validation_error
+				("Attribute `" ^ att_name ^ "' has Implied_value, but is declared as #REQUIRED"));
+		       end
+		       else
+			 raise
+			   (Validation_error
+			      ("Attribute `" ^ att_name ^ "' has Implied_value, but is not declared as #IMPLIED"));
+		     end;
+
+		     if att_fixed then begin
+		       let _, v' = init_att_vals.(k) in
+		       if v <> v' then
+			 raise
+			   (Validation_error
+			      ("Attribute `" ^ att_name ^
+			       "' is fixed, but has here a different value"));
+		     end
+		     else begin
+		       init_att_vals.(k) <- att_name, v
+		     end;
+
+		     att_found.(k) <- true;
+
+		   with
+		       Not_found ->
+			 assert(not !bad);
+			 (* Raised by Hashtbl.find *)
+			 undeclared_atts := (att_name, v):: !undeclared_atts
+		)
+		new_attvalues;
 
               (* Check required attributes: *)
 	      List.iter
@@ -1705,14 +2010,18 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 
 	    end (* of round 1 *)
 	    else
-	      undeclared_atts := new_attlist;
+	      undeclared_atts := 
+	        List.map (fun (n,s) -> n, mk_pool_value (Value s)) new_attlist @
+	        new_attvalues;
 
 	    init_att_vals
 	  with
 	      Undeclared ->
 		(* raised by #element *)
 		vr <- no_validation;
-		undeclared_atts := new_attlist;
+		undeclared_atts := 
+		  List.map (fun (n,s) -> n, mk_pool_value (Value s)) new_attlist @
+		  new_attvalues;
 		[| |]
 	in
 
@@ -1745,156 +2054,50 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 
 	let a = ref No_atts in
 	att_add_array a att_vals;
-	att_add_raw_list lexerset mk_pool_value new_dtd a att_vals';
+	att_add_list  a att_vals';
 	attributes <- !a
 
 
-(* ------------------------------------------------------------
-   OLD IMPLEMENTATION
-   ------------------------------------------------------------
-
-      method internal_init new_pos attval_name_pool new_dtd new_name
-                           new_attlist =
-	(* ONLY FOR T_Element NODES!!! *)
-	(* resets the contents of the object *)
-	parent <- None;
-	rev_nodes <- [];
-	nodes <- LA_not_available;
-	ntype <- T_element new_name;
-	position <- new_pos;
-
-	let lexerset = Pxp_lexers.get_lexer_set (new_dtd # encoding) in
-	let sadecl = new_dtd # standalone_declaration in
-
-	let mk_pool_value av0 =
-	  match attval_name_pool with
-	      None -> av0
-	    | Some pool ->
-		(match av0 with
-		     Implied_value -> Implied_value
-		   | Value s -> Value (pool_string pool s)
-		   | Valuelist l ->
-		       Valuelist (List.map (pool_string pool) l)
+      method private update_vr =
+	if vr == no_validation then begin
+	  match ntype with
+	      T_element name ->
+		let dtd = self # dtd in
+		( try
+		    let eltype = 
+		      dtd # element name (* may raise Undeclared *)
+		    in
+		    vr <- eltype # internal_vr;
+		    self # set_flag flag_ext_decl (eltype # externally_declared);
+		  with
+		      Undeclared -> ()
 		)
-	in
+	    | _ -> ()
+	end
 
-	(* First validate the element name and the attributes: *)
-	(* Well-Formedness Constraint: Unique Att Spec *)
-	let rec check_uniqueness al =
-	  match al with
-	      [] -> ()
-	    | (n, av) :: al' ->
-		if List.mem_assoc n al' then
-		  raise (WF_error("Attribute `" ^ n ^ "' occurs twice in element `" ^ new_name ^ "'"));
-		check_uniqueness al'
-	in
-	check_uniqueness new_attlist;
-	(* Validity Constraint: Element Valid [element has been declared] *)
-	try
-	  let eltype = new_dtd # element new_name in (* may raise Undeclared *)
-	  vr <- eltype # internal_vr;
-	  self # set_flag flag_ext_decl (eltype # externally_declared);
-	  (* Validity Constraint: Attribute Value Type *)
-	  (* Validity Constraint: Fixed Attribute Default *)
-	  (* Validity Constraint: Standalone Document Declaration (partly) *)
-	  let undeclared_attlist = ref [] in
-	  let new_attlist' =
-	    List.map
-	      (fun (n,v) ->
-		 try
-		   (* Get type, default, and the normalized attribute
-		    * value 'av':
-		    *)
-		   let atype, adefault = eltype # attribute n in
-		                         (* may raise Undeclared *)
-		   let av0 = value_of_attribute lexerset new_dtd n atype v in
-		   let av = mk_pool_value av0 in
 
-		   (* If necessary, check whether normalization violates
-		    * the standalone declaration.
-		    *)
-		   if sadecl &&
-                      eltype #
-		        attribute_violates_standalone_declaration n (Some v)
-		   then
-		     raise
-		       (Validation_error
-			  ("Attribute `" ^ n ^ "' of element type `" ^
-			   new_name ^ "' violates standalone declaration"));
-		   (* If the default is "fixed", check that. *)
-		   begin match adefault with
-		       (D_required | D_implied) -> ()
-		     | D_default _ -> ()
-		     | D_fixed u ->
-			 let uv = value_of_attribute
-                                         lexerset new_dtd "[default]" atype u in
-			 if av <> uv then
-			   raise
-			     (Validation_error
-				("Attribute `" ^ n ^
-				 "' is fixed, but has here a different value"));
-		   end;
-		   n,av
-		 with
-		     Undeclared ->
-		       (* raised by method "# attribute" *)
-		       let av0 = value_of_attribute lexerset new_dtd n A_cdata v
-		       in
-		       let av = mk_pool_value av0 in
-                       undeclared_attlist :=
-                         (n, av) ::
-                         !undeclared_attlist;
-                       n, Implied_value        (* does not matter *)
-	      )
-	      new_attlist in
-	  (* Validity Constraint: Required Attribute *)
-	  (* Validity Constraint: Standalone Document Declaration (partly) *)
-	  (* Add attributes with default values *)
-	  let new_attlist'' =
-	    List.map
-	      (fun n ->
-		 try
-		   n, List.assoc n new_attlist'
-		 with
-		     Not_found ->
-		       (* Check standalone declaration: *)
-		       if sadecl &&
-			    eltype #
-			    attribute_violates_standalone_declaration
-			    n None then
-			 raise
-			   (Validation_error
-			      ("Attribute `" ^ n ^ "' of element type `" ^
-			       new_name ^ "' violates standalone declaration"));
-		       (* add default value or Implied *)
-		       let atype, adefault = eltype # attribute n in
-		       match adefault with
-			   D_required ->
-			     raise(Validation_error("Required attribute `" ^ n ^ "' is missing"))
-			 | D_implied ->
-			     n, Implied_value
-			 | D_default v ->
-			     n, value_of_attribute lexerset new_dtd n atype v
-			 | D_fixed v ->
-			     n, value_of_attribute lexerset new_dtd n atype v
-	      )
-	      (eltype # attribute_names)
-	  in
-	  dtd <- Some new_dtd;
-	  attributes <- att_make (new_attlist'' @ !undeclared_attlist);
-	with
-	    Undeclared ->
-	      (* The DTD allows arbitrary contents for this element *)
-	      dtd <- Some new_dtd;
-	      attributes <- att_map_make (fun v -> Value v) new_attlist;
-	      vr <- no_validation;
-
-  ------------------------------------------------------------
-*)
-
-      method local_validate ?(use_dfa=false) () =
+      method validate_contents ?(use_dfa=false) ?(check_data_nodes=true) () =
 	(* validates that the content of this element matches the model *)
+	self # update_vr;
 	if vr.content_model <> Any then begin
+	  if check_data_nodes then begin
+	    List.iter
+	      (fun n ->
+		 match n # node_type with
+		     T_data ->
+		       ( match self # classify_data_node n with
+			     CD_normal
+			   | CD_other
+			   | CD_empty
+			   | CD_ignorable -> ()
+			   | CD_error e -> raise e
+		       )
+		   | _ ->
+		       ()
+	      )
+	      rev_nodes;
+	    ()
+	  end;
 	  let dfa = if use_dfa then Lazy.force vr.content_dfa else None in
 	  if not (validate_content
 		    ~use_dfa:dfa
@@ -1904,11 +2107,22 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 				   " does not match its content model"))
 	end
 
+      method local_validate ?use_dfa ?check_data_nodes () =
+	self # validate_contents ?use_dfa ?check_data_nodes ()
+
+      method validate_attlist () =
+	(* Only defined in element_impl below *)
+	()
+
+      method complement_attlist () =
+	(* Only defined in element_impl below *)
+	()
+
+      method validate () =
+	self # validate_attlist();
+	self # validate_contents ~use_dfa:true ();  (* Use DFA if available *)
 
       method create_data _ _ = method_na "create_data"
-
-      method keep_always_whitespace_mode =
-	self # set_flag flag_keep_always_whitespace true
 
       method private get_nsdecls prefixes =
 	[]
@@ -1940,6 +2154,10 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	      att_iter  (write_att "") attributes;
 	      List.iter (fun (n,v) -> write_att "xmlns:" n v) nsdecls;
 	      wms "\n>";
+	  | T_comment ->
+	      wms ("<!--");
+	      wms (self # comment);
+	      wms ("-->");
 	  | _ ->
 	      ()
 	end;
@@ -1971,17 +2189,76 @@ class ['ext] markup_impl an_ext (* : ['ext] node *) =
 	 * illegal characters or "--".
 	 *)
 
-
-      method write_compact_as_latin1 os =
-	self # write os `Enc_iso88591
-
     end
 ;;
 
 
 class [ 'ext ] element_impl an_ext =
-  object
+  object(self)
     inherit [ 'ext ] markup_impl an_ext as super
+
+
+    method complement_attlist () =
+      (* Iterate over init_att_vals of the validation record vr. Add every
+       * missing attribute to the current set of attributes.
+       *)
+      self # update_vr;
+      let old_atts = attributes in
+      let new_atts = ref [] in
+      Array.iter
+	(fun (name,value) ->
+	   try
+	     ignore(att_assoc name old_atts)
+	   with
+	       Not_found ->
+		 new_atts := (name,value) :: !new_atts
+	)
+	vr.init_att_vals;
+      let atts = ref (att_remove_nodes attributes) in
+      att_add_list atts !new_atts;
+      attributes <- !atts
+
+
+    method validate_attlist () =
+      (* Only defined for elements:
+       * Create a duplicate node and call internal_init for it. The 
+       * resulting validated attlist must be equal to the current attlist.
+       *)
+      let atts = self # attributes in
+      let dup =
+	{< parent = None;
+	   node_position = -1;
+	   rev_nodes = [];
+	   nodes = LA_not_available;
+	   size = 0;
+	>} in
+      (* dup: flat duplicate without duplicated extension *)
+      let name =
+	match ntype with
+	    T_element n -> n
+	  | _ -> assert false
+      in
+      dup # internal_init no_position None true (self#dtd) name [] atts;
+      (* It is possible that dup has now more attributes than atts,
+       * because values in atts are missing for which the DTD defines a
+       * default. (This is an error.)
+       * The order of attributes is unspecified, so we must compare
+       * attribute by attribute.
+       *)
+      let dup_atts = dup # attributes in
+      let l_atts = List.length atts in
+      let l_dup_atts = List.length dup_atts in
+      if l_atts <> l_dup_atts then begin
+	assert(l_atts < l_dup_atts);
+	List.iter
+	  (fun (n,_) ->
+	     if not (List.mem_assoc n atts) then
+	       raise(Validation_error("Attribute `" ^ n ^ 
+				      "' is missing"))
+	  )
+	  dup_atts;
+	assert false;
+      end
 
     method internal_init_other new_pos new_dtd new_ntype =
       if new_ntype <> T_none then
@@ -2000,6 +2277,18 @@ class [ 'ext ] comment_impl an_ext =
   object
     inherit [ 'ext ] markup_impl an_ext as super
 
+    (* Comments are leaves, so the following methods are not applicable: *)
+
+    method delete_nodes ?pos ?len () = method_na "delete_nodes"
+    method append_node _             = method_na "append_node"
+    method classify_data_node _      = method_na "classify_data_node"
+    method add_node ?force _         = method_na "add_node"
+    method insert_nodes ?pos _       = method_na "insert_nodes"
+    method set_nodes _               = method_na "set_nodes"
+    method add_pinstr _              = method_na "add_pinstr"
+    method quick_set_attributes _    = method_na "quick_set_attributes"
+    method set_attributes _          = method_na "set_attributes"
+
     method internal_init new_pos attval_name_pool new_dtd new_name
                          new_attlist =
       method_na "internal_init"
@@ -2015,6 +2304,13 @@ class [ 'ext ] comment_impl an_ext =
 class [ 'ext ] super_root_impl an_ext =
   object
     inherit [ 'ext ] markup_impl an_ext as super
+
+    (* Super root nodes do not have attribute lists: *)
+
+    method quick_set_attributes _    = method_na "quick_set_attributes"
+    method set_attributes _          = method_na "set_attributes"
+
+    (* TODO: Super root nodes are always roots *)
 
     method internal_init new_pos attval_name_pool new_dtd new_name
                          new_attlist =
@@ -2032,6 +2328,23 @@ class [ 'ext ] pinstr_impl an_ext =
   object
     inherit [ 'ext ] markup_impl an_ext as super
 
+    (* PIs are leaves, so the following methods are not applicable: *)
+
+    method delete_nodes ?pos ?len () = method_na "delete_nodes"
+    method append_node _             = method_na "append_node"
+    method classify_data_node _      = method_na "classify_data_node"
+    method add_node ?force _         = method_na "add_node"
+    method insert_nodes ?pos _       = method_na "insert_nodes"
+    method set_nodes _               = method_na "set_nodes"
+    method quick_set_attributes _    = method_na "quick_set_attributes"
+    method set_attributes _          = method_na "set_attributes"
+
+    method add_pinstr pi =
+      (* fail if applied more than once *)
+      if pinstr <> None then
+	failwith "Pxp_document.pinstr_impl # add_pinstr: the node can only contain one processing instruction";
+      super # add_pinstr pi
+
     method internal_init new_pos attval_name_pool new_dtd new_name
                          new_attlist =
       method_na "internal_init"
@@ -2043,6 +2356,18 @@ class [ 'ext ] pinstr_impl an_ext =
 	| _ ->
 	    failwith "Pxp_document.pinstr_impl#internal_init_other: bad type";
   end
+;;
+
+
+let pinstr n =
+  match n # node_type with
+      T_pinstr pi ->
+	( match n # pinstr pi with
+	      [ pi_obj ] -> pi_obj
+	    | _ -> assert false
+	)
+    | _ ->
+	invalid_arg "Pxp_document.pinstr"
 ;;
 
 
@@ -2074,7 +2399,7 @@ class ['ext] namespace_attribute_impl ~element ~name value dtd =
       match mng with
 	  None   -> 
 	          failwith "Pxp_document.namespace_attribute_impl#namespace_uri"
-	| Some m -> m # get_uri normprefix
+	| Some m -> m # get_primary_uri normprefix
 
     method namespace_info =
       self # parent # namespace_info
@@ -2109,7 +2434,7 @@ class [ 'ext ] namespace_element_impl an_ext =
     method namespace_uri = 
       match mng with
 	  None   -> failwith "Pxp_document.namespace_element_impl#namespace_uri"
-	| Some m -> m # get_uri normprefix
+	| Some m -> m # get_primary_uri normprefix
 
     method namespace_info =
       match nsinfo with
@@ -2128,11 +2453,13 @@ class [ 'ext ] namespace_element_impl an_ext =
     method set_namespace_manager m =
       mng <- Some m
 
-    method internal_init new_pos attval_name_pool new_dtd new_name
-                         new_attlist =
+    method internal_init new_pos attval_name_pool valcheck_element_exists
+                         new_dtd new_name
+                         new_attlist new_attvalues =
 
       super # internal_init
-	new_pos attval_name_pool new_dtd new_name new_attlist;
+	new_pos attval_name_pool valcheck_element_exists new_dtd new_name 
+	        new_attlist new_attvalues;
 
       try
 	let n = String.index new_name ':' in   (* may raise Not_found *)
@@ -2185,9 +2512,9 @@ class [ 'ext ] namespace_element_impl an_ext =
       List.map
 	(fun p -> 
 	   try
-	     p, Value (mng # get_uri p)
+	     p, Value (mng # get_primary_uri p)
 	   with
-	       Not_found -> (* raised by get_uri *)
+	       Not_found -> (* raised by get_primary_uri *)
 		 failwith ("Pxp_document.namespace_element_impl#write: cannot map the prefix `" ^ p ^ "' to any URI")
 	)
 
@@ -2291,32 +2618,39 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
      method nth_node _ = raise Not_found
      method position = no_position
      method comment = None
-     method local_validate ?use_dfa () = ()
+     method local_validate ?use_dfa ?check_data_nodes () = ()
+     method validate_contents ?use_dfa ?check_data_nodes () = ()
+     method validate_attlist () = ()
+     method complement_attlist () = ()
+     method validate () = ()
 
     (* Non-applicable methods: *)
 
      method extension =          method_na "extension"
      method delete =             method_na "delete"
+     method delete_nodes ?pos ?len _ = method_na "delete_nodes"
      method previous_node =      method_na "previous_node"
      method next_node =          method_na "next_node"
      method internal_set_pos _ = method_na "internal_set_pos"
      method internal_delete _ =  method_na "internal_delete"
-     method internal_init _ _ _ _ _ =   method_na "internal_init"
+     method internal_init _ _ _ _ _ _ _ =   method_na "internal_init"
      method internal_init_other _ _ _ = method_na "internal_init_other"
+     method classify_data_node _ = method_na "classify_data_node"
+     method append_node _ =      method_na "append_node"
+     method insert_nodes ?pos _ = method_na "insert_nodes"
      method add_node ?force _ =  method_na "add_node"
      method add_pinstr _ =       method_na "add_pinstr"
      method set_nodes _ =        method_na "set_nodes"
      method quick_set_attributes _ =    method_na "quick_set_attributes"
+     method set_attributes _ =    method_na "set_attributes"
      method attributes_as_nodes =       method_na "attributes_as_nodes"
      method set_comment c =      method_na "set_comment"
-     method create_element ?name_pool_for_attribute_values ?position _ _ _ =
+     method set_data _ =         method_na "set_data"
+     method create_element ?name_pool_for_attribute_values ?position 
+                           ?valcheck ?att_values _ _ _ =
                                  method_na "create_element"
      method create_data _ _ =    method_na "create_data"
-     method keep_always_whitespace_mode = 
-                                 method_na "keep_always_whitespace_mode"
      method write ?prefixes _ _ = method_na "write"
-     method write_compact_as_latin1 _ =
-                                 method_na "write_compact_as_latin1"
      method id_attribute_name =  method_na "id_attribute_name"
      method id_attribute_value = method_na "id_attribute_value"
      method idref_attribute_names =     method_na "idref_attribute_names"
@@ -2328,6 +2662,25 @@ class [ 'ext ] namespace_impl srcprefix normprefix dtd =
      : ['ext] node)
 ;;
 
+let namespace_normprefix n =
+  match n # node_type with
+      T_namespace _ -> n # normprefix
+    | _ -> invalid_arg "Pxp_document.namespace_normprefix"
+;;
+
+let namespace_srcprefix n =
+  match n # node_type with
+      T_namespace s -> s
+    | _ -> invalid_arg "Pxp_document.namespace_srcprefix"
+;;
+
+let namespace_uri n =
+  match n # node_type with
+      T_namespace _ -> n # data  (* sic! *)
+    | _ -> invalid_arg "Pxp_document.namespace_uri"
+;;
+
+
 class [ 'ext ] namespace_info_impl 
                  (srcprefix:string) (element : 'ext node) mapping =
 object
@@ -2338,6 +2691,7 @@ object
 
   method srcprefix = srcprefix
 
+  (* TODO: check the following algorithm *)
   method declaration =
     match declaration with
 	Some d -> d
@@ -2387,13 +2741,17 @@ let get_data_exemplar spec =
 ;;
 
 
-let create_element_node ?name_pool_for_attribute_values ?position spec dtd eltype atts =
+let create_element_node ?name_pool_for_attribute_values ?position 
+                        ?valcheck ?att_values 
+                        spec dtd eltype atts =
    match spec with
       Spec_table tab ->
 	let exemplar = spec_table_find_exemplar tab eltype in
 	exemplar # create_element
-	    ?name_pool_for_attribute_values:name_pool_for_attribute_values
-            ?position:position
+	    ?name_pool_for_attribute_values
+            ?position
+	    ?valcheck
+	    ?att_values
             dtd (T_element eltype) atts
 ;;
 
@@ -2720,6 +3078,13 @@ let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
 ;;
 
 
+let validate tree =
+  iter
+    ~pre:(fun n -> n # validate())
+    tree
+;;
+
+
 let compare a b =
   let rec cmp p1 p2 =
     match p1, p2 with
@@ -2782,6 +3147,199 @@ let ord_compare idx a b =
   else
     d
 ;;
+
+type stripping_mode =
+  [ `Strip_one_lf
+  | `Strip_one
+  | `Strip_seq
+  | `Disabled
+  ]
+
+let strip_whitespace ?(force = false) ?(left = `Disabled) ?(right = `Disabled)
+                     ?(delete_empty_nodes = true)
+                     start =
+  let strip_left =
+    match left with
+	`Disabled -> 
+	  (fun s -> s)
+      | `Strip_one_lf ->
+	  (fun s -> 
+	     if String.length s > 0 && s.[0] = '\n' then
+	       String.sub s 1 (String.length s - 1)
+	     else
+	       s
+	  )
+      | `Strip_one ->
+	  (fun s -> 
+	     if String.length s > 0 then
+	       let c = s.[0] in
+	       if c = ' ' || c = '\n' || c = '\r' || c = '\t' then
+		 String.sub s 1 (String.length s - 1)
+	       else
+		 s
+	     else
+	       s
+	  )
+      | `Strip_seq ->
+	  (fun s ->
+	     let k = ref 0 in
+	     while !k < String.length s && 
+	           (let c = s.[ !k ] in 
+		    c = ' ' || c = '\n' || c = '\r' || c = '\t')
+	     do
+	       incr k
+	     done;
+	     if !k > 0 then
+	       String.sub s !k (String.length s - !k)
+	     else
+	       s
+	  )
+  in
+  let strip_right =
+    match right with
+	`Disabled -> 
+	  (fun s -> s)
+      | `Strip_one_lf ->
+	  (fun s -> 
+	     let l = String.length s in
+	     if l > 0 && s.[l - 1] = '\n' then
+	       String.sub s 0 (l - 1)
+	     else
+	       s
+	  )
+      | `Strip_one ->
+	  (fun s -> 
+	     let l = String.length s in
+	     if l > 0 then
+	       let c = s.[ l - 1] in
+	       if c = ' ' || c = '\n' || c = '\r' || c = '\t' then
+		 String.sub s 0 (l - 1)
+	       else
+		 s
+	     else
+	       s
+	  )
+      | `Strip_seq ->
+	  (fun s ->
+	     let l = String.length s in
+	     let k = ref (l-1) in
+	     while !k >= 0 && 
+	           (let c = s.[ !k ] in 
+		    c = ' ' || c = '\n' || c = '\r' || c = '\t')
+	     do
+	       decr k
+	     done;
+	     if !k < l-1 then
+	       String.sub s 0 (!k + 1)
+	     else
+	       s
+	  )
+  in
+  let rec strip_elements n preserve_space =
+    let preserve_space' =
+      not force &&
+      try
+	let space = n # attribute "xml:space" in
+	let preserve = (space = Value "preserve") in
+	let default = (space = Value "default") in
+	if not (preserve || default) then raise Not_found;
+	preserve
+      with
+	  Not_found -> preserve_space
+    in
+    if not preserve_space' then begin
+      let left_side_done = ref false in
+      let right_side = ref None in
+      n # iter_nodes
+	(fun sub ->
+	   match sub # node_type with
+	       T_data ->
+		 if not !left_side_done then begin
+		   let s = strip_left (sub # data) in
+		   sub # set_data s;
+		   if s = "" && delete_empty_nodes then sub # delete;
+		   left_side_done := true
+		 end;
+		 right_side := Some sub;      (* candidate for right side *)
+	     | T_element _ ->
+		 left_side_done := true;
+		 right_side := None;
+		 strip_elements sub preserve_space'
+	     | T_comment ->
+		 ()
+	     | _ ->
+		 left_side_done := true;
+		 right_side := None;
+	);	       
+      match !right_side with
+	  None -> 
+	    ()
+	| Some sub ->
+	    let s = strip_right (sub # data) in
+	    sub # set_data s;
+	    if s = "" && delete_empty_nodes then sub # delete;
+    end
+  in
+  let rec preserve_mode n =
+    try
+      let space = n # attribute "xml:space" in
+      let preserve = (space = Value "preserve") in
+      let default = (space = Value "default") in
+      if not (preserve || default) then raise Not_found;
+      preserve
+    with
+	Not_found ->
+	  let p = 
+	    try Some (n # parent) with Not_found -> None in
+	  match p with
+	      Some parent -> preserve_mode parent
+	    | None -> false
+  in
+  let preserve_space = not force && preserve_mode start in
+  match start # node_type with
+      T_data ->
+	if not preserve_space then begin
+	  let s = start # data in
+	  let s' = strip_left (strip_right s) in
+	  start # set_data s';
+	  if s' = "" && delete_empty_nodes then start # delete;
+	end
+    | T_element _ 
+    | T_super_root ->
+	strip_elements start preserve_space
+    | _ ->
+	()
+;;
+
+
+let normalize tree =
+  (* Concatenate consecutive data nodes: *)
+  iter_tree_sibl
+    ~pre:(fun l n r ->
+	    match l with
+		None ->
+		  (* No left sibling: Nothing to do *)
+		  ()
+	      | Some ln ->
+		  (* If ln and n are both data nodes, concatenate them *)
+		  if n # node_type = T_data && ln # node_type = T_data then 
+		    begin
+		      n  # set_data (ln # data ^ n # data);
+		      ln # set_data "";
+		    end
+	 )
+    tree;
+  (* Remove empty data nodes: *)
+  iter_tree
+    ~pre:(fun n ->
+	    if n # node_type = T_data && n # data = "" then begin
+	      n # delete;
+	      raise Skip;
+	    end
+	 )
+    tree
+;;
+
 
 class ['ext] document the_warner =
   object (self)
@@ -2932,9 +3490,6 @@ class ['ext] document the_warner =
       r # write os enc;
       wms "\n";
 
-    method write_compact_as_latin1 os =
-      self # write os `Enc_iso88591
-
   end
 ;;
 
@@ -2943,6 +3498,9 @@ class ['ext] document the_warner =
  * History:
  *
  * $Log: pxp_document.ml,v $
+ * Revision 1.21  2001/06/08 00:12:56  gerd
+ * 	Implemented rev. 1.16 of pxp_document.mli.
+ *
  * Revision 1.20  2001/05/17 21:38:37  gerd
  * 	Continued the implementation of namespaces.
  *
