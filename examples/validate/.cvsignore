@@ -1,0 +1,13 @@
+*.cmi
+*.cmo
+*.cma
+*.cmx
+*.o
+*.a
+*.cmxa
+*.new
+*.mlf
+*.ml0
+depend
+depend.pkg
+
