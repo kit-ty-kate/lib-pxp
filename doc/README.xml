@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd" [
+
+<!ENTITY url.ocaml           "http://caml.inria.fr/">
+<!ENTITY url.xml-spec        "http://www.w3.org/TR/1998/REC-xml-19980210.html">
+<!ENTITY url.jclark-xmltdata "ftp://ftp.jclark.com/pub/xml/xmltest.zip">
+<!ENTITY url.gps-ocaml-download "http://people.darmstadt.netsurf.de/ocaml">
+<!ENTITY url.markup-download    "&url.gps-ocaml-download;/markup-0.1.tar.gz">
+<!ENTITY person.gps             '<a
+  href="mailto:Gerd.Stolpmann@darmstadt.netsurf.de">Gerd Stolpmann</a>'>
+
+]>
+
+<readme title="README - Markup, the XML parser for O'Caml">
+  <sect1>
+    <title>Abstract</title>
+    <p>
+<em>Markup</em> is a validating parser for XML-1.0 which has been written
+entirely and from scratch in Objective Caml.
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Download</title>
+    <p>
+You can download <em>Markup</em> as gzip'ed <a
+					       href="&url.markup-download;">tarball</a>.
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Author, Copying</title>
+    <p>
+<em>Markup</em> has been written by &person.gps;. You may copy it as you like,
+you may use it even for commercial purposes as long as the license conditions
+are respected, see the file LICENSE coming with the distribution. It allows
+almost everything. 
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Description</title>
+    <p>
+<em>Markup</em> is an experimental validating XML parser for <a
+href="&url.ocaml;">O'Caml</a>. It is designed such that all of the requirements
+that the <a href="&url.xml-spec;">w3c demands of an XML parser</a> can be
+fulfilled, but this is not yet the case.
+</p>
+    
+    <p>
+Beginning with the positive properties of this package, already the
+current (initial) release should be able to parse all valid XML documents
+and DTDs as long as they use only ISO-8859-1 characters. This has been
+tested with lots of test documents, including all of James Clark's
+positive <a href="&url.jclark-xmltdata;">test records</a>.
+</p>
+
+    <p>
+Once the document is parsed, it can be accessed using a class interface.
+This interface is still under development and subject to future changes.
+The interface allows arbitrary access including transformations. It has a
+so-called "extension", i.e. every element of the document has a main
+object and the extension. Although there is a default, the extension is
+thought as the changeable part of the element class, i.e. you can provide
+your own extension and add further properties to the elements.
+</p>
+
+    <p>
+Note that the class interface does not comply to the DOM standard. I think
+that DOM is not applicable to O'Caml. Of course, my interface has a
+similar task.
+</p>
+
+    <p>
+Another design feature is that you can configure the parser such that it
+uses a different class for every element type. As classes are not
+first-order objects in O'Caml, this is done by an exemplar/instance
+scheme. A hashtable stores for every element type the exemplar which is
+simply an object of the class to be used. If the parser reads an element,
+it looks up the exemplar by the type of the element, and forms a clone of
+it. -- This way, it is possible to group the processing code for the
+elements as classes which seems to be very natural.
+</p>
+    <sect2>
+      <title>Code examples</title>
+      <p>
+This distribution contains several examples:</p>
+      <ul>
+	<li><p>
+<em>validate:</em> simply parses a
+document and prints all error messages
+</p></li>
+
+	<li><p>
+<em>readme:</em> Defines a DTD for simple "README"-like documents, and offers
+conversion to HTML and text files<footnote>This particular document is an
+example of this DTD!</footnote>.
+</p></li>
+
+	<li><p>
+<em>xmlforms:</em> This is already a
+sophisticated application that uses XML as style sheet language and data
+storage format. It shows how a Tk user interface can be configured by an
+XML style, and how data records can be stored using XML.
+</p></li>
+      </ul>
+    </sect2>
+
+    <sect2>
+      <title>Restrictions</title>
+      <p>
+The following list of restrictions seems to be rather long, but it is actually
+not compared with the much longer list of XML features that have been
+implemented. I enumerate the restrictions here to make clear that
+<em>Markup</em> is currently under development, and although it is stable
+enough to be useable it should be taken with some care.
+</p>
+
+      <p>
+As the parser is validating, it should be able to report all violations
+against the XML rules. This is currently not the case. Mainly the
+following restrictions apply:
+</p>
+
+      <ul>
+	<li>
+	  <p>
+The parser can only handle ISO-8859-1 characters. It can read files
+  that are encoded as "UTF-8", "UTF-16", and "ISO-8859-1", but only the
+  characters 0 to 255 are understood.
+  --> This restriction will NOT be dropped in the near future, as Unicode
+  support is a matter of the core O'Caml language.
+</p>
+	</li>
+
+	<li>
+	  <p>
+The definition of XML contains some validation constraints that are
+  not yet checked. Especially the constraints that the opening and 
+  closing tokens of braces must be in the same entity are not checked.
+	  <code><![CDATA[
+  [ EXAMPLE:
+    <!ENTITY % an-element "<!ENTITY x (#PCDATA)">
+    %an-element;>
+    - This is invalid XML but not yet rejected. Not only the < > braces
+    must be checked, but also ( ) inside element declarations.
+  ]
+]]></code>
+</p>
+
+	  <p>
+  Furthermore, if an internal general entity is included into an 
+  attribute value, it is not checked that the entity matches the
+  "content" production.
+	  <code><![CDATA[
+  [ EXAMPLE:
+    <!ENTITY x "<element>This is an element without end-tag">
+    <!ENTITY y "</element>">
+    ...
+    <another-element an-attribute="&x;&y;"/>
+    - This is invalid XML, too. Note that the parser only misses to
+    reject bad entity references inside attribute values.
+  ]
+]]></code>
+</p>
+
+	  <p>
+  --> I'll do my best to include such checks in future releases.
+</p>
+	</li>
+
+	<li>
+	  <p>
+  The <![CDATA[<?xml ...?>]]> header is interpreted rather weakly.
+  --> This will be changed in the future.
+</p>
+	</li>
+
+	<li>
+	  <p>
+The "standalone=yes" attribute is not checked.
+</p>
+	</li>
+
+	<li>
+	  <p>
+That IDs are unique, and that IDREFs reference only existing IDs, are
+  only checked in a deferred way, i.e. once these features are used by
+  the application.
+</p>
+	</li>
+      </ul>
+
+      <p>
+Furthermore, the following restrictions apply that are not violations of
+the standard:
+</p>
+
+      <ul>
+	<li><p>
+Error messages are sometimes confusing.</p></li>
+
+	<li><p>
+The exact locations of processing instructions are not stored in the
+  document object. It is only known which element is the direct parent
+  of the processing instruction.</p></li>
+
+	<li><p>
+XML comments are always dropped<footnote>In the DOM standard, comments are
+accessible. I think this is a bad feature, as comments should not be regarded
+as text to be processed.</footnote>.</p></li>
+
+	<li><p>
+The attributes "xml:space", and "xml:lang" are not supported specially.
+  (The application can do this.)</p></li>
+
+	<li><p>
+The built-in support for SYSTEM and PUBLIC identifiers is limited to
+  local file access. There is no support for catalogs. The parser offers
+  a hook to add missing features.</p></li>
+
+	<li><p>
+It is currently not possible to check for interoperatibility with SGML.
+</p></li>
+
+	<li><p>
+There is currently no "early parser hook", i.e. a possibility to throw
+  away parts of the document that are not needed directly after they have
+  been read. (Perhaps this is possible by deriving the document class.)
+</p></li>
+      </ul>
+    </sect2>
+  </sect1>
+</readme>
+
