@@ -1,11 +1,9 @@
-(* $Id: pxp_yacc.mli,v 1.1 2000/05/29 23:48:38 gerd Exp $
+(* $Id: pxp_yacc.mli,v 1.2 2000/07/04 22:09:03 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
- * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
+ * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-
-(* Replaces the generated markup_yacc.mli *)
 
 (*$ markup-yacc.mli *)
 
@@ -85,39 +83,81 @@ type config =
     }
 
 
-(* TODO: Latin1 - now also able to handle other encodings: rename *)
-
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | Channel of in_channel
-  | File of string
-  | Latin1 of string
   | ExtID of (ext_id * Pxp_reader.resolver)
 
-(* Note on sources:
+val from_channel : 
+      ?system_encoding:encoding -> ?id:ext_id -> ?fixenc:encoding -> 
+      in_channel -> source
+
+val from_string :
+      ?fixenc:encoding -> string -> source
+
+val from_file :
+      ?system_encoding:encoding -> string -> source
+
+(* Notes on sources (version 2):
  *
- * The sources do not have all the same capabilities. Here the differences:
+ * Sources specify where the XML text to parse comes from. Sources not only
+ * represent character streams, but also external IDs (i.e. SYSTEM or PUBLIC
+ * names), and they are interpreted as a specific encoding of characters.
+ * A source should be associated with an external ID, because otherwise
+ * it is not known how to handle relative names.
  *
- * - File: A File source reads from a file by name. This has the advantage
- *   that references to external entites can be resolved. - The problem
- *   with SYSTEM references is that they usually contain relative file
- *   names; more exactly, a file name relative to the document containing it.
- *   It is only possible to convert such names to absolute file names if the
- *   name of the document containing such references is known; and File
- *   denotes this name.
+ * There are two primary sources, Entity and ExtID, and several functions
+ * for derived sources. First explanations for the functions:
  *
- * - Channel, Latin1: These sources read from documents given as channels or
- *   (Latin 1-encoded) strings. There is no file name, and because of this
- *   the documents must not contain references to external files (even
- *   if the file names are given as absolute names).
+ * from_channel: The XML text is read from an in_channel. By default, the
+ *   channel is not associated with an external ID, and it is impossible
+ *   to resolve relative SYSTEM IDs found in the document.
+ *   If the ?id argument is passed, it is assumed that the channel has this
+ *   external ID. If relative SYSTEM IDs occur in the document, they can
+ *   be interpreted; however, it is only possible to read from "file:"
+ *   IDs.
+ *   By default, the channel automatically detects the encoding. You can
+ *   set a fixed encoding by passing the ?fixenc argument.
+ *
+ * from_string: The XML text is read from a string.
+ *   It is impossible to read from any external entity whose reference is found
+ *   in the string.
+ *   By default, the encoding of the string is detected automatically. You can
+ *   set a fixed encoding by passing the ?fixenc argument.
+ *
+ * from_file: The XML text is read from the file whose file name is
+ *   passed to the function (as UTF-8 string).
+ *   Relative system IDs can be interpreted by this function.
+ *   The ?system_encoding argument specifies the character encoding used
+ *   for file names (sic!). By default, UTF-8 is assumed.
+ *
+ * Examples:
+ *
+ * from_file "/tmp/file.xml": 
+ *   reads from this file, which is assumed to have the ID 
+ *   SYSTEM "file://localhost/tmp/file.xml".
+ *
+ * let ch = open_in "/tmp/file.xml" in
+ * from_channel ~id:(System "file://localhost/tmp/file.xml") ch
+ *   This does the same, but uses a channel.
+ *
+ * from_channel ~id:(System "http://host/file.xml")
+ *              ch
+ *   reads from the channel ch, and it is assumed that the ID is
+ *   SYSTEM "http://host/file.xml". If there is any relative SYSTEM ID,
+ *   it will be interpreted relative to this location; however, there is
+ *   no way to read via HTTP.
+ *   If there is any "file:" SYSTEM ID, it is possible to read the file.
+ *
+ * The primary sources:
  *
  * - ExtID(x,r): The identifier x (either the SYSTEM or the PUBLIC name) of the
- *   entity to read from is passed to the resolver r as-is.
+ *   entity to read from is passed to the resolver, and the resolver finds
+ *   the entity and opens it.
  *   The intention of this option is to allow customized
  *   resolvers to interpret external identifiers without any restriction.
- *   For example, you can assign the PUBLIC identifiers a meaning (they
- *   currently do not have any), or you can extend the "namespace" of
- *   identifiers.
+ *   The Pxp_reader module contains several classes allowing the user to
+ *   compose such a customized resolver from predefined components.
+ *
  *   ExtID is the interface of choice for own extensions to resolvers.
  *
  * - Entity(m,r): You can implementy every behaviour by using a customized
@@ -128,13 +168,6 @@ type source =
  *)
 
 
-type 'ext domspec =
-    { map : (node_type, 'ext node) Hashtbl.t;
-      default_element : 'ext node;
-    }
-  (* Specifies which node to use as exemplar for which node type. See the
-   * manual for explanations.
-   *)
 
 val default_config : config
   (* - The resolver is able to read from files by name
@@ -147,22 +180,32 @@ val default_config : config
 val default_extension : ('a node extension) as 'a
   (* A "null" extension; an extension that does not extend the funtionality *)
 
-val default_dom : ('a node extension as 'a) domspec
+val default_spec : ('a node extension as 'a) spec
   (* Specifies that you do not want to use extensions. *)
 
 val parse_dtd_entity      : config -> source -> dtd
   (* Parse an entity containing a DTD, and return this DTD. *)
 
-val parse_document_entity : config -> source -> 'ext domspec -> 'ext document
+val parse_document_entity : config -> source -> 'ext spec -> 'ext document
   (* Parse a closed document, i.e. a document beginning with <!DOCTYPE...>,
    * and validate the contents of the document against the DTD contained
    * and/or referenced in the document.
    *)
 
+val parse_document_entity_with_dtd :
+    config -> source -> (dtd -> dtd) -> 'ext spec -> 'ext document
+
+val extract_dtd_from_document_entity : unit
+
+val parse_wfdocument_entity : config -> source -> 'ext spec -> 'ext document
+  (* Parse a closed document (see parse_document_entity), but do not
+   * validate it. Only checks on well-formedness are performed.
+   *)
+
 val parse_content_entity  : config ->
                             source ->
 			    dtd ->
-			    'ext domspec ->
+			    'ext spec ->
 			      'ext node
   (* Parse a file representing a well-formed fragment of a document. The
    * fragment must be a single element (i.e. something like <a>...</a>;
@@ -173,10 +216,7 @@ val parse_content_entity  : config ->
    * (invoke method allow_arbitrary on the DTD).
    *)
 
-val parse_wf_entity : config -> source -> 'ext domspec -> 'ext document
-  (* Parse a closed document (see parse_document_entity), but do not
-   * validate it. Only checks on well-formedness are performed.
-   *)
+val parse_wfcontent_entity : unit
 
 (*$-*)
 
@@ -185,6 +225,9 @@ val parse_wf_entity : config -> source -> 'ext domspec -> 'ext document
  * History:
  *
  * $Log: pxp_yacc.mli,v $
+ * Revision 1.2  2000/07/04 22:09:03  gerd
+ * 	MAJOR CHANGE: Redesign of the interface (not yet complete).
+ *
  * Revision 1.1  2000/05/29 23:48:38  gerd
  * 	Changed module names:
  * 		Markup_aux          into Pxp_aux
