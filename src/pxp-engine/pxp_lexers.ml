@@ -1,4 +1,4 @@
-(* $Id: pxp_lexers.ml,v 1.7 2001/10/12 21:38:14 gerd Exp $
+(* $Id: pxp_lexers.ml,v 1.8 2002/08/03 17:55:21 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -55,6 +55,8 @@ let current_lexer_set =
       scan_name_string     = dummy;
       scan_only_xml_decl   = dummy;
       scan_for_crlf        = dummy;
+      scan_tag_eb          = dummy;
+      scan_tag_eb_att      = dummy;
     }
 ;;
 
@@ -86,6 +88,9 @@ let get_lexer_set enc =
  * History:
  * 
  * $Log: pxp_lexers.ml,v $
+ * Revision 1.8  2002/08/03 17:55:21  gerd
+ * 	Followup of pxp_lexer_types.mli rev 1.8
+ *
  * Revision 1.7  2001/10/12 21:38:14  gerd
  * 	Changes for O'caml 3.03-alpha.
  *
