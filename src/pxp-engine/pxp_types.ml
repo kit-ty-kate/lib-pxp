@@ -1,4 +1,4 @@
-(* $Id: pxp_types.ml,v 1.11 2001/04/26 23:57:04 gerd Exp $
+(* $Id: pxp_types.ml,v 1.12 2001/06/07 22:49:51 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -107,6 +107,8 @@ exception Validation_error of string
 
 exception WF_error of string
 
+exception Namespace_error of string
+
 exception Error of string
 
 exception Character_not_supported
@@ -116,6 +118,8 @@ exception At of (string * exn)
 exception Undeclared
 
 exception Method_not_applicable of string
+
+exception Namespace_method_not_applicable of string
 
 let rec string_of_exn x0 =
   match x0 with
@@ -281,6 +285,9 @@ let pool_string p s =
  * History:
  *
  * $Log: pxp_types.ml,v $
+ * Revision 1.12  2001/06/07 22:49:51  gerd
+ * 	New namespace exceptions.
+ *
  * Revision 1.11  2001/04/26 23:57:04  gerd
  * 	New exception Method_not_applicable. It is raised if there are
  * classes A and B both conforming to class type C, but A does not implement

@@ -1,4 +1,4 @@
-(* $Id: pxp_types.mli,v 1.12 2001/04/26 23:57:05 gerd Exp $
+(* $Id: pxp_types.mli,v 1.13 2001/06/07 22:49:51 gerd Exp $
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright 1999 by Gerd Stolpmann. See LICENSE for details.
@@ -113,10 +113,10 @@ type encoding = Netconversion.encoding;;
    *)
 
 type rep_encoding =
-  (* The subset of 'encoding' that may be used for internal representation
+  (* The subset of 'encoding' that may be used for the internal representation
    * of strings.
    * Note: The following encodings are ASCII-compatible! This is an important
-   * property used throghout the whole PXP code.
+   * property used throughout the whole PXP code.
    *)
   [ `Enc_utf8       (* UTF-8 *)
   | `Enc_iso88591   (* ISO-8859-1 *)
@@ -130,6 +130,9 @@ exception Validation_error of string
 exception WF_error of string
   (* Violation of a well-formedness constraint *)
 
+exception Namespace_error of string
+  (* Violation of a namespace constraint *)
+
 exception Error of string
   (* Other error *)
 
@@ -142,18 +145,24 @@ exception At of (string * exn)
    *)
 
 exception Undeclared
-  (* Indicates that declaration is available and because of this every kind
-   * of usage is allowed.
+  (* Indicates that no declaration is available and because of this every kind
+   * of usage is allowed. (Raised by some DTD methods.)
    *)
 
 exception Method_not_applicable of string
   (* Indicates that a method has been called that is not applicable for
-   * the class.
+   * the class. The argument is the name of the method.
+   * (New in PXP 1.1)
+   *)
+
+exception Namespace_method_not_applicable of string
+  (* Indicates that the called method is a namespace method but that the
+   * object does not support namespaces. The argument is the name of the method.
    * (New in PXP 1.1)
    *)
 
 val string_of_exn : exn -> string
-  (* Converts a Markup exception into a readable string *)
+  (* Converts a PXP exception into a readable string *)
 
 
 type output_stream =
@@ -189,6 +198,9 @@ val pool_string : pool -> string -> string
  * History:
  *
  * $Log: pxp_types.mli,v $
+ * Revision 1.13  2001/06/07 22:49:51  gerd
+ * 	New namespace exceptions.
+ *
  * Revision 1.12  2001/04/26 23:57:05  gerd
  * 	New exception Method_not_applicable. It is raised if there are
  * classes A and B both conforming to class type C, but A does not implement
