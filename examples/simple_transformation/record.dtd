@@ -1,5 +1,5 @@
 <!ELEMENT record-list (record*)>
-<!ELEMENT record (last-name, first-name, phone)>
+<!ELEMENT record (last-name?, first-name?, phone?)>
 <!ELEMENT last-name (#PCDATA)>
 <!ELEMENT first-name (#PCDATA)>
 <!ELEMENT phone (#PCDATA)>
