@@ -19,7 +19,7 @@ all:
 
 .PHONY: clean
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa
+	rm -f *.cmi *.cmo *.cma *.cmx *.o *.a *.cmxa minilex.ml
 
 .PHONY: CLEAN
 CLEAN: clean
