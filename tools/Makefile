@@ -8,7 +8,7 @@ all:
 	test -f lexpp$(EXEC_SUFFIX) || ln -s src/lexpp/lexpp$(EXEC_SUFFIX)
 
 clean:
-	rm -f m2parsergen$(EXEC_SUFFIX) ucs2_to_utf8$(EXEC_SUFFIX)
+	rm -f m2parsergen$(EXEC_SUFFIX) ucs2_to_utf8$(EXEC_SUFFIX) lexpp$(EXEC_SUFFIX)
 
 CLEAN: clean
 	$(MAKE) -C src CLEAN
