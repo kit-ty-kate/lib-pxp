@@ -13,6 +13,7 @@ CLEAN: clean
 	$(MAKE) -C namespaces CLEAN
 	$(MAKE) -C eventparser CLEAN
 	$(MAKE) -C pullparser CLEAN
+	$(MAKE) -C xhtml2html CLEAN
 
 .PHONY: distclean
 distclean: clean
@@ -24,5 +25,6 @@ distclean: clean
 	$(MAKE) -C namespaces distclean
 	$(MAKE) -C eventparser distclean
 	$(MAKE) -C pullparser distclean
+	$(MAKE) -C xhtml2html distclean
 
 
