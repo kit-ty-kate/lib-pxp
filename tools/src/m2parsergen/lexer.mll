@@ -1,4 +1,4 @@
-(* $Id: lexer.mll,v 1.1 2000/05/06 17:36:17 gerd Exp $
+(* $Id: lexer.mll,v 1.2 2000/05/06 21:51:24 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -8,7 +8,7 @@
 }
 
 rule scan_file = parse
-    "/*" [^ '*']* ('*'+ [^ '/' '*'] [^ '*']* )* "*/"
+    "/*" [^ '*']* ('*'+ [^ '/' '*'] [^ '*']* )* '*'* "*/"
       { Space }
   | "%token"
       { Token }
@@ -47,6 +47,8 @@ rule scan_file = parse
       { Loop_star }
   | [' ' '\t' '\r' '\n']+
       { Space }
+  | "$"
+      { Dollar }
   | eof
       { Eof }
 
@@ -70,6 +72,9 @@ and scan_rest = parse
  * History:
  * 
  * $Log: lexer.mll,v $
+ * Revision 1.2  2000/05/06 21:51:24  gerd
+ * 	New symbol Dollar.
+ *
  * Revision 1.1  2000/05/06 17:36:17  gerd
  * 	Initial revision.
  *
