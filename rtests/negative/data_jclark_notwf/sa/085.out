@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/085.xml", at line 1, column 35: 
-Markup_types.WF_error("Illegal character in PUBLIC identifier")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/085.xml", at line 1, position 25:
+ERROR (Well-formedness constraint): Illegal character in PUBLIC identifier

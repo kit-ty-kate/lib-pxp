@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/069.xml", at line 4, column 34: 
-Markup_types.WF_error("Here must be whitespace")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/069.xml", at line 4, position 38:
+ERROR (Well-formedness constraint): Whitespace missing before `NDATA'

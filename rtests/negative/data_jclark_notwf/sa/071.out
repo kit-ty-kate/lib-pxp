@@ -1,5 +1,5 @@
-Called from entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/071.xml", line 6, column 9:
-Called from entity e1, line 1, column 4:
-Called from entity e2, line 1, column 4:
-In entity e3, at line 1, column 4: 
-Markup_types.Validation_error("Recursive reference to entity `e1'")
+In entity e3, at line 1, position 0:
+Called from entity e2, line 1, position 0:
+Called from entity e1, line 1, position 0:
+Called from entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/071.xml", line 6, position 5:
+ERROR (Validity constraint): Recursive reference to entity `e1'

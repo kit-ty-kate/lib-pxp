@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/113.xml", at line 2, column 19: 
-Markup_types.WF_error("The character '&' must be written as '&amp;'")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/113.xml", at line 2, position 18:
+ERROR (Well-formedness constraint): The character '&' must be written as '&amp;'

@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/060.xml", at line 3, column 30: 
-Markup_types.WF_error("One of CDATA, ID, IDREF, IDREFS, ENTITY, ENTITIES, NMTOKEN, NMTOKENS, NOTATION, or a subexpression expected")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/060.xml", at line 3, position 21:
+ERROR (Well-formedness constraint): One of CDATA, ID, IDREF, IDREFS, ENTITY, ENTITIES, NMTOKEN, NMTOKENS, NOTATION, or a subexpression expected

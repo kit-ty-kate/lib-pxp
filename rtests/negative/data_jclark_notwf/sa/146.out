@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/146.xml", at line 4, column 15: 
-Markup_types.Illegal_character(0)
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/146.xml", at line 4, position 5:
+ERROR (Well-formedness constraint): Code point 1114112 outside the accepted range of code points

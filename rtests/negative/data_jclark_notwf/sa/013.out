@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/013.xml", at line 1, column 8: 
-Markup_types.WF_error("Cannot find the second quotation mark")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/013.xml", at line 1, position 8:
+ERROR (Well-formedness constraint): Cannot find the second quotation mark

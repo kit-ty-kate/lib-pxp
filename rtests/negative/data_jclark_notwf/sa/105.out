@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/105.xml", at line 2, column 0: 
-Markup_types.WF_error("Declaration either malformed or not allowed in this context")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/105.xml", at line 2, position 0:
+ERROR (Well-formedness constraint): Declaration either malformed or not allowed in this context

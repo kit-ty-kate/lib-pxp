@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/103.xml", at line 4, column 14: 
-Markup_types.WF_error("End-tag does not match start-tag")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/103.xml", at line 4, position 13:
+ERROR (Well-formedness constraint): End-tag does not match start-tag

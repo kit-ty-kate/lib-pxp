@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/107.xml", at line 2, column 3: 
-Markup_types.WF_error("Restriction of the internal subset: Conditional and CDATA sections not allowed")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/107.xml", at line 2, position 0:
+ERROR (Well-formedness constraint): Restriction of the internal subset: Conditional sections not allowed

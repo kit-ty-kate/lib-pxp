@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/101.xml", at line 1, column 39: 
-Markup_types.WF_error("Unsupported character encoding")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/101.xml", at line 1, position 0:
+Other exception: Failure("Netconversion.encoding_of_string: unknown encoding")

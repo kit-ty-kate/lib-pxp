@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/080.xml", at line 6, column 35: 
-Markup_types.WF_error("Recursive reference to general entity `e1'")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/080.xml", at line 6, position 29:
+ERROR (Well-formedness constraint): Recursive reference to general entity `e1'

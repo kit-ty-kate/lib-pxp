@@ -1,3 +1,2 @@
-Called from entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/110.xml", line 5, column 3:
-In entity e, at line 1, column 0: 
-Markup_types.WF_error("Entity reference not allowed here")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/110.xml", at line 5, position 3:
+ERROR (Well-formedness constraint): Entity reference not allowed here

@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/109.xml", at line 4, column 0: 
-Markup_types.WF_error("Content not allowed here")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/109.xml", at line 4, position 0:
+ERROR (Well-formedness constraint): Content not allowed here

@@ -1,2 +1,2 @@
-In entity [toplevel document] = SYSTEM "data_jclark_notwf/sa/135.xml", at line 2, column 17: 
-Markup_types.WF_error("References to general entities not allowed in DTDs")
+In entity [toplevel] = SYSTEM "file://localhost/home/gerd/ocaml/smcvs/ocamlpkg/markup/rtests/negative/data_jclark_notwf/sa/135.xml", at line 2, position 17:
+ERROR (Well-formedness constraint): References to general entities not allowed in DTDs
