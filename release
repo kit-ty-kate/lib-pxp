@@ -5,7 +5,7 @@ set -e
 version=`./configure -version 2>/dev/null`
 destdir="pxp-$version"
 
-echo "Ensure the gensrc-pre lexers are up to date!"
+#echo "Ensure the gensrc-pre lexers are up to date!"
 
 mkdir -p packages
 rm -rf "packages/$destdir"

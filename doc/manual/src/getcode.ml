@@ -1,6 +1,6 @@
 #! /bin/sh
 # (*
-exec ocamlfattop "$0"
+exec ocaml str.cma "$0"
 *) directory ".";;
 
 open Str;;

@@ -38,28 +38,28 @@ f doc/README
 f doc/DEV
 f doc/EXTENSIONS
 f doc/PREPROCESSOR
-f doc/RELEASE-NOTES
+#f doc/RELEASE-NOTES
 f doc/SPEC
 f doc/design.txt
 
-d doc/manual
-f doc/manual/Makefile
-d doc/manual/html
-p doc/manual/html/.*\.html
-p doc/manual/html/.*\.css
-d doc/manual/html/pic
-p doc/manual/html/pic/.*\.gif
-d doc/manual/ps
-f doc/manual/ps/pxp.ps
-d doc/manual/src
-f doc/manual/src/extract.ml
-f doc/manual/src/getcode.ml
-f doc/manual/src/markup.css
-f doc/manual/src/markup.dsl
-f doc/manual/src/markup.sgml
-d doc/manual/src/extracted
-d doc/manual/src/pic
-p doc/manual/src/pic/.*\.fig
+#d doc/manual
+#f doc/manual/Makefile
+#d doc/manual/html
+#p doc/manual/html/.*\.html
+#p doc/manual/html/.*\.css
+#d doc/manual/html/pic
+#p doc/manual/html/pic/.*\.gif
+#d doc/manual/ps
+#f doc/manual/ps/pxp.ps
+#d doc/manual/src
+#f doc/manual/src/extract.ml
+#f doc/manual/src/getcode.ml
+#f doc/manual/src/markup.css
+#f doc/manual/src/markup.dsl
+#f doc/manual/src/markup.sgml
+#d doc/manual/src/extracted
+#d doc/manual/src/pic
+#p doc/manual/src/pic/.*\.fig
 
 d examples
 f examples/Makefile
@@ -129,6 +129,10 @@ d examples/xhtml2html
 f examples/xhtml2html/Makefile
 f examples/xhtml2html/main.ml
 
+d examples/preprocessor
+f examples/preprocessor/Makefile
+f examples/preprocessor/library.ml
+
 d src
 f src/Makefile
 
@@ -160,6 +164,8 @@ f src/pxp-engine/pxp_entity.ml
 f src/pxp-engine/pxp_entity_manager.ml
 f src/pxp-engine/pxp_ev_parser.mli
 f src/pxp-engine/pxp_ev_parser.ml
+f src/pxp-engine/pxp_event.mli
+f src/pxp-engine/pxp_event.ml
 f src/pxp-engine/pxp_lex_aux.ml
 f src/pxp-engine/pxp_lexer_types.ml
 f src/pxp-engine/pxp_lexer_types.mli
@@ -185,52 +191,13 @@ f src/pxp-engine/pxp_types.mli
 f src/pxp-engine/pxp_yacc.ml
 f src/pxp-engine/pxp_yacc.mli
 
-#d src/pxp-lex-generic
-#f src/pxp-lex-generic/pxp_lex_aux.ml
-#f src/pxp-lex-generic/pxp_lex_content.src
-#f src/pxp-lex-generic/pxp_lex_content_string.src
-#f src/pxp-lex-generic/pxp_lex_declaration.src
-#f src/pxp-lex-generic/pxp_lex_defs_generic.def
-#f src/pxp-lex-generic/pxp_lex_document.src
-#f src/pxp-lex-generic/pxp_lex_document_type.src
-#f src/pxp-lex-generic/pxp_lex_dtd_string.src
-#f src/pxp-lex-generic/pxp_lex_misc.src
-#f src/pxp-lex-generic/pxp_lex_name_string.src
-#f src/pxp-lex-generic/pxp_lex_within_tag.src
-
-#d src/pxp-lex-iso88591
-#f src/pxp-lex-iso88591/META.in
-#f src/pxp-lex-iso88591/Makefile
-#f src/pxp-lex-iso88591/Makefile.code
-#f src/pxp-lex-iso88591/open_pxp_lex_aux_iso88591.src
-#f src/pxp-lex-iso88591/open_pxp_lex_misc_iso88591.src
-#f src/pxp-lex-iso88591/pxp_lex_defs_iso88591.def
-#f src/pxp-lex-iso88591/pxp_lex_link_iso88591.ml
-
-#d src/pxp-lex-utf8
-#f src/pxp-lex-utf8/META.in
-#f src/pxp-lex-utf8/Makefile
-#f src/pxp-lex-utf8/Makefile.code
-#f src/pxp-lex-utf8/open_pxp_lex_aux_utf8.src
-#f src/pxp-lex-utf8/open_pxp_lex_misc_utf8.src
-#f src/pxp-lex-utf8/pxp_lex_defs_drv_utf8.def
-#f src/pxp-lex-utf8/pxp_lex_link_utf8.ml
-
-#d src/pxp-wlex
-#f src/pxp-wlex/META.in
-#f src/pxp-wlex/Makefile
-#f src/pxp-wlex/Makefile.code
-#f src/pxp-wlex/pxp_wlex.mlw
-#f src/pxp-wlex/pxp_wlex.ml
-#f src/pxp-wlex/pxp_wlex_aux.ml
-#f src/pxp-wlex/pxp_wlex_link.ml
-
 d src/pxp-lex
 f src/pxp-lex/char_classes_generic.def
 f src/pxp-lex/char_classes_wlex.def
 f src/pxp-lex/lex.src 
-f src/pxp-lex/link_generic.src
+f src/pxp-lex/link_ocamllex.src
 f src/pxp-lex/link_wlex.src
+f src/pxp-lex/link_ulex.src
 
 d gensrc
 d gensrc/pxp-lex-pattern
@@ -245,17 +212,18 @@ f gensrc/pxp-wlex/META.in
 d gensrc/pxp-wlex-utf8
 f gensrc/pxp-wlex-utf8/Makefile
 f gensrc/pxp-wlex-utf8/META.in
-#f gensrc/pxp-wlex-utf8/gen_done
-#f gensrc/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
-#f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.ml
-#f gensrc/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
 
-d gensrc-pre
-d gensrc-pre/pxp-wlex-utf8
-f gensrc-pre/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
-f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
-f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.306
-f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.307
+d gensrc/pxp-ulex-utf8
+f gensrc/pxp-ulex-utf8/Makefile
+f gensrc/pxp-ulex-utf8/META.in
+
+# No longer distributed since 1.1.95:
+#d gensrc-pre
+#d gensrc-pre/pxp-wlex-utf8
+#f gensrc-pre/pxp-wlex-utf8/pxp_wlex_link_utf8.ml
+#f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.mll
+#f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.306
+#f gensrc-pre/pxp-wlex-utf8/pxp_wlex_utf8_01.ml.307
 
 d src/pxp-pp
 f src/pxp-pp/Makefile
@@ -331,7 +299,7 @@ p rtests/canonxml/data_valid/optional_decls/out/.*\.xml
 
 d rtests/codewriter
 f rtests/codewriter/Makefile
-f rtests/codewriter/compile.ml
+f rtests/codewriter/xmlcompile.ml
 f rtests/codewriter/marshal_namespace.ml
 f rtests/codewriter/marshal_simple.ml
 f rtests/codewriter/marshal_recode.ml
@@ -344,6 +312,7 @@ f rtests/dynamic/Makefile
 f rtests/dynamic/create_element.ml
 f rtests/dynamic/modify.ml
 f rtests/dynamic/strip.ml
+f rtests/dynamic/symmetry.ml
 f rtests/dynamic/run
 
 d rtests/negative
@@ -394,9 +363,6 @@ d tools
 f tools/Makefile
 f tools/collect_files
 f tools/ifdef
-#f tools/insert_variant
-#f tools/m2parsergen
-#f tools/ucs2_to_utf8
 
 d tools/src
 f tools/src/Makefile
@@ -409,19 +375,12 @@ f tools/src/m2parsergen/generator.ml
 f tools/src/m2parsergen/lexer.mll
 f tools/src/m2parsergen/parser.mly
 
-#d tools/src/ucs2_to_utf8
-#f tools/src/ucs2_to_utf8/Makefile
-#f tools/src/ucs2_to_utf8/README
-#f tools/src/ucs2_to_utf8/lexer.mll
-#f tools/src/ucs2_to_utf8/parser.mly
-#f tools/src/ucs2_to_utf8/types.ml
-#f tools/src/ucs2_to_utf8/ucs2_to_utf8.ml
-
 d tools/src/lexpp
 f tools/src/lexpp/Makefile
-f tools/src/lexpp/file.ml
-f tools/src/lexpp/lexer.mll
 f tools/src/lexpp/main.ml
-f tools/src/lexpp/parser.mly
-f tools/src/lexpp/types.ml
+f tools/src/lexpp/lexpp_file.ml
+f tools/src/lexpp/mll_lexer.mll
+f tools/src/lexpp/uni_lexer.mll
+f tools/src/lexpp/uni_parser.mly
+f tools/src/lexpp/uni_types.ml
 f tools/src/lexpp/ucs2_to_utf8.ml

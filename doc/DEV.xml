@@ -51,16 +51,28 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
-      <li><p><em>XXX:</em>Addition of ulex lexing.</p>
+      <li><p><em>1.1.95:</em> Addition of ulex lexing.</p>
 	<p>Fix in Pxp_reader.combine.</p>
 	<p>Revised namespace handling: There are now namespace_scope
 	  objects keeping the scoping structure of the namespaces.
-	  The namespace_info stuff has been removed.</p>
+	  The namespace_info stuff has been removed. The "display"
+	  methods can print XML while respecting the scoping structure.
+	</p>
 	<p>New exceptions Namespace_not_managed, Namespace_prefix_not_managed,
 	  Namespace_not_in_scope (all replacing Not_found). Methods
 	  of namespace_manager may raise these exceptions.
 	</p>
+	<p>The event-based representation of XML is now symmetrical
+	  to the tree-based representation, such that it is possible
+	  to convert one representation into the other without loss.
+	  The type of events had to be changed to achieve this effect.
+	</p>
+	<p>The new module Pxp_event contains functions for the event-based
+	  representation.</p>
 	<p>Addition of pxp-pp, the PXP preprocessor.</p>
+	<p><em>This release requires Ocamlnet 0.98. You should also
+	    install ulex. There are no longer precompiled wlex lexers
+	    (use ulex instead).</em></p>
       </li>
 
       <li><p><em>1.1.94.2:</em> Again fixes for the combination of

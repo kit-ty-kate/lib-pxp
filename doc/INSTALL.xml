@@ -12,15 +12,17 @@
   <sect1><title>The "pxp" package</title>
     <sect2><title>Prerequisites</title>
       <p>
-&m; requires that the <a href="&url.netstring-project;">netstring package
-</a> is already installed. &m; works
-only with O'Caml 3.00 (the support for 2.04 has been dropped).
-The installation
-procedure defined in the Makefile requires <a
-href="&url.findlib-project;">findlib</a> to work<footnote><em>Findlib</em> is a
-package manager, see the file ABOUT-FINDLIB.</footnote>. &m; may
-now be optionally compiled with support for Alain Frisch's patch of
-ocamllex called <a href="&url.ocaml.frisch;">"wlex"</a>.
+&m; requires that the <a
+href="&url.netstring-project;">ocamlnet/netstring package </a> is
+already installed (version 0.98 required). &m; works only with O'Caml
+>= 3.07.  The installation procedure defined in the Makefile requires
+<a href="&url.findlib-project;">findlib</a> to
+work<footnote><em>Findlib</em> is a package manager, see the file
+ABOUT-FINDLIB.</footnote>. &m; may be optionally compiled with
+support for Alain Frisch's patch of ocamllex called <a
+href="&url.ocaml.frisch;">"wlex"</a>. There is now also support
+for ulex, Alain's Unicode-aware replacement for ocamllex (same
+link), which is simpler to build and now highly recommended.
 </p>
     </sect2>
 
@@ -51,8 +53,7 @@ option (see below).</p>
 	  <p>-with-wlex</p>
 	  <p>Enables the lexical analyzer that works for UTF-8 as internal encoding, and that is based on Alain Frisch's wlex tool. It
 is relatively small and almost as fast as the ocamllex-based lexers. I
-recommend it if it is ok to install another library (wlex). Note that you only need
-the runtime part of wlex, and not the "wlex" command itself.</p>
+recommend it if it is ok to install another library (wlex).</p>
 	</li>
 	<li>
 	  <p>-with-wlex-compat</p>
@@ -63,21 +64,24 @@ for UTF8 and ISO-8859-1 (may be required to build old software)</p>
 	  <p>-with-ulex</p>
 	  <p>Enables the lexical analyzer that works for UTF-8 as internal encoding, and that is based on Alain Frisch's ulex tool. It
 is relatively small, but a bit slower than the ocamllex-based lexers.
-ulex will supersede wlex soon.</p>
+ulex will supersede wlex soon. ulex is required for the preprocessor
+(see below).</p>
 	</li>
 	<li>
 	  <p>-with-pp</p>
 	  <p>Enables the PXP preprocessor (installed as package pxp-pp).
-See the file PREPROCESSOR for details. The preprocessor also requires ulex.</p>
+See the file PREPROCESSOR for details. The preprocessor requires ulex.</p>
 	</li>
 	<li>
-	  <p>-lexlist &lt;list-of-encodings&gt;</p>
-	  <p>Specifies the character encodings to support by the ocamllex-
-based lexers. You need only the encodings you are going to use for the internal
-representation of the XML data in memory. It is not necessary to mention
-a character set here if you only want to read an external file. Note that
-utf8 is also provided by -with-wlex, and it is reasonable to omit it here
-if -with-wlex is in effect.</p>
+	  <p>-lexlist &lt;list-of-encodings&gt;</p> <p>Specifies the
+	  character encodings to support by the ocamllex- based
+	  lexers. You need only the encodings you are going to use for
+	  the internal representation of the XML data in memory. It is
+	  not necessary to mention a character set here if you only
+	  want to read an external file. Note that utf8 is also
+	  provided by both -with-wlex and -with-ulex, and it is
+	  reasonable to omit it here if one of the mentioned options
+	  is in effect.</p>
 	</li>
       </ul>
 

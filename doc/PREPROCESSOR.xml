@@ -27,6 +27,10 @@ enables camlp4, on which the preprocessor is based. It is also
 possible to use it together with the revised syntax, use
 "-syntax camlp4r" in this case.</p>
 
+    <p><em>Important:</em> Up to version 1.0.4, findlib (ocamlfind)
+has a problem with the definition for pxp-pp. There is an easy
+workaround: Use "-syntax camlp4o,byte".</p>
+
     <p>In the toploop, type
 
 <code>

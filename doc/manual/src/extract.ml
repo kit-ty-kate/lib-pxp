@@ -1,9 +1,12 @@
 #! /bin/sh
 # (*
-exec ocamlfattop "$0" "$@"
+exec ocaml "$0" "$@"
 *) directory ".";;
 
+#use "topfind";;
+
 #require "netstring";;
+#require "str";;
 
 (*
  * <ID:id-string>
