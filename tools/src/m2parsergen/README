@@ -1,0 +1,280 @@
+----------------------------------------------------------------------
+m2parsergen
+----------------------------------------------------------------------
+
+This is a parser generator for top-down (or recursively descending) parsers.
+The input file must be structured as follows:
+
+---------------------------------------- Begin of file
+
+<OCAML TEXT ("preamble")>
+
+%%
+
+<DECLARATIONS>
+
+%%
+
+<RULES>
+
+%%
+
+<OCAML TEXT ("postamble")>
+
+---------------------------------------- End of file
+
+The two-character combination %% separates the various sections. The
+text before the first %% and after the last %% will be copied verbatim
+to the output file.
+
+Within the declarations and rules sections you must use /* ... */ as
+comment braces.
+
+There are two types of declarations:
+
+%token Name
+
+declares that Name is a token without associated value, and
+
+%token <> Name
+
+declares that Name is a token with associated value (i.e. Name x).
+
+In contrast to ocamlyacc, you need not to specify a type. This is a
+fundamental difference, because m2parsergen will not generate a type
+declaration for a "token" type; you must do this yourself.
+
+You need not to declare start symbols; every grammar rule may be used
+as start symbol.
+
+The rules look like:
+
+name_of_rule(arg1, arg2, ...):
+  label1:symbol1 label2:symbol2 ... {{ CODE }}
+| label1:symbol1 label2:symbol2 ... {{ CODE }}
+...
+| label1:symbol1 label2:symbol2 ... {{ CODE }}
+
+The rules may have arguments (note that you must write the
+parantheses, even if the rule does not have arguments). Here, arg1,
+arg2, ... are the formal names of the arguments; you may refer to them
+in OCaml code.
+
+Furthermore, the symbols may have labels (you can leave the labels
+out). You can refer to the value associated with a symbol by its
+label, i.e. there is an OCaml variable with the same name as the label
+prescribes, and this variable contains the value.
+
+The OCaml code must be embraced by {{ and }}, and these separators
+must not occur within the code.
+
+EXAMPLE:
+
+prefix_term():
+  Plus_symbol Left_paren v1:prefix_term() Comma v2:prefix_term() Right_paren
+    {{ v1 + v2 }}
+| Times_symbol Left_paren v1:prefix_term() Comma v2:prefix_term() Right_paren
+    {{ v1 * v2 }}
+| n:Number
+    {{ n }}
+
+As you can see in the example, you must pass values for the arguments
+if you call non-terminal symbols (here, the argument list is empty: ()).
+
+The generated parsers behave as follows:
+
+- A rule is applicable to a token sequence if the first token is
+  matched by the rule.
+
+  In the example: prefix_term is applicable if the first token of a
+  sequence is either Plus_symbol, Times_symbol, or Number.
+
+- One branch of the applicable rule is selected: it is the first
+  branch that matches the first token. THE OTHER TOKENS DO NOT HAVE
+  ANY EFFECT ON BRANCH SELECTION!
+
+  For instance, in the following rule the second branch is never
+  selected, because only the A is used to select the branch:
+
+  a():
+    A B {{ ... }}
+  | A C {{ ... }}
+
+- Once a branch is selected, it is checked whether the branch matches
+  the token sequence. If this check succeeds, the code section of the
+  branch is executed, and the resulting value is returned to the
+  caller.
+  If the check fails, the exception Parsing.Parse_error is raised.
+  Normally, this exception is not caught, and will force the parser
+  to stop.
+
+  The check in detail:
+
+  If the rule demands a terminal, there a must be exactly this
+  terminal at the corresponding location in the token sequence.
+
+  If the rule demands a non-terminal, it is checked whether the rule
+  for to this non-terminal is applicable. If so, the branch
+  is selected, and recursively checked. If the rule is not applicable,
+  the check fails immediately.
+
+- THERE IS NO BACKTRACKING! 
+
+  Note that the following works (but the construction is resolved at
+  generation time):
+
+  rule1() =
+     rule2() A B ... {{ ... }}
+
+  rule2() =
+     C {{ ... }}
+   | D {{ ... }}
+
+  In this case, the (only) branch of rule1 is selected if the next
+  token is C or D.
+
+---
+
+
+
+*** Options and repetitions ***
+
+Symbols can be tagged as being optional, or to occur repeatedly:
+
+rule():
+  Name whitespace()* Question_mark?
+
+- "*": The symbol matches zero or more occurrences.
+
+- "?": The symbol matches zero or one occurrence.
+
+This is done as follows:
+
+- terminal*: The maximum number of consecutive tokens <terminal> are
+             matched.
+- non-terminal*: The maximum number of the subsequences matching
+                 <non-terminal> are matched. Before another
+                 subsequence is matched, it is checked whether the
+                 rule for <non-terminal> is applicable. If so, the
+                 rule is invoked and must succeed (otherwise Parsing.
+		 Parse_error). If not, the loop is exited.
+
+- terminal?: If the next token is <terminal>, it is matched. If not,
+             no token is matched.
+
+- non-terminal?: It is checked whether the rule for <non-terminal>
+                 is applicable. If so, the rule is invoked, and
+                 matches a sequence of tokens. If not, no token is
+		 matched.
+
+You may refer to repeated or optional symbols by labels. In this case,
+the label is associated with lists of values, or optional values, 
+respectively.
+
+
+
+*** Early let-binding ***
+
+You may put some OCaml code directly after the first symbol of a
+branch:
+
+rule():
+  A $ {{ let-binding }} C D ... {{ ... }}
+
+The code brace {{ let-binding }} must be preceded by a dollar
+sign. You can put "let ... = ... in" statements into this brace:
+
+rule1():
+  n:A $ {{ let twice = 2 * n in }} rule2(twice) {{ ... }}
+
+This code is executed once the branch is selected.
+
+
+
+*** Error handling ***
+
+If a branch is already selected, but the check fails whether the other
+symbols of the branch match, it is possible to catch the resulting
+exception and to find out at which position the failure has occurred.
+
+rule():
+  x:A y:B z:C {{ ... }} ? {{ ERROR-CODE }}
+
+After a question mark, it is allowed to append another code
+brace. This code is executed if the branch check fails (but not if the
+branch is not selected nor if no branches are selected). The string
+variable !yy_position contains the label of the symbol that caused the
+failure (or it contains the empty string if the symbol does not have a
+label). 
+
+Example:
+
+rule():
+  x:A y:B z:C {{ print_endline "SUCCESS" }} ? {{ print_endline !yy_position }}
+
+If the token sequence is A B C, "SUCCESS" will be printed. If the
+sequence is A C, the second symbol fails, and "y" will be printed. If
+the sequence is A B D, the third symbol fails, and "z" will be
+printed. If the sequence is B, the rule will be never selected because
+it is not applicable.
+
+
+
+*** Error recovery ***
+
+You may call the functions yy_current, yy_get_next, or one of the
+parse_* functions in the error brace to recover from the error
+(e.g. to move ahead until a certain token is reached). See below.
+
+
+
+*** How to call the parser ***
+
+The rules are rewritten into a OCaml let-binding:
+
+let rec parse_<rule1> ... = ...
+    and parse_<rule2> ... = ...
+    ...
+    and parse_<ruleN> ... = ...
+in
+
+i.e. there are lots of functions, and the name of the functions are
+"parse_" plus the name of the rules. You can call every function.
+
+The first two arguments of the functions have a special meaning; the
+other arguments are the arguments coming from the rule description:
+
+rule(a,b):
+  ...
+
+===>
+
+let rec parse_rule yy_current yy_get_next a b = ...
+
+The first argument, yy_current, is a function that returns the current
+token. The second arguments, yy_get_next, is a function that switches
+to the next token, and returns it.
+
+If the tokens are stored in a list, this may be a definition:
+
+let input = ref [ Token1; Token2; ... ] in
+let yy_current() = List.hd !input in
+let yy_get_next () =
+  input := List.tl !input;
+  List.hd !input
+
+When you call one of the parser functions, the current token must
+already be loaded, i.e. yy_current returns the first token to match by
+the function.
+
+After the functions has returned, the current token is the token
+following the sequence of tokens that have been matched by the
+function.
+
+The function returns the value computed by the OCaml code brace of the
+rule (or the value of the error brace).
+
+If the rule is not applicable, the exception Not_found is raised.
+
+If the rule is applicable, but it does not match, the exception
+Parsing.Parse_error is raised.
