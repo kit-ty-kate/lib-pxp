@@ -1,4 +1,4 @@
-(* $Id: pxp_yacc.m2y,v 1.5 2000/07/06 23:05:18 gerd Exp $ -*- tuareg -*-
+(* $Id: pxp_yacc.m2y,v 1.6 2000/07/08 16:27:29 gerd Exp $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  * PXP: The polymorphic XML parser for Objective Caml.
  * Copyright by Gerd Stolpmann. See LICENSE for details.
@@ -177,20 +177,11 @@ let from_string ?fixenc s =
 ;;
 
 
-  (* This parser works with side effects. This is not optimal but currently
-   * the simplest approach. In order to have better control of the side
-   * effects, the parser is artifically turned into an object. This is done
-   * by a "sed" script in the Makefile that changes some of the generated "let"
-   * definitions into "val" definitions and the other "let" definitions into
-   * "method" definitions.
-   * We begin here the class:
-   *)
-
-  (**********************************************************************)
+(**********************************************************************)
 
 class ['ext] parser_object
   init_doc init_dtd init_extend_dtd init_config init_resolver init_spec 
-  init_process_xmldecl
+  init_process_xmldecl transform_dtd
   =
   object (self)
 
@@ -198,13 +189,16 @@ class ['ext] parser_object
        * parser a class.
        *)
 
-    val dtd = init_dtd
+    val mutable dtd = init_dtd
 	(* The DTD being parsed; or the DTD currently assumed *)
 
     val extend_dtd = init_extend_dtd
 	(* Whether the DTD should be extended by ELEMENT, ATTLIST, and
 	 * NOTATION declarations or not.
 	 *)
+
+    val transform_dtd = transform_dtd
+        (* A function transforming the DTD *)
 
     val process_xmldecl = init_process_xmldecl
         (* Whether the XML declaration is parsed and the found XML version
@@ -645,6 +639,7 @@ doctypedecl_material(doctype_entid):
 		r'
 		spec
 		process_xmldecl
+		(fun x -> x)
 	    in
 	    let en = new external_entity r' dtd "[dtd]"
 		         config.warner id false config.errors_with_line_numbers
@@ -772,7 +767,7 @@ declaration():
 	* entity. (This restriction is explained in SPECS.xml.)
 	*)
        if begin_entid != end_entid then
-	 raise(Validation_error("The first and the last token of conditional sections must be in the same entity (addtional restriction of this parser)"));
+	 raise(Validation_error("The first and the last token of conditional sections must be in the same entity (additional restriction of this parser)"));
  }}
 
 
@@ -1412,6 +1407,7 @@ contents_start():
    * modify the object that has been passed to the parsing function directly.
    */
   /* WS */
+    $ {{ dtd <- transform_dtd dtd; }}
   start_tag() content()*
     {{ () }}
 
@@ -1729,148 +1725,187 @@ let default_spec =
     ~element_mapping:          (Hashtbl.create 1)
 ;;
 
+exception Return_DTD of dtd;;
+
+let call_parser ~configuration:cfg 
+                ~source:src 
+		~dtd 
+		~extensible_dtd 
+		~document:doc 
+		~specification:spec 
+		~process_xmldecl 
+		~transform_dtd
+                ~entry 
+		~init_lexer =
+  let e = cfg.errors_with_line_numbers in
+  let w = cfg.warner in
+  let r, en =
+    match src with
+	Entity(m,r')  -> r', m dtd
+      | ExtID(xid,r') -> r', 
+                         new external_entity 
+			   r' dtd "[toplevel]" w xid false e
+                           cfg.encoding
+  in
+  r # init_rep_encoding cfg.encoding;
+  r # init_warner w;
+  en # set_debugging_mode (cfg.debugging_mode);
+  let pobj =
+    new parser_object
+      doc
+      dtd
+      extensible_dtd
+      cfg
+      r
+      spec
+      process_xmldecl
+      transform_dtd
+  in
+  let mgr = new entity_manager en in
+  en # open_entity true init_lexer;
+  try
+    let context = make_context mgr in
+    pobj # parse context entry;
+    ignore(en # close_entity);
+    pobj
+  with
+      Return_DTD d ->
+	ignore(en # close_entity);
+	raise(Return_DTD d)
+    | error ->
+	(* TODO: close resolvers as well *)
+	ignore(en # close_entity);
+	let pos = mgr # position_string in
+	raise (At(pos, error))
 
 
 
 let parse_dtd_entity cfg src =
   (* Parse a DTD given as separate entity. *)
   let dtd = new dtd cfg.warner cfg.encoding in
-  let w = cfg.warner in
-  let e = cfg.errors_with_line_numbers in
-  let r, en =
-    match src with
-	Entity(m,r')  -> r', m dtd
-      | ExtID(xid,r') -> r', 
-                         new external_entity 
-			   r' dtd "[toplevel dtd]" w xid false e
-                           cfg.encoding
-  in
-  r # init_rep_encoding cfg.encoding;
-  r # init_warner w;
-  en # set_debugging_mode (cfg.debugging_mode);
+  let doc = new document cfg.warner in
   let pobj =
-    new parser_object
-      (new document cfg.warner)
-      dtd
-      true
-      cfg
-      r
-      default_spec
-      false
+    call_parser 
+      ~configuration:cfg 
+      ~source:src 
+      ~dtd:dtd 
+      ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
+      ~document:doc 
+      ~specification:default_spec 
+      ~process_xmldecl:false       (* The XML declaration is ignored 
+				    * (except 'encoding') 
+				    *)
+      ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~entry:Ext_declarations      (* Entry point of the grammar *)
+      ~init_lexer:Declaration      (* The initially used lexer *)
   in
-  let mgr = new entity_manager en in
-  try
-    en # open_entity true Declaration;
-    let context = make_context mgr in
-    pobj # parse context Ext_declarations;
-    ignore(en # close_entity);
-    dtd # validate;
-    dtd
-  with
-      error ->
-	ignore(en # close_entity);
-	let pos = mgr # position_string in
-	raise (At(pos, error))
+  dtd # validate;
+  dtd
 ;;
 
 
-let parse_content_entity cfg src a_dtd spec =
+let parse_content_entity cfg src dtd spec =
   (* Parse an element given as separate entity *)
-  a_dtd # validate;            (* ensure that the DTD is valid *)
-  let w = cfg.warner in
-  let e = cfg.errors_with_line_numbers in
-  let r, en =
-    match src with
-	Entity(m,r')  -> r', m a_dtd
-      | ExtID(xid,r') -> r', 
-	                 new external_entity 
-			   r' a_dtd "[toplevel element]" w xid
-                           false e cfg.encoding
-  in
-  r # init_rep_encoding cfg.encoding;
-  r # init_warner w;
-  en # set_debugging_mode (cfg.debugging_mode);
+  dtd # validate;            (* ensure that the DTD is valid *)
+  let doc = new document cfg.warner in
   let pobj =
-    new parser_object
-      (new document cfg.warner)
-      a_dtd
-      true
-      cfg 
-      r
-      spec
-      false
+    call_parser
+      ~configuration:cfg 
+      ~source:src 
+      ~dtd:dtd 
+      ~extensible_dtd:true         (* Extend the DTD by parsed declarations *)
+      ~document:doc 
+      ~specification:spec 
+      ~process_xmldecl:false       (* The XML declaration is ignored 
+				    * (except 'encoding') 
+				    *)
+      ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~entry:Ext_element           (* Entry point of the grammar *)
+      ~init_lexer:Content          (* The initially used lexer *)
   in
-  let mgr = new entity_manager en in
-  try
-    en # open_entity true Content;
-    let context = make_context mgr in
-    pobj # parse context Ext_element;
-    ignore(en # close_entity);
-    match pobj # root with
-	Some r -> r
-      | None -> raise(WF_error("No root element"))
-  with
-      error ->
-	ignore(en # close_entity);
-	let pos = mgr # position_string in
-	raise (At(pos, error))
+  match pobj # root with
+      Some r -> r
+    | None -> raise(WF_error("No root element"))
 ;;
 
 
-let iparse_document_entity cfg0 src spec p_wf =
+let parse_wfcontent_entity cfg src spec =
+  let dtd = new dtd cfg.warner cfg.encoding in
+  dtd # allow_arbitrary;
+  let doc = new document cfg.warner in
+  let pobj =
+    call_parser
+      ~configuration:cfg 
+      ~source:src 
+      ~dtd:dtd 
+      ~extensible_dtd:false        (* Do not extend the DTD *)
+      ~document:doc 
+      ~specification:spec 
+      ~process_xmldecl:false       (* The XML declaration is ignored 
+				    * (except 'encoding') 
+				    *)
+      ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
+      ~entry:Ext_element           (* Entry point of the grammar *)
+      ~init_lexer:Content          (* The initially used lexer *)
+  in
+  match pobj # root with
+      Some r -> r
+    | None -> raise(WF_error("No root element"))
+;;
+
+
+let iparse_document_entity ?(transform_dtd = (fun x -> x)) cfg0 src spec p_wf =
   (* Parse an element given as separate entity *)
+  (* p_wf: 'true' if in well-formedness mode, 'false' if in validating mode *)
   let cfg = { cfg0 with
 		recognize_standalone_declaration = 
                    cfg0.recognize_standalone_declaration && (not p_wf) 
             } in
-  let a_dtd = new dtd cfg.warner cfg.encoding in
-  let e = cfg.errors_with_line_numbers in
+  let dtd = new dtd cfg.warner cfg.encoding in
   if p_wf then
-    a_dtd # allow_arbitrary;
-  let a_doc = new document cfg.warner in
-  let w = cfg.warner in
-  let r, en =
-    match src with
-	Entity(m,r')  -> r', m a_dtd
-      | ExtID(xid,r') -> r', 
-		         new document_entity 
-			   r' a_dtd "[toplevel document]" w xid e
-                           cfg.encoding
-  in
-  r # init_rep_encoding cfg.encoding;
-  r # init_warner w;
-  en # set_debugging_mode (cfg.debugging_mode);
+    dtd # allow_arbitrary;
+  let doc = new document cfg.warner in
   let pobj =
-    new parser_object
-      a_doc
-      a_dtd
-      (not p_wf)
-      cfg 
-      r
-      spec
-      true          (* TODO: change to 'not p_wf' ? *)
+    call_parser 
+      ~configuration:cfg 
+      ~source:src 
+      ~dtd:dtd 
+      ~extensible_dtd:(not p_wf)   (* Extend the DTD by parsed declarations
+				    * only if in validating mode
+				    *)
+      ~document:doc 
+      ~specification:spec 
+      ~process_xmldecl:true        (* The XML declaration is processed *)
+                                   (* TODO: change to 'not p_wf' ? *)
+      ~transform_dtd:transform_dtd
+      ~entry:Ext_document          (* Entry point of the grammar *)
+      ~init_lexer:Document         (* The initially used lexer *)
   in
-  let mgr = new entity_manager en in
-  en # open_entity true Document;          (* open the entity *)
-  try
-    let context = make_context mgr in
-    pobj # parse context Ext_document;
-    let d = pobj # doc in                    (* get the parsed document *)
-    ignore(en # close_entity);               (* close the entity *)
-    (* return the document to the caller *)
-    d
-  with
-      error ->
-	ignore(en # close_entity);
-	let pos = mgr # position_string in
-	raise (At(pos, error))
+  pobj # doc
 ;;
 
 
-let parse_document_entity cfg src spec =
-  iparse_document_entity cfg src spec false;;
+let parse_document_entity ?(transform_dtd = (fun x -> x)) cfg src spec =
+  iparse_document_entity ~transform_dtd:transform_dtd cfg src spec false;;
+
 let parse_wfdocument_entity cfg src spec =
   iparse_document_entity cfg src spec true;;
+
+let extract_dtd_from_document_entity cfg src =
+  let transform_dtd dtd = raise (Return_DTD dtd) in
+  try
+    let doc = parse_document_entity 
+		~transform_dtd:transform_dtd
+		cfg
+		src
+		default_spec in
+    (* Should not happen: *)
+    doc # dtd
+  with
+      Return_DTD dtd ->
+	(* The normal case: *)
+	dtd
+;;
 
 
 let default_config =
@@ -1885,22 +1920,16 @@ let default_config =
   }
 
 
-(* XXX *)
-
-let extract_dtd_from_document_entity = ()
-
-let parse_wfcontent_entity = ()
-
-let parse_document_entity_with_dtd _ _ _ _ = failwith "xxx"
-
-
-
-
-
 (* ======================================================================
  * History:
  *
  * $Log: pxp_yacc.m2y,v $
+ * Revision 1.6  2000/07/08 16:27:29  gerd
+ * 	Cleaned up the functions calling the parser.
+ * 	New parser argument: transform_dtd.
+ * 	Implementations for 'extract_dtd_from_document_entity' and
+ * 'parse_wfcontent_entity'.
+ *
  * Revision 1.5  2000/07/06 23:05:18  gerd
  * 	Initializations of resolvers were missing.
  *
