@@ -1,4 +1,4 @@
-(* $Id: test_canonxml.ml,v 1.7 2000/08/16 23:44:17 gerd Exp $
+(* $Id: test_canonxml.ml,v 1.8 2000/08/17 00:51:57 gerd Exp $
  * ----------------------------------------------------------------------
  *
  *)
@@ -105,18 +105,26 @@ let rec output_xml config n =
     | T_data ->
 	let v = n # data in
 	output_utf8 config (escaped v)
+    | T_comment ->
+	let v =
+	  match n # comment with
+	      None -> assert false
+	    | Some x -> x
+	in
+	output_utf8 config ("<!--" ^ v ^ "-->")
     | _ -> 
 	assert false
 ;;
 
 
-let parse debug wf iso88591 filename =
+let parse debug wf iso88591 comments filename =
   let spec =
     let e = new element_impl default_extension in
     e # keep_always_whitespace_mode;
     make_spec_from_mapping
       ~super_root_exemplar:      e
       ~default_pinstr_exemplar:  e
+      ~comment_exemplar:         e
       ~data_exemplar:            (new data_impl default_extension)
       ~default_element_exemplar: e
       ~element_mapping:          (Hashtbl.create 1)
@@ -128,6 +136,7 @@ let parse debug wf iso88591 filename =
 	  debugging_mode = debug;
 	  enable_pinstr_nodes = true;
 	  enable_super_root_node = true;
+	  enable_comment_nodes = comments;
 	  encoding = if iso88591 then `Enc_iso88591 else `Enc_utf8;
 	  idref_pass = true;
       }
@@ -159,11 +168,17 @@ let main() =
   let debug = ref false in
   let wf = ref false in
   let iso88591 = ref false in
+  let comments = ref false in
   let files = ref [] in
   Arg.parse
-      [ "-d",   Arg.Set debug, "turn debugging mode on";
-	"-wf",  Arg.Set wf,    "check only on well-formedness";
-	"-iso-8859-1", Arg.Set iso88591, "use ISO-8859-1 as internal encoding instead of UTF-8";
+      [ "-d",   Arg.Set debug, 
+	   "          turn debugging mode on";
+	"-wf",  Arg.Set wf,    
+            "         check only on well-formedness";
+	"-iso-8859-1", Arg.Set iso88591, 
+                    " use ISO-8859-1 as internal encoding instead of UTF-8";
+	"-comments", Arg.Set comments, 
+	          "   output comments, too";
       ]
       (fun x -> files := x :: !files)
       "
@@ -171,7 +186,7 @@ usage: test_canonxml [options] file ...
 
 List of options:";
   files := List.rev !files;
-  List.iter (parse !debug !wf !iso88591) !files;
+  List.iter (parse !debug !wf !iso88591 !comments) !files;
 ;;
 
 
@@ -182,6 +197,9 @@ if !error_happened then exit(1);;
  * History:
  * 
  * $Log: test_canonxml.ml,v $
+ * Revision 1.8  2000/08/17 00:51:57  gerd
+ * 	Added -comments option to test enable_comment_nodes.
+ *
  * Revision 1.7  2000/08/16 23:44:17  gerd
  * 	Updates because of changes of the PXP API.
  *

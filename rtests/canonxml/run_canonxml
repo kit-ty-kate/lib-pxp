@@ -2,10 +2,11 @@
 
 check_dir () {
     dir="$1"
+    shift
     xmlfiles=`cd $dir && echo *.xml`
     for file in $xmlfiles; do
         echo -n "File $dir/$file: "
-	./test_canonxml "$dir/$file" >out.xml
+	./test_canonxml "$@" "$dir/$file" >out.xml
 	if cmp out.xml "$dir/out/$file"; then
 	    echo "OK"
 	else
@@ -18,6 +19,7 @@ check_dir () {
 check_dir "data_valid/conditional"
 check_dir "data_valid/att_normalization"
 check_dir "data_valid/optional_decls"
+check_dir "data_valid/comments" -comments
 
 #check_dir "data_jclark_valid/sa-problems"
 #check_dir "data_jclark_valid/ext-sa-problems"
