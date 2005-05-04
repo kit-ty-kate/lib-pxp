@@ -683,8 +683,11 @@ class dtd  ?swarner the_warner init_encoding =
 	     el # validate)
 	  elements;
 
-	(* Check the root element: *)
-	(* TODO: Check if this piece of code is executed at all! *)
+	(* Check the root element: This check is commented out because:
+	 * - it is performed anyway when the root element is validated
+	 * - it does not work in namespace mode (missing ns normalization)
+	 *)
+(* --
 	begin match root with
 	    None -> ()
 	  | Some r ->
@@ -695,6 +698,7 @@ class dtd  ?swarner the_warner init_encoding =
 		    raise(Validation_error("The root element is not declared"))
 	      end
 	end;
+  --*)
 	validated <- true;
       end
 
