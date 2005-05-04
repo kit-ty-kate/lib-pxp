@@ -126,6 +126,8 @@ let parse debug wf namespaces iso88591 helpers filename =
     in
     let start_id =
       System filename in
+    let spec =
+      if namespaces then default_namespace_spec else default_spec in
     let doc =
       parse_fn
 	  { default_config with 
@@ -136,7 +138,7 @@ let parse debug wf namespaces iso88591 helpers filename =
 	      warner = new warner
           }
 	  (ExtID(start_id, resolver))
-	  default_spec 
+	  spec 
     in
     ()
   with
