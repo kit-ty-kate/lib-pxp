@@ -72,18 +72,3 @@ distclean:
 RELEASE:
 	./configure -version >RELEASE
 
-.PHONY: dist
-dist: RELEASE
-	./release
-
-.PHONY: tag-release
-tag-release: RELEASE
-	@echo Checking whether everything is checked in...
-	! cvs -n update 2>&1 | grep '^[MACPU] '
-	r=`head -1 RELEASE | sed -e s/\\\./-/g`; cd ..; cvs tag -F $(NAME)-$$r pxp
-
-.PHONY: release
-release: 
-	$(MAKE) tag-release
-	$(MAKE) dist
-

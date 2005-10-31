@@ -4,6 +4,8 @@ set -e
 
 version=`./configure -version 2>/dev/null`
 destdir="pxp-$version"
+trunk="https://gps.dynxs.de/svn/lib-pxp/trunk"
+tag="https://gps.dynxs.de/svn/lib-pxp/tags/$destdir"
 
 #echo "Ensure the gensrc-pre lexers are up to date!"
 
@@ -13,3 +15,23 @@ makepkg -spec pxp.files -intree . -outtree "packages/$destdir"
 touch "packages/$destdir/gensrc/pxp-wlex-utf8/gen_done"
 (cd packages; tar czf "$destdir.tar.gz" "$destdir")
 
+# Checking for svn:
+
+status=$(svn status | grep -v '^\?' || true )
+
+if [ -n "$status" ]; then
+    echo "Error: svn status not clean"
+    exit 1
+else
+    printf "Tag revision (y/n)? "
+    read answer
+    case "$answer" in
+        y|Y|yes|YES)
+            svn cp "$trunk" "$tag"
+            echo "New tag: $tag"
+            ;;
+        *)
+            echo "Nothing tagged."
+            ;;
+    esac
+fi
