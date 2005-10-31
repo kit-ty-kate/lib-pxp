@@ -13,9 +13,11 @@ readme = readme
 
 # Where to install DEV by "make DEV":
 
-installdev = $$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.html
+H = /netuser/gerd
 
-installrel = $$HOME/homepage/ocaml-programming.de/packages/documentation/pxp/index_rel.html
+installdev = $(H)/homepage/ocaml-programming.de/packages/documentation/pxp/index_dev.html
+
+installrel = $(H)/homepage/ocaml-programming.de/packages/documentation/pxp/index_rel.html
 
 # ----------------------------------------------------------------------
 # make all
@@ -45,7 +47,9 @@ PREPROCESSOR: PREPROCESSOR.xml common.xml config.xml readme.dtd
 
 DEV: DEV.xml common.xml config.xml readme.dtd
 	$(readme) -text DEV.xml >DEV
-	#$(readme) -html DEV.xml >$(installdev)
+
+inst_DEV: DEV
+	$(readme) -html DEV.xml >$(installdev)
 
 REL: RELEASE-NOTES.xml common.xml config.xml readme.dtd
 	$(readme) -text RELEASE-NOTES.xml >RELEASE-NOTES

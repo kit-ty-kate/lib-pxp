@@ -51,7 +51,8 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
 
-      <li><p><em>NEXT:</em> Fix: The "root element check" is disabled
+      <li><p><em>1.1.96:</em> Works now for O'Caml 3.09, too.</p>
+	 <p>Fix: The "root element check" is disabled
          in Pxp_dtd. It did not work together with namespaces.</p>
          <p>Pxp_validate: Fix for namespace mode</p>
       </li>
