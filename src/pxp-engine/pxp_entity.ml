@@ -500,7 +500,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 		      cd
 
           (* If there are CRLF sequences in a PI value, normalize them, too *)
-		| PI(name,value,_) as pi ->
+		| PI(name,value,_) ->
 		    if v.normalize_newline then
 		      PI(name, 
 			 normalize_line_separators v.lfactory value,

@@ -15,7 +15,7 @@ rule scan_file = parse
   | "<" [' ' '\t' '\r' '\n']* ">"
       { Type 
       }
-  | [ 'a'-'z' ] [ 'a'-'z' 'A'-'Z' '0'-'9' '_' ]*
+  | [ '_' 'a'-'z' ] [ 'a'-'z' 'A'-'Z' '0'-'9' '_' ]*
       { let s = Lexing.lexeme lexbuf in
 	Lname s
       }

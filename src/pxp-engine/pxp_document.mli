@@ -1512,6 +1512,7 @@ class type [ 'ext ] node =
     method write : 
              ?prefixes:string list ->
 	     ?default:string ->
+             ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
              Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
       (* <ID:type-node-write>
        * <CALL>   obj # [write] ~prefixes stream enc
@@ -1533,6 +1534,12 @@ class type [ 'ext ] node =
        *
        *   Option [~default]: Specifies the normprefix that becomes the
        *   default namespace in the output.
+       *
+       *   Option [~minimization]: How to write out empty elements. [`AllEmpty]
+       *   means that all empty elements are minimized (using the <name/>
+       *   form). [`DeclaredEmpty] minimizes only empty elements that are
+       *   declared as empty in the DTD. [`None] does not minimize at all
+       *   and is the default.
        * <DOMAIN> All regular node types (elements, data nodes, comments,
        *   processing instructions, super root nodes).
        * </ID>
@@ -1540,8 +1547,9 @@ class type [ 'ext ] node =
 
     method display :
              ?prefixes:string StringMap.t ->
+             ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
 	      Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
-      (* <ID:type-node-write>
+      (* <ID:type-node-display>
        * <CALL>   obj # [display] ~prefixes stream enc
        * <SIG>    AUTO
        * <DESCR>  Write the contents of this node and the subtrees to the passed
@@ -1560,6 +1568,12 @@ class type [ 'ext ] node =
        *   effect as pairs of [(prefix,uri)]. The option
        *   defaults to [] forcing the method to output all necessary prefix
        *   declarations.
+       *
+       *   Option [~minimization]: How to write out empty elements. [`AllEmpty]
+       *   means that all empty elements are minimized (using the <name/>
+       *   form). [`DeclaredEmpty] minimizes only empty elements that are
+       *   declared as empty in the DTD. [`None] does not minimize at all
+       *   and is the default.
        * <DOMAIN> All regular node types (elements, data nodes, comments,
        *   processing instructions, super root nodes).
        * </ID>
@@ -2527,6 +2541,7 @@ class [ 'ext ] document :
 
     method write : ?default : string ->
                    ?prefer_dtd_reference : bool ->
+                   ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
                    Pxp_core_types.output_stream -> 
                    Pxp_core_types.encoding -> 
                      unit
@@ -2544,10 +2559,17 @@ class [ 'ext ] document :
        * the DTD cannot printed as reference, it is included as text.
        * The default is not to try DTD references, i.e. to always include
        * the DTD as text.
+       *
+       * Option [~minimization]: How to write out empty elements. [`AllEmpty]
+       * means that all empty elements are minimized (using the <name/>
+       * form). [`DeclaredEmpty] minimizes only empty elements that are
+       * declared as empty in the DTD. [`None] does not minimize at all
+       * and is the default.
        *)
 
 
     method display : ?prefer_dtd_reference : bool ->
+                     ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
                      Pxp_core_types.output_stream -> 
                      Pxp_core_types.encoding -> 
                        unit
@@ -2564,6 +2586,12 @@ class [ 'ext ] document :
        * the DTD cannot printed as reference, it is included as text.
        * The default is not to try DTD references, i.e. to always include
        * the DTD as text.
+       *
+       * Option [~minimization]: How to write out empty elements. [`AllEmpty]
+       * means that all empty elements are minimized (using the <name/>
+       * form). [`DeclaredEmpty] minimizes only empty elements that are
+       * declared as empty in the DTD. [`None] does not minimize at all
+       * and is the default.
        *)
 
     method dump : Format.formatter -> unit

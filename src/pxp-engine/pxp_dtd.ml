@@ -666,7 +666,7 @@ class dtd  ?swarner the_warner init_encoding =
 	       try Str_hashtbl.find gen_entities name with Not_found -> assert false 
 	     in
 	     if ent # is_ndata then begin
-	       let xid = ent # ext_id in
+	       let _xid = ent # ext_id in
 	       let notation = ent # notation in
 	       try
 		 ignore(self # notation notation)

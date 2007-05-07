@@ -242,7 +242,6 @@ let process_entity
       (-1)
       lit_root
   in
-  let resolver = mgr # current_resolver in
   let init_lexer =
     match entry with
 	`Entry_document _     -> Document
@@ -288,7 +287,6 @@ let process_expr
       cfg mgr eh =
   let lit_root = ref "" in
   let pobj = new event_parser mgr#dtd cfg eh false (-1) lit_root in
-  let resolver = mgr # current_resolver in
   let en = mgr # current_entity in
   begin try
     let context = make_context ?first_token mgr in
@@ -343,7 +341,6 @@ let create_pull_parser
       100                   (* the number of loops until Interrupt_parsing *)
       lit_root
   in
-  let resolver = mgr # current_resolver in
   let init_lexer =
     match entry with
 	`Entry_document _     -> Document

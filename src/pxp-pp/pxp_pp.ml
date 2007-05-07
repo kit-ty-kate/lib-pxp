@@ -623,17 +623,17 @@ and check_node_expr_as_string : ast_node -> ast_string =
 (**********************************************************************)
 (* Code generator for tree expressions *)
 
-let mkloc ((p1_line,p1_line_start,p1_pos) as p1) 
-          ((p2_line,p2_line_start,p2_pos) as p2) =
+let mkloc ((_p1_line,_p1_line_start,p1_pos)) 
+          ((_p2_line,_p2_line_start,p2_pos)) =
   (* Differs in O'Caml 3.07 and 3.08 *)
   IFDEF OCAML_NEW_LOC THEN
     let l1 = { Lexing.pos_fname = "";
-	       Lexing.pos_lnum = p1_line;
-	       Lexing.pos_bol = p1_line_start;
+	       Lexing.pos_lnum = _p1_line;
+	       Lexing.pos_bol = _p1_line_start;
 	       Lexing.pos_cnum = p1_pos } in
     let l2 = { Lexing.pos_fname = "";
-	       Lexing.pos_lnum = p2_line;
-	       Lexing.pos_bol = p2_line_start;
+	       Lexing.pos_lnum = _p2_line;
+	       Lexing.pos_bol = _p2_line_start;
 	       Lexing.pos_cnum = p2_pos } in
     (l1,l2)
   ELSE
@@ -984,11 +984,11 @@ let generate_event_generator
                                  ast_node_list -> (ann * MLast.expr) list = (
     function
 	(`Nodes l, p1, p2) ->
-	  let loc = mkloc p1 p2 in
+	  (* let loc = mkloc p1 p2 in *)
 	  let l' = List.map (generate_for_node_expr nsmode) l in
 	  List.flatten l'
       | (`Concat l, p1, p2) ->
-	  let loc = mkloc p1 p2 in
+	  (* let loc = mkloc p1 p2 in *)
 	  let l' = List.map (generate_for_nodelist_expr nsmode) l in
 	  List.flatten l'
       | (`Ident name, p1, p2) ->

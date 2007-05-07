@@ -132,8 +132,11 @@ class type [ 'ext ] node =
     method validate : unit -> unit
     method write : ?prefixes:string list -> 
                    ?default:string ->
+                   ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
                    output_stream -> encoding -> unit
-    method display : ?prefixes:(string StringMap.t) -> output_stream -> encoding -> unit
+    method display : ?prefixes:(string StringMap.t) ->              
+                     ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
+                     output_stream -> encoding -> unit
     method internal_adopt : 'ext node option -> int -> unit
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
@@ -197,7 +200,7 @@ let make_spec_from_alist
     (fun (name,ex) -> Hashtbl.add pinstr_mapping name ex)
     pinstr_alist;
   let n = List.length  element_alist in
-  let element_mapping = Hashtbl.create m in
+  let element_mapping = Hashtbl.create n in
   List.iter
     (fun (name,ex) -> Hashtbl.add element_mapping name ex)
     element_alist;
@@ -265,6 +268,8 @@ object (self)
   val mutable parent = (None : 'ext node option)
   val mutable node_position = -1
   val mutable dtd = (None : dtd option)
+
+  method virtual remove : unit -> unit
 
   method delete = self # remove()
   (* Not every class defines [remove]! *)
@@ -630,11 +635,11 @@ class ['ext] data_impl an_ext : ['ext] node =
     method set_data str =
       content <- str
 
-    method write ?(prefixes = ([]: string list)) ?default os enc =
+    method write ?(prefixes = ([]: string list)) ?default ?minimization os enc =
       let encoding = self # encoding in
       write_data_string ~from_enc:encoding ~to_enc:enc os content
 
-    method display ?prefixes os enc =
+    method display ?prefixes ?minimization os enc =
       let encoding = self # encoding in
       write_data_string ~from_enc:encoding ~to_enc:enc os content
 
@@ -783,8 +788,8 @@ class ['ext] attribute_impl ~element ~name value init_dtd : ['ext] node =
                                 method_na "create_element"
     method create_data _ _ =    method_na "create_data"
     method create_other ?position _ _ =   method_na "create_other"
-    method write ?prefixes ?default _ _ = method_na "write"
-    method display ?prefixes _ _        = method_na "display"
+    method write ?prefixes ?default ?minimization _ _ = method_na "write"
+    method display ?prefixes ?minimization _ _        = method_na "display"
   end
 ;;
 
@@ -839,7 +844,7 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
 	  None   -> raise Not_found
 	| Some s -> s
 
-    method write ?prefixes ?default os enc =
+    method write ?prefixes ?default ?minimization os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -850,7 +855,7 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
       );
       wms ("-->");
 
-    method display ?prefixes os enc =
+    method display ?prefixes ?minimization os enc =
       self # write os enc
 
     method dump fmt =
@@ -907,6 +912,8 @@ class virtual [ 'ext ] pinstr_features =
      * - Maps are purely functional, and we do not care about them
      *   in clone operations.
      *)
+
+    method virtual encoding : rep_encoding
 
     method add_pinstr pi =
       if pi # encoding <> self # encoding then
@@ -987,10 +994,10 @@ class [ 'ext ] pinstr_impl an_ext : ['ext] node =
 	   [ pi ] -> pi # value
 	 | _      -> assert false
 
-    method write ?prefixes ?default os enc =
+    method write ?prefixes ?default ?minimization os enc =
       self # write_pinstr os enc
 
-    method display ?prefixes os enc =
+    method display ?prefixes ?minimization os enc =
       self # write_pinstr os enc
 
     method dump fmt =
@@ -2500,7 +2507,7 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
       (* to be overridden *)
       name
 
-    method write ?(prefixes = ([] : string list)) ?default os enc =
+    method write ?(prefixes = ([] : string list)) ?default ?(minimization=`None) os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -2544,25 +2551,45 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
       attlist_iter vr (write_att "") attributes;
       List.iter   (fun (n,v) -> write_att "xmlns:" n v) nsdecls;
       List.iter   (fun (  v) -> write_att "" "xmlns" v) nsdefault;
-      wms "\n>";
 
-      self # write_pinstr os enc;
+      let sub_nodes = self # sub_nodes in
 
-      let prefixes' = (List.map fst nsdecls) @ prefixes in
-      let prefixes'' =
-	if nsdefault <> [] then "" :: prefixes' else prefixes' in
+      (* Check for minimization: *)
+      let can_minimize =
+	(pinstr = StringMap.empty) && (sub_nodes = []) in
+      let do_minimize =
+	can_minimize &&
+	  match minimization with
+	    | `None -> false
+	    | `AllEmpty -> true
+	    | `DeclaredEmpty -> vr.content_model = Empty in
 
-      List.iter
-	(fun n -> n # write ?prefixes:(Some prefixes'') ?default os enc)
-	(self # sub_nodes);
+      if do_minimize then
+	wms "\n/>"
+      else (
+	wms "\n>";
 
-      wms ("</" ^ name' ^ "\n>");
+	self # write_pinstr os enc;
 
-    method display ?prefixes os enc =
+	let prefixes' = (List.map fst nsdecls) @ prefixes in
+	let prefixes'' =
+	  if nsdefault <> [] then "" :: prefixes' else prefixes' in
+
+	List.iter
+	  (fun n -> 
+	     n # write ?prefixes:(Some prefixes'') ?default 
+	       ?minimization:(Some minimization) os enc
+	  )
+	  sub_nodes;
+
+	wms ("</" ^ name' ^ "\n>");
+      )
+
+    method display ?prefixes ?minimization os enc =
       (* Overriden in namespace_element_impl, so this is only for the
        * non-namespace case:
        *)
-      self # write os enc
+      self # write ?minimization os enc
 
     method internal_init_other new_pos new_dtd new_ntype =
       method_na "internal_init_other"
@@ -2634,22 +2661,16 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
 	(List.rev rev_nodes);
       Format.pp_close_box fmt (); 
 
-    method write ?prefixes ?default os enc =
-      let encoding = self # encoding in
-      let wms =
-	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+    method write ?prefixes ?default ?minimization os enc =
       self # write_pinstr os enc;
       List.iter
-	(fun n -> n # write ?prefixes ?default os enc)
+	(fun n -> n # write ?prefixes ?default ?minimization os enc)
 	(self # sub_nodes);
 
-    method display ?prefixes os enc =
-      let encoding = self # encoding in
-      let wms =
-	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+    method display ?prefixes ?minimization os enc =
       self # write_pinstr os enc;
       List.iter
-	(fun n -> n # display ?prefixes os enc)
+	(fun n -> n # display ?prefixes ?minimization os enc)
 	(self # sub_nodes);
 
     method create_element ?name_pool_for_attribute_values ?position 
@@ -2805,8 +2826,8 @@ class [ 'ext ] namespace_impl srcprefix normprefix init_dtd : ['ext] node =
                                  method_na "create_element"
      method create_data _ _ =    method_na "create_data"
      method create_other ?position _ _ = method_na "create_other"
-     method write ?prefixes ?default _ _ = method_na "write"
-     method display ?prefixes _ _        = method_na "display"
+     method write ?prefixes ?default ?minimization _ _ = method_na "write"
+     method display ?prefixes ?minimization _ _        = method_na "display"
      method localname =          method_na "localname"
      method previous_node =      method_na "previous_node"
      method next_node =          method_na "next_node"
@@ -2973,7 +2994,7 @@ class [ 'ext ] namespace_element_impl an_ext =
 	value
 	dtd
 
-    method display ?(prefixes = StringMap.empty) os enc =
+    method display ?(prefixes = StringMap.empty) ?(minimization=`None) os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -3088,15 +3109,34 @@ class [ 'ext ] namespace_element_impl an_ext =
 	   else
 	     write_att "xmlns:" n (Value v))
 	(eff_decl_to_add @ !eff_decl_to_add');
-      wms "\n>";
+
+      let sub_nodes = self # sub_nodes in
+
+      (* Check for minimization: *)
+      let can_minimize =
+	(pinstr = StringMap.empty) && (sub_nodes = []) in
+      let do_minimize =
+	can_minimize &&
+	  match minimization with
+	    | `None -> false
+	    | `AllEmpty -> true
+	    | `DeclaredEmpty -> vr.content_model = Empty in
+
+      if do_minimize then 
+	wms "\n/>"
+      else (
+	wms "\n>";
       
-      super # write_pinstr os enc;
+	super # write_pinstr os enc;
       
-      List.iter
-	(fun n -> n # display ?prefixes:(Some !prefixes') os enc)
-	(self # sub_nodes);
+	List.iter
+	  (fun n -> 
+	     n # display ?prefixes:(Some !prefixes') 
+	       ?minimization:(Some minimization) os enc)
+	  sub_nodes;
       
-      wms ("</" ^ name ^ "\n>");
+	wms ("</" ^ name ^ "\n>")
+      )
       
   end
 ;;
@@ -3777,7 +3817,7 @@ class ['ext] document ?swarner the_warner enc =
 	    if not (dtd_r # arbitrary_allowed) then begin
 	      match dtd_r # root with
 		  Some declared_root_element_name ->
-		    let real_root_element =
+		    let _real_root_element =
 		      try
 			List.find
 			  (fun r' ->
@@ -3858,7 +3898,7 @@ class ['ext] document ?swarner the_warner enc =
 	  None -> failwith "Pxp_document.document#raw_root_name: Document has no root element"
 	| Some _ -> raw_root_name
 
-    method write ?default ?(prefer_dtd_reference = false) os enc =
+    method write ?default ?(prefer_dtd_reference = false) ?minimization os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -3883,10 +3923,10 @@ class ['ext] document ?swarner the_warner enc =
       end;
 
       self # write_pinstr os enc;
-      r # write ?default os enc;
+      r # write ?default ?minimization os enc;
       wms "\n";
 
-    method display ?(prefer_dtd_reference = false) os enc =
+    method display ?(prefer_dtd_reference = false) ?minimization os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -3911,7 +3951,7 @@ class ['ext] document ?swarner the_warner enc =
       end;
 
       self # write_pinstr os enc;
-      r # display os enc;
+      r # display ?minimization os enc;
       wms "\n";
 
     method dump fmt =
@@ -4169,7 +4209,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  if (!doc_state = Start_seen) ||
 	     (!super_state = Start_seen) ||
 	     (!root_state <> End_seen) then
-	       unexpected "E_end_of_stream/actual end"
+	       unexpected "E_end_of_stream/actual end";
 	  pos := None;
 	  eof := (ev = None)
   done;
@@ -4192,7 +4232,8 @@ type 'ext flux_state =
 
 
 let liquefy_node ?(omit_end = false) ?(omit_positions = false) 
-                 (init_fstate : 'ext flux_state) =
+                 (init_fstate : 'ext flux_state) 
+                 (init_node : 'ext node) =
   let fstate = ref init_fstate in
   let eid = Pxp_dtd.Entity.create_entity_id() in
   let rec generate arg =
@@ -4273,17 +4314,20 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 
       | `Node_end n ->
 	  let fstate' =
-	    ( try
-		`Node_start(n # next_node)
-	      with
-		  Not_found -> 
-		    ( try 
-			`Node_end(n # parent)
-		      with
-			  Not_found ->
-			    if omit_end then `None else `EOS
-		    )
-	    ) in
+	    if n = init_node then
+	      ( if omit_end then `None else `EOS)
+	    else
+	      ( try
+		  `Node_start(n # next_node)
+		with
+		    Not_found -> 
+		      ( try 
+			  `Node_end(n # parent)
+			with
+			    Not_found ->
+			      if omit_end then `None else `EOS
+		      )
+	      ) in
 	  fstate := fstate';
 	  (* Do action for n: *)
 	  ( match n # node_type with 
@@ -4340,7 +4384,8 @@ let liquefy_doc ?(omit_end = false) ?(omit_positions = false)
 	  let node_fstate =
 	    `Output(out_pinstr, `Node_start(doc#root)) in
 	  fstate := `Nodes 
-	               (liquefy_node ~omit_end:true ~omit_positions node_fstate);
+	               (liquefy_node ~omit_end:true ~omit_positions 
+			  node_fstate doc#root);
 	  Some(E_start_doc(doc#xml_version,doc#dtd))
       | `Nodes g ->
 	  let e = g arg in
@@ -4364,6 +4409,6 @@ let liquefy_doc ?(omit_end = false) ?(omit_positions = false)
 
 let liquefy ?omit_end ?omit_positions solid =
   match solid with
-      `Node n     -> liquefy_node ?omit_end ?omit_positions (`Node_start n)
+      `Node n     -> liquefy_node ?omit_end ?omit_positions (`Node_start n) n
     | `Document d -> liquefy_doc ?omit_end ?omit_positions d
 ;;

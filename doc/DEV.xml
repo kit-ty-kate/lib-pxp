@@ -50,6 +50,13 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p><em>SVN:</em> New ~minimization option for the
+        [write] and [display] methods (user wish).</p>
+        <p>Fix: [Pxp_document.liquefy] terminates now when invoked
+           only on a subtree of a document</p>
+        <p>Cleaned up the code a bit so fewer warnings are emitted 
+           in the build.</p>
+      </li>
 
       <li><p><em>1.1.96:</em> Works now for O'Caml 3.09, too.</p>
 	 <p>Fix: The "root element check" is disabled

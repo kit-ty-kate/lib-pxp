@@ -108,6 +108,7 @@ type dtd_style =
 val write_events : 
   ?default:string ->        (* Default: none *)
   ?dtd_style:dtd_style ->   (* Default: `Include *)
+  ?minimization:[`AllEmpty | `None] ->   (* Default: `None *)
   output_stream -> 
   encoding -> 
   rep_encoding -> 
@@ -128,10 +129,15 @@ val write_events :
    *   in the internal subset
    * - `Reference: The DOCTYPE clause is written as a reference to an
    *   external DTD
+   *
+   * Option [~minimization]: How to write out empty elements. [`AllEmpty]
+   * means that all empty elements are minimized (using the <name/>
+   * form). [`None] does not minimize at all and is the default.
    *)
 
 val display_events : 
   ?dtd_style:dtd_style ->   (* Default: `Include *)
+  ?minimization:[`AllEmpty | `None] ->   (* Default: `None *)
   output_stream -> 
   encoding -> 
   rep_encoding -> 

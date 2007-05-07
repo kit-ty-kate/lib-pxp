@@ -226,7 +226,7 @@ type dtd_style =
     ]
 ;;
 
-let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
+let wr_dsp do_display default_prefix dtd_style minimization out enc rep_enc get_ev =
   (* do_display: whether [display_events] was called, not [write_events].
    * default_prefix: The (optional) default prefix (only [write_events])
    *)
@@ -245,7 +245,7 @@ let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
      * (literal tag name, map of declared prefixes => uris, declared default uri)
      *)
 
-  let write_start_tag name atts scope_opt =
+  let write_start_tag name atts scope_opt minimized =
     let (_, prefixes, default) = 
       try Stack.top write_stack
       with Stack.Empty -> ("", StringMap.empty, None) in
@@ -318,10 +318,15 @@ let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
 	    (* Non-namespace case: *)
 	    Stack.push (name', prefixes, default) write_stack;
     );
-    wms "\n>";
+    if minimized then (
+      wms "\n/>";
+      ignore(Stack.pop write_stack)
+    )
+    else
+      wms "\n>";
   in
 
-  let display_start_tag name atts scope_opt =
+  let display_start_tag name atts scope_opt minimized =
     let (_, prefixes, default) = 
       try Stack.top write_stack
       with Stack.Empty -> ("", StringMap.empty, None) in
@@ -430,17 +435,25 @@ let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
                else
 		 write_att "xmlns:" (n,v))
 	    (eff_decl_to_add @ !eff_decl_to_add');
-	  wms "\n>";
 
-	  Stack.push (name', !prefixes', default) write_stack;
+	  if minimized then
+	    wms "\n/>"
+	  else (
+	    wms "\n>";
+	    Stack.push (name', !prefixes', default) write_stack;
+	  )
 
       | None ->
 	  (* non-namespace case *)
 	  (* Output start tag, and contained attributes: *)
 	  wms ("<" ^ name);
 	  List.iter (write_att "") atts;
-	  wms "\n>";
-	  Stack.push (name, prefixes, default) write_stack;
+	  if minimized then
+	    wms "\n/>"
+	  else (
+	    wms "\n>";
+	    Stack.push (name, prefixes, default) write_stack;
+	  )
   in
 
   let write_end_tag() =
@@ -454,9 +467,13 @@ let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
     wms "\n>"
   in
 
-  let wr_dsp_event =
-    function
-      | E_start_doc(version,dtd) ->
+  let rec wr_dsp_event ev_opt =
+    let ev =
+      match ev_opt with
+	| Some ev -> ev
+	| None -> get_ev() in
+    match ev with
+      | Some(E_start_doc(version,dtd)) ->
 	  wms ("<?xml version=\"" ^ version ^ "\" ");
 	  wms ("encoding=\"" ^ Netconversion.string_of_encoding enc ^ "\" ");
 	  if dtd # standalone_declaration then
@@ -473,41 +490,67 @@ let wr_dsp do_display default_prefix dtd_style out enc rep_enc get_ev =
 		      | _ ->
 			  failwith "Pxp_event.write/display: Cannot output DTD as reference"
 		  )
-	  )
-      | E_end_doc lit_name ->
-	  ()
-      | E_start_tag (name, atts, scope_opt, _) ->
+	  );
+	  wr_dsp_event None
+      | Some (E_end_doc lit_name) ->
+	  wr_dsp_event None
+      | Some (E_start_tag (name, atts, scope_opt, _)) ->
+	  let minimized, ev_opt =
+	    match minimization with
+	      | `None -> 
+		  (false, None)
+	      | `AllEmpty ->
+		  (* Peek at the next event: *)
+		  let ev' = get_ev() in
+		  let do_minimize =
+		    match ev' with
+		      | Some(E_end_tag (name', _)) ->
+			  name = name'
+		      | _ -> 
+			  false in
+		  if do_minimize then
+		    (true, None)   (* ==> consume ev'! *)
+		  else
+		    (false, Some ev') in
 	  if do_display then
-	    display_start_tag name atts scope_opt
+	    display_start_tag name atts scope_opt minimized
 	  else
-	    write_start_tag name atts scope_opt
-      | E_end_tag (_, _) ->
-	  write_end_tag()
-      | E_char_data data ->
-	  write_data_string ~from_enc:rep_enc ~to_enc:enc out data
-      | E_pinstr (target, value, ent_id) ->
+	    write_start_tag name atts scope_opt minimized;
+	  wr_dsp_event ev_opt
+      | Some (E_end_tag (_, _)) ->
+	  write_end_tag();
+	  wr_dsp_event None
+      | Some (E_char_data data) ->
+	  write_data_string ~from_enc:rep_enc ~to_enc:enc out data;
+	  wr_dsp_event None
+      | Some (E_pinstr (target, value, ent_id)) ->
 	  wms "<? "; wms target; wms " "; wms value; wms "?>";
-      | E_pinstr_member (target, value, ent_id) ->
+	  wr_dsp_event None
+      | Some (E_pinstr_member (target, value, ent_id)) ->
 	  wms "<? "; wms target; wms " "; wms value; wms "?>";
-      | E_comment data ->
+	  wr_dsp_event None
+      | Some (E_comment data) ->
 	  wms "<!--"; wms data; wms "-->";
-      | E_start_super ->
-	  ()
-      | E_end_super ->
-	  ()
-      | E_position (_,_,_) ->
-	  ()
-      | E_error exn ->
+	  wr_dsp_event None
+      | Some E_start_super ->
+	  wr_dsp_event None
+      | Some E_end_super ->
+	  wr_dsp_event None
+      | Some (E_position (_,_,_)) ->
+	  wr_dsp_event None
+      | Some (E_error exn) ->
 	  failwith "Pxp_event.write/display: Cannot output E_error event"
-      | E_end_of_stream ->
+      | Some E_end_of_stream ->
+	  wr_dsp_event None
+      | None ->
 	  ()
   in
 
-  iter wr_dsp_event get_ev
+  wr_dsp_event None
 ;;
 
 
-let write_events ?default ?(dtd_style = `Include) = 
-  wr_dsp false default dtd_style ;;
-let display_events ?(dtd_style = `Include) = 
-  wr_dsp true None dtd_style ;;
+let write_events ?default ?(dtd_style = `Include) ?(minimization=`None) = 
+  wr_dsp false default dtd_style minimization ;;
+let display_events ?(dtd_style = `Include) ?(minimization=`None) = 
+  wr_dsp true None dtd_style minimization ;;

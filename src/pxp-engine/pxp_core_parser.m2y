@@ -238,7 +238,7 @@ class virtual core_parser
       let mapping = ref [] in
       List.iter
 	(fun (srcprefix, uri) ->
-	   let normprefix =
+	   let _normprefix =
 	     mng # lookup_or_add_namespace srcprefix uri in
 	   mapping := (srcprefix, uri) :: !mapping;
 	)
@@ -947,11 +947,11 @@ declaration():
     {{ () }}
 | attlistdecl()
     {{ () }}
-| entid:Decl_entity ws:Ignore Ignore* e:entitydecl(entid)
+| entid:Decl_entity ws:Ignore Ignore* _e:entitydecl(entid)
     {{ () }}
   ? {{ match !yy_position with
 	   "ws" -> raise(WF_error("Whitespace is missing after ENTITY"))
-	 | "e"  -> raise(WF_error("Name or `%' expected"))
+	 | "_e" -> raise(WF_error("Name or `%' expected"))
 	 | _    -> raise(WF_error("Bad entity declaration"))
     }}
 | notationdecl()
@@ -991,7 +991,7 @@ declaration():
 	 raise(WF_error("Restriction of the internal subset: Conditional sections not allowed"));
      }}
   Ignore*
-  cond:conditional_section()  end_entid:Conditional_end
+  _cond:conditional_section()  end_entid:Conditional_end
     {{ (* Check whether Conditional_begin and Conditional_end are in the same
 	* entity. (This restriction is explained in the file SPECS.)
 	*)
@@ -1000,7 +1000,7 @@ declaration():
     }}
   ? {{ match !yy_position with
 	   "end_entid" -> raise(WF_error("`>]>' expected"))
-	 | "cond"      -> raise(WF_error("INCLUDE or IGNORE expected"))
+	 | "_cond"     -> raise(WF_error("INCLUDE or IGNORE expected"))
 	 | _           -> raise(WF_error("Bad conditional section"))
     }}
 
@@ -1023,7 +1023,7 @@ conditional_section():
     }}
   [ parsing_function ] ()
     {{ () }}
-  ? {{ raise(WF_error("Bad conditional section")) }}
+  ? {{ ignore(!yy_position); raise(WF_error("Bad conditional section")) }}
 
 included_section():
   Conditional_body declaration()*
@@ -1372,13 +1372,13 @@ atttype():
   name:   name_or_nametoken()
           Ignore*
   names:  nmtoken_factor()*
-  rp:     Rparen
+  _rp:    Rparen
     /* Enumeration */
     {{ A_enum(name :: names) }}
   ? {{ match !yy_position with
 	   "name"  -> raise(WF_error("Name expected"))
 	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
-	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "_rp"   -> raise(WF_error("`|' and more names expected, or `)'"))
 	 | _       -> raise(WF_error("Bad enumeration type"))
     }}
 
@@ -1393,18 +1393,18 @@ never():
 
 notation():
          Ignore Ignore*
-  lp:    Lparen
+  _lp:   Lparen
          Ignore*
   name:  Name
          Ignore*
   names: notation_factor()*
-  rp:    Rparen
+  _rp:   Rparen
     {{ A_notation(name :: names) }}
   ? {{ match !yy_position with
-	   "lp"    -> raise(WF_error("`(' expected"))
+	   "_lp"   -> raise(WF_error("`(' expected"))
 	 | "name"  -> raise(WF_error("Name expected"))
 	 | "names" -> raise(WF_error("`|' and more names expected, or `)'"))
-	 | "rp"    -> raise(WF_error("`|' and more names expected, or `)'"))
+	 | "_rp"   -> raise(WF_error("`|' and more names expected, or `)'"))
 	 | _       -> raise(WF_error("Bad NOTATION type"))
     }}
 
@@ -1843,7 +1843,7 @@ start_tag():
 	 let attlist = ref [] in
 	 let attspace = ref true in
        }}
-  ws:         Ignore? Ignore*
+  _ws:        Ignore? Ignore*
               attribute(attlist,attspace)*
   emptiness:  start_tag_rangle()
   /* Note: it is guaranteed that there is whitespace between Tag_beg and
