@@ -52,6 +52,8 @@ for PXP; if you are looking for the stable distribution, please go
     <ul>
       <li><p><em>SVN:</em> New ~minimization option for the
         [write] and [display] methods (user wish).</p>
+        <p>Improvement: better control what is printed as DTD for
+           document#write and #display</p>
         <p>Fix: [Pxp_document.liquefy] terminates now when invoked
            only on a subtree of a document</p>
         <p>Cleaned up the code a bit so fewer warnings are emitted 

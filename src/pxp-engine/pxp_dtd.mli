@@ -407,6 +407,7 @@ class dtd :
        *)
 
     method write : 
+             ?root:string ->
              Pxp_core_types.output_stream -> 
 	     Pxp_core_types.encoding -> 
 	     bool -> 
@@ -420,9 +421,13 @@ class dtd :
        * the generated string does not contain any reference to an entity.
        * The reason for the omission of the entites is that there is no
        * generic way of writing references to external entities.
+       *
+       * Option [root]: Override the name of the root element in  the 
+       * DOCTYPE clause.
        *)
 
     method write_ref : 
+             ?root:string ->
              Pxp_core_types.output_stream -> 
 	     Pxp_core_types.encoding -> 
 	       unit
@@ -436,6 +441,9 @@ class dtd :
       * - dtd#id = External(Public ...)
       * If the DTD is internal or mixed, the method [write_ref] will fail.
       * If the ID is anonymous or private, the method will fail, too.
+      *
+      * Option [root]: Override the name of the root element in  the 
+      * DOCTYPE clause.
       *)
 
     (*----------------------------------------*)

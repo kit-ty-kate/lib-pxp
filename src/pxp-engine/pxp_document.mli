@@ -2541,6 +2541,7 @@ class [ 'ext ] document :
 
     method write : ?default : string ->
                    ?prefer_dtd_reference : bool ->
+                   ?dtd_style:[`Omit|`Reference|`Included|`Auto] ->
                    ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
                    Pxp_core_types.output_stream -> 
                    Pxp_core_types.encoding -> 
@@ -2548,17 +2549,22 @@ class [ 'ext ] document :
       (* Write the document to the passed
        * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
-       * If a DTD is present, the DTD is included into the internal subset.
+       * If a DTD is present, the DTD is included as internal subset.
        *
        * Option [~default]: Specifies the normprefix that becomes the
        * default namespace in the output.
        *
-       * Option [~prefer_dtd_reference]: If true, it is tried to print
-       * the DTD as reference, i.e. with SYSTEM or PUBLIC identifier.
-       * This works only if the DTD has an [External] identifier. If
-       * the DTD cannot printed as reference, it is included as text.
-       * The default is not to try DTD references, i.e. to always include
-       * the DTD as text.
+       * Option [~dtd_style]: Selects how to print the DTD. [`Omit] means
+       * to omit the DTD at all (no DOCTYPE clause). 
+       * [`Reference] prints the DTD reference to an
+       * external entity (using SYSTEM or PUBLIC identifier), if possible,
+       * and falls back to [`Included] otherwise. [`Included] means to
+       * always include the DTD as internal subset. [`Auto] tries to find
+       * the best way: If there is a DTD, try [`Reference] then [`Included].
+       * Otherwise, [`Omit]. The default is [`Included].
+       *
+       * Option [~prefer_dtd_reference]: Same as [~dtd_style:`Reference]
+       * (backward-compatible).
        *
        * Option [~minimization]: How to write out empty elements. [`AllEmpty]
        * means that all empty elements are minimized (using the <name/>
@@ -2569,6 +2575,7 @@ class [ 'ext ] document :
 
 
     method display : ?prefer_dtd_reference : bool ->
+                     ?dtd_style:[`Omit|`Reference|`Included|`Auto] ->
                      ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
                      Pxp_core_types.output_stream -> 
                      Pxp_core_types.encoding -> 
@@ -2576,22 +2583,15 @@ class [ 'ext ] document :
       (* Write the document to the passed
        * output stream; the passed encoding used. The format
        * is compact (the opposite of "pretty printing").
-       * If a DTD is present, the DTD is included into the internal subset.
+       * If a DTD is present, the DTD is included as internal subset.
        * In contrast to [write], this method uses the display namespace
        * prefixes instead of the normprefixes.
        *
-       * Option [~prefer_dtd_reference]: If true, it is tried to print
-       * the DTD as reference, i.e. with SYSTEM or PUBLIC identifier.
-       * This works only if the DTD has an [External] identifier. If
-       * the DTD cannot printed as reference, it is included as text.
-       * The default is not to try DTD references, i.e. to always include
-       * the DTD as text.
+       * Option [~dtd_style]: Same meaning as in [write].
        *
-       * Option [~minimization]: How to write out empty elements. [`AllEmpty]
-       * means that all empty elements are minimized (using the <name/>
-       * form). [`DeclaredEmpty] minimizes only empty elements that are
-       * declared as empty in the DTD. [`None] does not minimize at all
-       * and is the default.
+       * Option [~prefer_dtd_reference]: Same meaning as in [write].
+       *
+       * Option [~minimization]: Same meaning as in [write].
        *)
 
     method dump : Format.formatter -> unit

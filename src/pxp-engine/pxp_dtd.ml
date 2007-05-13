@@ -511,7 +511,7 @@ class dtd  ?swarner the_warner init_encoding =
 
     method pinstr_names = pinstr_names
 
-    method write_ref os enc =
+    method write_ref ?root:proot os enc =
       let write_sysid s =
 	write_markup_string 
 	  ~from_enc:`Enc_utf8 ~to_enc:enc os
@@ -525,8 +525,12 @@ class dtd  ?swarner the_warner init_encoding =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
       wms "<!DOCTYPE ";
-      ( match root with
-	    None -> failwith "#write: DTD without root";
+      ( match proot with
+	  | None ->
+	      ( match root with
+		    None -> failwith "#write: DTD without root";
+		  | Some r -> wms r
+	      )
 	  | Some r -> wms r
       );
       begin match id with
@@ -550,7 +554,7 @@ class dtd  ?swarner the_warner init_encoding =
       wms ">\n";
 
 
-    method write os enc doctype = 
+    method write ?root:proot os enc doctype = 
       let wms = 
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
 
@@ -566,9 +570,13 @@ class dtd  ?swarner the_warner init_encoding =
 
       if doctype then begin
 	wms "<!DOCTYPE ";
-	( match root with
-	    None -> failwith "#write: DTD without root";
-	  | Some r -> wms r
+	( match proot with
+	    | None ->
+		( match root with
+		      None -> failwith "#write: DTD without root";
+		    | Some r -> wms r
+		);
+	    | Some r -> wms r
 	);
 	wms " [\n";
       end;

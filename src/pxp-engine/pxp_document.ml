@@ -3874,6 +3874,32 @@ class ['ext] document ?swarner the_warner enc =
 	| _ ->
 	    failwith "Pxp_document.document#init_root: the root node must be an element or super-root"
 
+    method private top_element =
+      (* Top-most element node *)
+      match root with
+	| None ->
+	    failwith "Pxp_document.document: No top-level element found"
+	| Some r ->
+	    ( match r # node_type with
+		| T_super_root ->
+		    ( try
+			List.find
+			  (fun r' ->
+			     match r' # node_type with
+			       | T_element _     -> true
+			       | _               -> false)
+			  (r # sub_nodes)
+		      with
+			  Not_found ->
+			    failwith "Pxp_document.document: No top-level element found"
+		    )
+		| T_element _ ->
+		    r
+		| _ ->
+		    failwith "Pxp_document.document: No top-level element found"
+	    )
+
+
     method xml_version = xml_version
 
     method xml_standalone =
@@ -3898,7 +3924,11 @@ class ['ext] document ?swarner the_warner enc =
 	  None -> failwith "Pxp_document.document#raw_root_name: Document has no root element"
 	| Some _ -> raw_root_name
 
-    method write ?default ?(prefer_dtd_reference = false) ?minimization os enc =
+    method write ?default ?(prefer_dtd_reference = false)  
+                 ?(dtd_style=`Included) ?minimization os enc =
+      let (dtd_style : [`Omit|`Reference|`Included|`Auto]) =
+	if prefer_dtd_reference then `Reference else dtd_style in
+
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
@@ -3911,25 +3941,81 @@ class ['ext] document ?swarner the_warner enc =
       begin match dtd with
 	  None -> ()
 	| Some d ->
-	    if prefer_dtd_reference &&
-	      ( match d # id with
-		    Some (External _) -> true
-		  | _ -> false
-	      )
-	    then
-	      d # write_ref os enc
-	    else
-	      d # write os enc true;
+	    let have_dtd_root =
+	      d # root <> None in
+	    
+	    let eff_dtd_style =
+	      match dtd_style with
+		| `Omit -> 
+		    `Omit
+		| `Reference -> 
+		    ( match d # id with
+			| Some (External _) -> `Reference
+			| _ -> `Included
+		    )
+		| `Included ->
+		    `Included
+		| `Auto ->
+		    if have_dtd_root then
+		      match d # id with
+			| Some (External _) -> `Reference
+			| _ -> `Included
+		    else
+		      `Omit in
+
+	    let root_to_write = lazy (
+	      match d # root with
+		| None ->
+		    (* No DTD root: Look at the tree, and find out what
+                       will be printed for the topmost element
+                     *)
+		    let e = self # top_element in
+		    ( match e # node_type with
+			| T_element name ->
+			    ( match default with
+				| None ->
+				    name
+				| Some defns ->
+				    (* our best effort... *)
+				    let prefix, localname = 
+				      namespace_split name in
+				    if prefix = defns then
+				      localname
+				    else
+				      name
+			    )
+			| _ -> assert false
+		    )
+
+		| Some r -> 
+		    (* If there is a DTD root, always write this *)
+		    r
+	    ) in
+
+	    ( match eff_dtd_style with
+		| `Omit ->
+		    ()
+		| `Reference ->
+		    let root = Lazy.force root_to_write in
+		    d # write_ref ~root os enc
+		| `Included ->
+		    let root = Lazy.force root_to_write in
+		    d # write ~root os enc true
+	    )    
       end;
 
       self # write_pinstr os enc;
       r # write ?default ?minimization os enc;
       wms "\n";
 
-    method display ?(prefer_dtd_reference = false) ?minimization os enc =
+    method display ?(prefer_dtd_reference = false) ?(dtd_style=`Included) 
+                   ?minimization os enc =
       let encoding = self # encoding in
       let wms =
 	write_markup_string ~from_enc:encoding ~to_enc:enc os in
+
+      let (dtd_style : [`Omit|`Reference|`Included|`Auto]) =
+	if prefer_dtd_reference then `Reference else dtd_style in
 
       let r = self # root in
       wms ("<?xml version='1.0' encoding='" ^
@@ -3939,15 +4025,68 @@ class ['ext] document ?swarner the_warner enc =
       begin match dtd with
 	  None -> ()
 	| Some d ->
-	    if prefer_dtd_reference &&
-	      ( match d # id with
-		    Some (External _) -> true
-		  | _ -> false
-	      )
-	    then
-	      d # write_ref os enc
-	    else
-	      d # write os enc true;
+	    let have_dtd_root =
+	      d # root <> None in
+	    
+	    let eff_dtd_style =
+	      match dtd_style with
+		| `Omit -> 
+		    `Omit
+		| `Reference -> 
+		    ( match d # id with
+			| Some (External _) -> `Reference
+			| _ -> `Included
+		    )
+		| `Included ->
+		    `Included
+		| `Auto ->
+		    if have_dtd_root then
+		      match d # id with
+			| Some (External _) -> `Reference
+			| _ -> `Included
+		    else
+		      `Omit in
+
+	    let root_to_write = lazy (
+	      match d # root with
+		| None ->
+		    (* No DTD root: Look at the tree, and find out what
+                       will be printed for the topmost element
+                     *)
+		    let e = self # top_element in
+		    ( match e # node_type with
+			| T_element name ->
+			    ( try
+				let pr = e # display_prefix in
+				(* If now a Namespace_not_in_scope is
+                                   raised, we cannot do anything!
+				 *)
+				if pr = "" then
+				  e # localname
+				else
+				  pr ^ ":" ^ e # localname
+			      with
+				| Namespace_method_not_applicable _ ->
+				    name
+			    )
+			| _ -> assert false
+		    )
+
+		| Some r -> 
+		    (* If there is a DTD root, always write this *)
+		    r
+	    ) in
+
+	    ( match eff_dtd_style with
+		| `Omit ->
+		    ()
+		| `Reference ->
+		    let root = Lazy.force root_to_write in
+		    d # write_ref ~root os enc
+		| `Included ->
+		    let root = Lazy.force root_to_write in
+		    d # write ~root os enc true
+	    )    
       end;
 
       self # write_pinstr os enc;
