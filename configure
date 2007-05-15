@@ -9,7 +9,7 @@ with_wlex_compat=1
 with_ulex=1
 with_pp=1
 lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915,iso885916"
-version="1.1.96"
+version="1.2.0test1"
 exec_suffix=""
 
 help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
