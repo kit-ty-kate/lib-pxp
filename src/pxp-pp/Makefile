@@ -15,6 +15,9 @@ opt:
 pxp_pp.cma: pxp_pp.cmo
 	$(OCAMLC) -a -o pxp_pp.cma pxp_pp.cmo
 
+pxp_pp.ml: pxp_pp.ml.$(CAMLP4_STYLE)
+	cp pxp_pp.ml.$(CAMLP4_STYLE) pxp_pp.ml
+
 clean:
 	rm -f $(CLEAN_LIST)
 
