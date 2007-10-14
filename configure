@@ -132,6 +132,28 @@ else
 fi
 
 ######################################################################
+# Check camlp4 version
+
+
+printf "%s" "Checking for camlp4... "
+if camlp4; then
+    if camlp4 -loaded-modules >/dev/null 2>/dev/null; then
+        echo "3.10 style"
+        camlp4_style="310"
+        camlp4_opts="-package camlp4 -syntax camlp4o -ppopt pa_extend.cmo -ppopt q_MLast.cmo"
+    else
+        echo "3.09 style"
+        camlp4_style="309"
+        camlp4_opts="-package camlp4 -syntax camlp4o -ppopt pa_extend.cmo -ppopt q_MLast.cmo -ppopt -loc -ppopt loc"
+    fi
+else
+    echo "not found"
+    echo "Make sure the camlp4 command is in your PATH"
+    exit 1
+fi
+
+
+######################################################################
 # Check ocamllex.opt
 
 printf "%s" "Checking for ocamllex.opt..."
@@ -416,6 +438,8 @@ EXEC_SUFFIX = $exec_suffix
 LEXBUF_307 = $lexbuf_307
 LEX_OPT = $lex_opt
 CAMLP4_LOC = $camlp4_loc
+CAMLP4_STYLE = $camlp4_style
+CAMLP4_OPTS = $camlp4_opts
 _EOF_
 
 ######################################################################

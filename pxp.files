@@ -229,7 +229,8 @@ d src/pxp-pp
 f src/pxp-pp/Makefile
 f src/pxp-pp/META.in
 f src/pxp-pp/PPSPEC
-f src/pxp-pp/pxp_pp.ml
+f src/pxp-pp/pxp_pp.ml.309
+f src/pxp-pp/pxp_pp.ml.310
 
 d rtests
 f rtests/Makefile
