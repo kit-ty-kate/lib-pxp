@@ -58,6 +58,7 @@ for PXP; if you are looking for the stable distribution, please go
            only on a subtree of a document</p>
         <p>Cleaned up the code a bit so fewer warnings are emitted 
            in the build.</p>
+	<p>Ported pxp-pp to O'Caml 3.10</p>
       </li>
 
       <li><p><em>1.1.96:</em> Works now for O'Caml 3.09, too.</p>
