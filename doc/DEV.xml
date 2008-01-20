@@ -50,7 +50,7 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
-      <li><p><em>SVN:</em> New ~minimization option for the
+      <li><p><em>1.2.0test*:</em> New ~minimization option for the
         [write] and [display] methods (user wish).</p>
         <p>Improvement: better control what is printed as DTD for
            document#write and #display</p>
