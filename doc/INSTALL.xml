@@ -13,7 +13,7 @@
     <sect2><title>Prerequisites</title>
       <p>
 &m; requires that the <a
-href="&url.netstring-project;">ocamlnet/netstring package </a> is
+href="&url.ocamlnet-project;">ocamlnet/netstring package </a> is
 already installed (version 0.98 required). &m; works only with O'Caml
 >= 3.07.  The installation procedure defined in the Makefile requires
 <a href="&url.findlib-project;">findlib</a> to

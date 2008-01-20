@@ -41,7 +41,7 @@ different objects are used to store different types of elements.</p>
     <p>
 You can download <em>PXP</em> as gzip'ed <a
 href="&url.pxp-download;">tarball</a>. The parser needs the <a
-href="&url.netstring-project;">Netstring</a> package (0.9.3). Note that PXP
+href="&url.ocamlnet-project;">Netstring</a> package (0.9.3). Note that PXP
 requires O'Caml 3.00.
 </p>
 
