@@ -19,6 +19,10 @@ generate: pxp_core_parser.ml pxp_lexing.ml
 depend: 
 	$(OCAMLDEP) *.ml *.mli >depend
 
+.PHONY: doc
+doc:
+	$(MAKE) -f Makefile.code pxp_engine.dump
+
 clean:
 	rm -f $(CLEAN_LIST) pxp_core_parser.ml pxp_lib.ml pxp_lexing.ml
 

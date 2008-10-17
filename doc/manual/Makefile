@@ -89,6 +89,19 @@ ps/pic/done: src/pic/*.fig
 .sgml.xml: 
 	sx -xndata $< >$@; true
 
+.PHONY: odoc
+odoc: html/pic/done
+	cd ../../src/pxp-engine && $(MAKE) doc
+	rm -rf html/ref
+	mkdir -p html/ref
+	cp style.css html/ref
+	ocamldoc -g ../../tools/src/odoc/chtml.cmo \
+		-t "PXP Reference" \
+		-I ../../src/pxp-engine \
+		-load ../../src/pxp-engine/pxp_engine.dump \
+		-d html/ref \
+		-css-style style.css
+
 
 
 clean:

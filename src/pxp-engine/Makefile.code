@@ -15,6 +15,7 @@ OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
 	pxp_dtd_parser.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
+DOC =   pxp_document.mli intro_trees.txt
 
 XOBJ = $(OBJ:.cmo=.cmx)
 
@@ -27,6 +28,11 @@ pxp_engine.cma: $(OBJ)
 
 pxp_engine.cmxa: $(XOBJ)
 	$(OCAMLOPT) -o pxp_engine.cmxa -a $(XOBJ)
+
+pxp_engine.dump: $(DOC)
+	if [ ! -f pxp_engine.cma ]; then $(MAKE) -f Makefile.code pxp_engine.cma; fi
+	ocamldoc -stars -dump pxp_engine.dump \
+		$(DOC)
 
 
 include depend

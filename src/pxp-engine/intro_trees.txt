@@ -1,0 +1,508 @@
+{b Editorial note:} The PXP tree API has some complexity. The
+definition in {!Pxp_document} is hard to read without some background
+information. This introduction is supposed to give it. However, it
+is not a tutorial, and the reader won't find easy recipes in it.
+
+{1 The structure of document trees}
+
+In a document parsed with the default parser settings every node represents
+either an element or a character data section. There are two classes
+implementing the two aspects of nodes: {!Pxp_document.element_impl},
+and {!Pxp_document.data_impl}. There are configurations which allow more
+node types to be created, in particular processing instruction nodes,
+comment nodes, and super root nodes, but these are discussed later.
+Note that you can always add these extra node types yourself to the node tree
+no matter what the parser configuration specifies.
+
+The following figure 
+shows an example how
+a tree is constructed from element and data nodes. The circular areas 
+represent element nodes whereas the ovals denote data nodes. Only elements
+may have subnodes; data nodes are always leaves of the tree. The subnodes
+of an element can be either element or data nodes; in both cases the O'Caml
+objects storing the nodes have the class type {!Pxp_document.node}.
+
+{picture ../pic/node_term.gif 
+A tree with element nodes, data nodes, and attributes}
+
+Attributes (the clouds in the picture) do not appear as nodes of the
+tree, and one must use special access methods to get them.
+
+You would get such a tree by parsing with
+{[
+  let config = Pxp_types.default_config
+  let source = Pxp_types.from_string 
+                  "<a att=\"apple\"><b><a att="\"orange\">An orange</a>Cherries</b><c/></a>"
+  let spec = Pxp_tree_parser.default_spec
+  let doc = Pxp_tree_parser.parse_document_entity config source spec
+  let root = doc#root
+]}
+
+The [config] record sets a lot of parsing options. A number of these
+options are explained below. The [source] argument says from where
+the parsed text comes. For the mysterious [spec] parameter see below.
+
+The parser returns [doc], which is a {!Pxp_document.document}. You
+have to call its [root] method to get the root of the tree. Note that
+there are other parsing functions that return directly nodes; these
+are intended for parsing XML fragments, however. For the usual closed
+XML documents use a function that returns a document.
+
+The [root] is, as other nodes of the tree, an object instance of the
+{!Pxp_document.node} class type.
+
+What about other things that can occur in XML text? As mentioned,
+by default only elements and data nodes appear in the tree, but it is
+possible to enable more node types by setting appropriate 
+{!Pxp_types.config} options:
+
+- Comments are ignored by default. By setting the config option
+[enable_comment_nodes], however, comments are added to the tree. There is a
+special node type for comments.
+- Processing instructions (denoted by [<? ... ?>] parentheses) are
+not ignored, but normally no nodes are created for them. The
+instructions are only gathered up, so one can check for their
+presence but not for their exact location. By setting the
+config option [enable_pinstr_nodes], however, processing instructions
+are added to the tree as normal nodes. There is also a special node
+type for them.
+- Usually, the topmost element is the root of the tree. There is, however,
+the difficulty that the XML syntax allows one to surround
+the topmost element
+by comments and processing instructions. For an exact 
+representation of this, it is possible to put an artificial root
+node at the top of the tree, so that the topmost element is one of
+the children, and the other surrounding material appears as the other
+children. This mode is enabled by setting [enable_super_root_node].
+The node is called super root node, and is also a special type of node.
+- It is possible to also get attributes and even namespaces as
+node objects, but they are never put into the regular tree. To get
+these very special nodes, one has to use special access methods.
+- CDATA sections (like [<![CDATA[some text]]>]) are simply added to the
+surrounding data node,
+so they do not appear as nodes of their own.
+- Entity references (like [&amp;]) are automatically resolved, and
+the resolution is added to the surrounding node
+
+The parser collapses as much data material into one
+data node as possible such that there are normally never two adjacent data
+nodes. This invariant is enforced even if data material is included by entity
+references or CDATA sections, or if a data sequence is interrupted by
+comments. So 
+
+{[ a &amp; b <!-- comment --> c <![CDATA[<> d]]> ]}
+
+is represented by only one data node, for
+instance (for the default case where no comment nodes are created).
+Of course, you can create document trees manually which break this
+invariant; it is only the way the parser forms the tree.
+
+All types of nodes are represented by the same Ocaml objects of 
+class type {!Pxp_document.node}. The method 
+{!Pxp_document.node.node_type} returns
+a hint which type of node the object is. See the type
+{!Pxp_document.node_type} for details how the mentioned node types are
+reflected by this method. For instance, for elements this method
+returns [T_element n] where [n] is the name of the element.
+
+Note that this means formally that all access methods are implemented
+for all node types. For example, you can get the attributes of 
+data nodes by calling the {!Pxp_document.node.attributes} method, 
+although this does not
+make sense. This problem is resolved on a case-by-case basis by
+either returning an "empty value" or by raising appropriate
+exceptions (e.g. {!Pxp_types.Method_not_applicable}).
+For the chosen typing it is not possible to define slimmer class types
+that better fit the various node types.
+
+Attributes are usually represented as pairs
+[string * att_value] of names and values. Here,
+[att_value] is a conventional variant type. There are lots of
+access methods for attributes, see below. It is optionally possible
+to wrap the attributes as nodes (method
+{!Pxp_document.node.attributes_as_nodes}), but even in this case the attributes
+are outside the regular document tree.
+
+Normally, the processing instructions are also not included
+into the document tree. They are considered as an extra property of the
+element containing them, and can be retrieved by the
+{!Pxp_document.node.pinstr}
+method of the element node. If this way of handling processing instructions
+is not exact enough, the parser can optionally create processing instruction
+nodes that are regular members of the document tree.
+
+{2 Access methods}
+
+An overview over some relevant access methods:
+
+{ul
+  {- {b General:}
+    {ul
+      {- [dtd] ({!Pxp_document.node.dtd}): returns the DTD object.
+         All nodes have such an object, even in well-formed mode.}
+      {- [encoding] ({!Pxp_document.node.encoding}): returns the
+         encoding of the in-memory document representation.}
+    }}
+  {- {b Navigation:}
+    {ul
+      {- [parent] ({!Pxp_document.node.parent}): returns the parent object
+         of the node it is called on}
+      {- [root] ({!Pxp_document.node.root}): returns the root of the tree
+         the node is member of}
+      {- [sub_nodes] ({!Pxp_document.node.sub_nodes}): returns the children
+         of the node }
+      {- [previous_node] ({!Pxp_document.node.previous_node}): returns the
+         left sibling}
+      {- [next_node] ({!Pxp_document.node.next_node}): returns the
+         right sibling}
+     }}
+  {- {b Information:}
+    {ul
+      {- [node_position] ({!Pxp_document.node.node_position}): returns the
+         ordinal position of this node as child of the parent}
+      {- [node_path] ({!Pxp_document.node.node_path}): returns the positional
+         path of this node in the whole tree}
+      {- [node_type] ({!Pxp_document.node.node_type}): returns the type of
+         the node}
+      {- [position] ({!Pxp_document.node.position}): returns the position
+         of the node in the parsed XML text}
+     }}
+  {- {b Content:}
+    {ul
+      {- [data] ({!Pxp_document.node.data}): returns the data contents of
+         data nodes}
+      {- [attributes] ({!Pxp_document.node.attributes}): returns the attributes
+         of elements}
+      {- [attributes_as_nodes] ({!Pxp_document.node.attributes_as_nodes}):
+         also returns the attributes, but represented as a list of nodes
+         residing outside the tree }
+      {- [comment] ({!Pxp_document.node.comment}): returns the text of the
+         XML comment }
+    }}
+  {- {b Validation:}
+    {ul 
+      {- [validate] ({!Pxp_document.node.validate}): validates the element
+         locally }
+     }}
+  {- {b Namespace:} (Only if namespaces are enabled, and the namespace-aware
+        node implementation is used)
+    {ul
+      {- [localname] ({!Pxp_document.node.localname}): returns the local name
+         of the element in the namespace }
+      {- [namespace_uri] ({!Pxp_document.node.namespace_uri}): returns the
+         namespace URI of the node }
+      {- [namespace_scope] ({!Pxp_document.node.namespace_scope}): returns
+         the scope object with more namespace query methods }
+      {- [namespaces_as_nodes] ({!Pxp_document.node.namespaces_as_nodes}):
+         returns the namespaces this node is member of, and the namespaces
+         are represented as list of nodes}
+    }}
+  }
+
+{2 Mutation methods}
+
+Trees are mutable, and nodes are mutable. Note that the tree is not 
+automatically (re-)validated when it is changed. You have to explicitly
+call validation methods, or the {!Pxp_document.validate} function for the
+whole tree.
+
+{ul
+  {- {b Building trees, changing the structure of trees:}
+    {ul
+      {- [append_node] ({!Pxp_document.node.append_node}): appends a
+        node as new child to this node }
+      {- [remove] ({!Pxp_document.node.remove}): removes this node from
+        the tree }
+    }}
+  {- {b Changing the content of nodes:}
+    {ul
+      {- [set_data] ({!Pxp_document.node.set_data}): changes the contents
+        of data nodes }
+      {- [set_attribute] ({!Pxp_document.node.set_attribute}): adds or
+        changes an attribute }
+      {- [set_comment] ({!Pxp_document.node.set_comment}): changes the
+        contents of comment nodes }
+    }}
+  {- {b Creating nodes:}
+    {ul
+      {- [create_element] ({!Pxp_document.node.create_element}):
+         called on an element node, this method creates a new tree only
+         consisting of an element, and the only node of the tree is an
+         object of the same class as this node}
+      {- [create_data] ({!Pxp_document.node.create_date}): same for data
+         nodes }
+      {- [orphaned_clone] ({!Pxp_document.node.orphaned_clone}):
+         creates a copy of the subtree starting at this node }
+    }}
+}
+
+{2 Links between nodes}
+
+The node tree has links in both directions: Every node has a link to its
+parent (if any), and it has links to the subnodes (see the following
+picture). Obviously,
+this doubly-linked structure simplifies the navigation in the tree; but has
+also some consequences for the possible operations on trees.
+
+{picture ../pic/node_general.gif 
+Nodes are doubly linked trees}
+
+(Definitions: {!Pxp_document.node.parent}, {!Pxp_document.node.sub_nodes}.)
+
+Because every node must have at most {b one} parent node,
+operations are illegal if they violate this condition. The following figure
+shows on the left side
+that node [y] is added to [x] as new subnode
+which is allowed because [y] does not have a parent yet. The
+right side of the picture illustrates what would happen if [y]
+had a parent node; this is illegal because [y] would have two
+parents after the operation.
+
+{picture ../pic/node_add.gif 
+A node can only be added if it is a root}
+
+(Definition: {!Pxp_document.node.append_node}.)
+
+The [remove] operation simply removes the links between two nodes. In the
+following picture the node
+[x] is deleted from the list of subnodes of
+[y]. After that, [x] becomes the root of the
+subtree starting at this node.
+
+{picture ../pic/node_delete.gif
+A removed node becomes the root of the subtree}
+
+(Definition: {!Pxp_document.node.remove}.)
+
+It is also possible to make a clone of a subtree; illustrated in the
+next picture. In this case, the
+clone is a copy of the original subtree except that it is no longer a
+subnode. Because cloning never keeps the connection to the parent, the clones
+are called {b orphaned}.
+
+{picture ../pic/node_clone.gif 
+The clone of a subtree}
+
+(Definition: {!Pxp_document.node.orphaned_clone}.)
+
+{2 Optional features of document trees}
+
+As already pointed out, the parser does only create element and data nodes by
+default. The configuration of the parser can be controlled by the 
+{!Pxp_types.config} record. There are a number of optional features that
+change the way the document trees are constructed by the parser:
+
+Note that the parser configuration only controls the parser. If
+you create trees of your own, you can simply add all the additional node types
+to the tree without needing to enable these features.
+
+{ul
+{- When [enable_super_root_node] is set, the extra super root node
+is generated at the top of the tree. This node has type [T_super_root].}
+{- The option [enable_comment_nodes] lets the
+parser add comment nodes when it parses comments. These nodes have
+type [T_comment].}
+{- The option [enable_pinstr_nodes] changes the
+way processing instructions are added to the document. Instead of appending
+such instructions to their containing elements as additional properties, this
+mode forces the parser to create real nodes of type [T_pinstr] for them.}
+{- The option [drop_ignorable_whitespace] (enabled by default) can
+be turned off. It controls whether the parser skips over so-called ignorable
+whitespace. The XML standard allows that elements contain whitespace 
+characters even if they are declared in the DTD not to contain character data. 
+Because of this, the parser considers such whitespace as ignorable detail 
+of the XML instance, and drops the characters silently. You can change
+this by setting [drop_ignorable_whitespace] to [false]. In
+this case, every character of the XML instance will be accepted by the
+parser and will be added to a data node of the document tree.}
+{- By default, the parser creates elements with an annotation
+about the location in the XML source file. You can query this location by
+calling the method [position]. As this requires a lot of
+memory, it is possible to turn this off by setting
+[store_element_positions] to [false].}
+}
+
+There are a number of further configuration options; however,
+these options do not change the structure of the document tree. 
+
+{2 Optional features of nodes}
+
+The following features exist per node, and are simply invoked by
+using the methods dealing with them.
+
+{ul
+{- Attribute nodes: These are useful 
+if you want to have data structures that contain
+attributes together with other types of nodes. The method
+[attributes_as_nodes] returns the attributes wrapped into node
+objects. Note that these nodes are read-only.}
+{- Validation: The document
+nodes contain the routines validating the document body. Of course, the
+validation checks depend on what is stored in the DTD object. 
+(There is always a DTD object - even in well-formedness mode, only
+that it is mostly empty then, and validation is a no-op.)
+
+The DTD object contains the declarations of
+elements, attribute lists, entities, and notations. Furthermore, the 
+DTD knows
+whether the document is flagged as "standalone". As a PXP extension to
+classic XML processing, the DTD may specify a mixed mode between
+"validating mode" and "well-formedness mode". It is possible to allow
+non-declared elements in the document, but to check declared elements 
+against their declaration at
+the same time. Moreover, there is a similar feature for attribute lists; 
+you can allow non-declared attributes and check declared attributes. 
+(Well, the
+whole truth is that the parser always works in this mix mode, and that
+the "validating mode" and the "well-formedness mode" are only the extremes
+of the mix mode.)}
+}
+
+{2 Creating nodes and trees}
+
+Often, the parser creates the trees, but on occasion it is useful to
+create trees manually. We explain here only the basic mechanism. There
+is a nice camlp4 syntax extension called pxp-pp (XXX: LINK) allowing
+for a much better notation in programs.
+
+The most basic way of creating new nodes are the [create_element],
+[create_data], and [create_other] methods of nodes. It is not recommended
+to use them directly, however, as they are very primitive.
+
+In the {!Pxp_document} module there are a number of functions creating
+individual nodes (without children), the node constructors:
+
+- {!Pxp_document.create_element_node}: creates an element node
+- {!Pxp_document.create_data_node}: creates a data node
+- {!Pxp_document.create_comment_node}: creates a comment node
+- {!Pxp_document.create_pinstr_node}: creates a processing instruction node
+- {!Pxp_document.create_super_root_node}: creates a super root node
+
+There are no functions to create attribute and namespace nodes - these
+are always created automatically by their containing nodes, so the user
+does not need to do anything for creating them.
+
+The node constructors must be equipped with all required data to
+create the requested type of node. This includes the data that would
+have been available in the textual XML representation, and some of the
+meta data passed to the parsers, and meta data implicitly generated by
+the parsers. For an element, this is at minimum:
+
+- The name of the element (e.g. the "foo" in [<foo>])
+- The attributes of the element
+- The DTD object to use (a rudimentary DTD object is even required if only 
+  well-formedness checks will be applied but no validation)
+- The specification which classes are instantiated to create the nodes
+
+For the latter two, see below. Optionally one can provide:
+
+- The position of the element in the XML text
+- Whether the attribute list is to be validated at creation time
+- Whether name pools are to be used for the attributes
+
+Regarding validation, the default is to validate local data such as 
+attributes, but to omit any checks of the position the node has in the
+tree. The tree is still a singleton, and consists only of one node
+after creation, so non-local checks do not make sense.
+
+After some nodes have been created, they can be combined to more complex
+trees by mutation methods (e.g. {!Pxp_document.node.append_node}).
+
+As mentioned, a node must always be connected with a DTD object, even
+if no validation checks will be done. It is possible to create DTD objects
+that do not impose restrictions on the document:
+
+{[ 
+  let dtd = Pxp_dtd_parser.create_empty_dtd config
+  dtd # allow_arbitrary
+]}
+
+Even such a DTD object can contain entity definitions, and can demand
+a certain way of dealing with namespaces. Also, the character encoding
+of the nodes is taken from the DTD. See {!Pxp_dtd.dtd} for DTD methods,
+and {!Pxp_dtd_parser} for convenient ways to create DTD objects. Note
+that all nodes of a tree must be connected to the same DTD object.
+
+PXP is not restricted to using built-in classes for nodes. When the
+parser is invoked and a tree is built, it is looked up in a so-called
+{b document model specification} how the new objects have to be
+created (type {!Pxp_document.spec}. Basically, it is a list of sample
+objects to use (which are called {b exemplars}), and these objects are
+cloned when a node is actually created.
+
+When calling the node constructors directly (bypassing the parser),
+the document model specification has also to be passed to them as
+argument. It is used in the same way as the parser uses it.
+
+For getting the built-in classes without any modification, just use
+{!Pxp_tree_parser.default_spec}. For the variant with enabled namespaces,
+prefer {!Pxp_tree_parser.default_namespace_spec}.
+
+XXX: Look at extended nodes for examples of non-standard specs
+
+{2 Extended nodes}
+
+XXX
+
+[There is text and pictures in the SGML version.]
+
+{2 Namespaces}
+
+PXP supports namespaces (but they have to be explicitly enabled). 
+In order to simplify the handling
+of namespace-aware documents PXP applies a transformation to the document
+which is called "prefix normalization". This transformation ensures that every
+namespace prefix uniquely identifies a namespace throughout the whole document.
+
+A namespace is identified by a namespace URI (e.g. something like
+"http://company.org/namespaces/project1" - note that this URI is simply
+processed as string, and never looked up by an HTTP access). For
+brevity of formulation, one has to define a so-called namespace prefix
+for such a URI. For example:
+
+{[ <x:q xmlns:x="http://company.org/namespaces/project1">...</q> ]}
+
+The "xmlns:x" attribute is special, and declares that for this
+subtree the prefix "x" is to be used as replacement for the long
+URI. Here, "x:q" denotes that the element "q" in this namespace "x"
+is meant.
+
+The problem is now that the URI defines the namespace, and not the
+prefix. In another subtree you may want to use the prefix "y" for the
+same namespace. This has always made it difficult to deal with namespaces
+in XML-processing software.
+
+PXP, however, performs prefix normalization before it returns the
+tree. This means that all prefixes are changed to a norm prefix for
+the namespace. This can be the first prefix used for the namespace,
+or a prefix declared with a PXP extension, or a programmatically
+declared binding of the norm prefix to the namespace.
+
+In order to use the PXP implementation of namespaces, one has to
+set [enable_namespace_processing] in the parser configuration, and
+to use namespace-aware node implementations. If you don't use extended
+node trees, this means to use {!Pxp_tree_parser.default_namespace_spec}
+instead of {!Pxp_tree_parser.default_spec}. A good starting point
+to enable all that:
+
+{[
+  let config = Pxp_types.default_namespace_config
+  let source = ...
+  let spec = Pxp_tree_parser.default_namespace_spec
+  let doc = Pxp_tree_parser.parse_document_entity config source spec
+  let root = doc#root
+]}
+
+The namespace-aware implementations of the [node]
+class type define additional namespace methods like
+[namespace_uri]. (Although you also could direct the parser to create 
+non-namespace-aware nodes,
+this does not make much sense, as you do not get these special access
+methods then.)
+
+The method [namespace_scope] allows one to get more information what
+happened during prefix normalization. In particular, it is possible to
+find out the original prefix in the XML text (which is also called
+{b display prefix}), before it was mapped to the normalized prefix.
+The [namespace_scope] method returns a
+{!Pxp_dtd.namespace_scope} object with additional lookup methods.
