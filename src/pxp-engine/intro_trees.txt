@@ -438,71 +438,173 @@ For getting the built-in classes without any modification, just use
 {!Pxp_tree_parser.default_spec}. For the variant with enabled namespaces,
 prefer {!Pxp_tree_parser.default_namespace_spec}.
 
-XXX: Look at extended nodes for examples of non-standard specs
-
 {2 Extended nodes}
 
-XXX
+Every node in a tree has a so-called extension. By default, the
+extension is practically empty and only present for formal uniformity.
+However, one can also define custom extension classes, and effectively
+add new methods to the node classes.
 
-[There is text and pictures in the SGML version.]
+Node extensions are explained in detail here: {!Intro_extensions}
 
 {2 Namespaces}
 
-PXP supports namespaces (but they have to be explicitly enabled). 
-In order to simplify the handling
-of namespace-aware documents PXP applies a transformation to the document
-which is called "prefix normalization". This transformation ensures that every
-namespace prefix uniquely identifies a namespace throughout the whole document.
+As an option, PXP processes namespace declarations in XML text.
+See this separate introduction for details: {!Intro_namespaces}.
 
-A namespace is identified by a namespace URI (e.g. something like
-"http://company.org/namespaces/project1" - note that this URI is simply
-processed as string, and never looked up by an HTTP access). For
-brevity of formulation, one has to define a so-called namespace prefix
-for such a URI. For example:
 
-{[ <x:q xmlns:x="http://company.org/namespaces/project1">...</q> ]}
+{2 Details of the mapping from XML text to the tree representation}
 
-The "xmlns:x" attribute is special, and declares that for this
-subtree the prefix "x" is to be used as replacement for the long
-URI. Here, "x:q" denotes that the element "q" in this namespace "x"
-is meant.
+If an element declaration does not allow the element to 
+contain character data, the following rules apply.
 
-The problem is now that the URI defines the namespace, and not the
-prefix. In another subtree you may want to use the prefix "y" for the
-same namespace. This has always made it difficult to deal with namespaces
-in XML-processing software.
+If the element must be empty, i.e. it is declared with the
+keyword [EMPTY], the element instance must be effectively
+empty (it must not even contain whitespace characters). The parser guarantees
+that a declared [EMPTY] element never contains a data
+node, even if the data node represents the empty string.
 
-PXP, however, performs prefix normalization before it returns the
-tree. This means that all prefixes are changed to a norm prefix for
-the namespace. This can be the first prefix used for the namespace,
-or a prefix declared with a PXP extension, or a programmatically
-declared binding of the norm prefix to the namespace.
+If the element declaration only permits other elements to occur
+within that element but not character data, it is still possible to insert
+whitespace characters between the subelements. The parser ignores these
+characters, too, and does not create data nodes for them.
 
-In order to use the PXP implementation of namespaces, one has to
-set [enable_namespace_processing] in the parser configuration, and
-to use namespace-aware node implementations. If you don't use extended
-node trees, this means to use {!Pxp_tree_parser.default_namespace_spec}
-instead of {!Pxp_tree_parser.default_spec}. A good starting point
-to enable all that:
+{b Example.} Consider the following element types:
 
 {[
-  let config = Pxp_types.default_namespace_config
-  let source = ...
-  let spec = Pxp_tree_parser.default_namespace_spec
-  let doc = Pxp_tree_parser.parse_document_entity config source spec
-  let root = doc#root
+<!ELEMENT x ( #PCDATA | z )* >
+<!ELEMENT y ( z )* >
+<!ELEMENT z EMPTY>
 ]}
 
-The namespace-aware implementations of the [node]
-class type define additional namespace methods like
-[namespace_uri]. (Although you also could direct the parser to create 
-non-namespace-aware nodes,
-this does not make much sense, as you do not get these special access
-methods then.)
+Only [x] may contain character data, the keyword
+[#PCDATA] indicates this. The other types are character-free. 
 
-The method [namespace_scope] allows one to get more information what
-happened during prefix normalization. In particular, it is possible to
-find out the original prefix in the XML text (which is also called
-{b display prefix}), before it was mapped to the normalized prefix.
-The [namespace_scope] method returns a
-{!Pxp_dtd.namespace_scope} object with additional lookup methods.
+The XML term
+
+{[
+<x><z/> <z/></x>
+]}
+
+will be internally represented by an element node for [x] 
+with three subnodes: the first [z] element, a data node
+containing the space character, and the second [z] element. 
+In contrast to this, the term
+
+{[
+<y><z/> <z/></y>
+]}
+
+is represented by an  element node for [y] with only
+{b two} subnodes, the two [z] elements. There
+is no data node for the space character because spaces are ignored in the
+character-free element [y].
+
+{b Parser option:}
+By setting the parser option [drop_ignorable_whitespace] to
+[false], the behaviour of the parser is changed such that
+even ignorable whitespace characters are represented by data nodes.
+
+
+{3 The representation of character data}
+
+The XML specification allows all Unicode characters in XML
+texts. This parser can be configured such that UTF-8 is used to represent the
+characters internally; however, the default character encoding is
+ISO-8859-1. (Currently, no other encodings are possible for the internal string
+representation; the type {!Pxp_types.rep_encoding} enumerates
+the possible encodings. Principally, the parser could use any encoding that is
+ASCII-compatible, but there are currently only lexical analyzers for UTF-8 and
+ISO-8859-1. It is currently impossible to use UTF-16 or UCS-4 as internal
+encodings (or other multibyte encodings which are not ASCII-compatible) unless
+major parts of the parser are rewritten - unlikely...)
+
+The internal encoding may be different from the external encoding (specified
+in the XML declaration [<?xml ... encoding="..."?>]); in
+this case the strings are automatically converted to the internal encoding.
+
+If the internal encoding is ISO-8859-1, it is possible that there are
+characters that cannot be represented. In this case, the parser ignores such
+characters and prints a warning (to the [collect_warning]
+object that must be passed when the parser is called).
+
+The XML specification allows lines to be separated by single LF
+characters, by CR LF character sequences, or by single CR
+characters. Internally, these separators are always converted to single LF
+characters.
+
+The parser guarantees that there are never two adjacent data
+nodes; if necessary, data material that would otherwise be represented by
+several nodes is collapsed into one node. Note that you can still create node
+trees with adjacent data nodes; however, the parser does not return such trees.
+
+Note that CDATA sections are not represented specially; such
+sections are added to the current data material that is being collected for the
+next data node.
+
+{3 The representation of entities within documents}
+
+{b Entities are not represented within
+documents!} If the parser finds an entity reference in the document
+content, the reference is immediately expanded, and the parser reads the
+expansion text instead of the reference.
+
+{3 The representation of attributes}
+
+As attribute
+values are composed of Unicode characters, too, the same problems with the
+character encoding arise as for character material. Attribute values are
+converted to the internal encoding, too; and if there are characters that
+cannot be represented, these are dropped, and a warning is printed.
+
+Attribute values are normalized before they are returned by
+methods like [attribute]. First, any remaining entity
+references are expanded; if necessary, expansion is performed recursively.
+Second, newline characters (any of LF, CR LF, or CR characters) are converted
+to single space characters. Note that especially the latter action is
+prescribed by the XML standard (but [&#10;] is not converted
+such that it is still possible to include line feeds into attributes).
+
+{3 The representation of processing instructions}
+
+Processing instructions are parsed to some extent: The first word of the
+PI is called the target, and it is stored separated from the rest of the PI:
+
+{[
+<?target rest?>
+]}
+
+The exact location where a PI occurs is not represented (by default). The
+parser puts the PI into the object that represents the embracing construct (an
+element, a DTD, or the whole document); that means you can find out which PIs
+occur in a certain element, in the DTD, or in the whole document, but you
+cannot lookup the exact position within the construct.
+
+{b Parser option:}
+If you require the exact location of PIs, it is possible to
+create extra nodes for them. This mode is controlled by the option
+[enable_pinstr_nodes]. The additional nodes have the node type
+[T_pinstr target], and are created
+from special exemplars contained in the [spec] (see
+{!Pxp_document.spec}).
+
+{3 The representation of comments}
+
+Normally, comments are not represented; they are dropped by
+default.
+
+{b Parser option:}
+However, if you require comment in the document tree, it is possible to create
+[T_comment] nodes for them. This mode can be specified by the
+option [enable_comment_nodes]. Comment nodes are created from
+special exemplars contained in the [spec] (see
+{!Pxp_document.spec}). You can access the contents of comments through the 
+method [comment].
+
+{3 The attributes [xml:lang] and [xml:space] }
+
+These attributes are not supported specially; they are handled
+like any other attribute.
+
+Note that the utility function
+{!Pxp_document.strip_whitespace} respects [xml:space]

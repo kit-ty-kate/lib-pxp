@@ -15,7 +15,8 @@ OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
 	pxp_dtd_parser.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
-DOC =   pxp_document.mli intro_trees.txt
+DOC =   pxp_document.mli pxp_dtd.mli \
+	intro_trees.txt intro_extensions.txt intro_namespaces.txt
 
 XOBJ = $(OBJ:.cmo=.cmx)
 

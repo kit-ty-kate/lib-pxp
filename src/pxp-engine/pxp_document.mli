@@ -75,7 +75,7 @@ type data_node_classification =
 
 
 (** The [extension] is, as the name says, the extensible part of the
-    nodes. See XXX LINK for an introduction into extensions.
+    nodes. See {!Intro_extensions} for an introduction into extensions.
  *)
 class type [ 'node ] extension =
   object ('self)

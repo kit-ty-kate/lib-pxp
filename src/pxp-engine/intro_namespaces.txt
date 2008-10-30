@@ -1,0 +1,182 @@
+This text explains how PXP deals with the optional namespace
+declarations in XML text.
+
+{1 Namespaces}
+
+PXP supports namespaces (but they have to be explicitly enabled). 
+In order to simplify the handling
+of namespace-aware documents PXP applies a transformation to the document
+which is called "prefix normalization". This transformation ensures that every
+namespace prefix uniquely identifies a namespace throughout the whole document.
+
+A namespace is identified by a namespace URI (e.g. something like
+"http://company.org/namespaces/project1" - note that this URI is simply
+processed as string, and never looked up by an HTTP access). For
+brevity of formulation, one has to define a so-called namespace prefix
+for such a URI. For example:
+
+{[ <x:q xmlns:x="http://company.org/namespaces/project1">...</q> ]}
+
+The "xmlns:x" attribute is special, and declares that for this
+subtree the prefix "x" is to be used as replacement for the long
+URI. Here, "x:q" denotes that the element "q" in this namespace "x"
+is meant.
+
+The problem is now that the URI defines the namespace, and not the
+prefix. In another subtree you may want to use the prefix "y" for the
+same namespace. This has always made it difficult to deal with namespaces
+in XML-processing software.
+
+PXP, however, performs prefix normalization before it returns the
+tree. This means that all prefixes are changed to a norm prefix for
+the namespace. This can be the first prefix used for the namespace,
+or a prefix declared with a PXP extension, or a programmatically
+declared binding of the norm prefix to the namespace.
+
+In order to use the PXP implementation of namespaces, one has to
+set [enable_namespace_processing] in the parser configuration, and
+to use namespace-aware node implementations. If you don't use extended
+node trees, this means to use {!Pxp_tree_parser.default_namespace_spec}
+instead of {!Pxp_tree_parser.default_spec}. A good starting point
+to enable all that:
+
+{[
+  let config = Pxp_types.default_namespace_config
+  let source = ...
+  let spec = Pxp_tree_parser.default_namespace_spec
+  let doc = Pxp_tree_parser.parse_document_entity config source spec
+  let root = doc#root
+]}
+
+The namespace-aware implementations of the [node]
+class type define additional namespace methods like
+[namespace_uri]. (Although you also could direct the parser to create 
+non-namespace-aware nodes,
+this does not make much sense, as you do not get these special access
+methods then.)
+
+The method [namespace_scope] allows one to get more information what
+happened during prefix normalization. In particular, it is possible to
+find out the original prefix in the XML text (which is also called
+{b display prefix}), before it was mapped to the normalized prefix.
+The [namespace_scope] method returns a
+{!Pxp_dtd.namespace_scope} object with additional lookup methods.
+
+
+{2 Example for prefix normalization}
+
+In the following XML snippet the prefix "h" is declared as a shorthand
+for the XHTML namespace:
+
+{[
+<h:html xmlns:h="http://www.w3.org/1999/xhtml"> 
+  <h:head>
+    <h:title>Virtual Library</h:title> 
+  </h:head> 
+  <h:body> 
+    <h:p>Moved to <h:a href="http://vlib.org/">vlib.org</h:a>.</h:p> 
+  </h:body> 
+</h:html>
+]}
+
+In this example, normalization changes nothing, because the prefix
+"h" has the same meaning thoughout the whole document.
+
+The XML standard, however, gives the author of the document the
+freedom to change the meaning of the prefix at any time. For example,
+here the prefix "x" is changed in the inner node:
+
+{[
+<x:address xmlns:x="http://addresses.org">
+  <x:name xmlns:x="http://names.org">
+    Gerd Stolpmann
+  </x:name>
+</x:address>
+]}
+
+After normalization, the prefixes would look as follows:
+
+{[
+<x:address xmlns:x="http://addresses.org">
+  <x1:name xmlns:x1="http://names.org">
+    Gerd Stolpmann
+  </x1:name>
+</x:address>
+]}
+
+In order to avoid overridden prefixes, the prefix in the inner node
+was changed to "x1".
+
+The idea of prefix normalization is to simplify how programs can match
+against element and attribute names. It is possible to configure the
+normalizer so that certain prefixes are used for certain URI's.
+In this example, we could direct the normalizer to use the prefixes
+"addr" and "nm" instead of the quite arbitrary strings "x" and "x1":
+
+{[
+dtd # namespace_manager # add_namespace "addr" "http://addresses.org";
+dtd # namespace_manager # add_namespace "nm" "http://names.org";
+]}
+
+For this to work you need access to the [dtd] object before the parser
+actually starts it work. The parsing functions in {!Pxp_tree_parser}
+have the special hook [transform_dtd] that is called at the right
+moment, and allows the program to enter such special configurations 
+into the DTD object. The resulting program could look then like:
+
+{[
+  let config = Pxp_types.default_namespace_config
+  let source = ...
+  let spec = Pxp_tree_parser.default_namespace_spec
+  let transform_dtd dtd =
+    dtd # namespace_manager # add_namespace "addr" "http://addresses.org";
+    dtd # namespace_manager # add_namespace "nm" "http://names.org";
+    dtd
+  let doc = 
+     Pxp_tree_parser.parse_document_entity ~transform_dtd config source spec
+  let root = doc#root
+]}
+
+Alternatively, it is also possible to put special processing instructions
+into the DTD:
+
+{[
+<?pxp:dtd namespace prefix="addr" uri="http://addresses.org"?>
+<?pxp:dtd namespace prefix="nm" uri="http://names.org"?>
+]}
+
+The advantage of configuring specific normprefixes is that one can now
+use them directly in programs, e.g. for matching:
+
+{[
+  match node#node_type with
+    | T_element "addr:address" -> ...
+    | T_element "nm:name" -> ...
+]}
+
+
+{2 Finding out more about namespaces}
+
+There are two additional objects that are relevant. First, there is a
+namespace manager for the whole tree. This object gathers all namespace
+URI's up that occur in the XML text, and decides which normprefixes
+are associated with them: {!Pxp_dtd.namespace_manager}.
+
+Second, there is the namespace scope. An XML tree may have a lot of such
+objects. A new scope object is created whenever new namespaces are
+introduced, i.e. when there are "xmlns" declarations. The scope object
+has a pointer to the scope object for the surrounding XML text. Scope
+objects are documented here: {!Pxp_dtd.namespace_scope}.
+
+Some examples (when [n] is a node):
+
+{ul
+  {- To find out which normprefix is used for a namespace URI, use
+     {[ n # namespace_manager # get_normprefix uri ]} }
+  {- To find out the reverse, i.e. which URI is represented by a certain
+     normprefix, use
+     {[ n # namespace_manager # get_primary_uri prefix ]} }
+  {- To find out which namespace URI is meant by a display prefix, i.e.
+     the prefix as it occurs literally in the XML text:
+     {[ n # namespace_scope # uri_of_display_prefix prefix ]} }
+}

@@ -1,0 +1,203 @@
+This text explains the custom node extensions that can be attached
+to XML trees. This feature can be ignored by users that do not need
+it. We effectively comment the class type {!Pxp_document.extension}
+here.
+
+{1 Node extensions}
+
+Every node in a tree has a so-called extension. By default, the
+extension is practically empty and only present for formal uniformity.
+However, one can also define custom extension classes, and effectively
+add new methods to the node classes.
+
+The type {!Pxp_document.extension} is:
+
+{[
+class type [ 'node ] extension =
+  object ('self)
+    method clone : 'self
+    method node : 'node
+    method set_node : 'node -> unit
+  end
+]}
+
+Every node has such an extension object, as the following picture shows.
+Of course, the idea is to equip the extension object with additional
+methods and not only [clone], [node], and [set_node] - which are simply
+the bare minimum.
+
+{picture ../pic/extension_general.gif
+     Node objects and extension objects}
+
+The picture shows how the nodes and extensions are linked
+together. Every node has a reference to its extension, and every extension has
+a reference to its node. The methods [extension] and
+[node] follow these references; a typical phrase is 
+
+{[ self # node # attribute "xy" ]}
+
+to get the value of an attribute from a method defined in the extension object;
+or 
+
+{[
+self # node # iter
+  (fun n -> n # extension # my_method ...)
+]}
+
+to iterate over the subnodes and to call [my_method] of the
+corresponding extension objects.
+
+Note that extension objects do not have references to subnodes
+(or "subextensions") themselves; in order to get one of the children of an
+extension you must first go to the node object, then get the child node, and
+finally reach the extension that is logically the child of the extension you
+started with.
+
+In other programming languages, it is possible to extend the node
+objects directly. Ocaml's subtyping rules make this practically
+impossible. The type of the extension object appears as type parameter
+in the class type of the nodes. Note that this means that the type
+of the extension objects has to be the same for all nodes in a tree.
+It is not possible to e.g. use a different type for elements than for
+data nodes.
+
+{2 How to define an extension class}
+
+At minimum, you must define the methods [clone], [node], and
+[set_node] such that your class is compatible with the type
+{!Pxp_document.extension}. The method [set_node] is called during the
+initialization of the node, or after a node has been cloned; the node
+object invokes [set_node] on the extension object to tell it that this
+node is now the object the extension is linked to. The extension must
+return the node object passed as argument of [set_node] when the
+[node] method is called.
+
+The [clone] method must return a copy of the extension object; at
+least the object itself must be duplicated, but if required, the copy
+should deeply duplicate all objects and values that are referred by
+the extension, too. Whether this is required, depends on the
+application; [clone] is invoked by the node object when one of its
+cloning methods is called.
+
+A good starting point for an extension class:
+
+{[
+class custom_extension =
+  object (self)
+
+    val mutable node = (None : custom_extension node option)
+
+    method clone = {< >} 
+
+    method node =
+      match node with
+          None ->
+            assert false
+        | Some n -> n
+
+    method set_node n =
+      node <- Some n
+
+  end
+]}
+
+This class is compatible with {!Pxp_document.extension}. The purpose
+of defining such a class is, of course, adding further methods; and
+you can do it without restriction.
+
+Often, you want more than only a single extension class. In this case,
+it is strictly required that all your classes (that will be used in
+the same tree) have the same type of extensions (with respect to the
+interface; i.e. it does not matter if your classes differ in the
+defined private methods and instance variables, but public methods
+count). It is simple to implement:
+
+{[
+class custom_extension =
+  object (self)
+    val mutable node = (None : custom_extension node option)
+
+    method clone = ...      (* see above *)
+    method node = ...       (* see above *)
+    method set_node n = ... (* see above *)
+
+    method virtual my_method1 : ...
+    method virtual my_method2 : ...
+    ... (* etc. *)
+  end
+
+class custom_extension_kind_A =
+  object (self)
+    inherit custom_extension
+
+    method my_method1 = ...
+    method my_method2 = ...
+  end
+
+class custom_extension_kind_B =
+  object (self)
+    inherit custom_extension
+
+    method my_method1 = ...
+    method my_method2 = ...
+  end
+]}
+
+If a class does not need a method (e.g. because it does not make
+sense, or it would violate some important condition), it is possible
+to define the method and to always raise an exception when the method
+is invoked (e.g. [assert false]).
+
+{2 How to bind extension classes to element types}
+
+Once you have defined your extension classes, you can bind them to
+element types. The simplest case is that you have only one class and
+that this class is always to be used. The parsing functions in the
+module {!Pxp_tree_parser} take a [spec] argument for the document
+model specification which can be customized (of type
+{!Pxp_document.spec}). If your single class has the name [c], this
+argument should be
+
+{[
+let spec =
+  Pxp_document.make_spec_from_alist
+    ~data_exemplar:            (new Pxp_document.data_impl c)
+    ~default_element_exemplar: (new Pxp_document.element_impl c)
+    ~element_alist:            []
+    ()
+]}
+
+This means that data nodes will be created from the exemplar passed by
+[~data_exemplar] and that all element nodes will be made from the
+exemplar specified by [~default_element_exemplar]. In
+[~element_alist], you can pass that different exemplars are to be used
+for different element types; but this is an optional feature. If you
+do not need it, pass the empty list.
+
+Remember that an exemplar is a (node, extension) pair that serves as
+pattern when new nodes (and the corresponding extension objects) are
+added to the document tree. In this case, the exemplar contains [c] as
+extension, and when nodes are created, the exemplar is cloned, and
+cloning makes also a copy of [c] such that all nodes of the document
+tree will have a copy of [c] as extension.
+
+The [~element_alist] argument can bind specific element types to
+specific exemplars; as exemplars may be instances of different classes
+it is effectively possible to bind element types to classes. For
+example, if the element type "p" is implemented by class [c_p], and
+"q" is realized by [c_q], you can pass the following value:
+
+{[
+let spec =
+  Pxp_document.make_spec_from_alist
+    ~data_exemplar:            (Pxp_document.new data_impl c)
+    ~default_element_exemplar: (Pxp_document.new element_impl c)
+    ~element_alist:            
+      [ "p", new Pxp_document.element_impl c_p;
+        "q", new Pxp_document.element_impl c_q;
+      ]
+    ()
+]}
+
+The extension object [c] is still used for all data nodes and
+for all other element types.
