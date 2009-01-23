@@ -4,6 +4,8 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
+(** Calling the parser (deprecated) *)
+
 
 (*$ markup-yacc.mli *)
 
@@ -57,20 +59,20 @@ type config = Pxp_types.config =
 		string) option;
       debugging_mode : bool;
     }
+  (** Same as {!Pxp_types.config} *)
 
 
 val default_config : config
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.default_config} *)
 
 val default_namespace_config : config
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.default_namespace_config} *)
 
 type source = Pxp_types.source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (ext_id * Pxp_reader.resolver)
-  | XExtID of (ext_id * string option * Pxp_reader.resolver)
-      (* (ext_id, system_base, resolver) *)
-  (* both defined in Pxp_types and Pxp_dtd *)
+  | XExtID of (ext_id * string option * Pxp_reader.resolver) (** *)
+  (** Same as {!Pxp_types.source} *)
 
 val from_channel : 
       ?alt:Pxp_reader.resolver list ->
@@ -80,7 +82,7 @@ val from_channel :
       ?system_encoding:encoding -> 
       in_channel -> 
         source
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.from_channel} *)
 
 val from_string :
       ?alt:Pxp_reader.resolver list ->
@@ -88,7 +90,7 @@ val from_string :
       ?fixenc:encoding -> 
       string -> 
         source
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.from_string} *)
 
 val from_obj_channel :
       ?alt:Pxp_reader.resolver list ->
@@ -98,55 +100,57 @@ val from_obj_channel :
       ?system_encoding:encoding -> 
       Netchannels.in_obj_channel -> 
         source
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.from_obj_channel} *)
 
 
 val from_file :
        ?alt:Pxp_reader.resolver list ->
        ?system_encoding:encoding -> ?enc:encoding -> string -> source
-  (* now defined in Pxp_types *)
+  (** Same as {!Pxp_types.from_file} *)
 
 exception ID_not_unique
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.ID_not_unique} *)
 
 class type [ 'ext ] index = [ 'ext ] Pxp_tree_parser.index
+  (** Same as {!Pxp_tree_parser.index} *)
 
 class [ 'ext ] hash_index : [ 'ext ] Pxp_tree_parser.hash_index
+  (** Same as {!Pxp_tree_parser.hash_index} *)
 
 val default_extension : ('a node extension) as 'a
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.default_extension} *)
 
 val default_spec : ('a node extension as 'a) spec
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.default_spec} *)
 
 val default_namespace_spec : ('a node extension as 'a) spec
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.default_namespace_spec} *)
 
 val parse_document_entity : 
   ?transform_dtd:(dtd -> dtd) ->
   ?id_index:('ext index) ->
   config -> source -> 'ext spec -> 'ext document
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.parse_document_entity} *)
 
 val parse_wfdocument_entity : 
   ?transform_dtd:(dtd -> dtd) ->
   config -> source -> 'ext spec -> 'ext document
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.parse_wfdocument_entity} *)
 
 val parse_content_entity  : 
   ?id_index:('ext index) ->
   config -> source -> dtd -> 'ext spec -> 'ext node
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.parse_content_entity} *)
 
 val parse_wfcontent_entity : 
   config -> source -> 'ext spec -> 'ext node
-  (* now defined in Pxp_tree_parser *)
+  (** Same as {!Pxp_tree_parser.parse_wfcontent_entity} *)
 
 val parse_dtd_entity : config -> source -> dtd
-  (* now defined in Pxp_dtd_parser *)
+  (** Same as {!Pxp_dtd_parser.parse_dtd_entity} *)
 
 val extract_dtd_from_document_entity : config -> source -> dtd
-  (* now defined in Pxp_dtd_parser *)
+  (** Same as {!Pxp_dtd_parser.extract_dtd_from_document_entity} *)
 
 
 (* Event-based stuff now only in Pxp_ev_parser! *)

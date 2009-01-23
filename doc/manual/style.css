@@ -51,8 +51,7 @@ div.h9 { font-size : 20pt ; border: 1px solid #000000; margin-top: 5px; margin-b
 .indextable { border-style : hidden }
 .paramstable { border-style : hidden ; padding: 5pt 5pt}
 body { background-color : White }
-tr { background-color : White }
-td.typefieldcomment { background-color : #FFFFFF ; font-size: smaller ;}
+td.typefieldcomment { font-size: smaller ;}
 pre { margin-bottom: 4px }
 div.sig_block {margin-left: 1cm}
 
@@ -62,4 +61,12 @@ div.sig_block {margin-left: 1cm}
 .picture-caption { 
 	font-weight: bold;
 	padding-bottom: 10px;
+}
+.included-module-type {
+	margin-left: 1cm;
+	background-color: #EEE;
+}
+.included-module {
+	margin-left: 1cm;
+	background-color: #EEE;
 }

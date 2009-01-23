@@ -1,7 +1,9 @@
 {b Editorial note:} The PXP tree API has some complexity. The
 definition in {!Pxp_document} is hard to read without some background
-information. This introduction is supposed to give it. However, it
-is not a tutorial, and the reader won't find easy recipes in it.
+information. This introduction is supposed to provide this information.
+
+Also note that there is also a stream representation of XML. See
+{!Intro_events} for more about this.
 
 {1 The structure of document trees}
 
@@ -229,7 +231,7 @@ whole tree.
          called on an element node, this method creates a new tree only
          consisting of an element, and the only node of the tree is an
          object of the same class as this node}
-      {- [create_data] ({!Pxp_document.node.create_date}): same for data
+      {- [create_data] ({!Pxp_document.node.create_data}): same for data
          nodes }
       {- [orphaned_clone] ({!Pxp_document.node.orphaned_clone}):
          creates a copy of the subtree starting at this node }

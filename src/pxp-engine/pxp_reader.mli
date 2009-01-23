@@ -4,62 +4,83 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-(* Purpose of this module: The Pxp_reader module allows you to exactly
- * specify how external identifiers (SYSTEM or PUBLIC) are mapped to
+(** Resolving identifiers and associating resources *)
+
+(** Purpose of this module: The [Pxp_reader] module allows you to exactly
+ * specify how external identifiers ([SYSTEM] or [PUBLIC]) are mapped to
  * files or channels. This is normally only necessary for advanced
- * configurations, as the functions from_file, from_channel, and
- * from_string in Pxp_types often suffice.
+ * configurations, as the built-in functions {!Pxp_types.from_file}, 
+ * {!Pxp_types.from_channel}, and {!Pxp_types.from_string} often suffice.
  *
  * There are two ways to use this module. First, you can compose the
  * desired behaviour by combining several predefined resolver objects
  * or functions. See the example section at the end of the file.
  * Second, you can inherit from the classes (or define a resolver class
  * from scratch). I hope this is seldom necessary as this way is much
- * more complicated; however it allows you to implement any magic.
+ * more complicated; however it allows you to implement any required magic.
  *)
 
 
 open Pxp_core_types;;
 
+(** {2 Types and exceptions} *)
+
 exception Not_competent;;
-  (* Raised by the 'open_in' method if the object does not know how to
+  (** Raised by the [open_in] method if the object does not know how to
    * handle the passed external ID.
    *)
 
 exception Not_resolvable of exn;;
-  (* Indicates that one resolver was competent, but there was an error
+  (** Indicates that the resolver was competent, but there was an error
    * while resolving the external ID. The passed exception explains the
    * reason.
-   * Not_resolvable(Not_found) serves as indicator for an unknown reason.
+   * [Not_resolvable(Not_found)] serves as indicator for an unknown reason.
    *)
+
 
 (* One must only use either [lsrc_lexbuf], or [lsrc_unicode_lexbuf] ! *)
 type lexer_source =
     { lsrc_lexbuf : Lexing.lexbuf Lazy.t;
       lsrc_unicode_lexbuf : Netulex.ULB.unicode_lexbuf Lazy.t;
     }
+    (** The parser chooses one of these ways of lexing the input into tokens.
+     *)
 
 
-(* The class type 'resolver' is the official type of all "resolvers".
+(** {3 The [resolver] class type} 
+ *
+ * The class type [resolver] is the official type of all "resolvers".
  * Resolvers take file names (or better, external identifiers) and
  * return lexbufs, scanning the file for tokens. Resolvers may be
  * cloned, and clones can interpret relative file names relative to
  * their creator.
  *
- * Example of the latter:
+ * {b Example of cloning:}
  *
- * Resolver r reads from file:/dir/f1.xml
+ * Given resolver [r] reads from [file:/dir/f1.xml] this text:
  *
- * <tag>some XML text
- * &e;                       -----> Entity e is bound to "subdir/f2.xml"
- * </tag>                           Step (1): let r' = "clone of r"
- *                                  Step (2): open file "subdir/f2.xml"
+ * {[ <tag>some XML text &e; </tag> ]}
  *
- * r' must still know the directory of the file r is reading, otherwise
- * it would not be able to resolve "subdir/f2.xml" = "file:/dir/subdir/f2.xml".
+ * The task is to switch to a resolver for reading from the entity
+ * [e] (which is referenced by [&e;]), and to switch back to the original
+ * resolver when the parser is done with [e]. Let us assume that [e]
+ * has the [SYSTEM] ID [subdir/f2.xml]. Our approach is to first create
+ * a clone of the original resolver so that we can do the switch to [e]
+ * in a copy. That means switching back is easy: We give up the cloned
+ * resolver, and continue with the original, unmodified resolver. 
+ * This gives us the freedom to modify the clone in order to switch
+ * to [e]. We do this by changing the input file:
+ *
+ * - Step 1: [let r' = ]<create clone of [r]>
+ * - Step 2: <direct [r'] to open the file [subdir/f2.xml]>
+ *
+ * [r'] must still know the directory of the file [r] is reading, otherwise
+ * it would not be able to resolve [subdir/f2.xml], which expands to
+ * [file:/dir/subdir/f2.xml].
  *
  * Actually, this example can be coded as:
  *
+ * {[
  * let r = new resolve_as_file in
  * let lbuf = r # open_in "file:/dir/f1.xml" in
  * ... read from lbuf ...
@@ -69,17 +90,19 @@ type lexer_source =
  * r' # close_in;
  * ... read from lbuf ...
  * r # close_in;
+ * ]}
  *)
 
 class type resolver =
   object
-    (* A resolver can open an input source, and returns this source as
-     * Lexing.lexbuf.
+    (** A resolver can open an input source, and returns this source as
+     * [Lexing.lexbuf] (and as its advanced version, 
+     * [Netulex.ULB.unicode_lexbuf]).
      *
      * After creating a resolver, one must invoke the two methods
-     * init_rep_encoding and init_warner to set the internal encoding of
+     * [init_rep_encoding] and [init_warner] to set the internal encoding of
      * strings and the warner object, respectively. This is normally
-     * done by the parsing functions in Pxp_yacc.
+     * already done by the parsing core.
      * It is not necessary to invoke these two methods for a fresh
      * clone.
      *
@@ -92,12 +115,13 @@ class type resolver =
      * input: (1) It is possible that the transport protocol (e.g. HTTP)
      * transmits the encoding, and (2) it is possible to inspect the beginning
      * of the file, and to analyze:
-     * (2.1) The first two bytes indicate whether UTF-16 is used
-     * (2.2) Otherwise, one can assume that an ASCII-compatible character
-     *       set is used. It is now possible to read the XML declaration
-     *       <?xml ... encoding="xyz" ...?>. The encoding found here is
-     *       to be used.
-     * (2.3) If the XML declaration is missing, the encoding is UTF-8.
+     * - (2.1) The first two bytes indicate whether UTF-16 is used
+     * - (2.2) Otherwise, one can assume that an ASCII-compatible character
+     *         set is used. It is now possible to read the XML declaration
+     *         [<?xml ... encoding="xyz" ...?>]. The encoding found here is
+     *         to be used.
+     * - (2.3) If the XML declaration is missing, the encoding is UTF-8.
+     *
      * The resolver needs only to distinguish between cases (1), (2.1),
      * and the rest.
      * The details of analyzing whether (2.2) or (2.3) applies are programmed
@@ -105,52 +129,52 @@ class type resolver =
      *
      * A resolver is like a file: it must be opened before one can work
      * with it, and it should be closed after all operations on it have been
-     * done. The method 'open_rid' is called with the resolver ID as argument
+     * done. The method [open_rid] is called with the resolver ID as argument
      * and it must return the lexbuf reading from the external resource.
-     * (There is also the old method 'open_in' that expects an ext_id as
+     * (There is also the old method [open_in] that expects an [ext_id] as
      * argument. It is less powerful and should not be used any longer.)
-     * The method 'close_in' does not require an argument.
+     * The method [close_in] does not require an argument.
      *
      * It is allowed to re-open a resolver after it has been closed. It is
      * forbidden to open a resolver again while it is open.
-     * It is allowed to close a resolver several times: If 'close_in' is
+     * It is allowed to close a resolver several times: If [close_in] is
      * invoked while the resolver is already closed, nothing happens.
      *
-     * The method 'open_rid' may raise Not_competent to indicate that this
+     * The method [open_rid] may raise [Not_competent] to indicate that this
      * resolver is not able to open this type of IDs.
      *
-     * If 'open_rid' gets a PUBLIC ID, it can be assumed that the string
-     * is already normalized (whitespace).
+     * If [open_rid] gets a [PUBLIC] ID, it can be assumed that the string
+     * is already normalized (concerning whitespace).
      *
-     * The method 'change_encoding' is called from the parser after the
+     * The method [change_encoding] is called from the parser after the
      * analysis of case (2) has been done; the argument is either the
      * string name of the encoding, or the empty string to indicate
      * that no XML declaration was found. It is guaranteed that
-     * 'change_encoding' is invoked after only a few tokens of the
+     * [change_encoding] is invoked after only a few tokens of the
      * file. The resolver should react as follows:
-     * - If case (1) applies:   Ignore the encoding passed to 'change_encoding'.
-     * - If case (2.1) applies: The encoding passed to 'change_encoding' must
+     * - If case (1) applies:   Ignore the encoding passed to [change_encoding].
+     * - If case (2.1) applies: The encoding passed to [change_encoding] must
      *                          be compatible with UTF-16. This should be
      *                          checked, and violations should be reported.
      * - Else:                  If the passed encoding is "", assume UTF-8.
      *                          Otherwise, assume the passed encoding.
      *
      * The following rule helps synchronizing the lexbuf with the encoding:
-     * If the resolver has been opened, but 'change_encoding' has not yet
+     * If the resolver has been opened, but [change_encoding] has not yet
      * been invoked, the lexbuf contains at most one character (which may
      * be represented by multiple bytes); i.e. the lexbuf is created by
-     * Lexing.from_function, and the function puts only one character into
+     * [Lexing.from_function], and the function puts only one character into
      * the buffer at once.
-     * After 'change_encoding' has been invoked, there is no longer a limit
+     * After [change_encoding] has been invoked, there is no longer a limit
      * on the lexbuf size.
      *
      * The reason for this rule is that you know exactly the character where
-     * the encoding changes to the encoding passed by 'change_encoding'.
+     * the encoding changes to the encoding passed by [change_encoding].
      *
-     * The method 'clone' may be invoked for open or closed resolvers.
-     * Basically, 'clone' returns a new resolver which is always closed.
-     * If the original resolver is closed, the clone is simply a clone.
-     * If the original resolver is open at the moment of cloning:
+     * The method [clone] may be invoked for open or closed resolvers.
+     * Basically, [clone] returns a new resolver which is always closed.
+     * If the original resolver is already closed, the clone is simply a clone.
+     * If the original resolver is open at the moment of cloning, this applies:
      * If the clone is later opened for a relative system ID (i.e. relative
      * URL), the clone must interpret this ID relative to the ID of the
      * original resolver.
@@ -159,43 +183,38 @@ class type resolver =
     method init_warner : symbolic_warnings option -> collect_warnings -> unit
 
     method rep_encoding : rep_encoding
+      (** Return the representation encoding, as set by [init_rep_encoding] *)
 
     method open_in : ext_id -> lexer_source
-      (* This is the old method to open a resolver. It is superseded by
-       * open_rid.
-       * This method may raise Not_competent if the object does not know
-       * how to handle this ext_id.
-       *
-       * PXP 1.2: Returns now a lexer_source, no longer a lexbuf
+      (** This is the old method to open a resolver. It is superseded by
+       * [open_rid].
+       * This method may raise [Not_competent] if the object does not know
+       * how to handle this [ext_id].
        *)
 
     method open_rid : resolver_id -> lexer_source
-      (* This is the new method to open a resolver. It takes a resolver ID
-       * instead of an ext_id but works in the same way.
-       *
-       * PXP 1.2: Returns now a lexer_source, no longer a lexbuf
+      (** This is the new method to open a resolver. It takes a resolver ID
+       * instead of an [ext_id] but works in the same way.
        *)
 
     method close_in : unit
+      (** Closes the resolver *)
+
     method change_encoding : string -> unit
+      (** Changes the external encoding. See above for details *)
 
 
-    (* Every resolver can be cloned. The clone does not inherit the connection
+    (** Every resolver can be cloned. The clone does not inherit the connection
      * with the external object, i.e. it is initially closed.
      *)
     method clone : resolver
 
     method active_id : resolver_id
-      (* Returns the actually used resolver ID. This is the ID passed to
-       * open_rid where unused components have been set to None. The
+      (** Returns the actually used resolver ID. This is the ID passed to
+       * [open_rid] where unused components have been set to None. The
        * resolver ID returned by [active_id] plays an important role when
        * expanding relative URLs.
        *)
-
-(*  method close_all : unit *)
-      (* Closes this resolver and every clone *)
-      (* This method is no longer supported in PXP 1.2 *)
-
   end
 ;;
 
@@ -245,6 +264,23 @@ class type resolver =
  * 
  *)
 
+type accepted_id =
+    Netchannels.in_obj_channel * encoding option * resolver_id option
+  (** When a resolver accepts an ID, this triple specifies how to proceed.
+   * The [in_obj_channel] is the channel to read data from, the encoding option
+   * may enforce a certain character encoding, and the [resolver_id] option
+   * may detail the ID (this ID will be returned by [active_id]).
+   *
+   * If [None] is passed as encoding option, the standard autodetection of
+   * the encoding is performed.
+   *
+   * If [None] is passed as [resolver_id] option, the original ID is taken
+   * unchanged.
+   *)
+
+
+(** {2 Base resolvers} *)
+
 class resolve_to_this_obj_channel :
   ?id:ext_id ->
   ?rid:resolver_id ->
@@ -252,54 +288,37 @@ class resolve_to_this_obj_channel :
   ?close:(Netchannels.in_obj_channel -> unit) ->
  Netchannels.in_obj_channel -> 
    resolver;;
-
-  (* Reads from the passed in_obj_channel. If the ~id or ~rid arguments
+  (** Reads from the passed [in_obj_channel]. If the [id] or [rid] arguments
    * are passed to the object, the created resolver accepts only
-   * these IDs (all mentioned private, system, or public IDs). Otherwise 
-   * all IDs are accepted, even Anonymous.
+   * these IDs (all mentioned private, system, or public IDs). Otherwise,
+   * i.e. no such argument is passed, all IDs are accepted, even [Anonymous].
    *
-   * This resolver can only be used once (because the in_obj_channel
+   * This resolver can only be used once (because the [in_obj_channel]
    * can only be used once). If it is opened a second time (either
-   * in the base object or a clone), it will raise Not_competent.
+   * in the base object or a clone), it will raise [Not_competent].
    *
-   * If you pass the ~fixenc argument, the encoding of the channel is
+   * If you pass the [fixenc] argument, the encoding of the channel is
    * set to the passed value, regardless of any auto-recognition or
    * any XML declaration.
    *
-   * When the resolver is closed, the function passed by the ~close
+   * When the resolver is closed, the function passed by the [close]
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:(fun ch -> ch # close_in)).
-   *)
-
-type accepted_id =
-    Netchannels.in_obj_channel * encoding option * resolver_id option
-  (* When a resolver accepts an ID, this triple specifies how to proceed.
-   * The in_obj_channel is the channel to read data from, the encoding option
-   * may enforce a certain character encoding, and the resolver_id option
-   * may detail the ID (this ID will be returned by active_id).
-   *
-   * If None is passed as encoding option, the standard autodetection of
-   * the encoding is performed.
-   *
-   * If None is passed as resolver_id option, the original ID is taken
-   * unchanged.
+   * (i.e. the default is: [close:(fun ch -> ch # close_in)]).
    *)
 
 class resolve_to_any_obj_channel :
   ?close:(Netchannels.in_obj_channel -> unit) ->
   channel_of_id:(resolver_id -> accepted_id) ->
   unit ->
-  resolver;;
-
-  (* This resolver calls the function channel_of_id to open a new channel for
-   * the passed resolver_id. This function must either return the accepted_id,
-   * or it must fail with Not_competent.
+  resolver
+  (** This resolver calls the function [channel_of_id] to open a new channel for
+   * the passed [resolver_id]. This function must either return the [accepted_id],
+   * or it must fail with [Not_competent].
    *
-   * When the resolver is closed, the function passed by the ~close
+   * When the resolver is closed, the function passed by the [close]
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:(fun ch -> ch # close_in)).
+   * (i.e. the default is: [close:(fun ch -> ch # close_in)]).
    *)
-
 
 class resolve_to_url_obj_channel : 
   ?close:(Netchannels.in_obj_channel -> unit) ->
@@ -307,39 +326,37 @@ class resolve_to_url_obj_channel :
   base_url_of_id:(resolver_id -> Neturl.url) ->
   channel_of_url:(resolver_id -> Neturl.url -> accepted_id) ->
   unit ->
-    resolver;;
-
-  (*
-   * When this resolver gets an ID to read from, it calls the function
-   * ~url_of_id to get the corresponding URL (such IDs are normally 
+    resolver
+  (** When this resolver gets an ID to read from, it calls the function
+   * [url_of_id] to get the corresponding URL (such IDs are normally 
    * system IDs, but it is also possible to map system IDs to URLs). 
    * This URL may be a relative URL; however, a URL scheme must be used
    * which contains a path. The resolver converts the URL to an absolute 
    * URL if necessary.
    *
-   * To do so, the resolver calls ~base_url_of_id to get the URL the relative
+   * To do so, the resolver calls [base_url_of_id] to get the URL the relative
    * URL must be interpreted relative to. Usually, this function returns
-   * the rid_system_base as URL. This URL must be absolute.
+   * the [rid_system_base] as URL. This URL must be absolute.
    *
-   * The third function, ~channel_of_url, is fed with the absolute URL
+   * The third function, [channel_of_url], is fed with the absolute URL
    * as input. This function opens the resource to read from, and returns
-   * the accepted_id like resolve_to_any_obj_channel does. The resolver ID 
-   * passed to ~channel_of_url contains the string representation of the
+   * the [accepted_id] like [resolve_to_any_obj_channel] does. The resolver ID 
+   * passed to [channel_of_url] contains the string representation of the
    * absolute URL as system ID.
    *
-   * Both functions, ~url_of_id and ~channel_of_url, can raise
-   * Not_competent to indicate that the object is not able to read from
-   * the specified resource. However, there is a difference: A Not_competent
-   * from ~url_of_id is left as it is, but a Not_competent from ~channel_of_url
-   * is converted to Not_resolvable. So only ~url_of_id decides which URLs
+   * Both functions, [url_of_id] and [channel_of_url], can raise
+   * [Not_competent] to indicate that the object is not able to read from
+   * the specified resource. However, there is a difference: A [Not_competent]
+   * from [url_of_id] is left as is, but a [Not_competent] from [channel_of_url]
+   * is converted to [Not_resolvable]. So only [url_of_id] decides which URLs
    * are accepted by the resolver and which not, and in the latter case,
-   * other resolver can be tried. If ~channel_of_url raises Not_competent,
-   * the whole resolution procedure will stop, and no other resolver will
-   * be tried.
+   * other resolver can be tried. If [channel_of_url] raises [Not_competent],
+   * however, the whole resolution procedure will stop, and no other resolver
+   * will be tried.
    *
-   * When the resolver is closed, the function passed by the ~close
+   * When the resolver is closed, the function passed by the [close]
    * argument is called. By default, the channel is closed
-   * (i.e. the default is: ~close:(fun ch -> ch # close_in())).
+   * (i.e. the default is: [close:(fun ch -> ch # close_in())]).
    *)
 
 
@@ -353,104 +370,105 @@ class resolve_as_file :
   ?not_resolvable_if_not_found:bool ->
   unit ->
   resolver;;
-
-  (* Reads from the local file system. Every file name is interpreted as
-   * file name of the local file system, and the referred file is read.
+  (** Reads from the local file system. Every file name is interpreted as
+   * file name of the local file system, and the referenced file is read.
    *
-   * The full form of a file URL is: file://host/path, where
-   * 'host' specifies the host system where the file identified 'path'
-   * resides. host = "" or host = "localhost" are accepted; other values
-   * will raise Not_competent. The standard for file URLs is
+   * The full form of a file URL is: [file://host/path], where
+   * [host] specifies the host system where the file identified [path]
+   * resides. [host=""] or [host="localhost"] are accepted; other values
+   * will raise [Not_competent]. The standard for file URLs is
    * defined in RFC 1738.
    *
-   * Option ~file_prefix: Specifies how the "file:" prefix of file names
+   * Option [file_prefix]: Specifies how the [file:] prefix of file names
    * is handled:
-   * `Not_recognized:  The prefix is not recognized.
-   * `Allowed:         The prefix is allowed but not required (the default).
-   * `Required:        The prefix is required.
+   * - [`Not_recognized]: The prefix is not recognized.
+   * - [`Allowed]:        The prefix is allowed but not required (the default).
+   * - [`Required]:       The prefix is required.
    *
-   * Option ~host_prefix: Specifies how the "//host" phrase of file names
+   * Option [host_prefix]: Specifies how the [//host] phrase of file names
    * is handled:
-   * `Not_recognized:  The phrase is not recognized.
-   * `Allowed:         The phrase is allowed but not required (the default).
-   * `Required:        The phrase is required.
+   * - [`Not_recognized]: The phrase is not recognized.
+   * - [`Allowed]:        The phrase is allowed but not required (the default).
+   * - [`Required]:       The phrase is required.
    *
-   * Option ~system_encoding: Specifies the encoding of file names of
+   * Option [system_encoding]: Specifies the encoding of file names of
    * the local file system. Default: UTF-8.
    *
-   * Options ~map_private_id and ~open_private_id: THESE OPTIONS ARE
-   * DEPRECATED! IT IS NOW POSSIBLE TO USE A COMBINED RESOLVER TO ACHIEVE
-   * THE SAME EFFECT! - These must always be
+   * Options [map_private_id] and [open_private_id]: These options are
+   * deprecated and no longer described here.
+   *
+   * Option [base_url_defaults_to_cwd]: If true, relative URLs
+   * are interpreted relative to the current working directory at the time
+   * the class is instantiated, but only if there is no parent URL, i.e.
+   * [rid_system_base=None]. If false (the default), such URLs cannot be resolved.
+   * In general, it is better to set this option to false, and to
+   * initialize [rid_system_base] properly.
+   *
+   * Option [not_resolvable_if_not_found]: If true (the default), 
+   * "File not found" errors stop the resolution process. If false,
+   * "File not found" is treated as [Not_competent].
+   *)
+
+  (* Options [map_private_id] and [open_private_id]: 
+   * These must always be
    * used together. They specify an exceptional behaviour in case a private
    * ID is to be opened. map_private_id maps the private ID to an URL
    * (or raises Not_competent). However, instead of opening the URL 
    * the function open_private_id is called to get an in_channel to read
    * from and to get the character encoding. The URL is taken into account
    * when subsequently relative SYSTEM IDs must be resolved.
-   *
-   * Option ~base_url_defaults_to_cwd: If true, relative URLs
-   * are interpreted relative to the current working directory at the time
-   * the class is instantiated, but only if there is no parent URL, i.e.
-   * rid_system_base=None. If false (the default), such URLs cannot be resolved.
-   * In general, it is better to set this option to false, and to
-   * initialize rid_system_base properly.
-   *
-   * Option ~not_resolvable_if_not_found: If true (the default), 
-   * "File not found" errors stop the resolution process. If false,
-   * "File not found" is treated as [Not_competent].
    *)
 
 val make_file_url :
   ?system_encoding:encoding ->
   ?enc:encoding ->
   string ->
-    Neturl.url;;
-
-(* This is a convenience function to create a file URL (for localhost).
+    Neturl.url
+(** This is a convenience function to create a file URL (for localhost).
  * The argument is the file name encoded in the character set enc.
  * Relative file names are automatically converted to absolute names
- * by prepending Sys.getcwd() to the passed file name.
+ * by prepending [Sys.getcwd()] to the passed file name.
  *
- * ~system_encoding: Specifies the encoding of file names of
+ * [system_encoding]: Specifies the encoding of file names of
  *     the local file system. Default: UTF-8. (This argument is
- *     necessary to interpret Sys.getcwd() correctly.)
- * ~enc: The encoding of the passed string. Defaults to `Enc_utf8
+ *     necessary to interpret [Sys.getcwd()] correctly.)
+ *
+ * [enc]: The encoding of the passed string. Defaults to [`Enc_utf8]
  *
  * Note: To get a string representation of the URL, apply
- * Neturl.string_of_url to the result.
+ * [Neturl.string_of_url] to the result.
  *)
 
 
 
-(* The following classes and functions create resolvers for catalogs
- * of PUBLIC or SYSTEM identifiers.
- *)
+(** {2 Catalog resolvers} *)
 
 class lookup_id :
   (ext_id * resolver) list ->    (* catalog *)
-    resolver;;
-  (* The general catalog class. The catalog argument specifies pairs (xid,r)
-   * mapping external IDs xid to subresolvers r. The subresolver is invoked
-   * if an entity with the corresponding xid is to be opened.
+    resolver
+  (** The general catalog class. The list (catalog) argument specifies pairs [(xid,r)]
+   * mapping external IDs [xid] to subresolvers [r]. The subresolver is invoked
+   * if an entity with the corresponding [xid] is to be opened.
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally by this class, 
+   * without making
+   * relative IDs absolute. See [norm_system_id] below for how to improve this.
    *)
 
 
 class lookup_id_as_file :
   ?fixenc:encoding ->
   (ext_id * string) list ->      (* catalog *)
-    resolver;;
-
-  (* The catalog argument specifies pairs (xid,file) mapping external IDs xid
-   * to files. The file is read  if an entity with the corresponding xid is
+    resolver
+  (** The list (catalog) argument specifies pairs [(xid,file)] mapping external IDs [xid]
+   * to files. The file is read  if an entity with the corresponding [xid] is
    * to be opened.
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally by this class, 
+   * without making
+   * relative IDs absolute. See [norm_system_id] below for how to improve this.
    *
-   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   * [fixenc]: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
    *)
 
@@ -458,26 +476,26 @@ class lookup_id_as_file :
 class lookup_id_as_string :
   ?fixenc:encoding ->
   (ext_id * string) list ->      (* catalog *)
-    resolver;;
-
-  (* The catalog argument specifies pairs (xid,s) mapping external IDs xid
-   * to strings s. The string is read if an entity with the corresponding
-   * xid is to be opened.
+    resolver
+  (** The list (catalog) argument specifies pairs [(xid,s)] mapping external IDs [xid]
+   * to strings [s]. The string is read if an entity with the corresponding
+   * [xid] is to be opened.
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally by this class, 
+   * without making
+   * relative IDs absolute. See [norm_system_id] below for how to improve this.
    *)
 
 
 class lookup_public_id :
   (string * resolver) list ->    (* catalog *)
-    resolver;;
-
-  (* This is the generic builder for PUBLIC id catalog resolvers: The catalog 
-   * argument specifies pairs (pubid, r) mapping PUBLIC identifiers to
+  resolver
+  (** This is the generic builder for [PUBLIC] id catalog resolvers: The
+   * list (catalog)
+   * argument specifies pairs [(pubid, r)] mapping [PUBLIC] identifiers to
    * subresolvers.
    *
-   * The subresolver is invoked if an entity with the corresponding PUBLIC
+   * The subresolver is invoked if an entity with the corresponding [PUBLIC]
    * id is to be opened.
    *)
 
@@ -486,21 +504,20 @@ class lookup_public_id :
 class lookup_public_id_as_file :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
-    resolver;;
-
-  (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
-   * pairs (pubid, filename) mapping PUBLIC identifiers to filenames. The
+    resolver
+  (** Makes a resolver for [PUBLIC] identifiers. The list (catalog) argument specifies
+   * pairs [(pubid, filename)] mapping [PUBLIC] identifiers to filenames. The
    * filenames must already be encoded in the character set the system uses
    * for filenames.
    *
-   * Note: This class does not enable the resolution of inner IDs of PUBLIC
-   * entities by relative SYSTEM names. To get this effect, use
-   * the class lookup_id, and feed it with combined 
-   * Public(pubid,sysid) identifiers. In this case, the entity has both
-   * a PUBLIC and a SYSTEM ID, and resolution of inner relative SYSTEM
-   * names works.
+   * There is a restriction of this catalog class:
+   * After a [PUBLIC] entity has been opened, it is not possible to refer
+   * to sub entities by relative [SYSTEM] names, even if the [PUBLIC]
+   * name is accompanied by a resovable system name like in
+   * [Public(pubid,sysid)]. Workaround: Use [lookup_id] instead, and
+   * put the complete [Public(pubid,sysid)] ID's into the catalog.
    *
-   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   * [fixenc]: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
    *)
 
@@ -509,49 +526,48 @@ class lookup_public_id_as_string :
   ?fixenc:encoding ->
   (string * string) list ->    (* catalog *)
     resolver;;
-
-  (* Makes a resolver for PUBLIC identifiers. The catalog argument specifies
-   * pairs (pubid, text) mapping PUBLIC identifiers to XML text (which must
-   * begin with <?xml ...?>).
+  (** Makes a resolver for [PUBLIC] identifiers. The catalog argument specifies
+   * pairs [(pubid, text)] mapping [PUBLIC] identifiers to XML text (which must
+   * begin with [<?xml ...?>]).
    *
-   * ~fixenc: Overrides the encoding of the strings.
+   * The same restriction as for [lookup_public_id_as_file] applies.
+   *
+   * [fixenc]: Overrides the encoding of the strings.
    *)
 
 
 class lookup_system_id :
   (string * resolver) list ->    (* catalog *)
-    resolver;;
-
-  (* This is the generic builder for SYSTEM id catalog resolvers: The catalog 
-   * argument specifies pairs (sysid, r) mapping SYSTEM identifiers to 
+    resolver
+  (** This is the generic builder for [SYSTEM] id catalog resolvers: The catalog 
+   * argument specifies pairs [(sysid, r)] mapping [SYSTEM] identifiers to 
    * subresolvers.
-   * The subresolver is invoked if an entity with the corresponding SYSTEM
+   * The subresolver is invoked if an entity with the corresponding [SYSTEM]
    * id is to be opened.
    *
-   * Important note: Two SYSTEM IDs are considered as equal if they are
+   * Important note: Two [SYSTEM] IDs are considered as equal if they are
    * equal in their string representation. (This may not what you want
    * and may cause trouble... However, I currently do not know how to
-   * implement a "semantical" comparison logic.)
+   * implement a "semantic" comparison logic.)
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally, without making
+   * relative IDs absolute. See [norm_system_id] below for improving this.
    *)
 
 
 class lookup_system_id_as_file :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
-    resolver;;
-
-  (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
-   * pairs (sysid, filename) mapping SYSTEM identifiers to filenames. The
+    resolver
+  (** Looks up resolvers for [SYSTEM] identifiers: The catalog argument specifies
+   * pairs [(sysid, filename)] mapping [SYSTEM] identifiers to filenames. The
    * filenames must already be encoded in the character set the system uses
    * for filenames.
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally, without making
+   * relative IDs absolute. See [norm_system_id] below for improving this.
    *
-   * ~fixenc: Overrides the encoding of the file contents. By default, the
+   * [fixenc]: Overrides the encoding of the file contents. By default, the
    *     standard rule is applied to find out the encoding of the file.
    *)
 
@@ -559,98 +575,107 @@ class lookup_system_id_as_file :
 class lookup_system_id_as_string :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
-    resolver;;
-
-  (* Looks up resolvers for SYSTEM identifiers: The catalog argument specifies
-   * pairs (sysid, text) mapping SYSTEM identifiers to XML text (which must
-   * begin with <?xml ...?>).
+    resolver
+  (** Looks up resolvers for [SYSTEM] identifiers: The catalog argument specifies
+   * pairs [(sysid, text)] mapping [SYSTEM] identifiers to XML text (which must
+   * begin with [<?xml ...?>]).
    *
-   * Note: SYSTEM IDs are simply compared literally, without making
-   * relative IDs absolute. See norm_system_id below for this function.
+   * Note: [SYSTEM] IDs are simply compared literally, without making
+   * relative IDs absolute. See [norm_system_id] below for how to improve this.
    *
-   * ~fixenc: Overrides the encoding of the strings.
+   * [fixenc]: Overrides the encoding of the strings.
    *)
 
 
+(** {2 System ID normalization} *)
+
 class norm_system_id : resolver -> resolver
-  (* Normalizes the SYSTEM ID, and forwards the open request to the
-   * passed resolver.
+  (** Normalizes the [SYSTEM] ID, and forwards the open request to the
+   * passed resolver. (Other ID's are forwarded unchanged to the subresolver.)
    *
    * Normalization includes:
    * - Relative URLs are made absolute. If this fails, the problematic
    *   relative URL will be rejected.
-   * - .. and . and // in the middle of URLs are removed 
-   * - Escaping of reserved characters is normalized
+   * - [..] and [.] and [//] in the middle of URLs are removed 
+   * - Escaping of reserved characters is normalized (percent encoding like %40)
    *
    * Normalization is recommended for catalogs, e.g.
+   * {[
    * new norm_system_id
    *   (new lookup_system_id_as_file
    *      [ "http://h/p1", ...;
    *        "http://h/p2", ...;
    *      ])
+   * ]}
    * First, the catalog now even works if the URL is written in an
-   * unsual way, e.g. http://h/p1/../p2, or http://h/p%31. 
+   * unsual way, e.g. [http://h/p1/../p2], or [http://h/p%31]. 
    * Second, relative URLs can be used. For instance, the document
-   * referred to as http://h/p1 can now refer to the other document
-   * as p2.
+   * referred to as [http://h/p1] can now refer to the other document
+   * as [p2].
    *)
 
+
+(** {2 ID rewriting} *)
 
 class rewrite_system_id :
         ?forward_unmatching_urls:bool ->
 	(string * string) list ->
 	resolver ->
 	  resolver
-  (* Rewrites the SYSTEM URL according to the list of pairs. The left
+  (** Rewrites the [SYSTEM] URL according to the list of pairs. The left
    * component is the pattern, the right component is the substitute.
    * For example,
    *
+   * {[
    * new rewrite_system_id
    *       [ "http://host/foo/", "file:///dir/" ]
    *       r
+   * ]}
    *
-   * rewrites all URLs beginning with http://host/foo/ to file:///dir/,
-   * e.g. http://host/foo/x becomes file:///dir/x.
+   * rewrites all URLs beginning with [http://host/foo/] to [file:///dir/],
+   * e.g. [http://host/foo/x] becomes [file:///dir/x].
    *
    * If the pattern ends with a slash (as in the example), a prefix match
    * is performed, i.e. the whole directory hierarchy is rewritten.
    * If the pattern does not end with a slash, an exact match is performed,
    * i.e. only a single URL is rewritten.
    *
-   * The class normalizes URLs as norm_system_id does, before the match
+   * The class normalizes URLs as [norm_system_id] does, before the match
    * is tried.
    *
    * By default, URLs that do not match any pattern are rejected
-   * (Not_competent).
+   * ([Not_competent]).
    *
    * The rewritten URL is only visible within the passed subresolver.
    * If the opened entity accesses other entities by relative URLs,
    * these will be resolved relative to the original URL as it was before
    * rewriting it. This gives some protection against unwanted accesses.
-   * For example, if you map http://host/contents to file:///data/contents,
+   * For example, if you map [http://host/contents] to [file:///data/contents],
    * it will not be possible to access files outside this directory,
-   * even if tricks are used like opening ../../etc/passwd relative to
-   * http://host/contents.  Of course, this protection works only if
-   * the resolver opening the file is a subresolver of rewrite_system_id.
-   *
-   * CHECK: Does this really work?
+   * even if tricks are used like opening [../../etc/passwd] relative to
+   * [http://host/contents].  Of course, this protection works only if
+   * the resolver opening the file is a subresolver of [rewrite_system_id].
    *
    * Another application of this class is to use the identity as rewriting
    * rule. This resolver
    * 
+   * {[
    * new rewrite_system_id
    *       [ "file:///data/", "file:///data/" ]
    *       ( new resolve_as_file() )
+   * ]}
    *
-   * has the effect that only files under /data can be accessed, and
-   * other such as /etc/passwd cannot.
+   * has the effect that only files under [/data] can be accessed, and
+   * other such as [/etc/passwd] cannot.
    *
-   * Option ~forward_unmatching_urls: If true, URLs that do not match any
+   * Option [forward_unmatching_urls]: If true, URLs that do not match any
    *   pattern are forwarded to the inner resolver. These URLs are not
-   *   rewritten. NOTE THAT THE MENTIONED ACCESS RESTRICTIONS USUALLY DO
-   *   NOT WORK ANYMORE IF THIS OPTION IS TURNED ON.
+   *   rewritten. {b Note that the mentioned access restrictions do not
+   *   work anymore if this option is turned on.}
    *)
 
+
+(** {2 Resolver construction} *)
 
 type combination_mode =
     Public_before_system    (* Try public identifiers first *)
@@ -662,28 +687,34 @@ class combine :
 	?mode:combination_mode ->
 	resolver list -> 
 	  resolver;;
-
-  (* Combines several resolver objects. If a concrete entity with an
-   * ext_id is to be opened, the combined resolver tries the contained
+  (** Combines several resolver objects. If a concrete entity with an
+   * [ext_id] is to be opened, the combined resolver tries the contained
    * resolvers in turn until a resolver accepts opening the entity
-   * (i.e. it does not raise Not_competent on open_rid).
+   * (i.e. until a resolver does not raise [Not_competent] on [open_rid]).
    *
    * If the entity to open has several names, e.g. a public name and
-   * a system name, these names are tried in parallel by default (this
-   * is possible in the PXP 1.2 model). For backward compatibility, the
-   * ~mode argument allows one to specify a different order:
+   * a system name, these names are tried in parallel by default. 
+   * For backward compatibility, the
+   * [mode] argument allows one to specify a different order:
    *
-   * (1) Try first to open as public identifier, and if that fails,
-   *     fall back to the system identifier (Public_before_system)
-   * (2) Try first to open as system identifier, and if that fails,
-   *     fall back to the public identifier (System_before_public)
+   * - [Public_before_system]:
+   *   Try first to open as public identifier, and if that fails,
+   *   fall back to the system identifier 
+   * - [System_before_public]: 
+   *   Try first to open as system identifier, and if that fails,
+   *    fall back to the public identifier
    *
-   * Clones: If the 'clone' method is invoked before 'open_rid', all contained
-   * resolvers are cloned and again combined. If the 'clone' method is
-   * invoked after 'open_rid' (i.e. while the resolver is open), only the
-   * active resolver is cloned.
+   * Clones: If the [clone] method is invoked on the combined resolver
+   * while it is closed, the effect is that all contained
+   * resolvers are cloned and the combination is repeated on the clones.
+   *  If the [clone] method is
+   * invoked while the resolver is open, only the
+   * active sub resolver is cloned (i.e. the resolver that accepted the
+   * ID in the first place).
    *)
 
+
+(**/**)
 
 (* ====================================================================== *)
 

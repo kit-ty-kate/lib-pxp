@@ -4,7 +4,16 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-(** DTD objects *)
+(** DTD objects 
+
+    The DTD object is a separate container for the formal requirements
+    of a document. The DTD object is always present in a document, even
+    when validation is turned off. See {!class: Pxp_dtd.dtd} for details about
+    the DTD object.
+
+    There are a number of accompanying objects also defined in this
+    module (e.g. [namespace_manager] or [dtd_element]). 
+ *)
 
 (**/**)
 type validation_record =
@@ -228,17 +237,34 @@ val create_namespace_scope :
 
   (** DTD objects are used to keep global declarations that apply to the
       whole XML document. 
+
+      Normally, programmers need neither to create such objects, nor to
+      fill them with data, as the parser already does this. If it is required
+      to create a DTD object, the recommended function is
+      {!Pxp_dtd.create_dtd}.
+
+      Despite its name, this object does not only define the DTD as
+      such (i.e. what would be found in a ".dtd" file), but all formal
+      requirements of documents that are needed by PXP. This also includes:
+        - The name of the root element
+        - The character encoding of the document
+        - Whether validation is on or off
+        - The namespace manager
+        - Whether the document is declared as standalone
+
+      A consequence of this is that even documents have a DTD object
+      for which only well-formedness parsing is enabled.
    *)
 class dtd :
   ?swarner:Pxp_core_types.symbolic_warnings ->
   Pxp_core_types.collect_warnings -> 
   Pxp_core_types.rep_encoding ->
-  object
-    method root : string option
-      (** get the name of the root element if present. This is the name
+object
+  method root : string option
+    (** get the name of the root element if present. This is the name
        * following "<!DOCTYPE". If there is no DOCTYPE declaration, 
        * this method will return None.
-       *)
+     *)
 
     method set_root : string -> unit
       (** set the name of the root element. This method can be invoked 
@@ -271,24 +297,31 @@ class dtd :
 
 
     method allow_arbitrary : unit
-      (** After this method has been invoked, the object changes its behaviour:
-       * - elements and notations that have not been added may be used in an
-       *   arbitrary way; the methods "element" and "notation" indicate this
-       *   by raising [Undeclared] instead of [Validation_error].
+      (** This method sets the [arbitrary_allowed] flag. This flag disables
+       * a specific validation constraint, namely that all elements 
+       * need to be declared in the DTD. This feature is used
+       * to implement the well-formedness mode: In this mode, the element,
+       * attribute, and notation declarations found in the textual DTD are ignored, and not
+       * added to this DTD object. As the [arbitrary_allowed] flag is also
+       * set, the net effect is that all validation checks regarding
+       * the values of elements and attributes are omitted. The flag is
+       * automatically set if the parser is called using one of the 
+       * "wf" functions, e.g. {!Pxp_tree_parser.parse_wfdocument_entity}.
+       *
+       * Technically, the [arbitrary_allowed] flag changes the behaviour of
+       * the [element] and [notation] methods defined below so that they
+       * raise [Undeclared] instead of [Validation_error] when an unknown
+       * element or notation name is encountered.
        *)
 
     method disallow_arbitrary : unit
-      (** Disabled the "arbitrary allowed" mode again *)
+      (** Clears the [arbitrary_allowed] flag again *)
 
     method arbitrary_allowed : bool
       (** Returns whether arbitrary contents are allowed or not. *)
 
     method standalone_declaration : bool
-      (** Whether there is a 'standalone' declaration or not. Strictly 
-       * speaking, this declaration is not part of the DTD, but it is
-       * included here because of practical reasons. 
-       * If not set, this property defaults to 'false'.
-       *)
+      (** Whether there is a 'standalone' declaration or not. *)
 
     method set_standalone_declaration : bool -> unit
       (** Sets the 'standalone' declaration. *)
@@ -339,7 +372,7 @@ class dtd :
     method element : string -> dtd_element
       (** looks up the element declaration with the given name. Raises 
        * [Validation_error] if the element cannot be found. If the
-       * "arbitrary allowed" mode is enabled, however, 
+       * [arbitrary_allowed] flag is set, however, 
        * [Undeclared] is raised instead.
        *)
 
@@ -369,7 +402,7 @@ class dtd :
     method notation : string -> dtd_notation
       (** looks up the notation declaration with the given name. Raises
        * [Validation_error] if the notation cannot be found. If the
-       * "arbitrary allowed" mode is enabled, however, 
+       * [arbitrary_allowed] flag is sez, however, 
        * [Undeclared] is raised instead.
        *)
 
@@ -386,8 +419,8 @@ class dtd :
 
     method validate : unit
       (** ensures that the DTD is valid. This method is optimized such that
-       * actual validation is only performed if DTD has changed.
-       * If the DTD is invalid, mostly a [Validation_error] is raised,
+       * actual validation is only performed if DTD has been changed.
+       * If the DTD is invalid, in most cases a [Validation_error] is raised,
        * but other exceptions are possible, too.
        *)
 
@@ -452,12 +485,13 @@ class dtd :
 
 (* ---------------------------------------------------------------------- *)
 
-and dtd_element : dtd -> string -> 
-  (** Creation:
-   *  {[ new dtd_element init_dtd init_name ]}
-   * creates a new [dtd_element] object for [init_dtd] with [init_name].
+(** A single element declaration that can be added to the DTD object.
+   * Element declarations are created by
+   *   {[ new dtd_element init_dtd init_name ]}
+   * This creates a new [dtd_element] object for [init_dtd] with [init_name].
    * The strings are represented in the same encoding as [init_dtd].
-   *)
+ *)
+and dtd_element : dtd -> string -> 
   object
 
     method name : string
@@ -490,13 +524,23 @@ and dtd_element : dtd -> string ->
       (** Return the encoding of the strings *)
 
     method allow_arbitrary : unit
-      (** After this method has been invoked, the object changes its behaviour:
-       * - attributes that have not been added may be used in an
-       *   arbitrary way; the method [attribute] indicates this
-       *   by raising [Undeclared] instead of [Validation_error].
+      (** This method sets the [arbitrary_allowed] flag for this element.
+        * The effect of this flag is to ignore the validation constraint
+        * that attributes for this element needs to be declared. Note that
+        * this mode is not required for implementing the well-formedness
+        * mode, because for this it is already sufficient to set the
+        * same-named flag in the global DTD object. Setting this flag for
+        * certain elements may still be useful, however. It is then possible
+        * to allow arbitrary attributes for certain elements only.
+        *
+        * Technically, the [arbitrary_allowed] flag changes the behaviour of
+        * the [attribute] method defined below so that it
+        * raises [Undeclared] instead of [Validation_error] when an unknown
+        * attribute name is encountered.
        *)
 
     method disallow_arbitrary : unit
+      (** Clears the [arbitrary_allowed] flag *)
 
     method arbitrary_allowed : bool
       (** Returns whether arbitrary attributes are allowed or not. *)
@@ -505,8 +549,8 @@ and dtd_element : dtd -> string ->
                          Pxp_core_types.att_type * Pxp_core_types.att_default
       (** get the type and default value of a declared attribute, or raise
        * [Validation_error] if the attribute does not exist.
-       * If "arbitrary allowed", the exception [Undeclared] is raised instead
-       * of [Validation_error].
+       * If the [arbitrary_allowed] flag is set, the exception [Undeclared] 
+       * is raised instead of [Validation_error].
        *)
 
     method attribute_violates_standalone_declaration : 
@@ -524,8 +568,8 @@ and dtd_element : dtd -> string ->
        *   attribute type.
        *
        * The method raises [Validation_error] if the attribute does not exist.
-       * If 'arbitrary allowed', the exception [Undeclared] is raised instead
-       * of [Validation_error].
+       * If the [arbitrary_allowed] flag is set, the exception [Undeclared] 
+       * is raised instead of [Validation_error].
        *)
 
     method attribute_names : string list
@@ -578,13 +622,14 @@ and dtd_element : dtd -> string ->
 
 (* ---------------------------------------------------------------------- *)
 
-and dtd_notation : 
-       string -> Pxp_core_types.ext_id -> Pxp_core_types.rep_encoding ->
-  (** Creation:
+(** A single notation declaration that can be added to the DTD object.
+   * Notation declarations are created by
    *  {[ new dtd_notation a_name an_external_ID init_encoding ]}
-   * creates a new dtd_notation object with the given name and the given
+   * This creates a new dtd_notation object with the given name and the given
    * external ID.
    *)
+and dtd_notation : 
+       string -> Pxp_core_types.ext_id -> Pxp_core_types.rep_encoding ->
   object
     method name : string
     method ext_id : Pxp_core_types.ext_id
@@ -603,13 +648,14 @@ and dtd_notation :
 
 (* ---------------------------------------------------------------------- *)
 
-and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
-  (** Creation:
+(** A single processing instruction occuring in DTD scope. This instruction
+   * can also be added to the DTD object, Creation:
    *  {[ new proc_instruction a_target a_value ]}
    * creates a new proc_instruction object with the given target string and
    * the given value string. 
    * Note: A processing instruction is written as [ <?target value?> ]. 
    *)
+and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
   object
     method target : string
     method value : string
@@ -640,18 +686,19 @@ val create_dtd :
       ?warner:Pxp_core_types.collect_warnings -> 
       Pxp_core_types.rep_encoding ->
 	dtd
-  (* Preferred way of creating a DTD. Example:
-   * let dtd = create_dtd 
+  (** Preferred way of creating a DTD. Example:
+   * {[ let dtd = create_dtd 
    *             ?swarner:config.swarner
    *             ~warner:config.warner
-   *             config.encoding
+   *             config.encoding]}
    *
-   * See also Pxp_dtd_parser.create_empty_dtd.
+   * See also {!Pxp_dtd_parser.create_empty_dtd}.
    *)
 
 
 (* ---------------------------------------------------------------------- *)
 
+(**/**)
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
   | ExtID of (Pxp_core_types.ext_id * Pxp_reader.resolver)
@@ -659,43 +706,45 @@ type source =
   (* Sources are pairs of (1) names of entities to open, and (2) methods
    * of opening entities. See Pxp_yacc for more documentation.
    *)
+(**/**)
 
 (* ---------------------------------------------------------------------- *)
 
-(* Useful properties of entities: The following submodule exports all 
+(** Useful properties of entities: The following submodule exports all 
  * stable properties of the entity classes. Please use this module, and
- * not Pxp_entity to access entities.
+ * not [Pxp_entity] to access entities.
  *)
-
 module Entity : sig
   val get_name : Pxp_entity.entity -> string
-      (* Return the name of the entity. *)
+      (** Return the name of the entity. *)
 
   val get_full_name : Pxp_entity.entity -> string
-      (* The full name includes the ID, too (for diagnostics messages) *)
+      (** The full name includes the ID, too (for diagnostics messages) *)
  
   val get_encoding : Pxp_entity.entity -> Pxp_core_types.rep_encoding
-      (* Return the encoding of the internal representation of the entity *)
+      (** Return the encoding of the internal representation of the entity *)
 
   val get_type : Pxp_entity.entity -> 
                    [ `External | `Internal | `NDATA ]
-      (* Returns the type of the entity. *)
+      (** Returns the type of the entity. *)
 
   val replacement_text : Pxp_entity.entity -> string
-      (* Return the replacement text of the entity. Works for both
-       * internal and external entities.
+      (** Return the replacement text of the entity. Works for both
+       * internal and external entities. The replacement text is the
+       * "right side" of the entity definition.
        *)
 
   val get_xid : Pxp_entity.entity -> Pxp_core_types.ext_id option
-      (* Returns the external ID for external and NDATA entities, and None
+      (** Returns the external ID for external and NDATA entities, and None
        * for internal entities
+       * 
        * TRAP: The external ID may be a relative SYSTEM ID, and it is not
        * known to which base ID the relative ID must be resolved. So the
        * external ID may be meaningless.
        *)
 
   val get_resolver_id : Pxp_entity.entity -> Pxp_core_types.resolver_id option
-      (* Returns the resolver ID for external entities, and None for other
+      (** Returns the resolver ID for external entities, and None for other
        * entities. This is the version as returned by the [active_id] method
        * by the resolver.
        * The resolver ID contains more information than the external ID,
@@ -706,13 +755,13 @@ module Entity : sig
   (* CHECK: There is still no base URL for NDATA entities *)
 
   val get_notation : Pxp_entity.entity -> string option
-      (* Returns the notation of NDATA entities, and None for the other
+      (** Returns the notation of NDATA entities, and None for the other
        * entity types
        *)
 
   val create_internal_entity : 
       name:string -> value:string -> dtd -> Pxp_entity.entity
-      (* Creates an internal entity. The name and the value must be
+      (** Creates an internal entity. The name and the value must be
        * encoded in the same encoding as the DTD.
        * Note that if the entity is to be used as parameter entity,
        * the first and the last characters of the value should be 
@@ -722,7 +771,7 @@ module Entity : sig
   val create_ndata_entity :
       name:string -> xid:Pxp_core_types.ext_id -> notation:string -> dtd -> 
 	Pxp_entity.entity
-      (* Creates an NDATA entity. The name and the notation must be encoded
+      (** Creates an NDATA entity. The name and the notation must be encoded
        * in the same encoding as the DTD. The external ID must be encoded
        * as UTF-8 string (like all external IDs).
        *)
@@ -735,14 +784,14 @@ module Entity : sig
       resolver:Pxp_reader.resolver ->
       dtd ->
 	Pxp_entity.entity
-      (* Creates a reference to an external entity. The name must be encoded
+      (** Creates a reference to an external entity. The name must be encoded
        * in the same encoding as the DTD. The external ID must be encoded
        * as UTF-8 string (like all external IDs).
        *
-       * ~doc_entity: If true, the entity is a document entity. XML requires
+       * - [doc_entity]: If true, the entity is a document entity. XML requires
        *   some additional restrictions for document entities. The default for
        *   the argument is false.
-       * ~system_base: The base URL if SYSTEM identifiers are passed 
+       * - [system_base]: The base URL if SYSTEM identifiers are passed 
        *   as [xid]
        *)
 
@@ -752,13 +801,15 @@ module Entity : sig
       dtd -> 
       source -> 
 	Pxp_entity.entity
-      (* Creates an external entity that reads from the passed source *)
+	  (** Creates an external entity that reads from the passed 
+              {!Pxp_types.source} 
+	   *)
 
   val entity_id : Pxp_entity.entity -> Pxp_lexer_types.entity_id
-    (* Returns the abstract entity ID *)
+    (** Returns the abstract entity ID *)
 
   val create_entity_id : unit -> Pxp_lexer_types.entity_id
-    (* Create a new abstract entity ID. This ID can be used whereever
+    (** Create a new abstract entity ID. This ID can be used whereever
      * an entity_id is expected but no entity is available.
      *)
 

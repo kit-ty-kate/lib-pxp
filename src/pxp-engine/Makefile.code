@@ -15,8 +15,12 @@ OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
 	pxp_dtd_parser.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
-DOC =   pxp_document.mli pxp_dtd.mli \
-	intro_trees.txt intro_extensions.txt intro_namespaces.txt
+DOC =   pxp_types.mli pxp_document.mli pxp_dtd.mli pxp_tree_parser.mli \
+	pxp_core_types_type.mli pxp_ev_parser.mli \
+ 	pxp_event.mli pxp_dtd_parser.mli pxp_codewriter.mli \
+  	pxp_marshal.mli pxp_yacc.mli pxp_reader.mli \
+	intro_trees.txt intro_extensions.txt intro_namespaces.txt \
+        intro_events.txt intro_resolution.txt
 
 XOBJ = $(OBJ:.cmo=.cmx)
 
@@ -32,7 +36,7 @@ pxp_engine.cmxa: $(XOBJ)
 
 pxp_engine.dump: $(DOC)
 	if [ ! -f pxp_engine.cma ]; then $(MAKE) -f Makefile.code pxp_engine.cma; fi
-	ocamldoc -stars -dump pxp_engine.dump \
+	ocamlfind ocamldoc -package "$(PACKAGES)" -stars -dump pxp_engine.dump \
 		$(DOC)
 
 

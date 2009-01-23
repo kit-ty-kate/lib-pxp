@@ -17,8 +17,8 @@ type config =
     { warner : collect_warnings;
       swarner : symbolic_warnings option;
       enable_pinstr_nodes : bool;
-      enable_super_root_node : bool;
       enable_comment_nodes : bool;
+      enable_super_root_node : bool;
       drop_ignorable_whitespace : bool;
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;

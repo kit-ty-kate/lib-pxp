@@ -1030,7 +1030,7 @@ class type [ 'ext ] node =
        *   The optional arguments have the following defaults:
        *    - [~name_pool_for_attribute_values]: No pool is used
        *    - [~position]: The position is not available in the copy
-       *    - [~valcheck]: false
+       *    - [~valcheck]: true
        *    - [~att_values]: empty
        *
        * {b Domain.} Elements.
@@ -1896,7 +1896,6 @@ val map_tree_sibl :
    *    raised.
    *
    *     Attribute and namespace nodes are ignored.
-   * </ID>
    *)
 
 val iter_tree : ?pre:('ext node -> unit) ->
@@ -2227,11 +2226,11 @@ val solidify :
    *
    * The data nodes are not normalized unless the arriving data events
    * are already normalized. To get this effect, filter the stream
-   * with {!Pxp_ev_parser.norm_cdata_filter} before calling solidify.
+   * with {!Pxp_event.norm_cdata_filter} before calling solidify.
    *
    * Ignorable whitespace is not automatically removed. To get this
    * effect, filter the stream with 
-   * {!Pxp_ev_parser.drop_ignorable_whitespace_filter} before calling solidify.
+   * {!Pxp_event.drop_ignorable_whitespace_filter} before calling solidify.
    *
    * The uniqueness of ID attributes is not checked.
    *)

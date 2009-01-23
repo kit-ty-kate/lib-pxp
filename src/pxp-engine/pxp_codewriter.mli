@@ -4,17 +4,22 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
+(** Generate O'Caml code for creating large constant XML trees *)
+
 open Pxp_document
 open Pxp_yacc
 open Pxp_dtd
 
+(** See also {!Pxp_marshal} for direct marshalling functions. *)
+
 val write_document : out_channel -> 'ext document -> unit
-    (* Writes O'Caml code to the out_channel that is a top-level function
-     * creating a fresh document which is equal to the passed document:
+    (** Writes O'Caml code to the [out_channel] so that when the code
+     * is compiled and executed, a fresh document is created with the
+     * same contents as the passed document:
      *
-     * "let create_document ?enable_namespace_processing config spec = ...;;"
+     * {[ "let create_document ?enable_namespace_processing config spec = ...;;" ]}
      *
-     * If you compile the code and call "create_document config spec"  the 
+     * If you compile the code and call [create_document config spec]  the 
      * function creates a document tree which is (almost) equal to the 
      * passed document.
      * 
@@ -22,33 +27,25 @@ val write_document : out_channel -> 'ext document -> unit
      * - Parsed entities
      * - Whether a declaration occurs in an external entity or not
      * 
-     * 'config': a Pxp_yacc.config
-     * 'spec': a Pxp_document.spec
-     * enable_namespace_processing: You can pass here a namespace_manager
+     * - [config]: The configuration to assume for re-creating the tree
+     * - [spec]:  a {!Pxp_document.spec}
+     * - [enable_namespace_processing]: You can pass here a namespace_manager
      *   to enable the namespace code (default: no namespace processing)
-     *
-     * NOTE: The signature of the generated function has changed from
-     * PXP 1.0 to PXP 1.1; the first argument is now 'config' and not
-     * 'warner'
      *)
 
   
 
 val write_subtree : out_channel -> 'ext node -> unit
-    (* Writes O'Caml code to the out_channel that is a top-level function
-     * creating a fresh node tree which is equal to the passed tree:
+    (** Writes O'Caml code to the [out_channel] so that when the code
+     * is compiled and executed, a fresh tree is created with the
+     * same contents as the passed tree:
      *
-     * "let create_subtree dtd spec = ...;;"
+     * {[ "let create_subtree dtd spec = ...;;" ]}
      *
-     * If you compile the code and call "create_subtree dtd spec"  the 
+     * If you compile the code and call [create_subtree dtd spec]  the 
      * function creates a DTD object which is equal to the passed object.
      * 
-     * 'dtd': a DTD object
-     * 'spec': a Pxp_document.spec
+     * - [dtd]: a DTD object
+     * - [spec]: a Pxp_document.spec
      *)
-
-
-(* write_dtd: this method is deprecated! *)
-
-  
 

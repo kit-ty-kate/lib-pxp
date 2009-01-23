@@ -7,39 +7,53 @@
 open Pxp_types
 open Pxp_dtd
 
+(** Dealing with events (for pull parsing) *)
+
+
 (**********************************************************************)
 (*                   Event streams and lists                          *)
 (**********************************************************************)
 
+(** {2 Events as lists} *)
+
 val to_list : (unit -> event option) -> event list
-  (* Fetch all events from the event stream, and return the corresponding 
+  (** Fetch all events from the pull function, and return the corresponding 
    * list of events.
    *)
 
 val of_list : event list -> (unit -> event option)
-  (* Pull the events from the input list *)
+  (** [of_list l]: Create a pull function fetching the events from [l] *)
 
 val concat : (unit -> event option) list -> 
              (unit -> event option) 
-  (* Pull the events from the streams in turn *)
+  (** [let p = concat l]: The pull functions contained in the list [l] are
+      concatenated, and a new pull function [p] is created that pulls from
+      the functions of the list in turn (when one function indicates
+      the end of the events, it is continued with the next function in the
+      list).
+   *)
 
 val iter : (event -> unit) -> (unit -> event option) -> unit
-  (* Iterates over the events of the stream and calls the function *)
+  (** [iter f p]: The pull function [p] is repeatedly called to get a
+      stream of events [e]. For each event the function [f] is called.
+   *)
 
 (* Missing: map, fold, ... *)
 
 val extract : event -> (unit -> event option) -> (unit -> event option)
-  (* let next' = extract e next:
-   * Extracts a subexpression from the stream [next] prepended by [e].
+  (** [let next' = extract e next]:
+   * Extracts a subexpression from the pull function [next] prepended by [e].
    * A subexpression consists of either
    * - a single data, comment, PI, or error event
    * - a start tag, either of an element, a super root, or a document,
    *   until the corresponding end tag
    * - a position event followed by a subexpression
-   * The returned stream contains all events of the subexpression.
+   *
+   * The returned pull function contains all events of the subexpression.
    * When the extracted stream is read, the original stream is read, too.
    *
    * Example:
+   * {[
    * let l = [ E_pinstr; E_start_tag; E_data; E_start_tag; E_end_tag;
    *           E_comment; E_end_tag; E_data ];;
    * let g = of_list l;;
@@ -52,6 +66,7 @@ val extract : event -> (unit -> event option) -> (unit -> event option)
    * g'();;                     (* returns None, end of subexpression *)
    * g();;                      (* returns Some E_data *)
    * g();;                      (* returns None *)
+   * ]}
    *)
 
 
@@ -59,37 +74,42 @@ val extract : event -> (unit -> event option) -> (unit -> event option)
 (*                            Filters                                 *)
 (**********************************************************************)
 
+(** {2 Filters} *)
+
 type filter = (unit -> event option) -> (unit -> event option)
+  (** A filter transforms a pull function into another pull function *)
 
 val norm_cdata_filter : filter
-  (* This filter
-   *  - removes empty E_char_data events
-   *  - concatenates adjacent E_char_data events
+  (** This filter
+   *  - removes empty [E_char_data] events
+   *  - concatenates adjacent [E_char_data] events
+   *
    * but does not touch any other parts of the event stream.
    *)
 
 val drop_ignorable_whitespace_filter : filter
-  (* This filter 
+  (** This filter 
    *  - checks whether character data between elements in a 
    *    "regexp" or "non-PCDATA mixed" content model consists 
    *    only of whitespace, and
    *  - removes these whitespace characters from the event stream.
-   * If the check fails, a WF_Error will be raised.
+   *
+   * If the check fails, a [WF_Error] will be raised.
    *
    * This filter works only if the DTD found in the event stream
    * actually contains element declarations. This is usually enabled
-   * by including the `Extend_dtd_fully or `Val_mode_dtd options to 
+   * by including the [`Extend_dtd_fully] or [`Val_mode_dtd] options to 
    * the [entry] passed to the [create_pull_parser] call. Furthermore, 
-   * there must be an E_start_doc event.
+   * there must be an [E_start_doc] event.
    *
    * This filter does not perform any other validation checks.
    *)
 
 val pfilter : (event -> bool) -> filter
-  (* Filters an event stream by a predicate
+  (** Filters an event stream by a predicate
    *
    * Example: Remove comments:
-   * pfilter (function E_comment _ -> false | _ -> true) g
+   * {[ pfilter (function E_comment _ -> false | _ -> true) g ]}
    *)
 
 
@@ -98,6 +118,8 @@ val pfilter : (event -> bool) -> filter
 (**********************************************************************)
 (*                            Printing                                *)
 (**********************************************************************)
+
+(** {2 Printing event streams} *)
 
 type dtd_style =
     [ `Ignore
@@ -114,7 +136,7 @@ val write_events :
   rep_encoding -> 
   (unit -> event option) -> 
     unit
-  (* Writes the events to the [output_stream]. The events must be encoded
+  (** Writes the events to the [output_stream]. The events must be encoded
    * as indicated by the [rep_encoding] argument, but the output is written
    * as specified by the [encoding] argument.
    *
@@ -122,16 +144,16 @@ val write_events :
    * one can set the default namespace by passing [default], which must be
    * the normalized prefix of the default namespace.
    *
-   * For E_doc_start events, the DTD may be written. This is controlled by
+   * For [E_doc_start] events, the DTD may be written. This is controlled by
    * [dtd_style]:
-   * - `Ignore: No DOCTYPE clause is written
-   * - `Include: The DOCTYPE clause is written, and the DTD is included
-   *   in the internal subset
-   * - `Reference: The DOCTYPE clause is written as a reference to an
+   * - [`Ignore]: No [DOCTYPE] clause is written
+   * - [`Include]: The [DOCTYPE] clause is written, and the DTD is included
+   *   in the internal subset (the default)
+   * - [`Reference]: The [DOCTYPE] clause is written as a reference to an
    *   external DTD
    *
-   * Option [~minimization]: How to write out empty elements. [`AllEmpty]
-   * means that all empty elements are minimized (using the <name/>
+   * Option [minimization]: How to write out empty elements. [`AllEmpty]
+   * means that all empty elements are minimized (using the [<name/>]
    * form). [`None] does not minimize at all and is the default.
    *)
 
@@ -143,7 +165,7 @@ val display_events :
   rep_encoding -> 
   (unit -> event option) -> 
     unit
-  (* Writes the events to the [output_stream]. The events must be encoded
+  (** Writes the events to the [output_stream]. The events must be encoded
    * as indicated by the [rep_encoding] argument, but the output is written
    * as specified by the [encoding] argument.
    *
