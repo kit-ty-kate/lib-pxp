@@ -2013,6 +2013,9 @@ val normalize : 'ext node -> unit
   (** Normalizes the tree denoted by [startnode]  such that
    *  neither empty data nodes nor adjacent data nodes exist. Normalization
    *    works in-place.
+   *
+   *  The tree parsers always return normalized trees. This function may
+   *  still be useful to enforce normalized trees after modifying them.
    *)
 
 (******************************** validation *****************************)

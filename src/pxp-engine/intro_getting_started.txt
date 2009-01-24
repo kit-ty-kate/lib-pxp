@@ -1,0 +1,22 @@
+Simple example: Parse a file and represent it as tree
+
+Compile statement
+
+Variations:
+- With/without validation. Validate later.
+- as tree, as stream of events, as self-defined low-profile tree
+- tree representation options: super root nodes, comments, PI's,
+  ignorable whitespace
+- get rid of all whitespace
+- parse from string instead of file
+- change encodings (external/internal)
+- save memory options
+- checking IDREF's, and create ID indexes
+- namespaces
+- using custom classes for tree nodes
+- embed the tree into the source code with the preprocessor
+- resolve by catalogs
+
+Not possible:
+- get entities as references
+- represent CDATA sections
