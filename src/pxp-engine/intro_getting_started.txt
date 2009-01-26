@@ -1,22 +1,775 @@
-Simple example: Parse a file and represent it as tree
+In the following sections we'll explain how to solve a basic
+task in PXP, namely to parse a file and to represent it in 
+memory, followed by paragraphs on variations of this task,
+because not everybody will be happy with the basic solution.
 
-Compile statement
+{2 Parse a file and represent it as tree}
 
-Variations:
-- With/without validation. Validate later.
-- as tree, as stream of events, as self-defined low-profile tree
-- tree representation options: super root nodes, comments, PI's,
-  ignorable whitespace
-- get rid of all whitespace
-- parse from string instead of file
-- change encodings (external/internal)
-- save memory options
-- checking IDREF's, and create ID indexes
-- namespaces
-- using custom classes for tree nodes
-- embed the tree into the source code with the preprocessor
-- resolve by catalogs
+The basic piece of code to parse "filename.xml" is:
 
-Not possible:
-- get entities as references
-- represent CDATA sections
+{[
+let config = Pxp_types.default_config
+let spec = Pxp_tree_parser.default_spec
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let doc = Pxp_tree_parser.parse_document_entity config source spec
+]}
+
+As you can see, a some defaults are loaded ({!Pxp_types.default_config},
+and {!Pxp_tree_parser.default_spec}). These defaults have these effects
+(as far as being important for an introduction):
+
+- The parsed document is represented in ISO-8859-1. The file can
+  be encoded differently, however, and if so, it is automatically
+  recoded to ISO-8859-1.
+- The generated tree only has nodes for elements and character data
+  sections, but not for comments, and processing instructions.
+- The top-most node of the tree, [doc#root], is the top-most element.
+- No namespace processing is performed.
+
+XML does not know the concept of file names. All files (or other
+resources) are named by so-called ID's. Here we choose to convert
+the file name into a [SYSTEM] ID which is essentially a URL of the
+form [file:///dir1/.../dirN/filename.xml]. This ID can be processed -
+especially it is now clear how to treat releative [SYSTEM] ID's that
+occur in the parsed document. For instance, if another file is included
+by "filename.xml", and the [SYSTEM] ID is "parts/part1.xml", the usual
+rules for resolving relative URL's say that the effective file to read
+is [file:///dir1/.../dirN/parts/part1.xml]. Relative [SYSTEM] ID's are
+resolved relative to the URL of the file where the entity reference
+occurs that leads to the inclusion of the other file (this is comparable
+to how hyperlinks in HTML are treated).
+
+Note that we make here some assumptions about the file system of the
+computer. {!Pxp_reader.make_file_url} has to deal with character
+encodings of file names. It assumes UTF-8 by default. By passing
+arguments to this function, other assumptions about the encoding of
+file names can be made. Unfortunately, there is no portable way of
+determining the character encoding the system uses for file names. 
+
+Links:
+ - {{:http://library.gnome.org/devel/glib/stable/glib-Character-Set-Conversion.html#g-get-filename-charsets}How GLib treats the file name encoding problem}
+ - {{:http://developer.apple.com/technotes/tn/tn1150.html} OS X stores filenames on HFS+ volumes in a Unicode encoding}; the POSIX
+   functions like [open] expect file names in UTF-8 encoding.
+ - Current Windows versions store filenames in Unicode. The Win32 functions
+   are available in a Unicode and in a so-called ANSI version
+   (see {{:http://msdn.microsoft.com/en-us/library/dd317752(VS.85).aspx}
+   Code Pages}), and the O'Caml runtime calls the latter. This means file
+   names available to PXP are encoded in the active code page.
+
+The returned [doc] object is of type {!classtype:Pxp_document.document}. This type
+is used for all regular documents that exist independently. The root
+of the node tree is returned by [doc#root] which is a
+{Pxp_document.node}. See {!Intro_trees} for more about the tree
+representation.
+
+The call {!Pxp_tree_parser.parse_document_entity} does not only parse,
+but it also validates the document. This works only if there is a DTD,
+and the document conforms to the DTD. There is a weaker criterion for
+formal correctness called well-formedness. See below how to only the
+check for well-formedness while parsing without doing the whole
+validation.
+
+{2:complink Compiling and linking}
+
+It is strongly recommended to compile and link with the help of
+[ocamlfind]. For (byte) compiling use one of
+
+- [ocamlfind ocamlc -package pxp-engine -c file.ml]
+- [ocamlfind ocamlc -package pxp -c file.ml]
+
+The package [pxp-engine] refers to the core library while [pxp] refers
+to an extended version including the various lexers. For compiling, there
+is no big difference between the two because the lexers are usually not
+directly invoked. However, at link time you need these lexers. You can
+choose between using the pre-defined package [pxp] and a manually selected
+combination of [pxp-engine] with some lexer packages. So for linking
+e.g. use one of:
+
+- [ocamlfind ocamlc -package pxp -linkpkg -o executable ... ]
+  to get the standard selection of lexers
+- [ocamlfind ocamlc -package pxp-engine,pxp-lex-iso88591,pxp-ulex-utf8 -linkpkg -o executable ... ]
+  to get lexers for ISO-8859-1 and UTF-8
+
+There is a special lexer for every choice of encoding for the internal
+representation of XML. If you e.g. choose to represent the document as
+UTF-8 there must be a lexer capable of handling UTF-8. The package [pxp]
+includes a standard set of lexers, including UTF-8 and many encodings of
+the ISO-8859 series. For more about encodings, see below
+{!Intro_getting_started.encodings}.
+
+{2 Variations}
+
+{3 Catching and printing exceptions}
+
+The relevant exceptions are defined in {!Pxp_types}. You can catch
+these exceptions (as thrown by the parser) as in:
+
+{[
+try ...
+with
+  | Pxp_types.Validation_error _
+  | Pxp_types.WF_error _
+  | Pxp_types.Namespace_error _
+  | Pxp_types.Error _
+  | Pxp_types.At(_,_) as error ->
+      print_endline ("PXP error " ^ Pxp_types.string_of_exn error)
+]} 
+
+There are more exceptions, but these are usually caught within PXP
+and converted to one of the mentioned exceptions.
+
+
+{3 Parsing in well-formedness mode}
+
+In well-formedness mode many checks are not performed regarding the
+formal integrity of the document. Note that the terms "valid" and
+"well-formed" are rigidly defined in the XML standard, and that PXP
+strictly tries to conform to the standard. Especially note that the
+[DOCTYPE] clause is not rejected in well-formedness mode and that the
+declarations are parsed although interpreted differently.
+
+In order to call the parser in well-formedness mode, call one of the
+"wf" functions, e.g.
+
+{[
+let doc = Pxp_tree_parser.parse_wfdocument_entity config source spec
+]}
+
+Even in well-formedness mode there is a DTD object. The DTD object is,
+however, differently treated:
+- All declarations are parsed. However, the declarations of elements,
+  attributes, and notations are not added to the DTD object. The
+  declarations of entities are fully processed. Processing instructions
+  are also not handled in any way differently than when validation
+  is enabled. Note that all this means
+  that you can get syntax errors about ill-formed declarations in 
+  well-formedness mode, although the declarations are not further 
+  processed.
+- When the parser checks the integrity of elements, attributes or
+  notations in finds in the XML text to parse, it accepts that there
+  is no declaration in the DTD object.
+- It is not checked whether the top-most element is the declared
+  one.
+
+When processing well-formed documents one should be more careful
+because the parser has not done any checks on the structure of the
+node tree.
+
+{3 Validating well-formed trees}
+
+It is possible to validate a tree later that was originally only 
+parsed in well-formedness mode.
+
+Of course, there is one abvious difficulty. As mentioned, the DTD
+object is incompletely built (declarations of elements, attributes,
+and notations are ignored), so the DTD object is not suitable for
+validating the document against it. The solution is to replace the
+DTD object by a different one. As the DTD object is referenced from
+all nodes of the tree, and thus intricately connected with it,
+the only way to do so is to copy the entire tree. The function
+{!Pxp_marshal.relocate_document} can be used for this type of copy
+operation.
+
+We assume here that we can get the replacement DTD from an external
+file, "file.dtd", and that another constraint is that the root
+element must be [start] (as if we had [<!DOCTYPE start SYSTEM "file.dtd">]).
+Also [doc] is the parsed "filename.xml" file as retrieved by
+
+{[
+let config = Pxp_types.default_config
+let spec = Pxp_tree_parser.default_spec
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let doc = Pxp_tree_parser.parse_wfdocument_entity config source spec
+]}
+
+Now the validation against a different DTD is done by:
+
+{[
+let rdtd_url = Pxp_reader.make_file_url "file.dtd"
+let rdtd_source = Pxp_types.from_file (Neturl.string_of_url rdtd_url)
+let rdtd = Pxp_dtd_parser.parse_dtd_entity config rdtd_source
+let () = rdtd # set_root "start"
+let vroot = Pxp_marshal.relocate_document doc#root rdtd spec
+let () = Pxp_document.validate vroot
+let vdoc = new Pxp_document.document config.warner config.encoding
+let () = vdoc#init_root vroot doc#raw_root_name
+]}
+
+The [vdoc] document has now the same contents as [doc] but points to
+a different DTD, namely [rdtd]. Also, the validation checks have been
+performed. A few more comments:
+
+- We use here the same [config] for parsing the original document [doc]
+  and the replacement DTD [rdtd]. This is not strictly required. However,
+  the encoding of the in-memory representation must be identical
+  (i.e. [config.encoding]).
+- When you omit [rdtd#set_root], any root element is allowed.
+- The entity definitions of the old DTD object are lost.
+- It is of course possible to modify [doc] before doing the validation,
+  or to validate a [doc] that is not the result of a parser call but
+  programmatically created.
+
+{3:encodings Encodings}
+
+In PXP, the encoding of the parsed text (the external encoding), and the
+encoding of the in-memory representation can be distinct. For processing
+external encodings PXP relies on Ocamlnet. The external encoding is
+usually indicated in the XML declaration at the beginning of the text,
+e.g.
+
+{[
+<?xml version="1.0" encoding="ISO-8859-2"?>
+...
+]}
+
+There is also an autorecognition of the external encoding that works for
+UTF-8 and UTF-16.
+
+It is generally possible to override the external encoding
+(e.g. because the file has already been converted but the XML
+declaration was not changed at the same time). Some of the [from_*]
+sources allow it to override the encoding directly, e.g. by setting
+the [fixenc] argument when calling {!Pxp_types.from_channel}. Note
+that {!Pxp_types.from_file} does not have this option as this source
+allows it to read any file. Overriding encodings is, however, only
+interesting for certain files. A workaround is to combine [from_file]
+with a catalog of ID's, and to override the encodings for certain
+files there. (Catalogs also allow to override external encodings.)
+
+As mentioned, the encoding of the in-memory representation can be
+distinct from the external encoding. It is required that every character
+in the document can be represented in the representation encoding.
+Because of this, the chosen encoding should be a superset of all external
+encodings that may occur. If you choose UTF-8 for the representation
+every character can be represented anyway.
+
+You set the representation encoding in the [config] record, e.g.
+
+{[
+let config =
+  { Pxp_types.default_config
+      with encoding = `Enc_utf8
+  }
+]}
+
+It is strictly required that only one encoding is used in a single
+document (and PXP also checks that).
+
+The available encodings for the in-memory representation is a subset
+of the encodings supported by Ocamlnet. Effectively, UTF-8 is 
+supported and a number of 8-bit encodings as far as they are ASCII-
+compatible (i.e. extensions of 7 bit ASCII).
+
+For every representation encoding PXP needs a different lexer. PXP
+already comes with a set of lexers for the supported encodings. However,
+at link time the user program must ensure that the lexer is linked into
+the executable. The lexers are available as separate findlib packages:
+- [pxp-ulex-utf8]: This is the standard lexer for UTF-8
+- [pxp-wlex-utf8]: This is the old, wlex-based lexer for UTF-8. It is not
+  built when ulex is available.
+- [pxp-lex-utf8]: This is the old, ocamllex-based lexer for UTF-8.
+  It is slightly faster than [pxp-ulex-utf8], but consumes a lot more
+  memory.
+- [pxp-lex-*]: These are lexers for various 8 bit character sets
+
+For the link command, see above: {!Intro_getting_started.complink}.
+
+{3 Event parser (push/pull parsing)}
+
+It is sometimes not desirable to represent the parsed XML data as
+tree. An important reason is that the amount of data would exceed the
+available memory resources. Another reason may be to combine XML
+parsing with a custom grammar. In order to support this, PXP can be
+called as event parser. Basically, PXP emits events while parsing
+certain syntax elements, and the caller of PXP processes these events.
+This mode can only be used together with well-formedness mode - for
+validation the tree representation is a prerequisite.
+
+Here we show how to parse "filename.xml" with a pull parser:
+
+{[
+let config = Pxp_types.default_config
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let entmng = Pxp_ev_parser.create_entity_manager config source
+let entry = `Entry_document []
+let next = Pxp_ev_parser.create_pull_parser config entry entmng
+]}
+
+Now, one can call [next()] to get one event after the other.
+The events have type {!Pxp_types.event} [option].
+
+More about event parsing can be found in {!Intro_events}.
+
+{3 Low-profile trees}
+
+When the tree classes in {!Pxp_document} are too much overhead,
+it is easily possible to define a special tree data type, and
+to transform the event-parsed document into such trees. For example,
+consider this cute definition:
+
+{[
+type tree =
+  | Element of string * (string * string) list * tree list
+  | Data of string
+]}
+
+A tree node is either an [Element(name,atts,children)] or a 
+[Data(text)] node. Now we event-parse the XML file:
+
+{[
+let config = Pxp_types.default_config
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let entmng = Pxp_ev_parser.create_entity_manager config source
+let entry = `Entry_document []
+let next = Pxp_ev_parser.create_pull_parser config entry entmng
+]}
+
+Finally, here is a function [build_tree] that calls the [next] function to
+build our low-profile tree:
+
+{[
+let rec build_tree() =
+  match next() with
+    | Some (E_start_tag(name,atts,_,_)) ->
+        let children = build_children [] in
+        let tree = Element(name,atts,children) in
+        skip_rest();
+        tree
+    | Some (E_error e) ->
+        raise e
+    | Some _ ->
+        build_tree()
+    | None ->
+        assert false     
+
+and build_node() =
+  match next() with
+    | Some (E_char_data data) ->
+        Some(Data data)
+    | Some (E_start_tag(name,atts,_,_)) ->
+        let children = build_children [] in
+        Some(Element(name,atts,children))
+    | Some (E_end_tag(_,_)) ->
+        None
+    | Some (E_error e) ->
+        raise e
+    | Some _ ->
+        build_node()
+    | None ->
+        assert false
+
+and build_children l =
+  match build_node() with
+    | Some n -> build_children (n :: l)
+    | None -> List.rev l
+    
+and skip_rest() =
+  match next() with
+    | Some E_end_of_stream ->
+        ()
+    | Some (E_error e) ->
+        raise e
+    | Some _ ->
+        skip_rest()
+    | None ->
+        assert false
+]}
+
+Of course, this all is only reasonable for the well-forermedness mode,
+as PXP's validation routines depend on the built-in tree representation
+of {!Pxp_document}.
+
+{3 Choosing the node types to represent}
+
+By default, PXP only represents element and data nodes (both in the
+normal tree representation and in the event stream). It is possible
+to enable more node types:
+
+- {b Comment} nodes are created for XML comments. In the tree 
+  representation, the node type [T_comment] is used for them.
+  In the event stream, the event type [E_comment] is used.
+- {b Processing instruction} nodes are created for processing
+  instructions (PI's) occuring in the normal XML flow (i.e. outside
+  of DTD's). In the tree representation, the [T_pinstr] node type
+  is used, and in the event stream, the event type [E_pinstr] is
+  used.
+- The {b super root node} can be put at the top of the tree, so that
+  the top-most element is a child of this node. This can be reasonable
+  especially when comment nodes and PI nodes are also enabled, because
+  when these nodes surround the top-most element they also become children
+  of the super root node. In the tree representation, the [T_super_root]
+  node type is used, and in the event stream, the event type [E_start_super]
+  marks the beginning of this node, and [E_end_super] marks the end of 
+  this node.
+
+These node types are enabled in the [config] record, e.g.
+
+{[
+let config =
+  { Pxp_types.default_config
+      with enable_comment_nodes = true;
+           enable_pinstr_nodes = true;
+           enable_super_root_node = true 
+  }
+]}
+
+
+{3 Controlling whitespace}
+
+Depending on the mode, PXP applies some automatic whitespace rules. The
+user can call functions to reduce whitespace even more.
+
+In {b validating mode}, there are whitespace rules for data nodes and
+for attributes (the latter below). In this mode it is possible that an
+element [x] is declared such that a regular expression describes the
+permitted children.  For instance,
+
+{[ <!ELEMENT x (y,z)> ]}
+
+is such a declaration, meaning that [x] may only have [y] and [z]
+as children, exactly in this order, as in
+
+{[ <x><y>why</<y><z>zet</z></x> ]}
+
+XML, however, allows that whitespace is added to make such terms more
+readable, as in
+
+{[ 
+<x>
+  <y>why</<y>
+  <z>zet</z>
+</x> 
+]}
+
+The additional whitespace should not, however, appear as children of
+node [x], because it is considered as a purely notational improvement
+without impact on semantics. By default, PXP does not create data node
+for such notational whitespace. It is possible to disable the
+suppression of this type of whitespace by setting
+[drop_ignorable_whitespace] to [false]:
+
+{[
+  let config =
+    { Pxp_types.default_config 
+        with drop_ignorable_whitespace = false
+    }
+]}
+
+In {b well-formedness mode}, there is no such feature because any
+declarations are ignored.
+
+Note that although in {b event mode} the parser is restricted to
+well-formedness parsing, it is still possible to get the effect of
+[drop_ignorable_whitespace]. See
+{!Pxp_event.drop_ignorable_whitespace_filter} for how to selectively
+enable this validation feature.
+
+The other whitespace rules apply to attributes. In {b all modes} line
+breaks in attribute values are converted to spaces. That means [a1]
+and [a2] have identical values:
+
+{[
+<x a1="1 2" a2="1
+2" a3="1&#10;2"/>
+]}
+
+It is possible to suppress this conversion by using [&#10;] as line
+separator, as in [a3], which truly includes a line-feed character.
+
+In {b validating mode} only there are more rules because attributes
+are declared. If the attribute is declared with a list value
+([IDREFS], [ENTITIES], or [NMTOKENS]), any amount of whitespace can
+be used to separate the list elements. PXP returns the value as
+[Valuelist l] where [l] is an O'Caml list of strings.
+
+If the {b tree representation} is chosen, the function
+{!Pxp_document.strip_whitespace} can be called to reduce the amount
+of whitespace in data nodes.
+
+
+
+{3 Checking [ID] consistency and looking up nodes by [ID]}
+
+In XML it is possible to identify elements by giving them an [ID]
+attribute. The requires a DTD, and could be done with declarations
+like
+
+{[
+  <!ATTLIST x id ID #REQUIRED>
+]}
+
+meaning that element [x] has a mandatory attribute [id] with the special
+[ID] property: Every node must have a unique [id] value.
+
+In the same context, it is possible to declare attributes as references
+to other nodes, expressed by denoting the [id] of the other node:
+
+{[
+  <!ATTLIST y r IDREF #IMPLIED>
+]}
+
+Here, the (optional) attribute [r] of [y] is a reference to another node.
+It is only allowed to put identifiers into such attributes that also
+occur in the [ID] of another node.
+
+{b By default, PXP does neither check the uniqueness of [ID]-declared 
+attributes nor the existence of the nodes referenced by [IDREF]-declared
+attributes.} In tree mode, it is possible to enable that, however.
+
+For that purpose, one has to create an {!Pxp_tree_parser.index}. If
+passed to the parser function, the parser adds the [ID]-values of all
+nodes to the index, and checks whether every [ID] value is unique.
+Additionally, when one enables the [idref_pass] the parser also checks
+whether [IDREF] attributes only point to existing nodes. The code:
+
+{[
+let config = { Pxp_types.default_config with idref_pass = true }
+let spec = Pxp_tree_parser.default_spec
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let hash_index = new Pxp_tree_parser.hash_index
+let id_index = (hash_index :> _ Pxp_tree_parser.hash_index)
+let doc = Pxp_tree_parser.parse_document_entity ~id_index config source spec
+]}
+
+The difference between [hash_index] and [id_index] is that the former
+object has one additional method [index] returning the whole index.
+
+The [id_index] may also be useful after the document has been parsed.
+The code processing the parsed documennt can take advantage of it by
+looking up nodes in it. For example, to find the node identified
+by "foo", one can call
+
+{[ id_index # find "foo" ]}
+
+which either returns this node, or raises [Not_found].
+
+Note that the [id_index] is not automatically updated when the parsed
+tree is modified.
+
+
+{3 Finding nodes by element names}
+
+As we are at it: PXP does not maintain indexes of any kind. Unlike in
+other tree representations, there is no index of elements that would
+help one to quickly find elements by their names. The reason for this
+omission is that such indexes need to be updated when the tree is
+modified, and these updates can be quite expensive operations.
+
+The [ID] index explained in the last section is not automatically
+updated, and it has only been added to comply fully to the XML
+standard (which demands [ID] checking).
+
+Nevertheless, one can easily define indexes of one own (and for
+the advanced programmer it might be an interesting task to develop
+an extension module to PXP that generically solves this problem).
+For instance, here is an index of elements:
+
+{[
+  let index = Hashtbl.create 50
+
+  Pxp_document.iter_tree
+    ~pre:(fun node ->
+             match node with
+               | T_element name -> Hashtbl.add index name node
+               | _ -> ()
+         )
+    doc#root
+]}
+
+Now, [Hashtbl.find] can be used to get the last occurrence, and
+[Hashtbl.find_all] to get all occurrences.
+
+If it is not worth-while to build an index, one can also call
+the functions {!Pxp_document.find_element} and 
+{!Pxp_document.find_all_elements}, but these functions rely on
+linear searching.
+
+
+
+{3 Specifying sources}
+
+The {!Pxp_types.source} says from where the data to parse comes.  The
+task of the [source] is more complex as it looks at the first glance,
+as it not only says from where the initially parsed entity comes, but
+also from where further entities can be loaded that are referenced and
+included by the first one.
+
+The mentioned function {!Pxp_types.from_file} allows that all files
+can be opened as entities, and maps the [SYSTEM] identifiers to file
+names. It is very powerful.
+
+There are three more [from_*] functions:
+- {!Pxp_types.from_string} gets the data from a string
+- {!Pxp_types.from_channel} gets the data from an [in_channel]
+- {!Pxp_types.from_obj_channel} gets the data from an [in_obj_channel]
+  (an Ocamlnet definition)
+
+These three variants differ from [from_file] in so far as {b only
+one} entity can be parsed at all (unless one passes alternate resolvers
+to them). This means it is not possible that the initially parsed
+entity includes data from another entity. Example code:
+
+{[ let source = Pxp_types.from_string "<?xml version='1.0'?><foo/>" ]}
+
+So the [source] mechanism has these limitations:
+- The {!Pxp_types.from_file} function allows one to read from all
+  files by using [SYSTEM] URL's of the form [file:///path]. It is
+  not possible to restrict the access in any way. There is no support
+  for [PUBLIC] identifiers.
+- The other functions like {!Pxp_types.from_string} allow one to
+  parse data coming from everywhere, and it is not possible to access
+  any files (as it is not possible to open any further external entity).
+
+There is the {!Pxp_reader} module with a very powerful abstraction
+called {!Pxp_reader.resolver}. There are resolvers for files, for
+alternate resources like data channels, and there is the possibility
+of building more complex resolvers by composing simpler ones.
+
+Please see {!Pxp_reader} and {!Intro_resolution} for deeper explanations.
+Here are the most important recipes to use this advanced mechanism:
+
+{b Read from files, and define a catalog of exceptions:}
+
+{[
+let catalog =
+ new Pxp_reader.lookup_id_as_file
+  [ System("http://foo.org/our.dtd"), "/usr/share/foo.org/out.dtd";
+    Public("-//W3C//DTD XHTML 1.0 Strict//EN",""), "/home/stuff/xhtml_strict.dtd"
+  ]
+let source = Pxp_types.from_file ~alt:[catalog] "filename.xml"
+]}
+
+This allows one to open all local files using the [file:///path] 
+URL's, but also maps the [SYSTEM] ID "http://foo.org/our.dtd" and
+the [PUBLIC] ID "-//W3C//DTD XHTML 1.0 Strict//EN" to local files.
+
+There is also {!classtype:Pxp_reader.lookup_id_as_string} mapping to strings.
+
+
+{b Read from files, but restrict access, and map URL's}
+
+{[
+let resolver =
+  new Pxp_reader.rewrite_system_id
+    [ "http://foo.org/", "file:///usr/share/foo.org";
+      "file:///", "file:///home/stuff/localxml"
+    ]
+    (new Pxp_reader.resolve_as_file())
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = ExtID(System((Neturl.string_of_url file_url), resolver)
+]}
+
+This allows one to open entities from the whole [http://foo.org/]
+hierarchy, but the data is not downloaded by HTTP, but instead
+assumed to reside in the local directory hierarchy 
+[/usr/share/foo.org]. Also, the whole [file:///] hierarchy is
+re-rooted to [/home/stuff/localxml]. As the URL's are normalized
+before any access is tried, this scheme provides access protection
+to other parts of the file system (i.e. one cannot escape from the
+new root by "..").
+
+In order to combine with a [catalog] as defined above, use
+
+{[
+let resolver =
+  new Pxp_reader.combine
+    [ catalog;
+      new Pxp_reader.rewrite_system_id ...
+    ]
+]}
+
+
+{b Virtual entity hierarchy}
+
+Given we have the three identifiers 
+- [http://virtual.com/f1.xml] 
+- [http://virtual.com/f2.xml] 
+- [http://virtual.com/f3.xml] 
+
+and these identifiers include each other by using relative [SYSTEM] ID's,
+and we have O'Caml strings [f1_xml], [f2_xml], and [f3_xml] with the
+contents, we want to make the [virtual.com] hierarchy available to
+a file (without identifier) parsed from a string [s].
+
+{[
+let resolver =
+  new Pxp_reader.norm_system_id
+    (new Pxp_reader.lookup_id_as_string
+       [ "http://virtual.com/f1.xml"; f1_xml;
+         "http://virtual.com/f2.xml"; f2_xml;
+         "http://virtual.com/f3.xml"; f3_xml
+       ]
+    )
+let source = Pxp_types.from_string ~alt:[resolver] s
+]}
+
+The trick is {!classtype:Pxp_reader.norm_system_id}. This class makes it possible
+that these three enumerated documents can refer to each other by relative
+URL. Without the [SYSTEM] ID normalization, these documents can only be
+opened when exactly the URL is referenced that is also mentioned in the
+catalog.
+
+
+{3 Embedding large constant XML in source code}
+
+Sometimes one needs to embed XML files into source code. For small files
+this is no problem at all, just define them as string literals
+
+{[
+let s = "<?xml?> ..."
+]}
+
+and parse the strings on demand, using the {!Pxp_types.from_string}
+source. For larger files, the disadvantage of this approach is that
+the whole document has to be parsed again for every run of the
+program. There is an efficient way of avoiding that.
+
+The {!Pxp_codewriter} module provides a function 
+{!Pxp_codewriter.write_document} that takes an already parsed XML tree
+and writes O'Caml code as output that will create the tree again when
+executed. This can be used as follows:
+- Write a helper application [generate] that parses the XML file with
+  the required configuration options and that outputs the O'Caml code
+  for this file using {!Pxp_codewriter}
+- In the real program that needs to operate on the XML document
+  reconstruct the document by running the generated code. Use the same
+  configuration options as in [generate]
+
+There is also {!Pxp_marshal} for marshalling XML trees. The codewriter
+module uses it.
+
+
+{3 Using the preprocessor to create XML trees}
+
+XXX
+
+
+{3 Namespaces}
+
+XXX
+
+
+{3 Specifying which classes implement nodes - the mysterious [spec] parameter}
+
+XXX
+
+
+{2 What PXP cannot do for you}
+
+Although PXP has a long list of features, there are some types of parsing
+XML it is not designed for:
+
+- It is not possible to leave entities unresolved in the text. Whenever
+  there is an [&entity;] or [%entity;] PXP replaces it with the definition
+  of that entity.
+- It is not possible to figure out notational details of the XML text,
+  such as where CDATA sections are used
+
+Effectively, this makes it hard to use PXP for XML editing, but otherwise
+does not limit its uses.
+

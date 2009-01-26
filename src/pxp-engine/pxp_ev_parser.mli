@@ -39,8 +39,8 @@ val create_entity_manager :
    * - [encoding]
    * - [debugging_mode]
    *
-   * [is_document]: Pass [true] if the entity to read is a complete
-   *   document, and [false] otherwise. The value [true] enforces
+   * [is_document]: [true], the default, sets that the entity to read is a complete
+   *   document, and [false] sets that it is only a fragment. The value [true] enforces
    *   several restrictions on document entities, e.g. that 
    *   [<![INCLUDE[..]]>] and [<![IGNORE[..]]>] are not allowed and that
    *   additional nesting rules are respected by parameter entities.

@@ -1,3 +1,6 @@
 {1 XML data as stream of events}
 
 XXX
+
+also explain how to combine with a rec-desc grammar
+

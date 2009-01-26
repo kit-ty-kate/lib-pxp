@@ -481,7 +481,7 @@ val from_file :
    *    non-[SYSTEM] IDs, and non-file entities.
    * - [system_encoding]: The character encoding the system uses to represent
    *    filenames. By default, UTF-8 is assumed.
-   * [enc]: The character encoding of the string argument. As mentioned, this
+   * - [enc]: The character encoding of the string argument. As mentioned, this
    *    is UTF-8 by default.
    *)
 
