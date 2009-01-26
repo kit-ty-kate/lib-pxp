@@ -148,9 +148,17 @@ however, differently treated:
   processed.
 - When the parser checks the integrity of elements, attributes or
   notations in finds in the XML text to parse, it accepts that there
-  is no declaration in the DTD object.
+  is no declaration in the DTD object. This is controlled by a 
+  special DTD mode called [arbitrary_allowed]. If enabled as in
+  well-formedness mode, the DTD reacts specially when a declaration
+  is missing. Note that, if one added a declaration programmatically
+  to the DTD object, the DTD would find it, and would actually
+  validate against it. Effectively, validation is not disabled in
+  well-formedness mode, it is only weakened.
 - It is not checked whether the top-most element is the declared
   one.
+
+
 
 When processing well-formed documents one should be more careful
 because the parser has not done any checks on the structure of the
@@ -746,6 +754,7 @@ module uses it.
 
 {3 Using the preprocessor to create XML trees}
 
+One way of creating XML trees programmatically is to call the [create_*]
 XXX
 
 
