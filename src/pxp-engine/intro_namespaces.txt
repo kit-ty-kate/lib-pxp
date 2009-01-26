@@ -48,18 +48,18 @@ to enable all that:
   let root = doc#root
 ]}
 
-The namespace-aware implementations of the [node]
-class type define additional namespace methods like
-[namespace_uri]. (Although you also could direct the parser to create 
-non-namespace-aware nodes,
-this does not make much sense, as you do not get these special access
-methods then.)
+The namespace-aware implementations of the [node] class type define
+additional namespace methods like [namespace_uri] (see
+{!Pxp_document.node.namespace_uri}). (Although you also could direct
+the parser to create non-namespace-aware nodes, this does not make
+much sense, as you do not get these special access methods then.)
 
-The method [namespace_scope] allows one to get more information what
-happened during prefix normalization. In particular, it is possible to
-find out the original prefix in the XML text (which is also called
-{b display prefix}), before it was mapped to the normalized prefix.
-The [namespace_scope] method returns a
+The method [namespace_scope] (see
+{!Pxp_document.node.namespace_scope}) allows one to get more
+information what happened during prefix normalization. In particular,
+it is possible to find out the original prefix in the XML text (which
+is also called {b display prefix}), before it was mapped to the
+normalized prefix.  The [namespace_scope] method returns a
 {!Pxp_dtd.namespace_scope} object with additional lookup methods.
 
 
@@ -80,11 +80,13 @@ for the XHTML namespace:
 ]}
 
 In this example, normalization changes nothing, because the prefix
-"h" has the same meaning thoughout the whole document.
+"h" has the same meaning thoughout the whole document. However, keep
+in mind that every author of XHTML documents can freely choose the
+prefix to use.
 
-The XML standard, however, gives the author of the document the
-freedom to change the meaning of the prefix at any time. For example,
-here the prefix "x" is changed in the inner node:
+The XML standard gives the author of the document even the freedom to
+change the meaning of a prefix at any time. For example, here the
+prefix "x" is changed in the inner node:
 
 {[
 <x:address xmlns:x="http://addresses.org">
@@ -93,6 +95,10 @@ here the prefix "x" is changed in the inner node:
   </x:name>
 </x:address>
 ]}
+
+In the outer node the prefix "x" is connected with the
+"http://addresses.org" namespace, but in the inner node it is
+connected with "http://names.org".
 
 After normalization, the prefixes would look as follows:
 
@@ -105,7 +111,7 @@ After normalization, the prefixes would look as follows:
 ]}
 
 In order to avoid overridden prefixes, the prefix in the inner node
-was changed to "x1".
+was changed to "x1" (for type theorists: think of alpha conversion).
 
 The idea of prefix normalization is to simplify how programs can match
 against element and attribute names. It is possible to configure the
@@ -155,12 +161,12 @@ use them directly in programs, e.g. for matching:
 ]}
 
 
-{2 Finding out more about namespaces}
+{2 Getting more details of namespaces}
 
 There are two additional objects that are relevant. First, there is a
 namespace manager for the whole tree. This object gathers all namespace
 URI's up that occur in the XML text, and decides which normprefixes
-are associated with them: {!Pxp_dtd.namespace_manager}.
+are associated with them: {!classtype:Pxp_dtd.namespace_manager}.
 
 Second, there is the namespace scope. An XML tree may have a lot of such
 objects. A new scope object is created whenever new namespaces are

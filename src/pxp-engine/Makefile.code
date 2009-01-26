@@ -20,7 +20,9 @@ DOC =   pxp_types.mli pxp_document.mli pxp_dtd.mli pxp_tree_parser.mli \
  	pxp_event.mli pxp_dtd_parser.mli pxp_codewriter.mli \
   	pxp_marshal.mli pxp_yacc.mli pxp_reader.mli \
 	intro_trees.txt intro_extensions.txt intro_namespaces.txt \
-        intro_events.txt intro_resolution.txt intro_getting_started.txt
+        intro_events.txt intro_resolution.txt intro_getting_started.txt \
+	intro_advanced.txt \
+	example_readme.txt
 
 XOBJ = $(OBJ:.cmo=.cmx)
 

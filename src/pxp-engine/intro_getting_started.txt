@@ -100,7 +100,7 @@ the ISO-8859 series. For more about encodings, see below
 
 {2 Variations}
 
-{3 Catching and printing exceptions}
+{3:exn Catching and printing exceptions}
 
 The relevant exceptions are defined in {!Pxp_types}. You can catch
 these exceptions (as thrown by the parser) as in:
@@ -120,7 +120,28 @@ There are more exceptions, but these are usually caught within PXP
 and converted to one of the mentioned exceptions.
 
 
-{3 Parsing in well-formedness mode}
+{3:toploop Printing trees in the O'Caml toploop}
+
+There are toploop printers for nodes and documents. They are automatically
+activated when the findlib directive [#require "pxp"] is used to load
+PXP into the toploop. Alternatively, one can also do
+
+{[
+#install_printer Pxp_document.print_node;;
+#install_printer Pxp_document.print_doc;;
+]}
+
+For example, the tree [<x><y>foo</y></x>] would be shown as:
+
+{[
+  # tree;;
+  _ : ('a Pxp_document.node Pxp_document.extension as 'a) Pxp_document.node =
+  * T_element "x"
+    * T_element "y"
+      * T_data "foo"
+]}
+
+{3:wfmode Parsing in well-formedness mode}
 
 In well-formedness mode many checks are not performed regarding the
 formal integrity of the document. Note that the terms "valid" and
@@ -136,6 +157,7 @@ In order to call the parser in well-formedness mode, call one of the
 let doc = Pxp_tree_parser.parse_wfdocument_entity config source spec
 ]}
 
+{b Details.}
 Even in well-formedness mode there is a DTD object. The DTD object is,
 however, differently treated:
 - All declarations are parsed. However, the declarations of elements,
@@ -147,37 +169,41 @@ however, differently treated:
   well-formedness mode, although the declarations are not further 
   processed.
 - When the parser checks the integrity of elements, attributes or
-  notations in finds in the XML text to parse, it accepts that there
+  notations it finds in the XML text to parse, it accepts that there
   is no declaration in the DTD object. This is controlled by a 
-  special DTD mode called [arbitrary_allowed]. If enabled as in
+  special DTD mode called [arbitrary_allowed] 
+  (see {!Pxp_dtd.dtd.allow_arbitrary}). If enabled as done in
   well-formedness mode, the DTD reacts specially when a declaration
-  is missing. Note that, if one added a declaration programmatically
+  is missing so that the parser knows it has to accept that. 
+  Note that, if one added a declaration programmatically
   to the DTD object, the DTD would find it, and would actually
   validate against it. Effectively, validation is not disabled in
-  well-formedness mode, it is only weakened.
-- It is not checked whether the top-most element is the declared
-  one.
-
-
+  well-formedness mode, only the constraints imposed by the DTD
+  object on the document are weaker. There is in fact a way
+  to add declarations in well-formedness mode to get partly the
+  effects of validation: This is called {!Intro_advanced.mixedmode}.
+- It is not checked whether the top-most element is the one declared
+  in the [DOCTYPE] clause (if that clause exists).
 
 When processing well-formed documents one should be more careful
 because the parser has not done any checks on the structure of the
 node tree.
 
-{3 Validating well-formed trees}
+{3:lateval Validating well-formed trees}
 
 It is possible to validate a tree later that was originally only 
 parsed in well-formedness mode.
 
-Of course, there is one abvious difficulty. As mentioned, the DTD
-object is incompletely built (declarations of elements, attributes,
-and notations are ignored), so the DTD object is not suitable for
-validating the document against it. The solution is to replace the
-DTD object by a different one. As the DTD object is referenced from
-all nodes of the tree, and thus intricately connected with it,
-the only way to do so is to copy the entire tree. The function
-{!Pxp_marshal.relocate_document} can be used for this type of copy
-operation.
+Of course, there is one obvious difficulty. As mentioned in the
+previous section, the DTD object is incompletely built (declarations
+of elements, attributes, and notations are ignored), so the DTD object
+is not suitable for validating the document against it. For
+validation, however, a complete DTD object is required.  The solution
+is to replace the DTD object by a different one. As the DTD object is
+referenced from all nodes of the tree, and thus intricately connected
+with it, the only way to do so is to copy the entire tree. The
+function {!Pxp_marshal.relocate_document} can be used for this type of
+copy operation.
 
 We assume here that we can get the replacement DTD from an external
 file, "file.dtd", and that another constraint is that the root
@@ -244,7 +270,8 @@ that {!Pxp_types.from_file} does not have this option as this source
 allows it to read any file. Overriding encodings is, however, only
 interesting for certain files. A workaround is to combine [from_file]
 with a catalog of ID's, and to override the encodings for certain
-files there. (Catalogs also allow to override external encodings.)
+files there. (Catalogs also allow to override external encodings.
+See below, {!Intro_getting_started.sources} for examples using catalogs.)
 
 As mentioned, the encoding of the in-memory representation can be
 distinct from the external encoding. It is required that every character
@@ -262,10 +289,10 @@ let config =
   }
 ]}
 
-It is strictly required that only one encoding is used in a single
+It is strictly required that only a single encoding is used in a
 document (and PXP also checks that).
 
-The available encodings for the in-memory representation is a subset
+The available encodings for the in-memory representation are a subset
 of the encodings supported by Ocamlnet. Effectively, UTF-8 is 
 supported and a number of 8-bit encodings as far as they are ASCII-
 compatible (i.e. extensions of 7 bit ASCII).
@@ -290,7 +317,7 @@ It is sometimes not desirable to represent the parsed XML data as
 tree. An important reason is that the amount of data would exceed the
 available memory resources. Another reason may be to combine XML
 parsing with a custom grammar. In order to support this, PXP can be
-called as event parser. Basically, PXP emits events while parsing
+called as event parser. Basically, PXP emits events (tokens) while parsing
 certain syntax elements, and the caller of PXP processes these events.
 This mode can only be used together with well-formedness mode - for
 validation the tree representation is a prerequisite.
@@ -306,7 +333,7 @@ let entry = `Entry_document []
 let next = Pxp_ev_parser.create_pull_parser config entry entmng
 ]}
 
-Now, one can call [next()] to get one event after the other.
+Now, one can call [next()] repeatedly to get one event after the other.
 The events have type {!Pxp_types.event} [option].
 
 More about event parsing can be found in {!Intro_events}.
@@ -314,7 +341,7 @@ More about event parsing can be found in {!Intro_events}.
 {3 Low-profile trees}
 
 When the tree classes in {!Pxp_document} are too much overhead,
-it is easily possible to define a special tree data type, and
+it is easily possible to define a specially crafted tree data type, and
 to transform the event-parsed document into such trees. For example,
 consider this cute definition:
 
@@ -455,7 +482,7 @@ readable, as in
 
 The additional whitespace should not, however, appear as children of
 node [x], because it is considered as a purely notational improvement
-without impact on semantics. By default, PXP does not create data node
+without impact on semantics. By default, PXP does not create data nodes
 for such notational whitespace. It is possible to disable the
 suppression of this type of whitespace by setting
 [drop_ignorable_whitespace] to [false]:
@@ -467,7 +494,7 @@ suppression of this type of whitespace by setting
     }
 ]}
 
-In {b well-formedness mode}, there is no such feature because any
+In {b well-formedness mode}, there is no such feature because element
 declarations are ignored.
 
 Note that although in {b event mode} the parser is restricted to
@@ -500,7 +527,7 @@ of whitespace in data nodes.
 
 
 
-{3 Checking [ID] consistency and looking up nodes by [ID]}
+{3 Checking the [ID] consistency and looking up nodes by [ID]}
 
 In XML it is possible to identify elements by giving them an [ID]
 attribute. The requires a DTD, and could be done with declarations
@@ -599,7 +626,7 @@ linear searching.
 
 
 
-{3 Specifying sources}
+{3:sources Specifying sources}
 
 The {!Pxp_types.source} says from where the data to parse comes.  The
 task of the [source] is more complex as it looks at the first glance,
@@ -627,7 +654,7 @@ entity includes data from another entity. Example code:
 So the [source] mechanism has these limitations:
 - The {!Pxp_types.from_file} function allows one to read from all
   files by using [SYSTEM] URL's of the form [file:///path]. It is
-  not possible to restrict the access in any way. There is no support
+  not possible to restrict the file access in any way. There is no support
   for [PUBLIC] identifiers.
 - The other functions like {!Pxp_types.from_string} allow one to
   parse data coming from everywhere, and it is not possible to access
@@ -701,8 +728,8 @@ Given we have the three identifiers
 
 and these identifiers include each other by using relative [SYSTEM] ID's,
 and we have O'Caml strings [f1_xml], [f2_xml], and [f3_xml] with the
-contents, we want to make the [virtual.com] hierarchy available to
-a file (without identifier) parsed from a string [s].
+contents, we want to make the [virtual.com] hierarchy available
+while parsing from a string [s].
 
 {[
 let resolver =
@@ -752,20 +779,135 @@ There is also {!Pxp_marshal} for marshalling XML trees. The codewriter
 module uses it.
 
 
-{3 Using the preprocessor to create XML trees}
+{3:prepro Using the preprocessor to create XML trees}
 
 One way of creating XML trees programmatically is to call the [create_*]
-XXX
+functions in {!Pxp_document}, e.g. {!Pxp_document.create_element_node}.
+However, this looks ugly, e.g. for creating [<x><y>foo</y></x>] one ends
+up with
+
+{[
+let tree =
+  Pxp_document.create_element_node spec dtd "x" []
+let y =
+  Pxp_document.create_element_node spec dtd "y" []
+let data =
+  Pxp_document.create_data_node spec dtd "foo"
+y # append_node data;
+tree # append_node y
+]}
+
+It is easier to use the PXP preprocessor, a camlp4 extension of the
+O'Caml syntax. It simplifies the above code to (line breaks are
+optional):
+
+{[
+  let tree =
+    <:pxp_tree<
+      <x>
+        <y>
+          "foo"
+    >>
+]}
+
+For more about the preprocessor, see {!Intro_preprocessor}.
 
 
-{3 Namespaces}
+{3:namespaces Namespaces}
 
-XXX
+PXP support namespaces, but
+- this has to be enabled explicitly, and
+- the way of processing namespaces is different from what parsers
+  do that output DOM trees
+
+{b How to enable namespace processing.} Depending on the mode different
+things have to be done. In any case a namespace manager is required, and it 
+has to be made available to PXP in the [config] record:
+
+{[
+let m = Pxp_dtd.create_namespace_manager()
+
+let config =
+  { Pxp_types.default_config
+      with enable_namespace_processing = Some m
+  }
+]}
+
+In event mode, this is already enough. In tree mode, you also need to
+direct PXP that it uses the special namespace-enabled node classes:
+
+{[
+let spec = Pxp_tree_parser.default_namespace_spec
+]}
+
+Of course, PXP can also parse namespace directives when namespace
+processing is off. However, all the namespace-specific node methods
+do not work like {!Pxp_document.node.namespace_uri}.
+
+{b Prefix normalization.} PXP implements a technique called prefix
+normalization when processing namespaces. The namespace prefix is
+the part before the colon in element and attribute names like
+[prefix:localname]. The prefix is changed in the document so every
+namespace is uniquely identified by a prefix. Note that this means
+that the elements and attributes may be renamed by the parser.
+
+For details how the prefix normalization works, see {!Intro_namespaces}.
 
 
-{3 Specifying which classes implement nodes - the mysterious [spec] parameter}
+{3:spec Specifying which classes implement nodes - the mysterious [spec] parameter}
 
-XXX
+For the tree representation PXP defines a set of classes implementing
+the various node types. These classes, such as [element_impl], are
+all defined in {!Pxp_document}.
+
+It is now possible to instruct PXP to use different classes. In the
+last section we have already seen an example of this, because for
+namespace-enabled parsing a different set of node classes is used:
+
+{[
+let spec = Pxp_tree_parser.default_namespace_spec
+]}
+
+The mysterious [spec] parameter directs PXP which class it uses for
+which node type. In the source code of {!Pxp_tree_parser}, we find
+
+{[
+let default_spec =
+  make_spec_from_mapping
+    ~super_root_exemplar:      (new super_root_impl default_extension)
+    ~comment_exemplar:         (new comment_impl default_extension)
+    ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
+    ~data_exemplar:            (new data_impl default_extension)
+    ~default_element_exemplar: (new element_impl default_extension)
+    ~element_mapping:          (Hashtbl.create 1)
+    ()
+
+
+let default_namespace_spec =
+  make_spec_from_mapping
+    ~super_root_exemplar:      (new super_root_impl default_extension)
+    ~comment_exemplar:         (new comment_impl default_extension)
+    ~default_pinstr_exemplar:  (new pinstr_impl default_extension)
+    ~data_exemplar:            (new data_impl default_extension)
+    ~default_element_exemplar: (new namespace_element_impl default_extension)
+    ~element_mapping:          (Hashtbl.create 1)
+    ()
+]}
+
+The function {!Pxp_document.make_spec_from_mapping} creates a [spec]
+from a set of constructors. In the namespace version of [spec], the
+only difference is that a special implementation for element nodes is
+used.
+
+One can also use this mechanism to let the parser create trees made of
+customized classes. Note, however, that it is not possible to simply
+create new classes by inherting from a predefined classes and then
+adding new methods. The problem is that the typing constraints of PXP
+do not allow that users add methods directly to node classes. However,
+there is a special extension mechanism built-in, and one can use it to
+add new methods indirectly to nodes. This means these methods do not
+appear directly in the class type of nodes, but in the class type of
+the node extension. See {!Intro_extensions} for more about this.
 
 
 {2 What PXP cannot do for you}

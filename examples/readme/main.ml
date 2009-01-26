@@ -5,7 +5,7 @@
 
 open Pxp_types
 open Pxp_document
-open Pxp_yacc
+open Pxp_tree_parser
 
 
 let rec print_error e =

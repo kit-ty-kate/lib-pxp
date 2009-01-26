@@ -8,7 +8,7 @@ here.
 Every node in a tree has a so-called extension. By default, the
 extension is practically empty and only present for formal uniformity.
 However, one can also define custom extension classes, and effectively
-add new methods to the node classes.
+make new methods available to nodes.
 
 The type {!Pxp_document.extension} is:
 
@@ -201,3 +201,10 @@ let spec =
 
 The extension object [c] is still used for all data nodes and
 for all other element types.
+
+{2 An example}
+
+A complete example using extension objects is the [readme]
+processor. The full source code is included in the PXP source tarball.
+A commented version is available here: {!Example_readme}.
+

@@ -1024,6 +1024,11 @@ class type [ 'ext ] node =
        *   added, if possible. If [valcheck=false], any element type
        *   and any attributes are accepted.
        *
+       *   Even in well-formedness mode, it is ok to pass [valcheck=true]
+       *   as this mode is implemented by weakening the validation 
+       *   constraints in the DTD object. See 
+       *   {!Intro_getting_started.wfmode} for explanations.
+       *
        *   If a [name_pool_for_attribute_values] is passed, the attribute
        *   values in [att_list] are put into this pool.
        *
@@ -1076,6 +1081,9 @@ class type [ 'ext ] node =
         Namespace methods are only available in namespace-aware implementations
         of [node]. For other implementations, the exception
         {!Pxp_types.Namespace_method_not_supported} is raised.
+
+        Keep in mind that PXP applies prefix normalization. For an
+        introduction see {!Intro_namespaces}.
      *)
 
     method normprefix : string
@@ -1094,8 +1102,8 @@ class type [ 'ext ] node =
        *   method returns the display prefix of the element or attribute.
        *   If the object does not have a prefix, "" will be passed back.
        *
-       * The display prefix is the prefix as it occurs literally in the XML
-       * text.
+       * The display prefix is supposed to be the prefix as it occurs
+       * literally in the XML text.
        *
        *     Actually, this method does not return the real display prefix
        *     that was found in the XML text but the most recently declared
@@ -1620,6 +1628,12 @@ val create_element_node :
    *        is left out; in this case you can pass any element type and
    *        and any attributes, and it does not matter whether and how
    *        they are declared.
+   *
+   *   Even in well-formedness mode, it is ok to pass [valcheck=true]
+   *   as this mode is implemented by weakening the validation 
+   *   constraints in the DTD object. See 
+   *   {!Intro_getting_started.wfmode} for explanations.
+   *
    *)
 
 val create_super_root_node :
