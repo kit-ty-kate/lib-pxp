@@ -9,6 +9,21 @@ of namespace-aware documents PXP applies a transformation to the document
 which is called "prefix normalization". This transformation ensures that every
 namespace prefix uniquely identifies a namespace throughout the whole document.
 
+{3 Links to other documentation}
+
+- {!Intro_getting_started.namespaces}
+- {!classtype:Pxp_dtd.namespace_manager}
+- {!Pxp_dtd.create_namespace_manager}
+- {!classtype:Pxp_dtd.namespace_scope}
+- {!Pxp_dtd.create_namespace_scope}
+- Trees and namespaces: {!Intro_trees.access}, see the namespace subsection
+- {!Intro_advanced.irrnodes}
+- {!Intro_events.namespaces}
+
+
+
+{2 Namespace URI's and prefixes}
+
 A namespace is identified by a namespace URI (e.g. something like
 "http://company.org/namespaces/project1" - note that this URI is simply
 processed as string, and never looked up by an HTTP access). For
@@ -41,7 +56,11 @@ instead of {!Pxp_tree_parser.default_spec}. A good starting point
 to enable all that:
 
 {[
-  let config = Pxp_types.default_namespace_config
+  let nsmng = Pxp_dtd.create_namespace_manager()
+  let config = 
+        { Pxp_types.default_config with
+             enable_namespace_processing = Some nsmng
+        }
   let source = ...
   let spec = Pxp_tree_parser.default_namespace_spec
   let doc = Pxp_tree_parser.parse_document_entity config source spec
@@ -131,7 +150,11 @@ moment, and allows the program to enter such special configurations
 into the DTD object. The resulting program could look then like:
 
 {[
-  let config = Pxp_types.default_namespace_config
+  let nsmng = Pxp_dtd.create_namespace_manager()
+  let config = 
+        { Pxp_types.default_config with
+             enable_namespace_processing = Some nsmng
+        }
   let source = ...
   let spec = Pxp_tree_parser.default_namespace_spec
   let transform_dtd dtd =

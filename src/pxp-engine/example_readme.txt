@@ -1,10 +1,15 @@
 {1 The [readme] processor}
 
 The task of the [readme] processor is to convert a document conforming
-to the XML DTD "readme.dtd" to an HTML document or a text document.
+to the XML DTD "readme.dtd" into an HTML document or a text document.
+This example especially demonstrates how to use node extensions to add
+custom methods to nodes (see {!Intro_extensions}), and how to use the
+object-oriented feature of late binding so that every node type
+behaves differently.
 
 Note that the converter code dates back from 1999. Nowadays I would
-have written it in a different style.
+probably have written it as a purely functional transformer. This
+task is now left to the reader...
 
 {2 The [readme] DTD}
 
@@ -320,6 +325,9 @@ let escape_html s =
     s
 ]}
 
+Note (of 2009): There is also the Ocamlnet function
+[Netencoding.Html.encode] one can use. It has a special XML mode.
+
 {3 The virtual class [shared]}
 
 This virtual class is the abstract superclass of the extension classes
@@ -358,10 +366,12 @@ For an introduction into extension classes see {!Intro_extensions}.
 
 {3 The class [only_data]}
 
-This class defines [to_html] such that the character data of
-the current node is converted to HTML. Note that [self] is an
-extension object, [self # node] is the node object, and
-[self # node # data] returns the character data of the node. 
+This class defines [to_html] such that the character data of the
+current node is converted to HTML. Note that [self] is an extension
+object (of type {!Pxp_document.extension}), [self # node] is the node
+object (of type {!Pxp_document.node}), and [self # node # data]
+returns the character data of the node (see
+{!Pxp_document.node.data}).
 
 {[
 class only_data =
@@ -469,17 +479,19 @@ class readme =
 ]}
 
 This class is an example how to access the value of an attribute: The
-value is determined by invoking [self # node # attribute "title"]. As
-this attribute has been declared as CDATA and as being required, the
-value has always the form [Value s] where [s] is the string value of
-the attribute.
+value is determined by invoking [self # node # attribute "title"] (see
+{!Pxp_document.node.attribute}). As this attribute has been declared
+as CDATA and as being required, the value has always the form [Value
+s] where [s] is the string value of the attribute. Attribute values
+have type {!Pxp_types.att_value}.
 
-You can also see how entity contents can be accessed. A parameter entity object
-can be looked up by [self # node # dtd # par_entity "name"],
-and by invoking [replacement_text] the value of the entity
-is returned after inner parameter and character entities have been
-processed. Note that you must use [gen_entity] instead of
-[par_entity] to access general entities.
+You can also see how entity contents can be accessed. A parameter
+entity object can be looked up by [self # node # dtd # par_entity
+"name"] (see {!Pxp_dtd.dtd.par_entity}), and by invoking
+{!Pxp_dtd.Entity.replacement_text} the value of the entity is returned
+after inner parameter and character entities have been processed. Note
+that you must use {!Pxp_dtd.dtd.gen_entity} instead of [par_entity] to
+access general entities.
 
 
 {3 The classes [section], [sect1], [sect2], and [sect3]}
@@ -518,22 +530,23 @@ class sect3 = section "h4"
 ]}
 
 Section elements are converted to HTML by printing a headline and then
-converting the contents of the element recursively. More precisely, the first
-sub-element is always a [title] element, and the other
-elements are the contents of the section. This structure is declared in the
-DTD, and it is guaranteed that the document matches the DTD. Because of this
-the title node can be separated from the rest without any checks.
+converting the contents of the element recursively. More precisely,
+the first sub-element is always a [title] element, and the other
+elements are the contents of the section. This structure is declared
+in the DTD, and it is guaranteed that the document matches the
+DTD. Because of this the title node can be separated from the rest
+without any checks.
 
-Both the title node, and the body nodes are then converted to HTML by calling
-[to_html] on them.
+Both the title node, and the body nodes are then converted to HTML by
+calling [to_html] on them.
 
 {3 The classes [map_tag], [p], [em], [ul], and [li] }
 
 Several element types are converted to HTML by simply mapping them to
-corresponding HTML element types. The class [map_tag]
-implements this, and the class argument [the_target_tag]
-determines the tag name to map to. The output consists of the start tag, the
-recursively converted inner elements, and the end tag.
+corresponding HTML element types. The class [map_tag] implements this,
+and the class argument [the_target_tag] determines the tag name to map
+to. The output consists of the start tag, the recursively converted
+inner elements, and the end tag.
 
 {[
 class map_tag the_target_tag =
@@ -558,8 +571,8 @@ class li = map_tag "li"
 
 {3 The class [br]}
 
-Element of type [br] are mapped to the same HTML type. Note
-that HTML forbids the end tag of [br].
+Element of type [br] are mapped to the same HTML type. Note that HTML
+forbids the end tag of [br].
 
 {[
 class br =
@@ -591,7 +604,7 @@ class code =
       (* convert tabs *)
       let l = String.length data in
       let rec preprocess i column =
-        (* this is very ineffective but comprehensive: *)
+        (* this is very ineffective but comprehensible: *)
         if i < l then
           match data.[i] with
               '\t' ->
@@ -720,6 +733,8 @@ class footnote =
 
 This code sets up the hash table that connects element types with the
 exemplars of the extension classes that convert the elements to HTML.
+See {!Intro_extensions.bindext} for comments, and 
+{!Pxp_document.make_spec_from_alist} for the function definition.
 
 {[
 let tag_map =

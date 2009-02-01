@@ -61,7 +61,7 @@ of the extension objects has to be the same for all nodes in a tree.
 It is not possible to e.g. use a different type for elements than for
 data nodes.
 
-{2 How to define an extension class}
+{2:defext How to define an extension class}
 
 At minimum, you must define the methods [clone], [node], and
 [set_node] such that your class is compatible with the type
@@ -148,7 +148,7 @@ sense, or it would violate some important condition), it is possible
 to define the method and to always raise an exception when the method
 is invoked (e.g. [assert false]).
 
-{2 How to bind extension classes to element types}
+{2:bindext How to bind extension classes to element types}
 
 Once you have defined your extension classes, you can bind them to
 element types. The simplest case is that you have only one class and
@@ -202,7 +202,7 @@ let spec =
 The extension object [c] is still used for all data nodes and
 for all other element types.
 
-{2 An example}
+{2:example An example}
 
 A complete example using extension objects is the [readme]
 processor. The full source code is included in the PXP source tarball.

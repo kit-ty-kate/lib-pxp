@@ -133,7 +133,7 @@ method of the element node. If this way of handling processing instructions
 is not exact enough, the parser can optionally create processing instruction
 nodes that are regular members of the document tree.
 
-{2 Access methods}
+{2:access Access methods}
 
 An overview over some relevant access methods:
 

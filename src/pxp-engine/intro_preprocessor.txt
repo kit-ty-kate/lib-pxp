@@ -1,1 +1,846 @@
-XXX
+{1 The PXP Preprocessor}
+
+Since PXP-1.1.95, there is a preprocessor as part of the PXP
+distribution. It allows you to compose XML trees and event lists
+dynamically, which is very handy to write XML transformations.
+
+To enable the preprocessor, compile your source files as in:
+
+{[ ocamlfind ocamlc -syntax camlp4o -package pxp-pp,... ... ]}
+
+The package [pxp-pp] contains the preprocessor. The [-syntax] option
+enables camlp4, on which the preprocessor is based. It is also
+possible to use it together with the revised syntax, use [-syntax
+camlp4r] in this case.
+
+In the toploop, type 
+
+{[
+ocaml
+# #use "topfind";;
+# #camlp4o;;
+# #require "pxp-pp";;
+# #require "pxp";;
+]}
+
+The preprocessor defines the following new syntax notations, explained
+below in detail:
+
+
+- [<:pxp_charset< CHARSET_DECL >>]
+- [<:pxp_tree< EXPR >>]
+- [<:pxp_vtree< EXPR >>]
+- [<:pxp_evlist< EXPR >>]
+- [<:pxp_evpull< EXPR >>]
+- [<:pxp_text< TEXT >>]
+
+The basic notation is [pxp_tree] which creates a tree of PXP document
+nodes as described in EXPR. [pxp_vtree] is the variant where the tree
+is immediately validated - with [pxp_tree] the tree is not validated,
+but one can validate it later (e.g. when the whole output tree of the
+program is built up).  [pxp_evlist] creates a list of PXP events
+instead of nodes, useful together with the event parser. [pxp_evpull]
+is a variation of the latter: Instead of an event list an event
+generator is created that works like a pull parser.
+
+The [pxp_charset] notation only configures the character sets to
+assume.  Finally, [pxp_text] is a notation for string literals.
+
+
+{2:pxp_tree Creating constant XML with [pxp_tree] - basic syntax}
+
+The following examples are all written for [pxp_tree]. You can also
+use one of the other XML composers instead, but see the notes below
+that explain a few differences.
+
+In order to use [pxp_tree], you must define two variables in the
+environment: [spec] and [dtd]:
+
+{[
+let spec = Pxp_tree_parser.default_spec
+let dtd = Pxp_dtd.create_dtd `Enc_iso88591
+]}
+
+These variables are assumed to exist by the generated code. The [dtd]
+variable is the DTD object. Note that you need it even in
+well-formedness mode (validation turned off) - see the explanations in
+{!Intro_getting_started.wfmode} to understand why. The [spec] variable
+controls which classes are instantiated as node representation. See
+{!Intro_getting_started.spec} for the meaning of [spec].
+
+{3 Elements, attributes, and data nodes}
+
+Now you can create XML trees like in 
+
+{[
+let book = 
+  <:pxp_tree< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+As you can see, the syntax is somehow XML-related but not really
+XML. (Many ideas are borrowed from CDUCE, by the way.) In particular,
+there are start tags like [<title>] but no end tags. Instead, we are
+using square brackets to denote where the list of the children of the
+XML element starts and where it ends. Furthermore, character data must
+be put into double quotes.
+
+You may ask why the well-known XML syntax has been modified for this
+preprocessor. There are many reasons, and they will become clearer in
+the following explanations. For now, you can see the advantage that
+the syntax is less verbose, as you need not to repeat the element
+names in end tags (I know programmers like brevity).  Furthermore, you
+can exactly control which characters are part of the data nodes
+without having to make compromises with indentation.
+
+Attributes are written as in XML: 
+
+{[
+let book = 
+  <:pxp_tree< 
+    <book id="BOOK_001">
+      [ <title lang="en">[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+An element without children can be written 
+
+{[ <element>[] ]}
+
+or slightly shorter: 
+
+{[ <element/> ]}
+
+{3 Processing instructions and comments}
+
+You can also create processing instructions and comment nodes: 
+
+{[
+let list =
+  <:pxp_tree<
+    <list>
+      [ <!>"Now the list of books follows!"
+        <?>"formatter_directive" "one book per page"
+        book
+      ]
+ >>
+]}
+
+The notation [<!>] creates a comment node with the following string as
+contents. The notation [<?>] for constructing processing instructions
+needs two strings, first the target, then the value (here, this
+results in [<?formatter_directive one book per page?>]).
+
+Look again at the last example: The O'Caml variable [book] occurs, and
+it inserts its tree into the list of books. Identifiers without
+"decoration" just refer to O'Caml variables. We will see more examples
+below.
+
+{3 Elements with one child}
+
+The preprocessor syntax knows a number of shortcuts and
+variations. First, you can omit the square brackets when an element
+has exactly one child:
+
+{[
+<element><child>"Data inside child"
+]}
+
+This is the same as 
+
+{[
+<element>[ <child>[ "Data inside child" ] ]
+]}
+
+{3 Details of data nodes}
+
+Second, we already have used a common abbreviation: Strings are
+automatically converted to data nodes. The "expanded" syntax is
+
+{[
+<*>"Data string"
+]}
+
+where [<*>] denotes to construct a data node, and the following string
+is used as contents.  Usually, you can omit [<*>], so this is the same
+as
+
+{[
+"Data string"
+]}
+
+However, there are a few occasions where the [<*>] notation is still
+useful, see below (essentially, it also works like a type annotation:
+the following subexpression must be a string).
+
+Inside strings, the usual entity references can be used: [&lt;],
+[&gt;], [&amp;], [&quot;], [&apos;], and also numeric references work:
+[&#]{i n}[;] where {i n} is a number. Note that [&lt;], [&gt;], and
+[&apos;] are not obligatory, as [<], [>], and ['] can be included
+directly.
+
+Example: ["Double quotes: &quot;"]. For a newline character, write
+[&#10;].
+
+{3 Operators}
+
+The preprocessor knows two operators: [^] concatenates strings, and
+[@] concatenates lists. Examples:
+
+{[
+<element>[ "Word1" ^ "Word2" ]
+<element>([ <a/> ] @ [ <b/> ])
+]}
+
+
+Parentheses can be used to clarify precedence. For example: 
+
+{[
+<element>(l1 @ l2)
+]}
+
+Without parentheses, the concatenation operator [@] would be parsed as
+
+{[
+(<element> l1) @ l2
+]}
+
+Parentheses may be used in any expression.
+
+{3 Super root}
+
+Rarely used, there is also a notation for the "super root" nodes.
+For uses of this node types, see {!Intro_getting_started.nodetypes}.
+
+{[
+<^>[ <element> ... ]
+]}
+
+
+
+
+{2:dynamic Dynamic XML}
+
+This section describes how to insert dynamically created content into
+XML trees.
+
+Let us begin with an example. The task is to convert O'Caml values of
+type
+
+{[
+type book = 
+  { title : string;
+    author : string;
+    isbn : string;
+  }
+]}
+
+to XML trees like 
+
+{[ 
+<book id="BOOK_{isbn}">
+  <title>{title}</title>
+  <author>{author}</title>
+</book>
+]}
+
+(conventional syntax, with placeholders in \{braces\}). When [b] is the
+book variable, the solution is
+
+{[
+let book = 
+  let title = b.title
+  and author = b.author
+  and isbn = b.isbn in
+  <:pxp_tree<
+    <book id=("BOOK_" ^ isbn)>
+      [ <title><*>title
+        <author><*>author
+      ]
+  >>
+]}
+
+First, we bind the simple O'Caml variables [title], [author], and
+[isbn]. The reason is that the preprocessor syntax does not allow
+expressions like [b.title] directly in the XML tree (but see below for
+another, often better workaround).
+
+The XML tree contains the O'Caml variables. The [id] attribute is a
+concatenation of the fixed prefix [BOOK_] and the contents of
+[isbn]. The [title] and [author] elements contain a data node whose
+contents are the O'Caml strings [title], and [author], respectively.
+
+Why [<*>]? If we just wrote [<title>title], the generated code would
+assume that the [title] variable is an XML node (of type
+{!Pxp_document.node}), and not a string. From this point of view,
+[<*>] works like a type annotation, as it specialises the type of the
+following expression.
+
+{3 The [(: ... :)] notation}
+
+Here is an alternate solution: 
+
+{[
+let book = 
+  <:pxp_tree<
+    <book id=("BOOK_" ^ (: b.isbn :))>
+      [ <title><*>(: b.title :)
+        <author><*>(: b.author :)
+      ]
+  >>
+]}
+
+The notation [(: ... :)] allows you to include arbitrary O'Caml
+expressions into the tree. In this solution it is no longer necessary
+to artificially create O'Caml variables for the only purpose of
+injecting values into trees.
+
+{3 Dynamic names}
+
+It is possible to create XML elements with dynamic names: Just put
+parentheses around the expression. Example:
+
+{[
+let name = "book" in
+<:pxp_tree< <(name)> ... >>
+]}
+
+With the same notation, one can also set attribute names dynamically:
+
+{[
+let att_name = "id" in
+<:pxp_tree< <book (att_name)=...> ... >>
+]}
+
+{3 Dynamic attribute lists}
+
+Finally, it is also possible to include complete attribute lists
+dynamically:
+
+{[
+let att_list = [ "id", ("BOOK_" ^ b.isbn) ] in
+<:pxp_tree< <book (: att_list :) > ... >>
+]}
+
+Here, [att_list] must be a [(string*string) list] with the attributes
+to include.
+
+{3 Typing}
+
+Depending on where a variable or O'Caml expression occurs, different
+types are assumed. Compare the following examples:
+
+{[
+<:pxp_tree< <element>x1 >>
+<:pxp_tree< <element>[x2] >>
+<:pxp_tree< <element><*>x3 >>
+]}
+
+As a rule of thumb, the most general type is assumed that would make
+sense at a certain location. As [x1] could be replaced by a list of
+children, its type is assumed to be a node list. As [x2] could be
+replaced by a single node, its type is assumed to be a node. And [x3]
+is a string, we had this case already.
+
+
+{2:pxp_charset Character encodings: [pxp_charset]}
+
+As the preprocessor generates code that builds XML trees, it must know
+two character encodings:
+
+-  Which encoding is used in the source code (in the .ml file) 
+-  Which encoding is used in the XML representation, i.e. in the O'Caml 
+   values representing the XML trees
+   
+Both encodings can be set independently. The syntax is: 
+
+{[
+<:pxp_charset< source="ENC" representation="ENC" >>
+]}
+
+where [ENC] is the name of the selected encoding.  The default is
+ISO-8859-1 for both encodings. For example, to set the representation
+encoding to UTF-8, use:
+
+{[
+<:pxp_charset< representation="UTF-8" >>
+]}
+
+The [pxp_charset] notation is a constant expression that always
+evaluates to [()]. (A requirement by camlp4 that looks artificial.)
+
+When you set the representation encoding, it is required that the
+encoding stored in the DTD object is the same. Remember that we need a
+DTD object like
+
+{[
+let dtd = Pxp_dtd.create_dtd `Enc_iso88591
+]}
+
+Of course, we must change this to the representation encoding, too. In
+our example:
+
+{[
+let dtd = Pxp_dtd.create_dtd `Enc_utf8
+]}
+
+The preprocessor cannot check this at compile time, and for
+performance reasons, a runtime check is not generated. So it is up to
+the programmer that the character encodings are used in a consistent
+way.
+
+
+{2:validate Validated trees: [pxp_text], calling [validate], and [pxp_vtree]}
+
+In order to validate trees, you need a filled DTD object. In
+principle, you can create this object by a number of methods. For
+example, you can parse an external file:
+
+{[
+let dtd = Pxp_dtd_parser.parse_dtd_entity config (from_file "sample.dtd")
+]}
+
+It is, however, often more convenient to include the DTD literally
+into the program. This works by
+
+{[
+let dtd = Pxp_dtd_parser.parse_dtd_entity config (from_string "...")
+]}
+
+As the double quotes are often used inside DTDs, O'Caml string
+literals are a bit impractical, as they are also delimited by double
+quotes, and one needs to add backslashes as escape characters. The
+[pxp_text] notation is often more readable here: 
+
+{[ <:pxp_text<STRING>> ]}
+
+is just another way of writing ["STRING"]. In our DTD, we have
+
+{[
+let dtd_text =
+  <:pxp_text<
+    <!ELEMENT book (title,author)>
+    <!ATTLIST book id CDATA #REQUIRED>
+    <!ELEMENT title (#PCDATA)>
+    <!ATTLIST title lang CDATA "en">
+    <!ELEMENT author (#PCDATA)>
+  >>
+let config = default_config
+let dtd = Pxp_dtd_parser.parse_dtd_entity config (from_string dtd_text)
+]}
+
+Note that [pxp_text] is not restricted to DTDs, as it can be used for
+any kind of string.
+
+After we have the DTD, we can validate the trees. One option is to
+call the {!Pxp_document.validate} function:
+
+{[
+let book = 
+  <:pxp_tree< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+let () =
+  Pxp_document.validate book
+]}
+
+(This example is invalid, and [validate] will throw an exception, as
+the [id] attribute is missing.)
+
+Note that it is a misunderstanding that [pxp_tree] builds XML trees in
+well-formedness mode. You can create any tree with it, and the fact is
+that [pxp_tree] just does not invoke the validator. So if the DTD
+enforces validation, the tree is validated when the [validate]
+function is called. If the DTD is in well-formedness mode, the tree is
+effectively not validated, even when the [validate] function is
+invoked. Btw, the following statements would create a DTD in
+well-formedness mode:
+
+{[
+let dtd = Pxp_dtd.create_dtd `Enc_iso88591
+let () = dtd # allow_arbitrary
+]}
+
+{3 Validating with [pxp_vtree]}
+
+As an alternative of calling the [validate] function, one can also use
+[pxp_vtree] instead. It immediately validates every XML element it
+creates.  However, "injected" subtrees are not validated,
+i.e. validation does not proceed recursively to subnodes as the
+[validate] function does it.
+
+[pxp_vtree] has the same syntax as [pxp_tree].
+
+
+{2:events Generating events: [pxp_evlist] and [pxp_evpull]}
+
+As PXP has also an event model to represent XML, the preprocessor can
+also produce such events. In particular, there are two modes: The
+[pxp_evlist] notation outputs lists of events (of type
+{!Pxp_types.event}[ list]) representing the XML expression. The
+[pxp_evpull] notation creates an automaton from which one can "pull"
+events (like from a pull parser). The automaton has type
+[unit -> ]{!Pxp_types.event}.
+
+{3 [pxp_evlist]}
+
+Syntactically, these two notations work very much like [pxp_tree]. For
+example,
+
+{[
+let book = 
+  <:pxp_evlist< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+returns this list of events:
+
+{[
+[ E_start_tag ("book", [], None, <obj>);
+  E_start_tag ("title", [], None, <obj>);
+  E_char_data "The Lord of The Rings"; 
+  E_end_tag ("title", <obj>);
+  E_start_tag ("author", [], None, <obj>); 
+  E_char_data "J.R.R. Tolkien";
+  E_end_tag ("author", <obj>); 
+  E_end_tag ("book", <obj>)
+]
+]}
+
+(Here, [<obj>] denotes the [entity_id] object for identifying the 
+containing entity.)
+
+Note that you neither need a [dtd] variable nor a [spec] variable in
+event mode. 
+
+There is one important culprit: Both single nodes and lists of nodes
+are represented by the same type, {!Pxp_types.event}[ list]. That has
+the consequence that in the following example [x1] and [x2] have the
+same type {!Pxp_types.event}[ list]:
+
+{[
+<:pxp_evlist< <element>x1 >>
+<:pxp_evlist< <element>[x2] >>
+]}
+
+In principle, it could be checked at runtime whether [x1] and [x2]
+have the right structure. However, this is not done because of
+performance reasons, and because the generated XML is still
+well-formed. The typing is just different from [pxp_tree] which
+distinguishes between a single [node] and a [node list].
+
+{3 [pxp_evpull]}
+
+As mentioned, [pxp_evpull] works like a pull parser. After defining
+
+{[
+let book = 
+  <:pxp_evpull< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+[book] is a function [unit -> ]{!Pxp_types.event}. One can call it to
+pull the events out of it one after the other:
+
+{[
+let e1 = book();;       (* = Some(E_start_tag ("book", [], None, <obj>)) *)
+let e2 = book();;       (* = Some(E_start_tag ("title", [], None, <obj>)) *)
+...
+]}
+
+After the last event, [book] returns [None] to indicate the end of the
+event stream.
+
+As for [pxp_evlist], it is not possible to distinguish between single
+nodes and node lists by type. In this example, both [x1] and [x2] are
+assumed to have type [unit -> ]{!Pxp_types.event}:
+
+{[
+<:pxp_evlist< <element>x1 >>
+<:pxp_evlist< <element>[x2] >>
+]}
+
+Note that [<element>x1] actually means to build a new pull automaton
+around the existing pull automaton [x1]: The children of [element] are
+retrieved by pulling events from [x1] until [None] is returned.
+
+A consequence of the pull semantics is that once an event is obtained
+from an automaton, the state of the automaton is modified such that it
+is not possible to get the same event again. If you need an automaton
+that can be reset to the beginning, just wrap the [pxp_evlist]
+notation into a functional abstraction:
+
+{[
+let book_maker() =
+  <:pxp_evpull< <book ...> ... >>
+let book1 = book_maker()
+let book2 = book_maker()
+]}
+
+This way, [book1] and [book2] generate independent event streams.
+
+There is another implication of the nature of the automatons:
+Subexpressions are lazily evaluated. For example, in
+
+{[
+<:pxp_evpull< <element>[ <*> (: get_data_contents() :) ] >>
+]}
+
+the call of [get_data_contents] is performed just before the event for
+the data node is constructed instead of being done at automaton 
+construction time.
+
+
+{2:documents Documents}
+
+Note that none of the notations [pxp_tree], [pxp_vtree],
+[pxp_evlist], or [pxp_evpull] is able to create documents. They just
+create what is equivalent to the node tree inside a document, but not
+the document wrapping.
+
+In the tree case, just put the node tree into a 
+{!classtype:Pxp_document.document}:
+
+{[
+let book = <:pxp_tree< ... >>
+let doc = new Pxp_document.document warner dtd#encoding
+doc # init_root book "book"
+]}
+
+In the event case, the generated events do not include
+[E_start_doc], [E_end_doc], or [E_end_of_stream]. If required, one
+has to add these events manually which is quite simple.
+For [pxp_evlist], do something like
+
+{[
+let doc =
+  E_start_doc("1.0", dtd) ::
+  ( <:pxp_evlist< <book>... >> @
+    [ E_end_doc("book");
+      E_end_of_stream 
+    ]
+  )
+]}
+
+For [pxp_evpull], do something like
+
+{[
+let doc =
+  Pxp_event.concat
+    [ Pxp_event.of_list [ E_start_doc("1.0", dtd) ];
+      <:pxp_evpull< <book>... >>;
+      Pxp_event.of_list [E_end_doc("book"); E_end_of_stream ]
+    ]
+]}
+
+(See {!Pxp_event.concat} and {!Pxp_event.of_list}.)
+
+
+{2:namespaces Namespaces}
+
+By default, the preprocessor does not generate nodes or events that
+support namespaces. It can, however, be configured to create
+namespace-aware XML aggregations.
+
+In any case, you need a namespace manager. This is an object that
+tracks the usage of namespace prefixes in XML nodes. For example, we
+can create a namespace manager that knows the [html] prefix:
+
+{[
+let mng = new Pxp_dtd.namespace_manager in
+mng # add_namespace "html" "http://www.w3.org/1999/xhtml"
+]}
+
+(Also see {!classtype:Pxp_dtd.namespace_manager}.)
+Here, we declare that we want to use the [html] prefix for the
+internal representation of the XML nodes. This kind of prefix is
+called normalized prefix, or normprefix for short. It is possible to
+configure different prefixes for the external representation,
+i.e. when the XML tree is printed to a file.  This other kind of
+prefix is called display prefix. We will have a look at them later.
+(For a more detailed discussion of namespaces, see
+{!Intro_namespaces}.)
+
+Next, we must tell the DTD object that we have a namespace manager:
+
+{[
+let dtd = Pxp_dtd.create_dtd `Enc_iso88591
+dtd # set_namespace_manager mng
+]}
+
+For [pxp_evlist] and [pxp_evpull] we are now prepared (note that we
+need now a [dtd] variable, as only the DTD object knows the namespace
+manager). For [pxp_tree] and [pxp_vtree], it is required to use a
+namespace-aware specification:
+
+{[
+let spec = Pxp_tree_parser.default_namespace_spec 
+]}
+
+(Normal specifications do not work, you would get "Namespace method not 
+applicable" errors if you tried to use them.)
+
+
+{3 Using [<:autoscope>]}
+
+The special notation [<:autoscope>] enables namespace mode in this
+example:
+
+{[
+let list =
+  <:pxp_tree<
+    <:autoscope>
+      <html:ul>
+        [ <html:li>"Item1"
+          <html:li>"Item2"
+        ]
+  >>
+]}
+
+In particular, [<:autoscope>] defines a new O'Caml variable for its
+subexpression: [scope]. This variable contains the namespace scope
+object, which contains the namespace declarations for the
+subexpression. [<:autoscope>] initialises this variable from the
+namespace manager such that it contains now a declaration for the
+[html] prefix. [scope] has type {!classtype:Pxp_dtd.namespace_scope}.
+
+In general, the namespace scope object contains the prefixes to use
+for the external representation (as opposed to the namespace
+manager which defines the prefixes for the internal representation).
+If the external prefixes can be the same as the internal ones,
+[<:autoscope>] is the right directive, as it initalizes the [scope]
+object with the prefixes from the namespace manager, so that both
+views are the same.
+
+Print the tree by 
+
+{[
+list # display (`Out_channel stdout) `Enc_iso88591
+]}
+
+Note that there is a [display] and a [write] method. The difference
+is that [display] prints the external prefixes (from [scope]), and
+that [write] prints the internal prefixes (from the namespace
+manager). In this introduction we prefer [display].
+
+{3 Using [<:scope>] in its basic form}
+
+Alternatively, we can also create the [scope] variable manually:
+
+{[
+let scope = Pxp_dtd.create_namespace_scope
+              ~decl:[ "", "http://www.w3.org/1999/xhtml" ]
+              mng
+let list =
+  <:pxp_tree<
+    <:scope>
+      <html:ul>
+        [ <html:li>"Item1"
+          <html:li>"Item2"
+        ]
+  >>
+]}
+
+Note that we now use [<:scope>]. In this simple form, this construct
+just enables namespace mode, and takes the [scope] variable from the
+environment.
+
+Furthermore, the namespace scope contains now a different namespace
+declaration: The display prefix [""] is used for HTML. The empty
+prefix just means to declare a default prefix (by [xmlns="URI"]). The
+effect can be seen when the XML tree is printed by calling the
+[display] method.
+
+If we had called [create_namespace_scope] with the [decl] argument
+
+{[
+  ~decl:[ "foo", "http://www.w3.org/1999/xhtml" ]
+]}
+
+the displayed tree would use the [foo] prefix, and declare it as
+[xmlns:foo="http://www.w3.org/1999/xhtml"].
+
+
+{3 Using [<:scope>] to set display prefixes}
+
+Here is a third variant of the same example: 
+
+{[
+let scope = Pxp_dtd.create_namespace_scope mng
+let list =
+  <:pxp_tree<
+    <:scope ("")="http://www.w3.org/1999/xhtml">
+      <html:ul>
+        [ <html:li>"Item1"
+          <html:li>"Item2"
+        ]
+  >>
+]}
+
+The [scope] is now initially empty. The [<:scope>] notation is used to
+extend the scope for the time the subexpression is evaluated.
+
+There is also a notation [<:emptyscope>] that creates an empty scope
+object, so one could even write
+
+{[
+let list =
+  <:pxp_tree<
+    <:emptyscope>
+      <:scope ("")="http://www.w3.org/1999/xhtml">
+        <html:ul>
+          [ <html:li>"Item1"
+            <html:li>"Item2"
+          ]
+  >>
+]}
+
+The [<:scope>] notation can be used in any subexpression, and it
+modifies the display prefix to use in that subexpression. For example,
+here a different prefix [foo] is used for the second item:
+
+{[
+let list =
+  <:pxp_tree<
+    <:emptyscope>
+      <:scope ("")="http://www.w3.org/1999/xhtml">
+        <html:ul>
+          [ <html:li>"Item1"
+            <:scope foo="http://www.w3.org/1999/xhtml">
+               <html:li>"Item2"
+          ]
+  >>
+]}
+
+It is recommended to create the [scope] variable manually with a
+reasonable initial declaration, and to use [<:scope>] to enable
+namespace processing, and to extend the scope where necessary. The
+advantage of this approach is that the same scope object can be shared
+by many XML nodes, so you need less memory.
+
+One tip: To get a namespace scope that is initialised with all
+prefixes of the namespace manager (as [<:autoscope>] does it), define
+
+{[
+let scope = create_namespace_scope ~decl: mng#as_declaration mng
+]}
+
+For event-based processing of XML, the namespace mode works in the
+same way as described here, there is no difference.

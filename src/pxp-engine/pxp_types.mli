@@ -331,7 +331,19 @@ val default_config : config
    *) 
 
 val default_namespace_config : config
-  (** Same as [default_config], but namespace processing is turned on *)
+  (** {b Deprecated.}
+      Same as [default_config], but namespace processing is turned on.
+      Note however, that a globally defined namespace manager is used.
+      Because of this, this [config] should no longer be used. Instead, do
+      {[
+         let m = Pxp_dtd.create_namespace_manager() in
+         let namespace_config =
+               { default_config with
+                    enable_namespace_processing = Some m
+               }
+      ]}
+      and take control of the scope of [m].
+   *)
 
 
 (**********************************************************************)

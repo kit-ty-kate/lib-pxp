@@ -7,9 +7,9 @@
 (** DTD objects 
 
     The DTD object is a separate container for the formal requirements
-    of a document. The DTD object is always present in a document, even
-    when validation is turned off. See {!class: Pxp_dtd.dtd} for details about
-    the DTD object.
+    of a document. The DTD object is always present in a document,
+    even when validation is turned off. See {!classtype: Pxp_dtd.dtd}
+    for details about the DTD object.
 
     There are a number of accompanying objects also defined in this
     module (e.g. [namespace_manager] or [dtd_element]). 
@@ -34,35 +34,51 @@ type validation_record =
 (**/**)
 
   (** This class manages mappings from URIs to normalized prefixes. For every
-   * namespace a namespace_manager object contains a set of mappings
+   * namespace a namespace_manager object contains a set that maps
+   * various URI's to the same normalized prefix [np]:
    * {[ uri1 |-> np, uri2 |-> np, ..., uriN |-> np ]}
    * The normalized prefix [np] is characterstical of the namespace, and
    * identifies the namespace uniquely.
    * The first URI [uri1] is the primary URI, the other URIs are aliases.
+   *
+   * In order to create an empty namespace, call
+   * {!Pxp_dtd.create_namespace_manager}.
+   *
+   * See {!Intro_namespaces} for an introduction to namespaces and more
+   * links to other explanations about namespace managers.
+   *
    * The following operations are supported:
-   * - [add_uri np uri]: The passed [uri] is added to the already existing
-   *   namespace which is identified by the normprefix [np]. This means
-   *   that the precondition is that there is already some mapping
-   *   [uri' |-> np], and that there is no mapping for [uri]. Postcondition
-   *   is that [uri |-> np] is a new mapping.
-   *   [add_uri] thus adds a new alias URI for an existing namespace.
-   * - [add_namespace np uri]: Precondition is that neither [np] nor [uri]
-   *   are used in the namespace_manager object. The effect is that the
-   *   mapping [uri |-> np] is added.
+   * - [add_namespace np uri]: adds a new mapping [uri |-> np] to the
+   *   manager. Neither [np] nor [uri] must already be part of another
+   *   mapping in the manager.
+   * - [add_uri np uri]: adds a new alias [uri] for an existing namespace
+   *   which is identified by the normprefix [np]. The normprefix [np]
+   *   must already be part of a mapping which is then extended by this
+   *   method.
    * - [lookup_or_add_namespace p uri]: If there is already some mapping
    *   [uri |-> np], the normprefix [np] is simply returned ("lookup"). In this
    *   case [p] is ignored. Otherwise [uri] is not yet mapped, and in this
    *   case some unique [np] must be found such that [uri |-> np] can be
    *   added ([add_namespace]). First, the passed prefix [p] is tried.
    *   If [p] is free, it can be taken as new normprefix: [np = p]. Otherwise
-   *   some number [n] is found such that the concatenation [p + n] is free:
-   *   [np = p + n]. The operation returns [np].
+   *   some number [n] is found such that the concatenation [p ^ n] is free:
+   *   [np = p ^ n]. The operation returns [np].
    *
    * {b Encodings:} prefixes and URIs are always encoded in the default
    * encoding of the document
    *)
 class namespace_manager :
   object
+    method add_namespace : string -> string -> unit
+      (** [add_namespace np uri]: adds a new namespace to the object. The
+       * namespace is identified by the normprefix [np] and contains initially
+       * the primary URI [uri].
+       * The method fails ([Namespace_error]) if either [np] already identifies
+       * some namespace or if [uri] is already member of some namespace.
+       * Nothing happens if [uri] is the sole member of the namespace [np].
+       * It is required that [np <> ""].
+       *)
+
     method add_uri : string -> string -> unit
       (** [add_uri np uri]: adds [uri] as alias URI to the namespace identified
        * by the normprefix [np] (see above for detailed semantics). The method
@@ -74,16 +90,6 @@ class namespace_manager :
        *
        * {b Change in PXP 1.2:} Using exception [Namespace_prefix_not_managed]
        * instead of [Not_found].
-       *)
-
-    method add_namespace : string -> string -> unit
-      (** [add_namespace np uri]: adds a new namespace to the object. The
-       * namespace is identified by the normprefix [np] and contains initially
-       * the primary URI [uri].
-       * The method fails ([Namespace_error]) if either [np] already identifies
-       * some namespace or if [uri] is already member of some namespace.
-       * Nothing happens if [uri] is the sole member of the namespace [np].
-       * It is required that [np <> ""].
        *)
 
     method lookup_or_add_namespace : string -> string -> string
@@ -100,9 +106,6 @@ class namespace_manager :
       (** Return the primary URI for a normprefix, or raises
        * [Namespace_prefix_not_managed]. [get_uri ""] raises always this
        * exception.
-       *
-       * {b Change in PXP 1.2}: Using exception [Namespace_prefix_not_managed]
-       * instead of [Not_found].
        *)
 
     method get_uri_list : string -> string list
@@ -114,9 +117,6 @@ class namespace_manager :
     method get_normprefix : string -> string
       (** Return the normprefix for a URI, or raises 
        * [Namespace_not_managed].
-       *
-       * {b Change in PXP 1.2}: Using exception [Namespace_not_managed]
-       * instead of [Not_found].
        *)
 
     method iter_namespaces : (string -> unit) -> unit
@@ -152,15 +152,24 @@ val create_namespace_manager : unit -> namespace_manager
  *
  * Furthermore, the [namespace_scope] object may have a parent 
  * [namespace_scope], representing the namespace declarations in the
- * surrounding XML text.
+ * surrounding XML text. [namespace_scope] objects are intentionally
+ * immutable. When some XML subtree is cut out of a document
+ * and inserted into another document, the original [namespace_scope]
+ * declarations (including
+ * all parents) are still applied to the subtree when it is in the
+ * new document. Further changes in the old document cannot break this
+ * assertion because of the immutability.
  *
  * The [namespace_scope] objects are connected with the [namespace_manager]
  * to allow translations from the namespace prefixes found in the XML
  * text (also called "display prefixes" from now on) to the normalized
  * prefixes stored in the [namespace_manager], and vice versa.
  *
- * The [namespace_scope] objects are intentionally immutable in order to
- * allow memory sharing.
+ * Call {!Pxp_dtd.create_namespace_scope} to create a scope object using
+ * the default implementation.
+ *
+ * See {!Intro_namespaces} for an introduction to namespaces and more
+ * links to other explanations about scopes.
  *)
 class type namespace_scope =
 object
@@ -235,10 +244,15 @@ val create_namespace_scope :
   (** Preferred way of creating a [namespace_scope] *)
     
 
-  (** DTD objects are used to keep global declarations that apply to the
-      whole XML document. 
+  (** DTD objects have two purposes:
+       - They are containers for global declarations that apply to the
+         whole XML document. This includes the character set, the
+         standalone declaration, and all declaration that can appear
+         in the "DTD part" of a document.
+       - Also, they express formal constraints the document must fulfill
+         such as validity, or (less ambitious) well-formedness.
 
-      Normally, programmers need neither to create such objects, nor to
+      Normally, programmers neither need to create such objects, nor to
       fill them with data, as the parser already does this. If it is required
       to create a DTD object, the recommended function is
       {!Pxp_dtd.create_dtd}.
@@ -253,7 +267,11 @@ val create_namespace_scope :
         - Whether the document is declared as standalone
 
       A consequence of this is that even documents have a DTD object
-      for which only well-formedness parsing is enabled.
+      that only have to comply to the relatively weak well-formedness
+      constraints.
+
+      For some introductory words about well-formedness mode, see
+      {!Intro_getting_started.wfmode}.
    *)
 class dtd :
   ?swarner:Pxp_core_types.symbolic_warnings ->
@@ -692,7 +710,8 @@ val create_dtd :
    *             ~warner:config.warner
    *             config.encoding]}
    *
-   * See also {!Pxp_dtd_parser.create_empty_dtd}.
+   * See also {!Pxp_dtd_parser.create_empty_dtd}, which creates a DTD
+   * from a {!Pxp_types.config} record.
    *)
 
 

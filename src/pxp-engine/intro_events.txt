@@ -1,6 +1,967 @@
 {1 XML data as stream of events}
 
-XXX
+In contrast to the tree mode (see {!Intro_trees}), the parser does not
+return the complete document at once in event mode, but as a sequence
+of so-called events. The parser makes a number of guarantees about
+the structure of the emitted events, especially it is ensured that they
+conform to the well-formedness constraints. For instance, it is ensured
+that start tags and end tags are properly nested. Nevertheless, it is 
+up to the caller to process and/or aggregate the events. This leaves
+a lot of freedom for the caller.
 
-also explain how to combine with a rec-desc grammar
+The event mode is especially well-suited for processing very large
+documents. As PXP does not by itself represent the complete document
+in memory, PXP needs usually not to maintain large data structures in
+event mode. Of course, the caller should also try to avoid such data
+structures.  This makes it then possible to even process arbitrarily
+large documents in many cases. Note, however, that not all limits are
+taken out of effect. For example, for checking well-formedness the
+parser still needs to maintain a stack of start elements whose end
+elements have not been seen yet. Because of this, it is not possible
+to parse arbitrarily deeply nested documents with constant memory. On
+32 bit platforms, there is still a limit of the maximum string length
+of 16 MB.
 
+Another application of event mode is the direct combination with
+recursive-descent parsers for postprocessing the stream of events.
+See below {!Intro_events.recdesc} for more.
+
+The event mode also makes it feasible to enable the special escape
+tokens [\{], [\}], [\{\{], and [\}\}]. PXP can be configured such that
+these tokens trigger a user-defined add-on parser that reads directly
+from the character stream. See below {!Intro_events.escape} for more.
+
+We should also mention one basic limitation of event-oriented parsing:
+It is fundamentally incompatible with validation, as the tree view is
+required to validate a document.
+
+{3:links Links to other documentation}
+
+- {!Pxp_types.event} is the data type of events. Also explained below
+- {!Pxp_ev_parser} is the module with parsing functions in event mode
+- {!Pxp_event} is a module with helper functions for event mode, such as
+  concatenation of event streams
+- {!Pxp_document.liquefy} allows one to convert a tree into an event stream
+- {!Pxp_document.solidify} allows one to convert an event stream into a tree
+- {!Intro_preprocessor.events} explains how to use the preprocessor to
+  construct event streams
+
+{3:compat Compatibility}
+
+Event mode is compatible with:
+
+- Well-formedness parsing
+- Namespaces: Namespace processing works as outlined in {!Intro_namespaces},
+  only that the user needs to interpret the namespace information contained
+  in the events differently. See below {!Intro_events.namespaces} for more.
+- Reading from arbitrary sources as described in {!Intro_resolution}
+
+Event mode is incompatible with:
+
+- Validation
+
+
+
+{2:structure The structure of event streams}
+
+First we describe how well-formed XML fragments are represented in
+stream format, i.e. XML text that is properly nested with respect to
+start tags and end tags. For a real text, the parser will also emit
+some wrapping.  It is distinguished between documents and non-document
+entities. A document is a formally closed text that consists of one
+main entity (file) and optionally a number of referenced entities.
+One can parse a file as document, and in this case the parser will add
+a wrapping suited for documents. Alternatively, one can parse an
+entity as a plain entity, and in this case the parser will add a
+wrapping suited for non-documents. Note that the XML declaration
+([<?xml ... ?>]) for such non-document entities is slightly different,
+and that no [DOCTYPE] clause is permitted.
+
+
+{3:wf The structure of well-formed XML fragments}
+
+The type of events is {!Pxp_types.event}. The events do not strictly
+correspond to syntactical elements of XML, but more to a logical 
+interpretation.
+
+The parser emits events for
+{ul
+  {- [E_char_data(text)]: Character data - The parser emits character
+  data events for sequences of characters. It is unspecified how long
+  these sequences are. This means it is up to the parser how a
+  contiguous section of characters is split up into one or more
+  character data events, i.e. {b adjacent character data events may be
+  emitted by the parser.} Also, it is not tried to suppress whitespace
+  of any kind. For example, the XML text
+  {[ Hello world ]}
+  might lead to the emission of
+  {[ [E_char_data "Hello "; E_char_data "world"] ]}
+  but also to any other split into events.
+
+  }
+  {- [E_start_tag(name,atts,scope_opt,entid)]: Start tags of elements - 
+  Includes everything within the angle brackets, i.e. [name] and
+  attribute list [atts] (as name/value pairs). The event also
+  includes the namespace scope [scope_opt] if namespace processing is 
+  enabled (or [None]), and it includes a reference [entid] to the entity
+  the tag occurs in. Note that the tag name and the attribute names
+  are subject to prefix normalization if namespace processing is
+  enabled.
+
+  }
+  {- [E_end_tag(name,entid)]: End tags of elements - The event
+  mentions the [name], and the entity [entid] the tag occurs in.
+  Both [name] and [entid] are always identical to the values
+  attached to the corresponding start tag.
+
+  Note that the short form of empty elements, [<tag/>] are emitted as
+  a start tag followed by an end tag.
+  }
+  {- [E_pinstr(name,value,entid)] and
+  [E_pinstr_member(name,value,entid)]: Processing instructions 
+  (PI's) - In tree mode, PI's can be represented in two ways: Either by
+  attaching them to the surrounding elements, or by including them
+  into the tree exactly where they occurred in the text. For symmetry,
+  the same two ways of handling PI's are also present in the event
+  stream representation (event streams and trees should be convertible
+  into each other without data loss). This means there are two events,
+  one ([E_pinstr_member]) indicating to attach the PI to the surrounding
+  element, and one ([E_pinstr])
+  indicating to include the PI at its position. The two events carry
+  the same information: the [name] of the PI, the [value], and a
+  reference [entid] to the entity it occurs in. Usually, user code processing
+  event streams can handle both event types in exactly the same
+  way. As in tree mode, there is the config option (see {!Pxp_types.config})
+  [enable_pinstr_nodes] controlling which type of event is emitted.
+  If [true], the parser emits [E_pinstr], otherwise [E_pinstr_member].
+  It is not possible to turn the emission of PI events completely
+  off. (See {!Intro_events.filters} for an example how to filter out
+  PI events in a postprocessing step.)
+
+  }
+  {- [E_comment text]: Comments - If enabled (by
+  [enable_comment_nodes] in {!Pxp_types.config}), the parser emits
+   comment events.
+
+  }
+  {- [E_start_super] and [E_end_super]: Super root nodes - If enabled
+  (by [enable_super_root_node] in {!Pxp_types.config}), the parser emits
+   a start event for
+  the super root node at the beginning of the stream, and an end event
+  at the end of the stream. This is comparable to an element embracing
+  the whole text.
+
+  }
+  {- [E_position(e,l,p)]: Position events - If enabled (by
+  [store_element_positions] in {!Pxp_types.config}), the parser emits
+  special position
+  events. These events refer to the immediately following event, and
+  say from where in the XML text the following event
+  originates. Position events are emitted before [E_start_tag],
+  [E_pinstr], and [E_comment]. The argument [e] is a textual
+  description of the entity. [l] is the line. [p] is the byte position
+  of the character.
+  }
+}
+
+As in the tree mode, entities are fully resolved, and do not appear
+in the parsed events. Also, syntactic elements like CDATA sections,
+the XML declaration, the DOCTYPE clause, and all elements only
+allowed in the DTD part are not represented.
+
+Example for an event stream: The XML fragment
+
+{[
+  <p a1="one"><q>data1</q><r>data2</r><s></s><t/></p>
+]}
+
+could be represented as
+
+{[
+  [ E_start_tag("p",["a1","one"],None,<entid>);
+    E_start_tag("q",[],None,<entid>);
+    E_char_data "data1";
+    E_end_tag("q",<entid>);
+    E_start_tag("r",[],None,<entid>);
+    E_char_data "data2";
+    E_end_tag("r",<entid>);
+    E_start_tag("s",[],None,<entid>);
+    E_end_tag("s",<entid>);
+    E_start_tag("t",[],None,<entid>);
+    E_end_tag("t",<entid>);
+    E_end_tah("p",<entid>);
+  ]
+]}
+
+where [<entid>] is the entity ID object.
+
+
+{3:nondocs The wrapping for non-document entities}
+
+CHECK: THAT DOES NOT MATCH THE CODE!
+
+The XML specification demands that external XML entities (that are
+referenced from a document entity or another external entity) comply
+to this grammar (excerpt from the W3C definition):
+
+{[
+extParsedEnt ::= TextDecl? content
+TextDecl     ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
+content      ::= (element | CharData | Reference | CDSect | PI | Comment)*
+]}
+
+i.e. there can be an XML declaration at the beginning (always with
+an [encoding] declaration), but the declaration is optional.
+It is followed by a sequence of elements, character data, processing
+instructions and comments (which are reflected by the events emitted
+by the parser), and by entity references and CDATA sections (which
+are already resolved by the parser).
+
+The emitted events are now:
+- No event is emitted for the XML declaration
+- The stream consists of the events for the [content] production
+- Finally, there is an [E_end_of_stream] event.
+
+When the parser detects an error, it stops the event stream, and
+emits a last [E_error] event instead.
+
+
+{3:docs The wrapping for closed documents}
+
+Closed documents have to match this grammar (excerpt from the W3C
+definition):
+
+{[
+document ::= prolog element Misc*
+prolog 	 ::= XMLDecl? Misc* (doctypedecl Misc*)?
+XMLDecl  ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+]}
+
+That means there can be an XML declaration at the beginning (always
+with a [VersionInfo] declaration), but the declaration is optional.
+There can be a [DOCTYPE] declaration. Finally, there must be a single
+element. The production [Misc] stands for a comment, a processing
+instruction, or whitespace.
+
+The emitted events are now:
+- [E_start_doc(version,dtd)] is always emitted at the beginning.
+  The [version] string is from [VersionInfo], or "1.0" if the whole
+  XML declaration is missing. The [dtd] object may contain the 
+  declaration of the parsed [DOCTYPE] clause. However, by setting parsing
+  parameters it is possible to control which declarations are
+  added to the [dtd] object.
+- If [enable_super_root]: [E_start_super]
+- If there are comments or processing instructions before the
+  topmost element, and the node type is enabled, these events
+  are now emitted.
+- Now the events of the topmost [element] follow.
+- If there are comments or processing instructions after the
+  topmost element, and the node type is enabled, these events
+  are now emitted.
+- If [enable_super_root]: [E_end_super]
+- [E_end_doc name]: ends the document. The [name] is the literal
+  name of the topmost element, without any prefix normalization
+  even if namespace processing is enabled
+- Finally, there is an [E_end_of_stream] event.
+
+When the parser detects an error, it stops the event stream, and
+emits a last [E_error] event instead.
+
+
+{2:calling Calling the parser in event mode}
+
+The parser returns the emitted events while it is parsing. There are
+two models for that:
+
+- Push parsing: The caller passes a callback function to the parser,
+  and whenever the parser emits an event, this function is invoked
+- Pull parsing: The parser runs as a coroutine together with the
+  caller. The invocation of the parser returns the pull function.
+  The caller now repeatedly invokes the pull function to get the 
+  emitted events until the end of the stream is indicated.
+
+Let's look at both models in detail by giving an example. There is
+some code that is needed in both push and pull parsing.  This example
+is similar to the examples given in {!Intro_getting_started}. First we
+need a {!Pxp_types.source} that says from where the input to parse
+comes. Second, we need an entity manager (of the opaque PXP type
+[Pxp_entity_manager.entity_manager]). The entity manager is a device
+that controls the source and switches between the entities to parse
+(if such switches are necessary). The entity manager is visible to the
+caller in event mode - in tree mode it is also needed but hidden in
+the parser driver.
+
+{[
+let config = Pxp_types.default_config
+let file_url = Pxp_reader.make_file_url "filename.xml"
+let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let entmng = Pxp_ev_parser.create_entity_manager config source
+]}
+
+(See also: {!Pxp_ev_parser.create_entity_manager}.)
+
+From here on, the required code differs in both parsing modes.
+
+
+{3:push Push parsing}
+
+The function {!Pxp_ev_parser.process_entity} invokes the parser
+in push mode:
+
+{[
+let () = Pxp_ev_parser.process_entity config entry entmng (fun ev -> ...)
+]}
+
+The callback function is here shown as [(fun ev -> ...)]. It is called
+back for every emitted event [ev] (of type {!Pxp_types.event}). It is
+ensured that the last emitted event is either [E_end_of_stream] or
+[E_error]. See the documentation of {!Pxp_ev_parser.process_entity}
+for details about error handling.
+
+The parameter [entry] (of type {!Pxp_types.entry}) determines the
+entry point in the XML grammar.  Essentially, it says what kind of
+thing to parse. Most users will want to pass [`Entry_document] here to
+parse a closed document. Note that the emitted event stream includes
+the wrapping for documents as described in {!Intro_events.docs}.
+
+The entry point [`Entry_content] is for non-document external entities,
+as described in {!Intro_events.nondocs}.
+
+The entry point [`Entry_expr] reads a single node (see {!Pxp_types.entry}
+for details). It is recommended to use {!Pxp_ev_parser.process_expr}
+instead of {!Pxp_ev_parser.process_entity} together with this entry
+point, as this allows to start and end parsing within an entity, instead
+of having to parse an entity as a whole. (This is intended for special
+applications only.)
+
+The entry point [`Entry_declarations] is currently unused.
+
+{b Flags for [`Entry_document].} This entry point takes some flags as
+arguments that determine some details. It is usually ok to just pass
+the empty list of flags, i.e. [`Entry_document []]. The flags may
+enable some validation checks, or at least configure that some data is
+stored in the DTD object so that it is available for a later
+validation pass. Remember that the event mode by itself can only do
+well-formedness parsing. It can be reasonable, however, to enable
+flags when the event stream is later validated by some other means
+(e.g. by converting it into a tree and validating it).
+
+
+
+{3:pull Pull parsing}
+
+The pull parser is created by {!Pxp_ev_parser.create_pull_parser} like:
+
+{[
+let pull = create_pull_parser config entry entmng
+]}
+
+The arguments [config], [entry], and [entmng] have the same meaning as
+for the push parser. In the case of the pull parser, however, no callback
+function is passed by the user. Instead, the return value [pull] is a
+function one can call to "pull" the events out of the parser engine.
+The [pull] function returns [Some ev] where [ev] is the event of type
+{!Pxp_types.event}. After the end of the stream is reached, the function
+returns [None].
+
+Essentially, the parser works like an engine that can be started and
+stopped. When the [pull] function is invoked, the parser engine is
+"turned on", and runs for a while until (at least) the next event is
+available. Then, the engine is stopped again, and the event is returned.
+The engine keeps its state between invocations of [pull] so that the
+parser continues exactly at the point where it stopped the last time.
+
+Note that files and other resources of the operating system are kept
+open while parsing is in progress. It is expected by the user to
+continue calling [push] until the end of the stream is reached (at
+least until [Some E_end_of_stream], [Some E_error], or [None] is
+returned by [pull]). See the description of
+{!Pxp_ev_parser.create_pull_parser} for a way of prematurely closing
+the parser for the exceptional cases where parsing cannot go on until
+the final parser state is reached.
+
+
+
+{3 Preprocessor}
+
+The PXP preprocessor (see {!Intro_preprocessor}) allows one to create
+event streams programmatically. One can get the events either as
+list (type {!Pxp_types.event}[ list]), or in a form compatible with
+pull parsing. For example,
+
+{[
+let book_list = 
+  <:pxp_evlist< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+returns the events as a {!Pxp_types.event}[ list] whereas 
+
+{[
+let pull_book = 
+  <:pxp_evpull< 
+    <book>
+      [ <title>[ "The Lord of The Rings" ]
+        <author>[ "J.R.R. Tolkien" ]
+      ]
+  >>
+]}
+
+defines [pull_book] as an automaton from which one can pull the events
+like from a pull parser, i.e. [pull_book] is of type
+[unit->]{!Pxp_types.event}[ option], and by calling it one can get the
+events one after the other. [pull_book] has the same type as the pull
+function returned by the pull parser.
+
+For a more complete discussion see {!Intro_preprocessor.events}.
+
+Note that the preprocessor does not add any wrapping for documents or
+non-documents to the event stream. See {!Intro_preprocessor.documents}
+for an example how to add such a wrapping in user code postprocessing
+step.
+ 
+
+
+{3 Push or pull?}
+
+The question arises whether one should prefer the push or the pull
+model.  Generally, it is easy to turn a pull parser into a push parser
+by adding a loop that repeatedly invokes [pull] to get the events, and
+then calls the push function to deliver each event. There is no such
+possibility the other way round, i.e. one cannot take a push parser
+and make it look like a pull parser by wrapping it into some interface
+adapter - at least not in a language like O'Caml that does not know
+coroutines or continuations as language elements. Effectively, the
+pull model is the more general one.
+
+The function {!Pxp_event.iter} can be used to turn a pull parser into
+a push parser:
+
+{[
+Pxp_event.iter push pull
+]}
+
+The events [pull]-ed out of the parser engine are delivered one by
+one to the receiver by invoking [push].
+
+In PXP, the pull model is preferred, and a number of helper functions
+are only available for the pull model. If you need a push-stream
+nevertheless, it is recommended to use the pull parser, and to do all
+required transformations on it (like filtering, see below). Finally
+use {!Pxp_event.iter} to turn the pull stream into a push-compatible
+stream.
+
+
+
+{2:filters Filters}
+
+Filters are a way to transform event streams (as defined for pull parsers).
+For example, one can remove the processing instruction events by
+doing (given that [pull] is the original parser, and we define now
+a modified [pull'] for the transformed stream):
+
+{[
+let pull' = Pxp_event.pfilter
+              (function
+                | E_pinstr(_,_,_) -> false
+                | _ -> true
+              )
+              pull
+]}
+
+When events are read from [pull'], the events are also read from [pull],
+but all processing instruction events are suppressed. {!Pxp_event.pfilter}
+works a lot like [List.filter] - it only keeps the events in the stream
+for which a predicate function returns [true].
+
+
+{3 Normalizing character data events}
+
+{!Pxp_event.norm_cdata_filter} is a special predefined filter that
+transformes [E_char_data] events so that
+- empty [E_char_data] events are removed
+- adjacent [E_char_data] events are concatenated and replaced by a single
+  [E_char_data] event
+
+The filter is simply called by
+
+{[
+let pull' = Pxp_event.norm_cdata_filter pull
+]}
+
+
+{3 Removing ignorable whitespace}
+
+In validation mode, the DTD may specify ignorable whitespace. This is
+whitespace for which is known it only exists to make the XML tree more
+readable (indentation etc.). In tree mode, ignorable whitespace is
+removed by default (see [drop_ignorable_whitespace] in
+{!Pxp_types.config}).
+
+It is possible to clean up the event stream in this way - although the
+event mode is not capable of doing a full validation of the XML
+document. It is required, however, that all declarations are added to
+the DTD object. This is done by setting the flags [`Extend_dtd_fully]
+or [`Val_mode_dtd] in the entry point, e.g. use
+
+{[
+let entry = `Entry_document [`Extend_dtd_fully]
+]}
+
+when you create the pull parser. The declarations of the XML elements
+are needed to check whether whitespace can be dropped.
+
+The filter function is {!Pxp_event.drop_ignorable_whitespace_filter}.
+Use it like
+
+{[
+let pull' = Pxp_event.drop_ignorable_whitespace_filter pull
+]}
+
+This filter does:
+- it checks whether non-whitespace is used in forbidden places, e.g.
+  as children of an element that is declared with a regular expression
+  content model
+- it removes [E_char_data] events only consisting of whitespace when
+  they are ignorable.
+
+The stream remains being normalized if it was already normalized, i.e.
+you can use this filter before or after {!Pxp_event.norm_cdata_filter}.
+
+
+{3 Unwrapping documents}
+
+Sometimes it is necessary to get rid of the document wrapping. The
+filter {!Pxp_event.unwrap_document} can do this. Call it like:
+
+{[
+let get_doc_details, pull' = Pxp_event.unwrap_document pull
+]}
+
+The filter removes all [E_start_doc], [E_end_doc], [E_start_super],
+[E_end_super], and [E_end_of_stream] events. Also, when an [E_error]
+event is encountered, the attached exception is raised. The information
+attached to the removed [E_start_doc] event can be retrieved by
+calling [get_doc_details]:
+
+{[
+let xml_version, dtd = get_doc_details()
+]}
+
+Note that this call will fail if there is no [E_start_doc], and it can
+fail if it is not at the expected position in the stream. If you parse
+with the entry [`Entry_document], this cannot happen, though.
+
+It is allowed to call [get_doc_details] before using [pull'].
+
+
+
+{3 Chaining filters}
+
+It is allowed to chain filters, e.g.
+
+{[
+let pull1 = Pxp_event.drop_ignorable_whitespace_filter pull
+let pull2 = Pxp_event.norm_cdata_filter pull1
+]}
+
+
+{3 Other helper functions}
+
+In {!Pxp_event} there are also other helper functions besides filters.
+These functions can do:
+- conversion of pull streams to and from lists
+- concatenation of pull streams
+- extraction of nodes from pull streams
+- printing of pull streams
+- split namespace names
+
+
+
+
+{2:namespaces Events and namespaces}
+
+Namespace processing can also be enabled in event mode. This means that
+prefix normalization is applied to all names of elements and attributes.
+For example, this piece of code parses a file in event mode with enabled
+namespace processing:
+
+{[
+  let nsmng = Pxp_dtd.create_namespace_manager()
+  let config = 
+        { Pxp_types.default_config with
+             enable_namespace_processing = Some nsmng
+        }
+  let source = ...
+  let entmng = Pxp_ev_parser.create_entity_manager config source
+  let pull = create_pull_parser config entry entmng
+]}
+
+The names returned in [E_start_tag(name,attlist,scope_opt,entid)] are
+prefix-normalized, i.e. [name] and the attribute names in [attlist].
+The functions {!Pxp_event.namespace_split} and {!Pxp_event.extract_prefix}
+can be useful to analyze the names. For example, to get the namespace
+URI of an element name, do:
+
+{[
+  match ev with
+    | Pxp_types.E_start_tag(name,_,_,_) ->
+        let prefix = Pxp_event.extract_prefix name in
+        let uri = nsmng # get_primary_uri prefix in
+        ...
+]}
+
+Note that this may raise the exception [Namespace_prefix_not_managed]
+if the prefix is unknown or empty.
+
+When namespace processing is enabled, the namespace scopes are
+included in the [E_start_tag] events. This can be used to get the
+display (original) prefix:
+
+{[
+  match ev with
+    | Pxp_types.E_start_tag(name,_,Some scope,_) ->
+        let prefix = Pxp_event.extract_prefix name in
+        let dsp_prefix = scope # display_prefix_of_normprefix prefix in
+        ...
+]}
+
+Note that this may raise the exception [Namespace_prefix_not_managed]
+if the prefix is unknown or empty, or [Namespace_not_in_scope] if the
+prefix is not declared for this part of the XML text.
+
+
+
+{2 Example: Print the events while parsing}
+
+The following piece of code parses an XML file in event mode, and
+prints the events. The reader is encouraged to modify the code by
+e.g. adding filters, to see the effect.
+
+{[
+  let config = Pxp_types.default_config
+  let file_url = Pxp_reader.make_file_url "filename.xml"
+  let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+  let entmng = Pxp_ev_parser.create_entity_manager config source
+  let pull = create_pull_parser config entry entmng
+  let () = Pxp_event.iter
+             (fun ev -> print_endline (Pxp_event.string_of_event ev))
+             pull
+]}
+
+
+{2:recdesc Connect PXP with a recursive-descent parser}
+
+We assume here that a list of integers like
+
+{[
+   43 :: 44 :: []
+]}
+
+is represented in XML as
+
+{[
+  <list><cons><int>43</int><cons><int>44</int><nil/></cons></cons></list>
+]}
+
+i.e. we have
+- [list] indicates that the single child is a list
+- [cons] has two children: the first is the head of the list, and the
+  second the tail (think [head :: tail] in O'Caml)
+- [nil] is the empty list
+- [int] is an integer member of the list
+
+We want to parse such XML texts by using the event-oriented parser, and
+combine it with a recursive-descent grammar. The XML parser delivers
+events which are taken as the tokens of the second parser.
+
+{[
+let parse_list (s:string) =
+
+  let rec parse_whole_list stream =
+    (* Production:
+         whole_list ::= "<list>" sub_list "</list>" END
+     *)
+    match stream with parser
+        [< 'E_start_tag("list",_,_,_);
+           l = parse_sub_list;
+           'E_end_tag("list",_);
+           'E_end_of_stream;
+        >] ->
+          l
+
+  and parse_sub_list stream =
+    (* Production:
+         sub_list ::= "<cons>" object sub_list "</cons>"
+                    | "<nil>" "</nil>"
+     *)
+    match stream with parser
+        [< 'E_start_tag("cons",_,_,_); 
+           head = parse_object;
+           tail = parse_sub_list;
+           'E_end_tag("cons",_)
+        >] ->
+          head :: tail
+          
+      | [< 'E_start_tag("nil",_,_,_); 'E_end_tag("nil",_) >] ->
+          []
+
+  and parse_object stream =
+    (* Production:
+         object ::= "<int>" text "</int>"
+       with constraint that text is an integer parsable by int_of_string
+     *)
+    match stream with parser
+        [< 'E_start_tag("int",_,_,_);
+           number = parse_text;
+           'E_end_tag("int",_)
+        >] ->
+          int_of_string number
+
+  and parse_text stream =
+    (* Production.
+         text ::= "any XML character data"
+     *)
+    match stream with parser
+        [< 'E_char_data data;
+           rest = parse_text
+        >] ->
+          data ^ rest
+      | [< >] ->
+          ""
+  in
+
+  let config = 
+    { Pxp_types.default_config with
+        store_element_positions = false;
+          (* don't produce E_position events *)
+    }
+  in
+  let mgr = 
+     Pxp_ev_parser.create_entity_manager
+       config
+       (Pxp_types.from_string s) in
+  let pull = 
+    Pxp_ev_parser.create_pull_parser config (`Entry_content[]) mgr in
+  let pull' =
+    Pxp_event.norm_cdata_filter pull in
+  let next_event_or_error n =
+    let e = pull' n in
+    match e with
+        Some(E_error exn) -> raise exn
+      | _ -> e
+  in
+  let stream =
+    Stream.from next_event_or_error in
+  parse_whole_list stream
+]}
+
+The trick is to use [Stream.from] to convert the "pull-style" event stream
+into a [Stream.t]. The kind of stream can be parsed in a recursive-descent
+way by using stream parser capability built into O'Caml.
+
+Note that we normalize the character data nodes. The grammar can only
+process a single [E_char_data] event, and this normalization enforces
+that adjacent [E_char_data] events are merged.
+
+Note that you have to enable camlp4 when compiling this example, because
+the stream parsers are only available via camlp4.
+
+
+{2:escape Escape PXP parsing}
+
+{b This feature is still considered as experimental!}
+
+It is possible to define two escaping functions in {!Pxp_types.config}:
+- [escape_contents]: This function is called when one of the characters
+  [\{], [\}], [\{\{], or [\}\}] is found in character data context.
+- [escape_attributes]: This function is called when one of the 
+  mentioned special characters is found in the value of an attribute.
+
+Both escaping functions are allowed to operate directly on the
+underlying lexical buffer PXP uses, and because of this these
+functions can interpret the following characters in an arbitrary
+special way. The escaping functions have to return a replacement text,
+i.e.  a string that is to be taken as character data or as attribute
+value (depending on context).
+
+Why are the curly braces taken as escaping characters? This is
+motivated by the XQuery language. Here, a single [\{] switches from
+the XML object language to the XQuery meta language until another [\}]
+terminates this mode. By doubling the brace character, it loses its
+escaping function, and a single brace character is assumed.
+
+A simple example makes this clearer. We allow here that a number
+is written between curly braces in hexadecimal, octal or binary
+notation using the conventions of O'Caml. The number is inserted into
+the event stream in normalized decimal notation (i.e. no leading zeros).
+For instance, one can write
+
+{[
+  <foo x="{0xff}" y="{{}}">{0o76}</foo>
+]}
+
+and the parser emits the events
+
+{[
+    E_start_tag("foo", ["x", "255"; "y", "{}" ], _, _)
+    E_char_data("62")
+    E_end_tag("foo",_)
+]}
+
+Of course, this example is very trivial, and in this case, one could
+also get the same effect by postprocessing the XML events. We want
+to point out, however, that the escaping feature makes it possible to
+combine PXP with a foreign language with its own lexing and parsing
+functions.
+
+First, we need a lexer - this is [lex.mll]:
+
+{[
+  rule scan_number = parse
+   | [ '0'-'9' ]+ 
+        { `Int (int_of_string (Lexing.lexeme lexbuf)) }
+   | ("0b"|"0B") [ '0'-'1' ]+ 
+        { `Int (int_of_string (Lexing.lexeme lexbuf)) }
+   | ("0o"|"0O") [ '0'-'7' ]+ 
+        { `Int (int_of_string (Lexing.lexeme lexbuf)) }
+   | ("0x"|"0X") [ '0'-'9' 'a'-'f' 'A'-'F' ]+ 
+        { `Int (int_of_string (Lexing.lexeme lexbuf)) }
+   | "}" 
+        { `End }
+   | _
+        { `Bad }
+   | eof
+        { `Eof }
+]}
+
+This lexer parses the various forms of numbers. We are lucky that we
+can use [int_of_string] to convert these forms to ints. The right
+curly brace is also recognized. Any other character leads to a lexing
+error ([`Bad]). If the XML file stops, [`Eof] is emitted.
+
+Now the escape functions. [escape_contents] looks at the passed token.
+If it is a double curly brace, it immediately returns a single brace
+as replacement. A single left brace is processed by [parse_number],
+defined below. A single right brace is forbidden. Any other tokens
+cannot be passed to [escape_contents]. [escape_attributes] has
+an additional argument, but we can ignore this for now. (This argument
+is the position in the attribute value, for advanced post-processing.)
+
+{[
+  let escape_contents tok mng =
+    match tok with
+      | Lcurly (* "{" *) ->
+          parse_number mng
+      | LLcurly (* "{{" *) ->
+          "{"
+      | Rcurly (* "}" *) ->
+          failwith "Single } not allowed"
+      | RRcurly (* "}}" *) ->
+          "}"
+      | _ ->
+          assert false
+
+  let escape_attributes tok pos mng =
+    escape_contents tok mng
+]}
+
+Now, [parse_number] invokes our custom lexer [Lex.scan_number] with
+the (otherwise) internal PXP lexbuf. The function returns the replacement
+text.
+
+It is part of the interface that the next token of the lexbuf must be
+the character following the right curly brace.
+
+{[
+  let parse_number mng =
+    let lexbuf = mng # current_lexbuf in   (* FIXME: DOES NOT EXIST ANYMORE *)
+    match Lex.scan_number lexbuf with
+      | `Int n ->
+           let s = string_of_int n in
+           ( match  Lex.scan_number lexbuf with
+               | `Int _ ->
+                    failwith "More than one number"
+               | `End ->
+                    ()
+               | `Bad ->
+                    failwith "Bad character"
+               | `Eof ->
+                    failwith "Unexpected EOF"
+           );
+           s
+      | `End ->
+           failwith "Empty curly braces"
+      | `Bad ->
+           failwith "Bad character"
+      | `Eof ->
+           failwith "Unexpected EOF"
+]}
+
+Finally, we enable to use our escaping functions in the config record:
+
+{[
+let config =
+     { Pxp_types.default_config with
+         escape_contents = escape_contents;
+         escape_attributes = escape_attributes
+]}
+
+{3 How a complex example could work}
+
+The mentioned example is simple because the return value is a
+string. One can imagine, however, complex scenarios where one wants to
+insert custom events into the event stream. The PXP interface does not
+allow this directly. As workaround we suggest the following.
+
+The custom events are collected in special buffers. The buffers are
+numbered by sequential integers (0, 1, ...). So [escape_contents] would
+allocate such a buffer and get a number:
+
+{[
+  let buffer, n = allocate_event_buffer()
+]}
+
+Here, [buffer] could be an [event Queue.t]. The number
+[n] identifies the buffer. The buffers, once filled, can be looked up
+by
+
+{[
+  let buffer = lookup_event_buffer n
+]}
+
+So [escape_contents] would like to return the events collected in the
+buffer, so that these are inserted into the event stream at the 
+position where the curly escape occurs. As this is not allowed, it
+returns simply the buffer number instead so that it can be later
+identified, e.g.
+
+{[
+  "{BUFFER " ^ string_of_int n ^ "}"
+]}
+
+For unescaping curly braces one would insert special tokens, e.g.
+["{LCURLY}"] and ["{RCURLY}"].
+
+Now, the parser, specially configured with [escape_contents], will
+return event streams where [E_char_data] events may include this 
+special pointers to buffers [{BUFFER ]<n>[}], and the curly brace tokens
+[{LCURLY}] and [{RCURLY}]. In a postprocessing step, all occurrences
+of these tokens are localized in the event stream, and
+- for buffer tokens the buffer contents are looked up ([lookup_event_buffer]),
+  and the events found there are substituted
+- for [{LCURLY}] an [E_char_data "{"] event is substituted
+- for [{RCURLY}] an [E_char_data "}"] event is substituted
+
+It can be assumed that the tokens to localize are still [E_char_data]
+events of their own, i.e. not merged with adjacent [E_char_data]
+events.
+
+It is admitted that this is a complicated workaround.
+
+For attributes one can do basically the same. The postprocessing step
+may be a lot more complicated, however.

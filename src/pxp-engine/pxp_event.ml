@@ -7,6 +7,7 @@
 open Pxp_types
 open Pxp_dtd
 open Pxp_aux
+open Printf
 
 let to_list get_ev =
   (* This function must be tail-recursive! *)
@@ -218,6 +219,56 @@ let drop_ignorable_whitespace_filter get_ev =
 
   get_ev'
 ;;
+
+
+let unwrap_document pull =
+  let doc_details = ref None in
+  let first_event_done = ref false in
+
+  let get_doc_details() =
+    if not !first_event_done then (
+      match pull() with
+	| E_start_doc(v,dtd) ->
+	    doc_details := Some(v,dtd);
+	    first_event_done := true
+	| _ ->
+	    ()   (* Will cause an exception! *)
+    );
+    match !doc_details with
+      | None ->
+	  failwith "Pxp_event.unwrap_document: No E_start_doc event found"
+      | Some (v,dtd) ->
+	  (v,dtd)
+  in
+
+  let pull' =
+    pfilter
+      (function
+	 | E_start_doc(v,dtd) ->
+	     doc_details := Some(v,dtd);
+	     first_event_done := true;
+	     false
+	 | E_end_doc | E_start_super | E_end_super | E_end_of_stream ->
+	     false
+	 | E_error e ->
+	     raise e
+	 | _ ->
+	     true
+      )
+      pull
+  in
+
+  (get_doc_details, pull')
+;;
+
+
+let namespace_split = Pxp_aux.namespace_split
+;;
+
+
+let extract_prefix = Pxp_aux.extract_prefix
+;;
+
 
 type dtd_style =
     [ `Ignore
@@ -554,3 +605,41 @@ let write_events ?default ?(dtd_style = `Include) ?(minimization=`None) =
   wr_dsp false default dtd_style minimization ;;
 let display_events ?(dtd_style = `Include) ?(minimization=`None) = 
   wr_dsp true None dtd_style minimization ;;
+
+
+let string_of_event e =
+  match e with
+    | E_start_doc(v,dtd) ->
+	sprintf "E_start_doc(%s,<%d>)\n" v (Oo.id dtd)
+    | E_end_doc ->
+	"E_end_doc\n"
+    | E_start_tag(name,attlist,scope_opt,entid) ->
+	sprintf "E_start_tag(%s,%s,%s,<%d>)"
+	  name 
+	  (String.concat " " (List.map (fun (n,v) -> n ^ "=" ^ v) attlist))
+	  (match scope_opt with
+	     | None -> "None"
+	     | Some scope -> sprintf "<%d>" (Oo.id scope)
+	  )
+	  (Oo.id entid)
+    | E_end_tag(name,entid) ->
+	sprintf "E_end_tag(%s,<%d>)" name (Oo.id entid)
+    | E_start_super ->
+	"E_start_super"
+    | E_end_super ->
+	"E_end_super"
+    | E_char_data data ->
+	sprintf "E_char_data(\"%s\")" (String.escaped data)
+    | E_pinstr(target,data,entid) ->
+	sprintf "E_pinstr(%s,%s,<%d>)" target data (Oo.id entid)
+    | E_pinstr_member(target,data,entid) ->
+	sprintf "E_pinstr_member(%s,%s,<%d>)" target data (Oo.id entid)
+    | E_comment data ->
+	sprintf "E_comment(\"%s\")" (String.escaped data)
+    | E_position(ent,line,col) ->
+	sprintf "E_position(%s,%d,%d)" ent line col
+    | E_error e ->
+	sprintf "E_error(%s)" (Pxp_types.string_of_exn e)
+    | E_end_of_stream ->
+	"E_end_of_stream\n"
+;;

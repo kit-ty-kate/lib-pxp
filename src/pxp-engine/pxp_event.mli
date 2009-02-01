@@ -76,7 +76,10 @@ val extract : event -> (unit -> event option) -> (unit -> event option)
 
 (** {2 Filters} *)
 
-type filter = (unit -> event option) -> (unit -> event option)
+type pull_fn = unit -> event option
+  (** The result type of {!Pxp_ev_parser.create_pull_parser} *)
+
+type filter = pull_fn -> pull_fn
   (** A filter transforms a pull function into another pull function *)
 
 val norm_cdata_filter : filter
@@ -112,8 +115,49 @@ val pfilter : (event -> bool) -> filter
    * {[ pfilter (function E_comment _ -> false | _ -> true) g ]}
    *)
 
+val unwrap_document : pull_fn -> ((unit -> (string * Pxp_dtd.dtd)) * pull_fn)
+  (** This filter removes the document wrapping from the stream
+      (see {!Intro_events.docs} for a definition what this is).
+      It is called like
+
+      {[
+         let (get_doc_details, next') = unwrap_document next
+         let (version, dtd) = get_doc_details()
+       ]}
+
+      The returned [filter] removes any [E_start_doc], [E_end_doc],
+      [E_start_super], [E_end_super], and [E_end_of_stream] events.
+      If an [E_error] event is encountered, the contained exception
+      is raised. All other events of the stream remain.
+
+      The function [get_doc_details] can be called to get details
+      about the document definition. If an [E_start_doc] event is
+      found in the stream, the XML version string and the DTD
+      object are returned. The function fails if [E_start_doc] is
+      not the first event of the stream.
+   *)
+
 
 (* Missing: ID check *)
+
+
+(** {2 Helpers for namespace processing} *)
+
+(** The names in [E_start_tag] can be analyzed with the following. *)
+
+val namespace_split : string -> (string * string)
+  (** [let (p,l) = namespace_split name]: Splits [name] into the prefix
+      [p] and the local name [l]. If there is no colon in [name], the
+      function returns [p=""], and [l=name].
+   *)
+
+
+val extract_prefix : string -> string
+  (** Returns the prefix in the name, or [""] if there is no prefix.
+      Same as [fst(namespace_split name)].
+   *)
+
+
 
 (**********************************************************************)
 (*                            Printing                                *)
@@ -174,3 +218,6 @@ val display_events :
    *
    * The way the DTD is printed can be set as in [write_events].
    *)
+
+val string_of_event : event -> string
+  (** Returns a string representation of events, for debugging *)

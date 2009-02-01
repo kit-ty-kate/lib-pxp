@@ -45,17 +45,8 @@ computer. {!Pxp_reader.make_file_url} has to deal with character
 encodings of file names. It assumes UTF-8 by default. By passing
 arguments to this function, other assumptions about the encoding of
 file names can be made. Unfortunately, there is no portable way of
-determining the character encoding the system uses for file names. 
-
-Links:
- - {{:http://library.gnome.org/devel/glib/stable/glib-Character-Set-Conversion.html#g-get-filename-charsets}How GLib treats the file name encoding problem}
- - {{:http://developer.apple.com/technotes/tn/tn1150.html} OS X stores filenames on HFS+ volumes in a Unicode encoding}; the POSIX
-   functions like [open] expect file names in UTF-8 encoding.
- - Current Windows versions store filenames in Unicode. The Win32 functions
-   are available in a Unicode and in a so-called ANSI version
-   (see {{:http://msdn.microsoft.com/en-us/library/dd317752(VS.85).aspx}
-   Code Pages}), and the O'Caml runtime calls the latter. This means file
-   names available to PXP are encoded in the active code page.
+determining the character encoding the system uses for file names
+(see the hyperlinks at the end of this section).
 
 The returned [doc] object is of type {!classtype:Pxp_document.document}. This type
 is used for all regular documents that exist independently. The root
@@ -69,6 +60,16 @@ and the document conforms to the DTD. There is a weaker criterion for
 formal correctness called well-formedness. See below how to only the
 check for well-formedness while parsing without doing the whole
 validation.
+
+Links about the file name encoding problem:
+ - {{:http://library.gnome.org/devel/glib/stable/glib-Character-Set-Conversion.html#g-get-filename-charsets}How GLib treats the file name encoding problem}
+ - {{:http://developer.apple.com/technotes/tn/tn1150.html} OS X stores filenames on HFS+ volumes in a Unicode encoding}; the POSIX
+   functions like [open] expect file names in UTF-8 encoding.
+ - Current Windows versions store filenames in Unicode. The Win32 functions
+   are available in a Unicode and in a so-called ANSI version
+   (see {{:http://msdn.microsoft.com/en-us/library/dd317752(VS.85).aspx}
+   Code Pages}), and the O'Caml runtime calls the latter. This means file
+   names available to PXP are encoded in the active code page.
 
 {2:complink Compiling and linking}
 
@@ -311,7 +312,7 @@ the executable. The lexers are available as separate findlib packages:
 
 For the link command, see above: {!Intro_getting_started.complink}.
 
-{3 Event parser (push/pull parsing)}
+{3:evparser Event parser (push/pull parsing)}
 
 It is sometimes not desirable to represent the parsed XML data as
 tree. An important reason is that the amount of data would exceed the
@@ -338,7 +339,7 @@ The events have type {!Pxp_types.event} [option].
 
 More about event parsing can be found in {!Intro_events}.
 
-{3 Low-profile trees}
+{3:lowprofile Low-profile trees}
 
 When the tree classes in {!Pxp_document} are too much overhead,
 it is easily possible to define a specially crafted tree data type, and
@@ -418,7 +419,7 @@ Of course, this all is only reasonable for the well-forermedness mode,
 as PXP's validation routines depend on the built-in tree representation
 of {!Pxp_document}.
 
-{3 Choosing the node types to represent}
+{3:nodetypes Choosing the node types to represent}
 
 By default, PXP only represents element and data nodes (both in the
 normal tree representation and in the event stream). It is possible
@@ -453,7 +454,7 @@ let config =
 ]}
 
 
-{3 Controlling whitespace}
+{3:whitespace Controlling whitespace}
 
 Depending on the mode, PXP applies some automatic whitespace rules. The
 user can call functions to reduce whitespace even more.
@@ -527,7 +528,7 @@ of whitespace in data nodes.
 
 
 
-{3 Checking the [ID] consistency and looking up nodes by [ID]}
+{3:idcheck Checking the [ID] consistency and looking up nodes by [ID]}
 
 In XML it is possible to identify elements by giving them an [ID]
 attribute. The requires a DTD, and could be done with declarations
@@ -587,7 +588,7 @@ Note that the [id_index] is not automatically updated when the parsed
 tree is modified.
 
 
-{3 Finding nodes by element names}
+{3:findelements Finding nodes by element names}
 
 As we are at it: PXP does not maintain indexes of any kind. Unlike in
 other tree representations, there is no index of elements that would
@@ -750,7 +751,7 @@ opened when exactly the URL is referenced that is also mentioned in the
 catalog.
 
 
-{3 Embedding large constant XML in source code}
+{3:codewriter Embedding large constant XML in source code}
 
 Sometimes one needs to embed XML files into source code. For small files
 this is no problem at all, just define them as string literals
@@ -852,6 +853,8 @@ namespace is uniquely identified by a prefix. Note that this means
 that the elements and attributes may be renamed by the parser.
 
 For details how the prefix normalization works, see {!Intro_namespaces}.
+Namespace processing can also be combined with event-oriented
+parsing, see {!Intro_events.namespaces}.
 
 
 {3:spec Specifying which classes implement nodes - the mysterious [spec] parameter}
@@ -868,7 +871,7 @@ namespace-enabled parsing a different set of node classes is used:
 let spec = Pxp_tree_parser.default_namespace_spec
 ]}
 
-The mysterious [spec] parameter directs PXP which class it uses for
+The mysterious [spec] parameter controls which class it uses for
 which node type. In the source code of {!Pxp_tree_parser}, we find
 
 {[
@@ -917,9 +920,13 @@ XML it is not designed for:
 
 - It is not possible to leave entities unresolved in the text. Whenever
   there is an [&entity;] or [%entity;] PXP replaces it with the definition
-  of that entity.
+  of that entity. It is an error if the entity turns out to be undefined,
+  and parsing is stopped with an exception.
 - It is not possible to figure out notational details of the XML text,
   such as where CDATA sections are used
+- It is not possible to parse a syntactically wrong document as much as
+  possible, and to return the parseable parts. PXP either parses the 
+  document completely, or it fails completely.
 
 Effectively, this makes it hard to use PXP for XML editing, but otherwise
 does not limit its uses.

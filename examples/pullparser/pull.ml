@@ -15,29 +15,8 @@ open Printf
 
 (* dump_event: dumps a single parsing event *)
 
-let dump_event =
-  function
-      E_start_doc(v,sa,dtd) ->
-	printf "E_start_doc version=%s standalone=%b\n" v sa
-    | E_end_doc ->
-	printf "E_end_doc\n"
-    | E_start_tag(name,attlist,_) ->
-	printf "E_start_tag %s %s\n" name 
-	  (String.concat " " (List.map (fun (n,v) -> n ^ "=" ^ v) attlist))
-    | E_end_tag(name,_) ->
-	printf "E_end_tag %s\n" name
-    | E_char_data data ->
-	printf "E_char_data %s\n" data
-    | E_pinstr(target,data) ->
-	printf "E_pinstr %s %s\n" target data
-    | E_comment data ->
-	printf "E_comment %s\n" data
-    | E_position(ent,line,col) ->
-	printf "E_position %s line=%d col=%d\n" ent line col
-    | E_error e ->
-	printf "E_error %s\n" (Printexc.to_string e)
-    | E_end_of_stream ->
-	printf "E_end_of_stream\n"
+let dump_event e =
+  print_endline (Pxp_event.string_of_event e)
 ;;
 
 
