@@ -7,7 +7,7 @@
 (* Examples for pull parsing                                          *)
 (**********************************************************************)
 
-open Pxp_yacc
+open Pxp_ev_parser
 open Pxp_lexer_types
 open Pxp_types
 open Printf
@@ -47,7 +47,7 @@ let parse_list s =
 
   let rec parse_whole_list stream =
     match stream with parser
-	[< 'E_start_tag("list",_,_);
+	[< 'E_start_tag("list",_,_,_);
 	   l = parse_sub_list;
 	   'E_end_tag("list",_);
 	   'E_end_of_stream;
@@ -56,19 +56,19 @@ let parse_list s =
 
   and parse_sub_list stream =
     match stream with parser
-	[< 'E_start_tag("cons",_,_); 
+	[< 'E_start_tag("cons",_,_,_); 
 	   head = parse_object;
 	   tail = parse_sub_list;
 	   'E_end_tag("cons",_)
 	>] ->
 	  head :: tail
 	  
-      | [< 'E_start_tag("nil",_,_); 'E_end_tag("nil",_) >] ->
+      | [< 'E_start_tag("nil",_,_,_); 'E_end_tag("nil",_) >] ->
 	  []
 
   and parse_object stream =
     match stream with parser
-	[< 'E_start_tag("int",_,_);
+	[< 'E_start_tag("int",_,_,_);
 	   number = parse_text;
 	   'E_end_tag("int",_)
 	>] ->
@@ -92,8 +92,8 @@ let parse_list s =
   let mgr = create_entity_manager config (from_string s) in
   let next_event = 
     create_pull_parser config (`Entry_content[]) mgr in
-  let next_event_or_error n =
-    let e = next_event n in
+  let next_event_or_error _ =
+    let e = next_event () in
     match e with
 	Some(E_error exn) -> raise exn
       | _ -> e

@@ -1,7 +1,7 @@
-(* $Id *)
+(* $Id$ *)
 
 open Pxp_document
-open Pxp_yacc
+open Pxp_tree_parser
 open Pxp_types
 
 exception User_error of string
@@ -125,7 +125,7 @@ let replace_macro_use container tree =
 
 
 let read_macro_dtd config =
-  parse_dtd_entity config (from_file "macro.dtd")
+  Pxp_dtd_parser.parse_dtd_entity config (from_file "macro.dtd")
 ;;
 
 

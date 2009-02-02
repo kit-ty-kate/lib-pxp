@@ -6,7 +6,7 @@
 (* Read a record-list, sort it, and print it as XML *)
 open Pxp_types;;
 open Pxp_document;;
-open Pxp_yacc;;
+open Pxp_tree_parser;;
 
 let sort by tree =
   map_tree
@@ -48,7 +48,8 @@ let main() =
     exit 1
   );
   try
-    let dtd = parse_dtd_entity default_config (from_file "record.dtd") in
+    let dtd = 
+      Pxp_dtd_parser.parse_dtd_entity default_config (from_file "record.dtd") in
     let tree = 
       parse_content_entity default_config (from_channel stdin) dtd default_spec
     in

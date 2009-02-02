@@ -5,7 +5,7 @@
 
 
 open Pxp_document;;
-open Pxp_yacc;;
+open Pxp_tree_parser;;
 open Pxp_types;;
 
 let error_happened = ref false;;

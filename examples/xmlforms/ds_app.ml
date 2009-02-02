@@ -6,7 +6,7 @@
 open Tk
 open Pxp_types
 open Pxp_document
-open Pxp_yacc
+open Pxp_tree_parser
 open Ds_context
 open Ds_style
 
@@ -44,7 +44,7 @@ let edit filename cmd =
   root # extension # prepare (index :> 'ext index);
 
   let obj_dtd =
-    parse_dtd_entity
+    Pxp_dtd_parser.parse_dtd_entity
       default_config
       (from_file object_dtd_sysid)
   in

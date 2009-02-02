@@ -27,7 +27,7 @@
  *   (conversion of <?xml-stylesheet ...?> to <style ...>)
  *)
 
-open Pxp_yacc;;
+open Pxp_tree_parser;;
 open Pxp_types;;
 open Pxp_document;;
 

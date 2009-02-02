@@ -5,7 +5,7 @@
 
 open Pxp_types
 open Pxp_document
-open Pxp_yacc
+open Pxp_tree_parser
 
 let empty_record = new element_impl (Pxp_yacc.default_extension);;
 let empty_dnode = new data_impl Pxp_yacc.default_extension;;
