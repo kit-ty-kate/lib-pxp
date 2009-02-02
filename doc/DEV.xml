@@ -66,6 +66,8 @@ for PXP; if you are looking for the stable distribution, please go
         <p>Improvement: The parser also accepts a BOM as UTF-8 sequence.
            Also, the autodetection of the encoding for UTF-16 has been
            enhanced</p>
+        <p>Fix: Pxp_marshal module also keeps namespace scope objects</p>
+        <p>Addition: method lexbuf in lexer_obj</p>
       </li>
       <li><p><em>1.2.0test*:</em> New ~minimization option for the
         [write] and [display] methods (user wish).</p>

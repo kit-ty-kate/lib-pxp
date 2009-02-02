@@ -178,6 +178,11 @@ let string_of_tok tok =
   | DQuote -> "DQuote"
   | ERef_att _ -> "ERef_att"
 
+type lexbuf =
+    [ `Ocamllex of Lexing.lexbuf
+    | `Netulex of Netulex.Ulexing.lexbuf
+    ]
+
 class type lexer_factory =
 object
   method encoding : Pxp_core_types.I.rep_encoding
@@ -218,6 +223,7 @@ object
   method lexeme : string
   method lexeme_strlen : int
   method sub_lexeme : int -> int -> string
+  method lexbuf : lexbuf
 end
 
 

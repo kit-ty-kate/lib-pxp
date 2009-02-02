@@ -125,6 +125,8 @@ object(self)
 
   method sub_lexeme pos len =
     Ulexing.utf8_sub_lexeme lexbuf pos len
+
+  method lexbuf = `Netulex lexbuf
  
   method scan_document =
     fun () -> 

@@ -136,6 +136,12 @@ val string_of_lexers : lexers -> string
 val string_of_tok : token -> string
 
 
+type lexbuf =
+    [ `Ocamllex of Lexing.lexbuf
+    | `Netulex of Netulex.Ulexing.lexbuf
+    ]
+
+
 (** The [lexer_factory] creates lexers for a certain character encoding.
  *)
 class type lexer_factory =
@@ -222,6 +228,11 @@ object
      * is encoded in [encoding].
      *
      * For some implementations, this function is very ineffecient.
+     *)
+
+  method lexbuf : lexbuf
+    (** Direct access to the lexbuf. Depending on the lexer, different
+        lexbuf types can be returned
      *)
 end
 

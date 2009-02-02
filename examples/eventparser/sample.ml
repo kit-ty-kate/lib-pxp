@@ -9,7 +9,7 @@
 (**********************************************************************)
 
 
-open Pxp_yacc
+open Pxp_ev_parser
 open Pxp_lexer_types
 open Pxp_types
 open Expr
@@ -19,30 +19,8 @@ open Printf
 
 (* dump_event: dumps a single parsing event *)
 
-let dump_event =
-  function
-      E_start_doc(v,sa,dtd) ->
-	printf "E_start_doc version=%s standalone=%b\n" v sa
-    | E_end_doc ->
-	printf "E_end_doc\n"
-    | E_start_tag(name,attlist,_) ->
-	printf "E_start_tag %s %s\n" name 
-	  (String.concat " " (List.map (fun (n,v) -> n ^ "=" ^ v) attlist))
-    | E_end_tag(name,_) ->
-	printf "E_end_tag %s\n" name
-    | E_char_data data ->
-	printf "E_char_data %s\n" data
-    | E_pinstr(target,data) ->
-	printf "E_pinstr %s %s\n" target data
-    | E_comment data ->
-	printf "E_comment %s\n" data
-    | E_position(ent,line,col) ->
-	printf "E_position %s line=%d col=%d\n" ent line col
-    | E_error e ->
-	printf "E_error %s\n" (Printexc.to_string e)
-    | E_end_of_stream ->
-	printf "E_end_of_stream\n"
-;;
+let dump_event e =
+  print_endline (Pxp_event.string_of_event e)
 
 
 (* parse: prints the events while parsing the passed string *)
@@ -54,7 +32,6 @@ let parse s =
     (create_entity_manager default_config (from_string s))
     dump_event;
   flush stdout
-;;
 
 
 (* curly_parse: demonstrates how to use escape_contents. The character
@@ -99,7 +76,10 @@ let curly_parse s =
 	    line_col := add_col n !line_col;
 	    tok
     in
-    let lexbuf = mng # current_lexbuf in
+    let lexbuf =
+      match  mng # current_lexer_obj # lexbuf with
+	| `Ocamllex lexbuf -> lexbuf
+	| `Netulex _ -> failwith "Netulex lexbuf not supported" in
     let value = topexpr scan lexbuf in
     printf "Result of expression: %d\n" value;
     mng # update_line_column !line_col;
@@ -168,11 +148,8 @@ let curly_parse s =
  * This is currently very experimental!
  *)
 
-class any_entity_id = object end ;;
-  (* An entity ID is an object without properties except identity *)
-
 let rec_curly_parse s =
-  let ent_id_guard = new any_entity_id in
+  let ent_id_guard = Pxp_dtd.Entity.create_entity_id() in
   let base_config = default_config in
 
   let rec escape ent_id tok mng =

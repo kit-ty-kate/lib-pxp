@@ -330,6 +330,8 @@ object(self)
     let ua = Netconversion.uarray_of_ustring `Enc_${encoding} s in
     Netconversion.ustring_of_uarray `Enc_${encoding} ~pos ~len ua
 
+  method lexbuf = `Ocamllex lexbuf
+
   method scan_document =
     fun () -> 
       ${scan_document}.scan_document 

@@ -883,7 +883,10 @@ the character following the right curly brace.
 
 {[
   let parse_number mng =
-    let lexbuf = mng # current_lexbuf in   (* FIXME: DOES NOT EXIST ANYMORE *)
+    let lexbuf = 
+       match mng # current_lexer_obj # lexbuf with
+         | `Ocamllex lexbuf -> lexbuf
+         | `Netulex _ -> failwith "Netulex lexbufs not supported" in
     match Lex.scan_number lexbuf with
       | `Int n ->
            let s = string_of_int n in
@@ -905,6 +908,12 @@ the character following the right curly brace.
       | `Eof ->
            failwith "Unexpected EOF"
 ]}
+
+Due to the way PXP works internally, the method [mng # current_lexobj
+# lexbuf] can return two different kinds of lexical buffers. [`Ocamllex]
+means it is a [Lexing.lexbuf] buffer. This type of buffer is used for
+all 8 bit encodings, and if the special [pxp-lex-utf8] lexer is used.
+The lexer [pxp-ulex-utf8], however, will return a [Netulex]-style buffer.
 
 Finally, we enable to use our escaping functions in the config record:
 
