@@ -160,6 +160,11 @@ class virtual core_parser
 	 * internal or external subset of the DTD.
 	 *)
 
+    val mutable permit_any_content = false
+      (* Used with `Entry_content to allow entity references outside
+         elements and to turn off other parsing restrictions
+       *)
+
     method private only_whitespace data =
       (* Checks that the string "data" contains only whitespace. On failure,
        * Validation_error is raised.
@@ -615,7 +620,7 @@ class virtual core_parser
  *                         <!DOCTYPE..> and an element)
  * "entry_declarations":   parses an "external DTD subset", i.e. a sequence
  *                         of declarations
- * "entry_content":        parses a single element (no <!DOCTYPE...> allowed);
+ * "entry_element_content": parses a single element (no <!DOCTYPE...> allowed);
  *                         the element needs not to be the root element of the
  *                         DTD
  *
@@ -642,7 +647,7 @@ class virtual core_parser
 entry_document():
   Begin_entity
   $ {{ n_entities_open <- n_entities_open + 1; }}
-  doc_xmldecl_then_misc_then_prolog_then_rest()
+  doc_xmldecl_then_misc_then_prolog_then_body()
     {{
       (* Note: In pull parsing mode, the following code won't be executed! *)
       ()
@@ -660,59 +665,84 @@ entry_document():
  * assume UTF8, and they are right...)
  */
 
-doc_xmldecl_then_misc_then_prolog_then_rest():
+doc_xmldecl_then_misc_then_prolog_then_body():
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl;
        if process_xmldecl then self # event_document_xmldecl pl;
     }}
-  misc()* doc_prolog_then_rest()
+  misc()* doc_prolog_then_body()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  misc() misc()* doc_prolog_then_rest()
+  misc() misc()* doc_prolog_then_body()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  doctypedecl() misc()* contents_start()
+  doctypedecl() misc()* body_start()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  contents_start()
+  body_start()
     {{ () }}
 
 
-doc_prolog_then_rest():
-  doctypedecl() misc()* contents_start()
+doc_prolog_then_body():
+  doctypedecl() misc()* body_start()
     {{ () }}
-| contents_start()
+| body_start()
     {{ () }}
 
+
+entry_element_content():
+  Begin_entity 
+  $ {{ n_entities_open <- n_entities_open + 1; }}
+  el_xmldecl_then_misc_then_body() 
+    {{
+      (* Note: In pull parsing mode the following code won't be executed! *)
+      ()
+    }}
 
 entry_content():
   Begin_entity 
-  $ {{ n_entities_open <- n_entities_open + 1; }}
-  el_xmldecl_then_misc_then_rest() 
+  $ {{ permit_any_content <- true;
+       n_entities_open <- n_entities_open + 1;
+     }}
+  el_xmldecl_then_entity_body() 
     {{
       (* Note: In pull parsing mode the following code won't be executed! *)
       ()
     }}
 
 
-/* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
 
-el_xmldecl_then_misc_then_rest():
+
+/* See comment for doc_mldecl_then_misc_then_prolog_then_body. */
+
+el_xmldecl_then_misc_then_body():
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl; }}
-  misc()* contents_start()
+  misc()* body_start()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  misc() misc()* contents_start()
+  misc() misc()* body_start()
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  contents_start()
+  body_start()
     {{ () }}
+
+
+el_xmldecl_then_entity_body():
+  pl:PI_xml
+  $ {{ context.manager # current_entity # process_xmldecl pl; }}
+  entity_body()
+    {{ () }}
+
+| $ {{ context.manager # current_entity # process_missing_xmldecl; }}
+  entity_body()
+    {{ () }}
+
 
 
 entry_declarations():
@@ -722,13 +752,13 @@ entry_declarations():
    * Note: The following Begin_entity is not counted because this entity
    * will certainly be closed when pull parsing mode is entered.
    */
-  Begin_entity decl_xmldecl_then_rest()
+  Begin_entity decl_xmldecl_then_body()
    {{ () }}
 | Eof
    {{ () }}
 
 
-decl_xmldecl_then_rest():
+decl_xmldecl_then_body():
   /* Note: This rule is also called from declaration()! */
   pl:PI_xml
   $ {{ context.manager # current_entity # process_xmldecl pl;
@@ -980,7 +1010,7 @@ declaration():
        let old_p_internal_subset = p_internal_subset in
        p_internal_subset <- false;
     }}
-  decl_xmldecl_then_rest()
+  decl_xmldecl_then_body()
     {{ (* Restore the old value of 'p_internal_subset'. *)
        p_internal_subset <- old_p_internal_subset;
        ()
@@ -1664,7 +1694,7 @@ notationdecl():
  */
 
 
-contents_start():
+body_start():
   /* parses <element>...</element> misc*, i.e. exactly one element followed
    * optionally by white space or processing instructions.
    * The element is entered into the global variables as follows:
@@ -1699,6 +1729,26 @@ contents_start():
   start_tag() [parse_fn]()
     {{ () }}
 
+entity_body():
+  /* The body of an external entity, i.e. content. */
+  End_entity
+     {{ self # init_for_xml_body 
+                 (context.manager # current_entity :> entity_id); 
+        n_entities_open <- n_entities_open - 1;
+        raise End_of_parsing
+     }}
+| $ {{
+       self # init_for_xml_body 
+                 (context.manager # current_entity :> entity_id); 
+       let parse_fn = 
+	 if pull_counter < 0 then 
+	   parse_content_push
+	 else 
+	   parse_content_pull in
+     }}
+  node_tag() [parse_fn]()
+     {{ () }}
+
 
 entry_expr():
   $ {{ self # init_for_xml_body
@@ -1711,7 +1761,7 @@ entry_expr_content():
   start_tag() 
   $ {{ begin try
          while n_tags_open > 0 do 
-	   parse_content yy_current yy_get_next
+	   parse_node_tag yy_current yy_get_next
          done
        with Not_found ->
          yy_position := "expr";
@@ -1743,12 +1793,12 @@ entry_expr_space():
 
 
 content_push():
-  content() content()*
+  node_tag() node_tag()*
     {{ () }}
 
 
 content_pull():
-  content()
+  node_tag()
   $ {{ pull_counter <- pull_counter - 1;
        if pull_counter <= 0 then begin
 	 pull_counter <- pull_counter_limit;
@@ -1762,7 +1812,7 @@ content_pull():
   content_pull()
     {{ () }}
 
-content():
+node_tag():
   /* parses: start tags, end tags, content, or processing
    * instructions. That the tags are properly nested is dynamically checked.
    * As result, recognized elements are added to their parent elements,
@@ -1782,7 +1832,7 @@ content():
 | comment()
     {{ () }}
 | Begin_entity
-  $ {{ if n_tags_open = 0 then
+  $ {{ if n_tags_open = 0 && not permit_any_content then
 	 raise(WF_error("Entity reference not allowed here"));
        n_entities_open <- n_entities_open + 1;
     }}
@@ -1797,7 +1847,7 @@ content():
     }}
 
 
-/* See comment for doc_mldecl_then_misc_then_prolog_then_rest. */
+/* See comment for doc_mldecl_then_misc_then_prolog_then_body. */
 
 init_inner_entity():
   pl:PI_xml
@@ -1806,7 +1856,7 @@ init_inner_entity():
     {{ () }}
 
 | $ {{ context.manager # current_entity # process_missing_xmldecl; }}
-  content()
+  node_tag()
     {{ () }}
 
 
@@ -2036,7 +2086,7 @@ char_data():
    */
   data:CharData
     {{
-      if n_tags_open = 0 then
+      if n_tags_open = 0 && not permit_any_content then
 	(* only white space is allowed *)
 	self # only_whitespace data
       else
@@ -2052,7 +2102,7 @@ char_data():
     {{ process_curly_brace RRcurly }}
 | data:Cdata
     {{
-      if n_tags_open = 0 then
+      if n_tags_open = 0 && not permit_any_content then
 	raise (WF_error("CDATA section not allowed here"));
        self # event_char_data data
     }}
@@ -2061,7 +2111,7 @@ cref():
   /* Parses &#...; and adds the character to the top element of elstack. */
   code:CRef
     {{
-       if n_tags_open = 0 then
+       if n_tags_open = 0 && not permit_any_content then
 	 (* No surrounding element: character references are not allowed *)
 	 raise(WF_error("Character reference not allowed here"));
        self # event_char_data 
@@ -2125,6 +2175,8 @@ comment():
 	   parse_entry_document context.current context.get_next
        | `Entry_declarations flags ->
 	   parse_entry_declarations context.current context.get_next
+       | `Entry_element_content flags ->
+	   parse_entry_element_content context.current context.get_next
        | `Entry_content flags ->
 	   parse_entry_content context.current context.get_next
        | `Entry_expr flags ->

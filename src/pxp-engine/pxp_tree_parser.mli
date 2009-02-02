@@ -184,7 +184,9 @@ val parse_content_entity  :
    * Despite its name, this function {b cannot} parse the [content]
    * production defined in the XML specification! This is a misnomer
    * I'm sorry about. The [content] production would allow to parse
-   * a list of elements and other node kinds.
+   * a list of elements and other node kinds. Also, this function
+   * corresponds to the event entry point [`Entry_element_content] and
+   * not [`Entry_content].
    *
    * If the optional argument [id_index] is present, the parser adds
    * any ID attribute to the passed index. An index is required to detect

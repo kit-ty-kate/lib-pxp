@@ -216,6 +216,7 @@ type entry =
 			       `Extend_dtd_fully | `Parse_xml_decl ] list
     | `Entry_declarations of [ `Val_mode_dtd | `Extend_dtd_fully ] list
     | `Entry_content      of [ `Dummy ] list
+    | `Entry_element_content of [ `Dummy ] list
     | `Entry_expr         of [ `Dummy ] list
     ]
 

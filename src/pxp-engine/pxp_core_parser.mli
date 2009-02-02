@@ -67,6 +67,7 @@ object
   val mutable pull_counter : int
   val mutable p_internal_subset : bool
   val mutable ns_scope : Pxp_dtd.namespace_scope option
+  val mutable permit_any_content : bool
 
   method parse : context -> extended_entry -> unit
 

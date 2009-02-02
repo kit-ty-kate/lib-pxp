@@ -651,7 +651,7 @@ let parse_content_entity ?id_index cfg src dtd spec =
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:(id_index :> 'ext index option)
       ~use_document_entity:false
-      ~entry:(`Entry_content [])   (* Entry point of the grammar *)
+      ~entry:(`Entry_element_content [])   (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with
@@ -685,7 +685,7 @@ let parse_wfcontent_entity cfg src spec =
       ~transform_dtd:(fun x -> x)  (* Do not transform the DTD *)
       ~id_index:None
       ~use_document_entity:false
-      ~entry:(`Entry_content [])   (* Entry point of the grammar *)
+      ~entry:(`Entry_element_content [])   (* Entry point of the grammar *)
       ~init_lexer:Content          (* The initially used lexer *)
   in
   match pobj # root with

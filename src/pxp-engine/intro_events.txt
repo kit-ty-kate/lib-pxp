@@ -198,8 +198,6 @@ where [<entid>] is the entity ID object.
 
 {3:nondocs The wrapping for non-document entities}
 
-CHECK: THAT DOES NOT MATCH THE CODE!
-
 The XML specification demands that external XML entities (that are
 referenced from a document entity or another external entity) comply
 to this grammar (excerpt from the W3C definition):
@@ -325,7 +323,13 @@ parse a closed document. Note that the emitted event stream includes
 the wrapping for documents as described in {!Intro_events.docs}.
 
 The entry point [`Entry_content] is for non-document external entities,
-as described in {!Intro_events.nondocs}.
+as described in {!Intro_events.nondocs}. There is a similar entry 
+point, [`Entry_element_content], which additionally enforces some
+constraints on the node structure. In particular, there must be a single
+top-level element so that the enforced node structure looks like a
+document. We do not recommend to use [`Entry_element_content] - rather
+use [`Entry_document], and remove the document wrapping in a postprocessing
+step.
 
 The entry point [`Entry_expr] reads a single node (see {!Pxp_types.entry}
 for details). It is recommended to use {!Pxp_ev_parser.process_expr}

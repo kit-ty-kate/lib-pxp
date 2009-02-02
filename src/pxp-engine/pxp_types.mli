@@ -577,6 +577,7 @@ type entry =
     [ `Entry_document     of [ `Val_mode_dtd | `Extend_dtd_fully | 
 			       `Parse_xml_decl ] list
     | `Entry_declarations of [ `Val_mode_dtd | `Extend_dtd_fully ] list
+    | `Entry_element_content of [ `Dummy ] list
     | `Entry_content      of [ `Dummy ] list
     | `Entry_expr         of [ `Dummy ] list
     ]
@@ -585,8 +586,14 @@ type entry =
     *   must have a DOCTYPE and may have a DTD.
     * - [`Entry_declarations]: The parser reads the external subset
     *   of a DTD
-    * - [`Entry_content]: The parser reads an entity containing contents,
-    *   i.e. "misc* element misc*".
+    * - [`Entry_element_content]: 
+    *   The parser reads an entity containing contents, but there must
+    *   be one top element, i.e. "misc* element misc*". At the beginning,
+    *   there can be an XML declaration as for external entities.
+    * - [`Entry_content]:
+    *   The parser reads an entity containing contents, but without the
+    *   restriction of having a top element. At the beginning,
+    *   there can be an XML declaration as for external entities.
     * - [`Entry_expr]: The parser reads a single element, a single
     *   processing instruction or a single comment, or whitespace, whatever is
     *   found. In contrast to the other entry points, the expression

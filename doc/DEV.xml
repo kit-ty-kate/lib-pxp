@@ -59,6 +59,10 @@ for PXP; if you are looking for the stable distribution, please go
         <p>Removed: Pxp_core_types_type, Pxp_type_anchor. Pxp_core_types
           has now three submodules A, S, I taking over the roles</p>
         <p>Removed: E_pinstr_member. Instead, E_pinstr events are emitted</p>
+        <p>Renaming, and addition: `Entry_content has been renamed to
+           `Entry_element_content. A new `Entry_content with different
+           semantics has been added, now conforming to a standard production.
+        </p>
       </li>
       <li><p><em>1.2.0test*:</em> New ~minimization option for the
         [write] and [display] methods (user wish).</p>

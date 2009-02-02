@@ -66,14 +66,21 @@ val process_entity :
    * 
    * The entry point to the parsing rules can be specified as follows:
    * - [`Entry_document]:
+   *   This entry point corresponds to the grammar production for documents.
    *   The first generated event is always [E_start_doc],
    *   it contains the whole DTD as object (no events are generated
    *   during DTD parsing, only the wholly parsed DTD is passed back). The
-   *   events for the contents follow, terminated by [E_end_doc] and then
+   *   events for the XML body follow, terminated by [E_end_doc] and then
    *   [E_end_of_stream].
    * - [`Entry_content]:
-   *   Only events for contents are generated. They are terminated
+   *   This entry point corresponds to the grammar production for 
+   *   external entities (XML declaration followed by any sequence of
+   *   content). The emitted events are terminated
    *   by [E_end_of_stream].
+   * - [`Entry_element_content]:
+   *   There is no corresponding grammar production in the XML standard.
+   *   An XML declaration, followed by [misc* element misc*]. The emitted 
+   *   events are terminated by [E_end_of_stream].
    * - [`Entry_declarations]:
    *   Currently not supported. (But see {!Pxp_dtd_parser} for functions
    *   parsing DTDs.)

@@ -83,7 +83,7 @@ object (self)
        | None -> ()
     );
     if n_tags_open = 0 then begin
-      if ep_root_element_seen then
+      if ep_root_element_seen && not permit_any_content then
 	raise(WF_error("Document must consist of only one toplevel element"));
       ep_root_element_seen <- true;
       lit_root := name
@@ -245,8 +245,9 @@ let process_entity
     match entry with
 	`Entry_document _     -> Document
       | `Entry_declarations _ -> failwith "Pxp_yacc.process_entity: bad entry point"
-      | `Entry_content _      -> Content
-      | `Entry_expr _         -> Content
+      | `Entry_content _         -> Content
+      | `Entry_element_content _ -> Content
+      | `Entry_expr _            -> Content
   in
   let en = mgr # current_entity in
   let gen_att_events = Some(cfg.escape_attributes <> None) in
@@ -350,6 +351,7 @@ let create_pull_parser cfg entry mgr =
 	`Entry_document _     -> Document
       | `Entry_declarations _ -> failwith "Pxp_yacc.process_entity: bad entry point"
       | `Entry_content _      -> Content
+      | `Entry_element_content _ -> Content
       | `Entry_expr _         -> Content
   in
   let en = mgr # current_entity in
