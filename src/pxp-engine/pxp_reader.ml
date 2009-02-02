@@ -129,17 +129,35 @@ class virtual resolve_general
        * "UTF-16-LE": UTF-16/UCS-2 encoding little endian
        * "UTF-8":     UTF-8 encoding
        *
-       * Note: Four bytes are required for cases not yet handled 
-       * (e.g. UTF-32).
+       * Returns the number of bytes to eat up in the buffer
        *)
-      if String.sub s 0 2 = "\254\255" then
-	encoding <- `Enc_utf16
-	  (* Note: Netconversion.recode will detect the big endianess, too *)
-      else if String.sub s 0 2 = "\255\254" then
-	encoding <- `Enc_utf16
-	  (* Note: Netconversion.recode will detect the little endianess, too *)
-      else
-	encoding <- `Enc_utf8
+      if String.sub s 0 2 = "\254\255" then (
+	encoding <- `Enc_utf16_be;
+	2
+      )
+      else if String.sub s 0 4 = "\000\060\000\063" then (
+	encoding <- `Enc_utf16_be;
+	0
+      )
+      else if String.sub s 0 2 = "\255\254" then (
+	encoding <- `Enc_utf16_le;
+	2
+      )
+      else if String.sub s 0 4 = "\060\000\063\000" then (
+	encoding <- `Enc_utf16_le;
+	0
+      )
+      else if String.sub s 0 3 = "\239\187\191" then (
+	(* That's the unusual case of a byte order mark in UTF-8 encoding.
+           This is not mentioned in the XML standard, but Unicode allows it.
+	 *)
+	encoding <- `Enc_utf8;
+	3
+      )
+      else (
+	encoding <- `Enc_utf8;
+	0
+      )
 
 
     method private virtual next_string : string -> int -> int -> int
@@ -242,7 +260,10 @@ class virtual resolve_general
        * but we try to switch to direct reading later.
        *)
       refill();
-      if !buf_end >= 4 && not encoding_requested then self # autodetect !buf;
+      if !buf_end >= 4 && not encoding_requested then (
+	let n_skip = self # autodetect !buf in
+	buf_beg := !buf_beg + n_skip;
+      );
 
       (* Ensure that [n >= 6], the longest UTF-8 character, so we can always
        * put at least one character into [s]
@@ -323,8 +344,10 @@ class virtual resolve_general
 	  in
 	  buf_eof := (n=0)
 	done;
-	if Netbuffer.length buf >= 4  then
-	  self # autodetect (Netbuffer.contents buf);
+	if Netbuffer.length buf >= 4  then (
+	  let n_skip = self # autodetect (Netbuffer.contents buf) in
+	  Netbuffer.delete buf 0 n_skip
+	)
       );
 
       let lexbuf =
