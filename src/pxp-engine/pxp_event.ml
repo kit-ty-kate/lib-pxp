@@ -608,7 +608,7 @@ let display_events ?(dtd_style = `Include) ?(minimization=`None) =
 let string_of_event e =
   match e with
     | E_start_doc(v,dtd) ->
-	sprintf "E_start_doc(%s,<%d>)\n" v (Oo.id dtd)
+	sprintf "E_start_doc(%s,<%d>)" v (Oo.id dtd)
     | E_end_doc name ->
 	sprintf "E_end_doc(%s)" name
     | E_start_tag(name,attlist,scope_opt,entid) ->

@@ -4302,7 +4302,12 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	      parent # append_node n
 	    with
 		Stack.Empty ->
-		  return := Some n
+		  return := Some n; 
+		  ( match !super_root_details with
+		      | None -> ()
+		      | Some(srpos,children,pilist) ->
+			  super_root_details := Some(srpos,n::children,pilist)
+		  )
 	  );
 	  Stack.push n stack;
 	  incr depth;
@@ -4340,35 +4345,30 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  (* A PI may occur everywhere between start_doc and end_doc.  *)
 	  if !doc_state = End_seen then unexpected "E_pinstr";
 	  if !doc_state = Null then doc_state := NA;
+	  if !super_state = Null then super_state := NA;
 	  if !super_state <> Start_seen && !root_state <> Start_seen then
 	    unexpected "E_pinstr";
 	  let pi = new proc_instruction target value !eff_dtd#encoding in
 	  if !depth = 0 then (
-	    if cfg.enable_super_root_node then (
-	      match !super_root_details with
-		| None ->
-		    unexpected "E_pinstr"
-		| Some (srpos, children, pilist) ->
-		    (* Add PI to super root node
-                       (attached, or as regular child)
-		     *)
-		    if cfg.enable_pinstr_nodes then (
-		      let n = create_pinstr_node
-                        ~entity_id:eid ?position:!pos spec !eff_dtd pi in
-		      super_root_details := Some(srpos, n::children, pilist)
-		    )
-		    else (
-		      super_root_details := Some(srpos, children, pi::pilist)
-		    )
-	    )
-	    else (
-	      (* Add processing instruction to document, if any *)
-	      if  not cfg.enable_super_root_node then ( 
-		match !return_doc with
-		    Some doc -> doc # add_pinstr pi
-		  | None -> ()  (* PI is lost *)
-	      );
-	    )
+	    match !super_root_details with
+	      | None ->
+		  (* Add processing instruction to document, if any *)
+		  ( match !return_doc with
+			Some doc -> doc # add_pinstr pi
+		      | None -> ()  (* PI is lost *)
+		  )
+	      | Some (srpos, children, pilist) ->
+		  (* Add PI to super root node
+                     (attached, or as regular child)
+		   *)
+		  if cfg.enable_pinstr_nodes then (
+		    let n = create_pinstr_node
+                      ~entity_id:eid ?position:!pos spec !eff_dtd pi in
+		    super_root_details := Some(srpos, n::children, pilist)
+		  )
+		  else (
+		    super_root_details := Some(srpos, children, pi::pilist)
+		  )
 	  )
 	  else (
 	    (* Add PI to parent element (attached, or as regular child) *)
@@ -4389,20 +4389,19 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	   *)
 	  if !doc_state = End_seen then unexpected "E_comment";
 	  if !doc_state = Null then doc_state := NA;
+	  if !super_state = Null then super_state := NA;
 	  if !super_state <> Start_seen && !root_state <> Start_seen then
 	    unexpected "E_comment";
 	  if cfg.enable_comment_nodes then (
 	    if !depth = 0 then (
-	      if cfg.enable_super_root_node then (
-		match !super_root_details with
-		  | None ->
-		      unexpected "E_comment"
-		  | Some (srpos, children, pilist) ->
-		      (* Add comment to super root node, if enabled *)
-		      let n = create_comment_node 
-                                ?position:!pos spec !eff_dtd data in
-		      super_root_details := Some(srpos, n::children, pilist);
-	      )
+	      match !super_root_details with
+		| None ->
+		    ()
+		| Some (srpos, children, pilist) ->
+		    (* Add comment to super root node, if enabled *)
+		    let n = create_comment_node 
+                      ?position:!pos spec !eff_dtd data in
+		    super_root_details := Some(srpos, n::children, pilist);
 	    )
 	    else (
 	      let n = create_comment_node ?position:!pos spec !eff_dtd data in
@@ -4457,7 +4456,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
   let fstate = ref init_fstate in
   let rec generate arg =
     match !fstate with
-	`Node_start n ->
+      | `Node_start n ->
 	  (* Find next node: *)
 	  let fstate' =
 	    ( match n#sub_nodes with
@@ -4469,7 +4468,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 	  fstate := fstate';
 	  (* Do action for n: *)
 	  ( match n # node_type with 
-		T_element name ->
+	      | T_element name ->
 		  let atts =
 		    List.flatten
 		      (List.map
@@ -4509,7 +4508,23 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 	      | T_data ->
 		  Some(E_char_data(n # data))
 	      | T_super_root ->
-		  Some E_start_super
+		  let out = [ E_start_super ] in
+		  let eid = n # entity_id in
+		  let out_pinstr =
+		    List.flatten
+		      (List.map
+			 (fun target ->
+			    List.map
+			      (fun pi ->
+				  E_pinstr(target,pi#value,eid)
+			      )
+			      (n # pinstr target)
+			 )
+			 n # pinstr_names
+		      )
+		  in
+		  fstate := `Output(out @ out_pinstr, !fstate);
+		  generate arg
 	      | T_pinstr target -> 
 		  let (entity,line,colpos) = n # position in
 		  let pos = E_position(entity,line,colpos) in
