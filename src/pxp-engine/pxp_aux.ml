@@ -9,7 +9,7 @@
 (* Lexing *)
 
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 open Pxp_lexers
 open Pxp_lib

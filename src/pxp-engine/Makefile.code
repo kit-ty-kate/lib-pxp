@@ -3,7 +3,7 @@ include $(TOP_DIR)/Makefile.rules
 
 PACKAGES = netstring
 
-OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
+OBJ =   pxp_lexing.cmo \
         pxp_core_types.cmo pxp_lexer_types.cmo \
 	pxp_lex_aux.cmo pxp_lexers.cmo \
 	pxp_lib.cmo pxp_aux.cmo pxp_reader.cmo \
@@ -16,7 +16,7 @@ OBJ =   pxp_lexing.cmo pxp_type_anchor.cmo \
 	pxp_yacc.cmo pxp_marshal.cmo pxp_codewriter.cmo
 
 DOC =   pxp_types.mli pxp_document.mli pxp_dtd.mli pxp_tree_parser.mli \
-	pxp_core_types_type.mli pxp_ev_parser.mli \
+	pxp_core_types.mli pxp_ev_parser.mli \
  	pxp_event.mli pxp_dtd_parser.mli pxp_codewriter.mli \
   	pxp_marshal.mli pxp_yacc.mli pxp_reader.mli \
 	intro_trees.txt intro_extensions.txt intro_namespaces.txt \

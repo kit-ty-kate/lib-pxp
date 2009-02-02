@@ -5,7 +5,7 @@
  *)
 
 open Parsing
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 open Pxp_dtd
 open Pxp_entity
@@ -15,54 +15,7 @@ open Pxp_aux
 open Pxp_reader
 open Netchannels
 
-type config = Pxp_types.config =
-    { warner : collect_warnings;
-      swarner : symbolic_warnings option;
-      enable_pinstr_nodes : bool;
-      enable_super_root_node : bool;
-      enable_comment_nodes : bool;
-      drop_ignorable_whitespace : bool;
-      encoding : rep_encoding;
-      recognize_standalone_declaration : bool;
-      store_element_positions : bool;
-      idref_pass : bool;
-      validate_by_dfa : bool;
-      accept_only_deterministic_models : bool;
-      disable_content_validation : bool;
-      name_pool : Pxp_core_types.pool;
-      enable_name_pool_for_element_types    : bool;
-      enable_name_pool_for_attribute_names  : bool;
-      enable_name_pool_for_attribute_values : bool;
-      enable_name_pool_for_pinstr_targets   : bool;
-      enable_namespace_processing : Pxp_dtd.namespace_manager option;
-      escape_contents :
-         (Pxp_lexer_types.token -> Pxp_entity_manager.entity_manager ->
-                string) option;
-      escape_attributes :
-         (Pxp_lexer_types.token -> int -> Pxp_entity_manager.entity_manager ->
-                string) option;
-      debugging_mode : bool;
-    }
-
-
-let default_config = Pxp_types.default_config
-
-let default_namespace_config = Pxp_types.default_namespace_config
-
-
-type source = Pxp_types.source =
-    Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | ExtID of (ext_id * Pxp_reader.resolver)
-  | XExtID of (ext_id * string option * Pxp_reader.resolver)
-
-
-let from_channel = Pxp_types.from_channel
-
-let from_string = Pxp_types.from_string
-
-let from_obj_channel = Pxp_types.from_obj_channel
-
-let from_file = Pxp_types.from_file
+include Pxp_types
 
 exception ID_not_unique = Pxp_tree_parser.ID_not_unique
 

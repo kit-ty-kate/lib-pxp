@@ -60,6 +60,6 @@ type dfa_definition =
       dfa_null  : bool;           (* Whether dfa_start member of dfa_stops *)
     }
 
-val dfa_of_regexp_content_model : Pxp_core_types.regexp_spec -> dfa_definition
+val dfa_of_regexp_content_model : Pxp_core_types.I.regexp_spec -> dfa_definition
   (* Computes the DFA or raises Not_found if it does not exist *)
 

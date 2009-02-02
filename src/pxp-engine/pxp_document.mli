@@ -176,7 +176,7 @@ class type [ 'ext ] node =
        *   an associated DTD, in which case this method fails.
        *)
 
-    method encoding : Pxp_core_types.rep_encoding
+    method encoding : Pxp_types.rep_encoding
       (** Get the encoding which is always the same as the encoding of 
        *  the DTD. See also method [dtd]. (Note: This method fails, too, if
        *  no DTD is present.)
@@ -346,7 +346,7 @@ class type [ 'ext ] node =
        * {b Domain.} All node types.
        *)
 
-    method attribute : string -> Pxp_core_types.att_value
+    method attribute : string -> Pxp_types.att_value
       (** [attribute name] returns the value of the attribute [name].
        *
        * If the parser is in validating mode, the method returns
@@ -413,7 +413,7 @@ class type [ 'ext ] node =
        *   the empty list.
        *)
 
-    method attribute_type : string -> Pxp_core_types.att_type
+    method attribute_type : string -> Pxp_types.att_type
       (** [attribute_type name]: returns the type of the attribute [name]. 
        *   If the attribute
        *   is declared, the declared type is returned. If the attribute is
@@ -425,7 +425,7 @@ class type [ 'ext ] node =
        *   will return values, all other node types always raise [Not_found].
        *)
 
-    method attributes : (string * Pxp_core_types.att_value) list
+    method attributes : (string * Pxp_types.att_value) list
       (** Returns the list of [(name,value)] pairs describing
        *  all attributes (declared attributes plus defined attributes).
        *
@@ -606,6 +606,20 @@ class type [ 'ext ] node =
 
     (** Meta data *)
 
+    method entity_id : Pxp_types.entity_id
+      (** Returns the [entity_id] object. This object identifies the entity
+          the node originates from. See {!Pxp_dtd.Entity} for functions
+          finding and accessing the entity.
+
+          {b Domain.} All node types. Note that it is possible that one
+          gets an [entity_id] that is not connected with a real entity,
+          e.g. because the node is programmatically constructed, and
+          does not result from parsing. But even the parser does not set
+          the [entity_id] for all node kinds. Generally, the [entity_id]
+          corresponds to a real entity only for element, attribute, 
+          and processing instruction nodes. 
+       *)
+
     method position : (string * int * int)
       (**  Returns a triple [(entity,line,pos)] describing the 
        *   location of the element in the original XML text. This triple is
@@ -774,7 +788,7 @@ class type [ 'ext ] node =
        * {b Domain.} Data nodes
        *)
 
-    method set_attributes : (string * Pxp_core_types.att_value) list -> unit
+    method set_attributes : (string * Pxp_types.att_value) list -> unit
       (** [set_attributes al]:
        * Sets the attributes of this element to [al].
        *
@@ -789,7 +803,7 @@ class type [ 'ext ] node =
        * {b Domain.} Elements.
        *)
 
-    method set_attribute : ?force:bool -> string -> Pxp_core_types.att_value -> unit
+    method set_attribute : ?force:bool -> string -> Pxp_types.att_value -> unit
       (** [set_attribute ~force n v]:
        *    Sets the attribute [n] of this element to the value [v].
        *    The attribute [n] must already exist, and gets a new value.
@@ -829,7 +843,7 @@ class type [ 'ext ] node =
        *)
 
     method quick_set_attributes : 
-             (string * Pxp_core_types.att_value) list -> unit
+             (string * Pxp_types.att_value) list -> unit
       (** {b Deprecrated} alias for [set_attributes] *)
 
     method add_pinstr : proc_instruction -> unit
@@ -995,10 +1009,11 @@ class type [ 'ext ] node =
     (** Creating new nodes by cloning exemplars *)
 
     method create_element :
-             ?name_pool_for_attribute_values:Pxp_core_types.pool ->
+             ?name_pool_for_attribute_values:Pxp_types.pool ->
+             ?entity_id:Pxp_types.entity_id ->
              ?position:(string * int * int) ->
 	     ?valcheck:bool ->      (* default: true *)
-	     ?att_values:((string * Pxp_core_types.att_value) list) ->
+	     ?att_values:((string * Pxp_types.att_value) list) ->
              dtd -> node_type -> (string * string) list -> 'ext node
       (** [create_element ~name_pool_for_attribute_values ~position ~valcheck ~att_values dtd ntype att_list]:
        *   This method is usually only called on exemplars to create
@@ -1015,6 +1030,7 @@ class type [ 'ext ] node =
        *     - The copy does not have children nor a parent
        *     - The copy does not contain processing instructions.
        *     - The position triple is set to [position]
+       *     - The entity ID is set to [entity_id]
        *
        *   Note that the extension object is copied, too.
        *
@@ -1037,11 +1053,12 @@ class type [ 'ext ] node =
        *    - [~position]: The position is not available in the copy
        *    - [~valcheck]: true
        *    - [~att_values]: empty
+       *    - [~entity_id]: a new ID is used that is connected to a real entity
        *
        * {b Domain.} Elements.
        *)
 
-    method create_data : dtd -> string -> 'ext node
+    method create_data :dtd -> string -> 'ext node
       (** [create_data dtd cdata]:
        *   This method is usually only called on exemplars to create
        *   fresh nodes of the same class as the examplars. This is done
@@ -1056,6 +1073,7 @@ class type [ 'ext ] node =
        *)
 
     method create_other : 
+             ?entity_id:Pxp_types.entity_id ->
              ?position:(string * int * int) ->
              dtd -> node_type -> 'ext node
       (** [create_other ~position dtd ntype]:
@@ -1065,6 +1083,7 @@ class type [ 'ext ] node =
        *   (flat) copies as follows:
        *     - The DTD is set to [dtd]
        *     - The position triple is set to [position]
+       *     - The entity ID is set to [entity_id]
        *
        *   Note that the extension object is copied, too.
        *
@@ -1225,7 +1244,7 @@ class type [ 'ext ] node =
              ?prefixes:string list ->
 	     ?default:string ->
              ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
-             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+             Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (** [write stream enc]:
        *    Write the contents of this node and the subtrees to the passed
        *    [stream] encoded as [enc]. The generated output is again XML.
@@ -1258,7 +1277,7 @@ class type [ 'ext ] node =
     method display :
              ?prefixes:string StringMap.t ->
              ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
-	      Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+	      Pxp_types.output_stream -> Pxp_types.encoding -> unit
       (** [display stream enc]:
        *    Write the contents of this node and the subtrees to the passed
        *    [stream] encoded as [enc]. The generated output is again XML.
@@ -1296,12 +1315,14 @@ class type [ 'ext ] node =
     method internal_adopt : 'ext node option -> int -> unit
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
-    method internal_init : (string * int * int) ->
-                           Pxp_core_types.pool option ->
+    method internal_init : Pxp_types.entity_id ->
+                           (string * int * int) ->
+                           Pxp_types.pool option ->
 			   bool -> 
                            dtd -> string -> (string * string) list -> 
-			   (string * Pxp_core_types.att_value) list -> unit
-    method internal_init_other : (string * int * int) ->
+			   (string * Pxp_types.att_value) list -> unit
+    method internal_init_other : Pxp_types.entity_id ->
+                                 (string * int * int) ->
                                  dtd -> node_type -> unit
 
     method dump : Format.formatter -> unit
@@ -1384,7 +1405,7 @@ class [ 'ext ] super_root_impl : 'ext -> [ 'ext ] node ;;
 class [ 'ext ] attribute_impl :
   element:string -> 
   name:string -> 
-  Pxp_core_types.att_value -> 
+  Pxp_types.att_value -> 
   dtd -> 
     [ 'ext ] node
     (** This class is an implementation of [node] which
@@ -1444,7 +1465,7 @@ class [ 'ext ] namespace_element_impl : 'ext -> [ 'ext ] node
 class [ 'ext ] namespace_attribute_impl :
   element:string -> 
   name:string -> 
-  Pxp_core_types.att_value -> 
+  Pxp_types.att_value -> 
   dtd -> 
     [ 'ext ] node
   (** the namespace-aware implementation of attribute nodes. *)
@@ -1468,7 +1489,7 @@ val attribute_name  : 'ext node -> string
    * [T_attribute].
    *)
 
-val attribute_value : 'ext node -> Pxp_core_types.att_value
+val attribute_value : 'ext node -> Pxp_types.att_value
   (** [attribute_value n]:
    *     Returns the value of the attribute contained in an attribute
    *    node. Raises [Invalid_argument] if [n] does not have node type
@@ -1598,17 +1619,18 @@ val get_pinstr_exemplar :
 (** {2 Creating nodes from specifications} *)
 
 val create_data_node :
-      'ext spec -> dtd -> string -> 'ext node
+       'ext spec -> dtd -> string -> 'ext node
   (** [create_data_node spec dtd datastring]:
    *     Creates a new data node from the exemplar contained in [spec].
    *    The new node contains [datastring] and is connected with the [dtd].
    *)
 
 val create_element_node :
-      ?name_pool_for_attribute_values:Pxp_core_types.pool ->
+      ?name_pool_for_attribute_values:Pxp_types.pool ->
+      ?entity_id:Pxp_types.entity_id ->
       ?position:(string * int * int) ->
       ?valcheck:bool ->
-      ?att_values:((string * Pxp_core_types.att_value) list) ->
+      ?att_values:((string * Pxp_types.att_value) list) ->
       'ext spec -> dtd -> string -> (string * string) list -> 'ext node
   (** [create_element_node ~name_pool_for_attribute_values
    *              ~position ~valcheck ~att_values spec dtd eltype
@@ -1637,6 +1659,7 @@ val create_element_node :
    *)
 
 val create_super_root_node :
+      ?entity_id:Pxp_types.entity_id ->
       ?position:(string * int * int) ->
       'ext spec -> dtd -> 'ext node
   (** [create_super_root_node ~position spec dtd]:
@@ -1648,6 +1671,7 @@ val create_super_root_node :
    *)
 
 val create_comment_node :
+      ?entity_id:Pxp_types.entity_id ->
       ?position:(string * int * int) ->
       'ext spec -> dtd -> string -> 'ext node
   (** [create_comment_node ~position spec dtd commentstring]:
@@ -1661,6 +1685,7 @@ val create_comment_node :
 
 
 val create_pinstr_node :
+      ?entity_id:Pxp_types.entity_id ->
       ?position:(string * int * int) ->
       'ext spec -> dtd -> proc_instruction -> 'ext node
   (** [create_pinstr_node ~position spec dtd pi]:
@@ -1674,6 +1699,7 @@ val create_pinstr_node :
    *)
 
 val create_no_node :
+       ?entity_id:Pxp_types.entity_id ->
        ?position:(string * int * int) -> 'ext spec -> dtd -> 'ext node
   (** Creates a T_none node with limited functionality.
    * {b Important:} This function is conceptually broken and may be dropped in the
@@ -2044,7 +2070,7 @@ val validate : 'ext node -> unit
 
 (******************************* document ********************************)
 
-(** {2 The document type} *)
+(** {2 The document container} *)
 
     (** Documents are used to represent closed documents that may
      * consist of an XML declaration, a DTD, and a node tree.
@@ -2055,8 +2081,8 @@ val validate : 'ext node -> unit
      * A fresh document created by [new] is empty.
      *)
 class [ 'ext ] document :
-  ?swarner:Pxp_core_types.symbolic_warnings ->
-  Pxp_core_types.collect_warnings -> Pxp_core_types.rep_encoding ->
+  ?swarner:Pxp_types.symbolic_warnings ->
+  Pxp_types.collect_warnings -> Pxp_types.rep_encoding ->
   object
 
     method init_xml_version : string -> unit
@@ -2089,7 +2115,7 @@ class [ 'ext ] document :
        * Fails if there is no root element.
        *)
 
-    method encoding : Pxp_core_types.rep_encoding
+    method encoding : Pxp_types.rep_encoding
       (** Returns the string encoding of the document = the encoding of
        * the root element = the encoding of the element tree = the
        * encoding of the DTD.
@@ -2132,8 +2158,8 @@ class [ 'ext ] document :
                    ?prefer_dtd_reference : bool ->
                    ?dtd_style:[`Omit|`Reference|`Included|`Auto] ->
                    ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
-                   Pxp_core_types.output_stream -> 
-                   Pxp_core_types.encoding -> 
+                   Pxp_types.output_stream -> 
+                   Pxp_types.encoding -> 
                      unit
       (** Write the document to the passed
        * output stream; the passed encoding used. The format
@@ -2166,8 +2192,8 @@ class [ 'ext ] document :
     method display : ?prefer_dtd_reference : bool ->
                      ?dtd_style:[`Omit|`Reference|`Included|`Auto] ->
                      ?minimization:[`AllEmpty | `DeclaredEmpty | `None] ->
-                     Pxp_core_types.output_stream -> 
-                     Pxp_core_types.encoding -> 
+                     Pxp_types.output_stream -> 
+                     Pxp_types.encoding -> 
                        unit
       (** Write the document to the passed
        * output stream; the passed encoding used. The format

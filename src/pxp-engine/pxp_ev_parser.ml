@@ -15,10 +15,9 @@ open Pxp_aux
 
 (* The subclass event_parser for the event-based interface: *)
 
-class any_entity_id = object end ;;
-
 class event_parser init_dtd init_config init_event_handler 
                    init_want_start_doc init_pull_counter lit_root =
+  let null_entity_id = Pxp_dtd.Entity.create_entity_id() in
 object (self)
   inherit core_parser init_dtd init_config init_pull_counter
 
@@ -31,7 +30,7 @@ object (self)
   val mutable xml_standalone = false
 
   val mutable ep_root_element_seen = false
-  val mutable ep_elstack = stack_create (None,"","",new any_entity_id)
+  val mutable ep_elstack = stack_create (None,"","",null_entity_id)
   val mutable ep_early_events = []
 
 
@@ -44,7 +43,7 @@ object (self)
       raise(WF_error("Root element is not closed"));
 
 
-  method private init_for_xml_body() =
+  method private init_for_xml_body _ =
     if not init_done then begin
       if config.recognize_standalone_declaration then
 	dtd # set_standalone_declaration xml_standalone;
@@ -315,8 +314,13 @@ let process_expr
 ;;
 
 
-let create_pull_parser
-      cfg entry mgr =
+let close_entities mgr =
+  let top = mgr#top_entity in
+  mgr # pop_entity_until top;
+  if top # is_open then ignore(top # close_entity)
+
+
+let create_pull_parser cfg entry mgr =
 
   (* Do control inversion with a queue serving as buffer, and a very special
    * kind of continuations 

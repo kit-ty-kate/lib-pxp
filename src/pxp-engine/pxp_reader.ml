@@ -4,11 +4,11 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_core_types;;
+open Pxp_core_types.I;;
 open Netchannels;;
 
-exception Not_competent = Pxp_core_types.Not_competent;;
-exception Not_resolvable (* of exn *) = Pxp_core_types.Not_resolvable;;
+exception Not_competent = Pxp_core_types.I.Not_competent;;
+exception Not_resolvable (* of exn *) = Pxp_core_types.I.Not_resolvable;;
 
 type lexer_source =
     { lsrc_lexbuf : Lexing.lexbuf Lazy.t;

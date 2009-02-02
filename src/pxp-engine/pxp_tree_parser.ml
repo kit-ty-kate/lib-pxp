@@ -87,6 +87,7 @@ class ['ext] tree_parser
   transform_dtd id_index 
   =
   let make_pool_string = pool_string init_config.name_pool in
+  let null_id = Pxp_dtd.Entity.create_entity_id() in
 object (self)
   inherit core_parser init_dtd init_config (-1)
 
@@ -103,7 +104,6 @@ object (self)
 
   val elstack =
     let null_node = get_data_exemplar init_spec in
-    let null_id = (null_node :> entity_id) in
     let null = (null_node, "", null_id) in
     (stack_create null : ('ext node * string * entity_id) array_stack)
        (* The element stack containing all open elements, i.e. elements that
@@ -206,33 +206,34 @@ object (self)
     assert(not init_done);
     early_material <- early_material @ [ position, `Comment c ]
 
-  method private add_early_pinstr position pi =
+  method private add_early_pinstr position ent_id pi =
     assert(not init_done);
-    early_material <- early_material @ [ position, `PI pi ]
+    early_material <- early_material @ [ position, `PI(pi,ent_id) ]
 
-  method private add_early_pinstr_node position pi =
+  method private add_early_pinstr_node position ent_id pi =
     assert(not init_done);
-    early_material <- early_material @ [ position, `PI_node pi ]
+    early_material <- early_material @ [ position, `PI_node(pi,ent_id) ]
 
 
-  method private init_for_xml_body() =
+  method private init_for_xml_body ent_id =
     if not init_done then begin
       dtd <- transform_dtd dtd;
       
       (* Initialize the element stack: *)
       let super_root =
 	if config.enable_super_root_node then begin
-	  let sr = create_super_root_node spec dtd in
+	  let sr = create_super_root_node ~entity_id:ent_id spec dtd in
 	  (* Add early_material to the super root node: *)
 	  List.iter
 	    (function
 		 (p, `Comment c) ->
 		   let node = create_comment_node ?position:p spec dtd c in
 		   sr # append_node node
-	       | (p, `PI pi) ->
+	       | (p, `PI (pi,_)) ->
 		   sr # add_pinstr pi
-	       | (p, `PI_node pi) ->
-		   let node = create_pinstr_node ?position:p spec dtd pi in
+	       | (p, `PI_node(pi,ent_id)) ->
+		   let node = create_pinstr_node
+		                ~entity_id:ent_id ?position:p spec dtd pi in
 		   sr # append_node node
 	    )
 	    early_material;
@@ -244,7 +245,7 @@ object (self)
       in
       early_material <- [];
       (* Move the super root or the emulation to the stack: *)
-      stack_push (super_root, "", (self :> entity_id)) elstack;
+      stack_push (super_root, "", ent_id) elstack;
       (* Init namespace processing, if necessary: *)
       ( match config.enable_namespace_processing with
 	    None -> ()
@@ -286,6 +287,7 @@ object (self)
 	      (if config.enable_name_pool_for_attribute_values
 	       then Some config.name_pool
 	       else None)
+              ~entity_id:tag_beg_entid
               ?position:position
 	      spec dtd name attlist
 
@@ -312,6 +314,7 @@ object (self)
 		(if config.enable_name_pool_for_attribute_values
 		 then Some config.name_pool
 		 else None)
+                ~entity_id:tag_beg_entid
                 ?position:position
 		spec dtd norm_name norm_attlist
 	    in
@@ -439,17 +442,18 @@ object (self)
 	if init_done then begin
 	  self # save_data;        (* Save outstanding data material first *)
 	  let wrapper = create_pinstr_node
+	                  ~entity_id:ent_id
 			  ?position:position spec dtd pinstr in
 	  self # current # append_node wrapper;
 	end
-	else self # add_early_pinstr_node position pinstr
+	else self # add_early_pinstr_node position ent_id pinstr
       end
       else
 	(* Normal behaviour: Add the PI to the parent element. *)
 	if init_done then
 	  self # current # add_pinstr pinstr
 	else
-	  self # add_early_pinstr position pinstr
+	  self # add_early_pinstr position ent_id pinstr
     end
 
 

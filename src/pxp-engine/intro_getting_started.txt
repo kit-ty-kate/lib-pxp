@@ -453,6 +453,12 @@ let config =
   }
 ]}
 
+Note that the "super root node" is sometimes called "root node" in
+various XML standards giving semantical model of XML.  For PXP the
+name "super root node" is preferred because this node type is not
+obligatory, and the top-most element node can also be considered as
+root of the tree.
+
 
 {3:whitespace Controlling whitespace}
 

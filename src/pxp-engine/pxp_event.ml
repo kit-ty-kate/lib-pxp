@@ -116,7 +116,8 @@ let pfilter p get_ev =
 ;;
 
 
-type filter = (unit -> event option) -> (unit -> event option)
+type pull_fn = unit -> event option
+type filter = pull_fn -> pull_fn
 
 let norm_cdata_filter get_ev =
   let q = Queue.create () in
@@ -149,7 +150,7 @@ let norm_cdata_filter get_ev =
 	
 
 let drop_ignorable_whitespace_filter get_ev =
-  let found_dtd = ref None in
+  let found_dtd = ref (None : Pxp_dtd.dtd option) in
   let elements = Stack.create() in
   let pos = ref("",0,0) in
 
@@ -228,7 +229,7 @@ let unwrap_document pull =
   let get_doc_details() =
     if not !first_event_done then (
       match pull() with
-	| E_start_doc(v,dtd) ->
+	| Some(E_start_doc(v,dtd)) ->
 	    doc_details := Some(v,dtd);
 	    first_event_done := true
 	| _ ->
@@ -248,7 +249,7 @@ let unwrap_document pull =
 	     doc_details := Some(v,dtd);
 	     first_event_done := true;
 	     false
-	 | E_end_doc | E_start_super | E_end_super | E_end_of_stream ->
+	 | E_end_doc _ | E_start_super | E_end_super | E_end_of_stream ->
 	     false
 	 | E_error e ->
 	     raise e
@@ -611,8 +612,8 @@ let string_of_event e =
   match e with
     | E_start_doc(v,dtd) ->
 	sprintf "E_start_doc(%s,<%d>)\n" v (Oo.id dtd)
-    | E_end_doc ->
-	"E_end_doc\n"
+    | E_end_doc name ->
+	sprintf "E_end_doc(%s)" name
     | E_start_tag(name,attlist,scope_opt,entid) ->
 	sprintf "E_start_tag(%s,%s,%s,<%d>)"
 	  name 
@@ -641,5 +642,5 @@ let string_of_event e =
     | E_error e ->
 	sprintf "E_error(%s)" (Pxp_types.string_of_exn e)
     | E_end_of_stream ->
-	"E_end_of_stream\n"
+	"E_end_of_stream"
 ;;

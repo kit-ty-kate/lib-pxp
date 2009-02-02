@@ -53,6 +53,11 @@ for PXP; if you are looking for the stable distribution, please go
       <li>
         <p><em>1.2.1:</em> Revised documentation</p>
         <p>Addition: Pxp_event.unwrap_document</p>
+        <p>Addition: Pxp_dtd.Entity.lookup</p>
+        <p>Addition: node method entity_id</p>
+        <p>Addition: Pxp_event.close_entities</p>
+        <p>Removed: Pxp_core_types_type, Pxp_type_anchor. Pxp_core_types
+          has now three submodules A, S, I taking over the roles</p>
       </li>
       <li><p><em>1.2.0test*:</em> New ~minimization option for the
         [write] and [display] methods (user wish).</p>

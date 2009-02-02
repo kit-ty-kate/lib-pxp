@@ -4,7 +4,7 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 open Pxp_lexers
 open Pxp_entity
@@ -1195,7 +1195,7 @@ and dtd_notation the_name the_xid init_encoding =
 object (self)
     val name = the_name
     val xid = (the_xid : ext_id)
-    val encoding = (init_encoding : Pxp_core_types.rep_encoding)
+    val encoding = (init_encoding : Pxp_core_types.I.rep_encoding)
     method name = name
     method ext_id = xid
     method encoding = encoding
@@ -1236,7 +1236,7 @@ and proc_instruction the_target the_value init_encoding =
 object (self)
     val target = the_target
     val value = (the_value : string)
-    val encoding = (init_encoding : Pxp_core_types.rep_encoding)
+    val encoding = (init_encoding : Pxp_core_types.I.rep_encoding)
 
     initializer
       match target with
@@ -1326,11 +1326,19 @@ module Entity = struct
       | Entity(make,resolver) ->
 	  make dtd  (* resolver ignored *)
 
-  let entity_id ent = (ent :> < >)
+  let entity_id ent = (ent :> entity_id)
 
-  class fake = object end
+  class fake = object method pxp_magic_coercion() : unit = raise Not_found end
 
   let create_entity_id () = new fake
+
+  let lookup eid =
+    try 
+      let () = eid#pxp_magic_coercion() in
+      assert false
+    with
+      | Not_found -> invalid_arg "Pxp_dtd.Event.lookup"
+      | Pxp_entity.Coerced_entity e -> e
 
 end
 

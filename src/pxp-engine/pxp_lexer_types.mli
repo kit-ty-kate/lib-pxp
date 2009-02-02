@@ -27,9 +27,12 @@ type prolog_token =
   | Pro_string of string    (* "..." or '...' *)
   | Pro_eof
 
-type entity_id = < >
-  (* The class without properties; but you can still compare if two objects
-   * are the same.
+type entity_id = < pxp_magic_coercion : unit -> unit >
+  (* User code should only compare [entity_id] objects. The
+     [pxp_magic_coercion] function will either raise
+      - [Not_found] if the [entity_id] is not connected with a real entity, or
+      - [Pxp_entity.Coerced_entity e] if the [entity_id] points to the entity
+        [e]
    *)
 
 type token = 
@@ -137,7 +140,7 @@ val string_of_tok : token -> string
  *)
 class type lexer_factory =
 object
-  method encoding : Pxp_core_types.rep_encoding
+  method encoding : Pxp_core_types.I.rep_encoding
     (** The (announced) character encoding of the scanned strings *)
 
   method open_source : Pxp_reader.lexer_source -> lexer_obj
@@ -160,7 +163,7 @@ object
   method factory : lexer_factory
     (** The [lexer_factory] that created this [lexer_obj] *)
 
-  method encoding : Pxp_core_types.rep_encoding
+  method encoding : Pxp_core_types.I.rep_encoding
     (** The character encoding of the scanned strings *)
 
   method open_source : Pxp_reader.lexer_source -> unit

@@ -81,7 +81,7 @@ object
 
   method private pop_src_norm_mapping : unit -> unit
 
-  method private virtual init_for_xml_body : unit -> unit
+  method private virtual init_for_xml_body : entity_id -> unit
 
   method private virtual event_document_xmldecl : 
                              Pxp_lexer_types.prolog_token list -> unit

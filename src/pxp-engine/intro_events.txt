@@ -376,7 +376,7 @@ open while parsing is in progress. It is expected by the user to
 continue calling [push] until the end of the stream is reached (at
 least until [Some E_end_of_stream], [Some E_error], or [None] is
 returned by [pull]). See the description of
-{!Pxp_ev_parser.create_pull_parser} for a way of prematurely closing
+{!Pxp_ev_parser.close_entities} for a way of prematurely closing
 the parser for the exceptional cases where parsing cannot go on until
 the final parser state is reached.
 

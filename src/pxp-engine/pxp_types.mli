@@ -7,16 +7,40 @@
 (** Type definitions used throughout PXP *)
 
 (** This module re-exports all the types listed in
- * {!Pxp_core_types_type.CORE_TYPES}, so the user only has to
+ * {!Pxp_core_types.S} (and finally defined in {!Pxp_core_types.I}), so 
+ * the user only has to
  * [open Pxp_types] to get all relevant type definitions. The re-exported
  * definitions are shown here in the indented grey block:
  *)
 
-(** {direct_include true} *)
+(** {directinclude true} *)
 
-include Pxp_core_types_type.CORE_TYPES
+include Pxp_core_types.S
 
-(** {direct_include false} *)
+(** {directinclude false}
+
+    {knowntype Pxp_types.ext_id}
+    {knowntype Pxp_types.private_id}
+    {knowntype Pxp_types.resolver_id}
+    {knowntype Pxp_types.dtd_id}
+    {knowntype Pxp_types.content_model_type}
+    {knowntype Pxp_types.mixed_spec}
+    {knowntype Pxp_types.regexp_spec}
+    {knowntype Pxp_types.att_type}
+    {knowntype Pxp_types.att_default}
+    {knowntype Pxp_types.att_value}
+    {knowntype Pxp_types.collect_warnings}
+    {knowntype Pxp_types.warning}
+    {knowntype Pxp_types.symbolic_warnings}
+    {knowntype Pxp_types.encoding}
+    {knowntype Pxp_types.rep_encoding}
+    {knowntype Pxp_types.output_stream}
+    {knowntype Pxp_types.pool}
+
+    {knownclass Pxp_types.drop_warnings}
+ *)
+
+
 
 (** {2 Configuration} *)
 
@@ -226,7 +250,7 @@ type config =
 	 * Event-based parser: this option is ignored.
 	 *)
 
-      name_pool : Pxp_core_types.pool;
+      name_pool : Pxp_core_types.I.pool;
       enable_name_pool_for_element_types    : bool;
       enable_name_pool_for_attribute_names  : bool;
       enable_name_pool_for_attribute_values : bool;
@@ -377,8 +401,8 @@ val default_namespace_config : config
 
 type source = Pxp_dtd.source =
     Entity of ((Pxp_dtd.dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | ExtID of (Pxp_core_types.ext_id * Pxp_reader.resolver)
-  | XExtID of (Pxp_core_types.ext_id * string option * Pxp_reader.resolver)
+  | ExtID of (Pxp_core_types.I.ext_id * Pxp_reader.resolver)
+  | XExtID of (Pxp_core_types.I.ext_id * string option * Pxp_reader.resolver)
      (** *)
 (** The three basic flavours of sources:
  * - [Entity(m,r)] is a very low-level way of denoting a source. After the
@@ -532,6 +556,18 @@ val open_source :
      * determines whether a document entity (true) or a normal external
      * entity (false) will be returned.
      *)
+
+
+(** {2 Entities} *)
+
+(** See {!Pxp_dtd.Entity} for functions dealing with entities. *)
+
+type entity_id = Pxp_lexer_types.entity_id
+    (** An [entity_id] is an identifier for an entity, or a fake identifier.
+     *)
+
+type entity = Pxp_entity.entity
+    (** The representation of entities *)
 
 
 (** {2 Event parsing} *)

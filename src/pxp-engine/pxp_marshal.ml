@@ -3,7 +3,7 @@
  *
  *)
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_document
 open Pxp_dtd
 open Pxp_aux

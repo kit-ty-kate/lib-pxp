@@ -343,7 +343,7 @@ class virtual core_parser
      * define them
      *)
 
-    method private virtual init_for_xml_body : unit -> unit
+    method private virtual init_for_xml_body : entity_id -> unit
 
     method private virtual event_document_xmldecl : 
                              Pxp_lexer_types.prolog_token list -> unit
@@ -1688,7 +1688,8 @@ contents_start():
    * object only back via a global variable). The only solution is to
    * modify the object that has been passed to the parsing function directly.
    */
-  $ {{ self # init_for_xml_body(); 
+  $ {{ self # init_for_xml_body 
+                 (context.manager # current_entity :> entity_id); 
        let parse_fn = 
 	 if pull_counter < 0 then 
 	   parse_content_push
@@ -1700,7 +1701,9 @@ contents_start():
 
 
 entry_expr():
-  $ {{ self # init_for_xml_body(); }}
+  $ {{ self # init_for_xml_body
+         (context.manager # current_entity :> entity_id);
+    }}
   entry_expr_content()
     {{ () }}
 

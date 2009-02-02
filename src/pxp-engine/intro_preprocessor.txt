@@ -556,7 +556,7 @@ let book =
   >>
 ]}
 
-[book] is a function [unit -> ]{!Pxp_types.event}. One can call it to
+[book] is a function [unit -> ]{!Pxp_types.event}[ option]. One can call it to
 pull the events out of it one after the other:
 
 {[

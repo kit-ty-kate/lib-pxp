@@ -5,7 +5,7 @@
  *)
 
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 
 val get_lexer_factory : rep_encoding -> lexer_factory

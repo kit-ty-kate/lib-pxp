@@ -24,7 +24,7 @@ object (self)
    * because this is impossible for `Entry_declarations.
    *)
 
-  method private init_for_xml_body() = 
+  method private init_for_xml_body _ = 
     assert false
 
   method private event_document_xmldecl xmldecl = 

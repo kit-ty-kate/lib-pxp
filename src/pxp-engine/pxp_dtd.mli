@@ -15,15 +15,17 @@
     module (e.g. [namespace_manager] or [dtd_element]). 
  *)
 
+(** {fixpxpcoretypes true} *) (* Set back to false at the end of the file *)
+
 (**/**)
 type validation_record =
-    { content_model   : Pxp_core_types.content_model_type;
+    { content_model   : Pxp_core_types.I.content_model_type;
       content_dfa     : Pxp_dfa.dfa_definition option Lazy.t;
       id_att_name     : string option;
       idref_att_names : string list;
       att_lookup      : int Pxp_aux.Str_hashtbl.t;
-      init_att_vals   : (string * Pxp_core_types.att_value) array;
-      att_info        : (Pxp_core_types.att_type * bool) array;
+      init_att_vals   : (string * Pxp_core_types.I.att_value) array;
+      att_info        : (Pxp_core_types.I.att_type * bool) array;
       att_required    : int list;
       accept_undeclared_atts : bool;
     }
@@ -274,9 +276,9 @@ val create_namespace_scope :
       {!Intro_getting_started.wfmode}.
    *)
 class dtd :
-  ?swarner:Pxp_core_types.symbolic_warnings ->
-  Pxp_core_types.collect_warnings -> 
-  Pxp_core_types.rep_encoding ->
+  ?swarner:Pxp_core_types.I.symbolic_warnings ->
+  Pxp_core_types.I.collect_warnings -> 
+  Pxp_core_types.I.rep_encoding ->
 object
   method root : string option
     (** get the name of the root element if present. This is the name
@@ -289,7 +291,7 @@ object
        * only once (usually by the parser)
        *)
 
-    method id : Pxp_core_types.dtd_id option
+    method id : Pxp_core_types.I.dtd_id option
       (** get the identifier for this DTD. Possible return values:
        * - [None]: There is no DOCTYPE declaration, or only
        *    [<!DOCTYPE name>]
@@ -304,10 +306,10 @@ object
        *    brackets
        *)
 
-    method set_id : Pxp_core_types.dtd_id -> unit
+    method set_id : Pxp_core_types.I.dtd_id -> unit
       (** set the identifier. This method can be invoked only once *)
 
-    method encoding : Pxp_core_types.rep_encoding
+    method encoding : Pxp_core_types.I.rep_encoding
       (** returns the encoding used for character representation *)
 
     method lexer_factory : Pxp_lexer_types.lexer_factory
@@ -449,8 +451,8 @@ object
 
     method write : 
              ?root:string ->
-             Pxp_core_types.output_stream -> 
-	     Pxp_core_types.encoding -> 
+             Pxp_core_types.I.output_stream -> 
+	     Pxp_core_types.I.encoding -> 
 	     bool -> 
 	       unit
       (** [write os enc doctype]:
@@ -470,8 +472,8 @@ object
 
     method write_ref : 
              ?root:string ->
-             Pxp_core_types.output_stream -> 
-	     Pxp_core_types.encoding -> 
+             Pxp_core_types.I.output_stream -> 
+	     Pxp_core_types.I.encoding -> 
 	       unit
      (** [write_ref os enc]:
       * Writes a reference to the DTD as [enc]-encoded string to [os].
@@ -495,9 +497,9 @@ object
     (*----------------------------------------*)
     method invalidate : unit
       (* INTERNAL METHOD *)
-    method warner : Pxp_core_types.collect_warnings
+    method warner : Pxp_core_types.I.collect_warnings
       (* INTERNAL METHOD *)
-    method swarner : Pxp_core_types.symbolic_warnings option
+    method swarner : Pxp_core_types.I.symbolic_warnings option
       (* INTERNAL METHOD *)
   end
 
@@ -520,7 +522,7 @@ and dtd_element : dtd -> string ->
        * entity.
        *)
 
-    method content_model : Pxp_core_types.content_model_type
+    method content_model : Pxp_core_types.I.content_model_type
       (** get the content model of this element declaration, or [Unspecified] *)
 
     method content_dfa : Pxp_dfa.dfa_definition option
@@ -530,7 +532,7 @@ and dtd_element : dtd -> string ->
        *)
 
     method set_cm_and_extdecl : 
-             Pxp_core_types.content_model_type -> bool -> unit
+             Pxp_core_types.I.content_model_type -> bool -> unit
       (** [set_cm_and_extdecl cm extdecl]:
        * set the content model to [cm]. Once the content model is not 
        * [Unspecified], it cannot be set to a different value again.
@@ -538,7 +540,7 @@ and dtd_element : dtd -> string ->
        * entity ([extdecl]).
        *)
 
-    method encoding : Pxp_core_types.rep_encoding
+    method encoding : Pxp_core_types.I.rep_encoding
       (** Return the encoding of the strings *)
 
     method allow_arbitrary : unit
@@ -564,7 +566,7 @@ and dtd_element : dtd -> string ->
       (** Returns whether arbitrary attributes are allowed or not. *)
 
     method attribute : string -> 
-                         Pxp_core_types.att_type * Pxp_core_types.att_default
+                         Pxp_core_types.I.att_type * Pxp_core_types.I.att_default
       (** get the type and default value of a declared attribute, or raise
        * [Validation_error] if the attribute does not exist.
        * If the [arbitrary_allowed] flag is set, the exception [Undeclared] 
@@ -605,8 +607,8 @@ and dtd_element : dtd -> string ->
       (** Returns the names of the attributes with type IDREF or IDREFS. *)
 
     method add_attribute : string -> 
-                           Pxp_core_types.att_type -> 
-			   Pxp_core_types.att_default -> 
+                           Pxp_core_types.I.att_type -> 
+			   Pxp_core_types.I.att_default -> 
 			   bool ->
 			     unit
       (** [add_attribute name type default extdecl]:
@@ -628,7 +630,7 @@ and dtd_element : dtd -> string ->
     (**/**)
 
     method write : 
-             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+             Pxp_core_types.I.output_stream -> Pxp_core_types.I.encoding -> unit
       (* write os enc:
        * Writes the <!ELEMENT ... > declaration to 'os' as 'enc'-encoded string.
        *)
@@ -647,16 +649,16 @@ and dtd_element : dtd -> string ->
    * external ID.
    *)
 and dtd_notation : 
-       string -> Pxp_core_types.ext_id -> Pxp_core_types.rep_encoding ->
+       string -> Pxp_core_types.I.ext_id -> Pxp_core_types.I.rep_encoding ->
   object
     method name : string
-    method ext_id : Pxp_core_types.ext_id
-    method encoding : Pxp_core_types.rep_encoding
+    method ext_id : Pxp_core_types.I.ext_id
+    method encoding : Pxp_core_types.I.rep_encoding
 
     (**/**)
 
     method write : 
-             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+             Pxp_core_types.I.output_stream -> Pxp_core_types.I.encoding -> unit
       (* write_compact_as_latin1 os enc:
        * Writes the <!NOTATION ... > declaration to 'os' as 'enc'-encoded 
        * string.
@@ -673,11 +675,11 @@ and dtd_notation :
    * the given value string. 
    * Note: A processing instruction is written as [ <?target value?> ]. 
    *)
-and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
+and proc_instruction : string -> string -> Pxp_core_types.I.rep_encoding ->
   object
     method target : string
     method value : string
-    method encoding : Pxp_core_types.rep_encoding
+    method encoding : Pxp_core_types.I.rep_encoding
 
     method parse_pxp_option : (string * string * (string * string) list)
       (** Parses a PI containing a PXP option. Such PIs are formed like:
@@ -690,7 +692,7 @@ and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
     (**/**)
 
     method write : 
-             Pxp_core_types.output_stream -> Pxp_core_types.encoding -> unit
+             Pxp_core_types.I.output_stream -> Pxp_core_types.I.encoding -> unit
       (* write os enc:
        * Writes the <?...?> PI to 'os' as 'enc'-encoded string.
        *)
@@ -700,9 +702,9 @@ and proc_instruction : string -> string -> Pxp_core_types.rep_encoding ->
 ;;
 
 val create_dtd :
-      ?swarner:Pxp_core_types.symbolic_warnings ->
-      ?warner:Pxp_core_types.collect_warnings -> 
-      Pxp_core_types.rep_encoding ->
+      ?swarner:Pxp_core_types.I.symbolic_warnings ->
+      ?warner:Pxp_core_types.I.collect_warnings -> 
+      Pxp_core_types.I.rep_encoding ->
 	dtd
   (** Preferred way of creating a DTD. Example:
    * {[ let dtd = create_dtd 
@@ -720,8 +722,8 @@ val create_dtd :
 (**/**)
 type source =
     Entity of ((dtd -> Pxp_entity.entity) * Pxp_reader.resolver)
-  | ExtID of (Pxp_core_types.ext_id * Pxp_reader.resolver)
-  | XExtID of (Pxp_core_types.ext_id * string option * Pxp_reader.resolver)
+  | ExtID of (Pxp_core_types.I.ext_id * Pxp_reader.resolver)
+  | XExtID of (Pxp_core_types.I.ext_id * string option * Pxp_reader.resolver)
   (* Sources are pairs of (1) names of entities to open, and (2) methods
    * of opening entities. See Pxp_yacc for more documentation.
    *)
@@ -732,6 +734,9 @@ type source =
 (** Useful properties of entities: The following submodule exports all 
  * stable properties of the entity classes. Please use this module, and
  * not [Pxp_entity] to access entities.
+ *
+ * Note that the types [entity] and [entity_id] are also exported
+ * by {!Pxp_types}.
  *)
 module Entity : sig
   val get_name : Pxp_entity.entity -> string
@@ -740,7 +745,7 @@ module Entity : sig
   val get_full_name : Pxp_entity.entity -> string
       (** The full name includes the ID, too (for diagnostics messages) *)
  
-  val get_encoding : Pxp_entity.entity -> Pxp_core_types.rep_encoding
+  val get_encoding : Pxp_entity.entity -> Pxp_core_types.I.rep_encoding
       (** Return the encoding of the internal representation of the entity *)
 
   val get_type : Pxp_entity.entity -> 
@@ -753,7 +758,7 @@ module Entity : sig
        * "right side" of the entity definition.
        *)
 
-  val get_xid : Pxp_entity.entity -> Pxp_core_types.ext_id option
+  val get_xid : Pxp_entity.entity -> Pxp_core_types.I.ext_id option
       (** Returns the external ID for external and NDATA entities, and None
        * for internal entities
        * 
@@ -762,7 +767,7 @@ module Entity : sig
        * external ID may be meaningless.
        *)
 
-  val get_resolver_id : Pxp_entity.entity -> Pxp_core_types.resolver_id option
+  val get_resolver_id : Pxp_entity.entity -> Pxp_core_types.I.resolver_id option
       (** Returns the resolver ID for external entities, and None for other
        * entities. This is the version as returned by the [active_id] method
        * by the resolver.
@@ -788,7 +793,7 @@ module Entity : sig
        *)
 
   val create_ndata_entity :
-      name:string -> xid:Pxp_core_types.ext_id -> notation:string -> dtd -> 
+      name:string -> xid:Pxp_core_types.I.ext_id -> notation:string -> dtd -> 
 	Pxp_entity.entity
       (** Creates an NDATA entity. The name and the notation must be encoded
        * in the same encoding as the DTD. The external ID must be encoded
@@ -799,7 +804,7 @@ module Entity : sig
       ?doc_entity:bool ->
       ?system_base:string ->
       name:string -> 
-      xid:Pxp_core_types.ext_id -> 
+      xid:Pxp_core_types.I.ext_id -> 
       resolver:Pxp_reader.resolver ->
       dtd ->
 	Pxp_entity.entity
@@ -827,13 +832,19 @@ module Entity : sig
   val entity_id : Pxp_entity.entity -> Pxp_lexer_types.entity_id
     (** Returns the abstract entity ID *)
 
+  val lookup : Pxp_lexer_types.entity_id ->  Pxp_entity.entity
+    (** Looks the entity up for an entitiy ID *)
+
   val create_entity_id : unit -> Pxp_lexer_types.entity_id
     (** Create a new abstract entity ID. This ID can be used whereever
-     * an entity_id is expected but no entity is available.
+     * an [entity_id] is expected but no entity is available, except that
+     * the back coercion [lookup] is not supported, and will raise
+     * [Invalid_argument].
      *)
 
 end
 ;;
 
 
+(** {fixpxpcoretypes false} *)
 

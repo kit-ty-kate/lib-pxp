@@ -35,8 +35,8 @@ type config = Pxp_types.config =
     { warner : collect_warnings;
       swarner : symbolic_warnings option;
       enable_pinstr_nodes : bool;
-      enable_super_root_node : bool;
       enable_comment_nodes : bool;
+      enable_super_root_node : bool;
       drop_ignorable_whitespace : bool;
       encoding : rep_encoding;
       recognize_standalone_declaration : bool;
@@ -45,7 +45,7 @@ type config = Pxp_types.config =
       validate_by_dfa : bool;
       accept_only_deterministic_models : bool;
       disable_content_validation : bool;
-      name_pool : Pxp_core_types.pool;
+      name_pool : Pxp_core_types.I.pool;
       enable_name_pool_for_element_types    : bool;
       enable_name_pool_for_attribute_names  : bool;
       enable_name_pool_for_attribute_values : bool;

@@ -4,7 +4,7 @@
  * Copyright by Gerd Stolpmann. See LICENSE for details.
  *)
 
-include Pxp_core_types
+include Pxp_core_types.I
 
 open Pxp_entity
 open Pxp_dtd
@@ -205,6 +205,10 @@ let open_source cfg src use_document_entity dtd =
   en # set_debugging_mode (cfg.debugging_mode);
   (r, en)
 ;;
+
+type entity_id = Pxp_lexer_types.entity_id
+
+type entity = Pxp_entity.entity
 
 
 type entry =

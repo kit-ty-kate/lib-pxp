@@ -5,7 +5,7 @@
  *)
 
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 open Pxp_aux
 open Pxp_reader
@@ -250,7 +250,58 @@ let update_other_lines v tok =
 ;;
 
 
-class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
+class type entity =
+object
+  method pxp_magic_coercion : unit -> unit
+  method is_ndata : bool
+  method name : string
+  method lex_id : lexers
+  method set_lex_id : lexers -> unit
+  method line : int
+  method column : int
+  method set_line_column : int -> int -> unit
+  method encoding : rep_encoding
+  method set_manager : prelim_entity_manager -> unit
+  method counts_as_external : bool
+  method set_counts_as_external : unit
+  method lexer_obj : lexer_obj
+  method resolver : resolver option
+  method open_entity : ?gen_att_events:bool -> bool -> lexers -> unit
+  method close_entity : lexers
+  method is_open : bool
+  method replacement_text : (string * bool)
+  method xml_declaration : (string * string) list option
+  method set_debugging_mode : bool -> unit
+  method full_name : string
+  method next_token : token
+  method next_ignored_token : token
+  method process_xmldecl : prolog_token list -> unit
+  method process_missing_xmldecl : unit
+  method ext_id : ext_id
+  method resolver_id : resolver_id
+  method notation : string
+end
+
+and prelim_entity_manager =
+object
+  method current_entity : entity
+  method pop_entity : unit -> unit
+  method push_entity : entity -> unit
+end
+
+
+class type v_entity =
+object
+  inherit entity
+
+  val v : entity entity_variables
+end
+
+
+exception Coerced_entity of entity
+
+
+class virtual entity_base the_dtd the_name the_swarner the_warner init_encoding =
   object (self)
     (* This class prescribes the type of all entity objects. Furthermore,
      * the default 'next_token' mechanism is implemented.
@@ -258,6 +309,8 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 
     val v = make_variables 
 	      the_dtd the_name the_swarner the_warner init_encoding
+
+    method virtual pxp_magic_coercion : unit -> unit
 
     method is_ndata = false
       (* Returns if this entity is an NDATA (unparsed) entity *)
@@ -285,9 +338,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
       ( match manager with
 	    None -> assert false
 	  | Some m -> m
-      : < current_entity : entity; 
-	  pop_entity : unit -> unit;
-	  push_entity : entity -> unit >
+      : prelim_entity_manager
       )
 
     method set_manager m = manager <- Some m
@@ -352,9 +403,6 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 	 * external entities (directly or indirectly).
 	 * This method implements the inclusion method "Included in Literal".
 	 *)
-
-
-    method lexer_obj = v.lexobj
 
 
     method xml_declaration =
@@ -682,7 +730,7 @@ class virtual entity the_dtd the_name the_swarner the_warner init_encoding =
 ;;
 
 
-class ndata_entity the_name the_ext_id the_notation init_encoding =
+class ndata_entity the_name the_ext_id the_notation init_encoding : entity =
   object (self)
     (* An NDATA entity is very restricted; more or less you can only find out
      * its external ID and its notation.
@@ -692,6 +740,9 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
     val mutable ext_id = the_ext_id
     val mutable notation = the_notation
     val encoding = (init_encoding : rep_encoding)
+
+    method pxp_magic_coercion() =
+      raise (Coerced_entity (self :> entity))
 
     method name = (name : string)
     method ext_id = (ext_id : ext_id)
@@ -769,10 +820,6 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : (string * bool) )
 
-    method lexer_obj =
-      ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
-	  : lexer_obj )
-
     method next_token =
       ( raise (Validation_error ("Invalid reference to NDATA entity " ^ name))
 	  : token )
@@ -792,14 +839,13 @@ class ndata_entity the_name the_ext_id the_notation init_encoding =
   end
 ;;
 
-class external_entity the_resolver the_dtd the_name the_swarner the_warner 
-                      the_ext_id
-                      the_system_base
-                      the_p_special_empty_entities
-		      init_encoding
+class external_entity
+         the_resolver the_dtd the_name the_swarner the_warner 
+         the_ext_id the_system_base the_p_special_empty_entities
+         init_encoding : v_entity
   =
   object (self)
-    inherit entity
+    inherit entity_base
               the_dtd the_name the_swarner the_warner 
 	      init_encoding
             as super
@@ -839,6 +885,9 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
     initializer
       v.counts_as_external <- true;
 
+
+    method pxp_magic_coercion() =
+      raise (Coerced_entity (self :> entity))
 
     method private set_encoding e =
       assert resolver_is_open;
@@ -1030,11 +1079,27 @@ class external_entity the_resolver the_dtd the_name the_swarner the_warner
   end
 ;;
 
+(*
+class external_entity the_resolver the_dtd the_name the_swarner the_warner 
+                      the_ext_id
+                      the_system_base
+                      the_p_special_empty_entities
+		      init_encoding : entity
+  = 
+object (self)
+  inherit external_entity_base 
+       the_resolver the_dtd the_name the_swarner the_warner 
+       the_ext_id the_system_base the_p_special_empty_entities
+       init_encoding
+
+end
+;;
+ *)
 
 class document_entity  the_resolver the_dtd the_name the_swarner the_warner
                        the_ext_id
                        the_system_base
-		       init_encoding
+		       init_encoding : entity
   =
   object (self)
     inherit external_entity  the_resolver the_dtd the_name the_swarner 
@@ -1053,6 +1118,9 @@ class document_entity  the_resolver the_dtd the_name the_swarner the_warner
 
     method counts_as_external = false
       (* Document entities count never as external! *)
+
+    method pxp_magic_coercion() =
+      raise (Coerced_entity (self :> entity))
   end
 ;;
 
@@ -1060,7 +1128,7 @@ class document_entity  the_resolver the_dtd the_name the_swarner the_warner
 class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
                       the_p_internal_subset 
                       init_is_parameter_entity
-		      init_encoding
+		      init_encoding : entity
   =
   (* An internal entity uses a "literal entity value" as character source.
    * This value is first expanded and preprocessed, i.e. character and
@@ -1073,7 +1141,7 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
    *)
 
   object (self)
-    inherit entity
+    inherit entity_base
               the_dtd the_name the_swarner the_warner 
 	      init_encoding
 	    as super
@@ -1212,6 +1280,10 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
 
 
     method resolver = (None : resolver option)
+
+    method pxp_magic_coercion() =
+      raise (Coerced_entity (self :> entity))
+
   end
 ;;
 
@@ -1242,7 +1314,7 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
 type section_state = P_bof | P_normal of int | P_pre_eof | P_eof
   (* P_normal n: The number n is the number of open inner entities *)
 
-class entity_section (init_ent:entity) =
+class entity_section (init_ent:entity) : entity =
 object (self) 
   val ent = init_ent
   val mutable state = P_bof
@@ -1331,8 +1403,9 @@ object (self)
   method process_missing_xmldecl = ()
   method ext_id = ent # ext_id
   method notation = ent # notation
+
+  method pxp_magic_coercion() =
+    raise (Coerced_entity (self :> entity))
+
 end
 ;;
-
-(* class entity_manager: has been moved to Pxp_entity_manager *)
-

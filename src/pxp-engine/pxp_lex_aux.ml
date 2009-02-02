@@ -3,10 +3,13 @@
  *
  *)
 
-  open Pxp_core_types
+  open Pxp_core_types.I
   open Pxp_lexer_types
 
-  class dummy_entity = object end
+  class dummy_entity = 
+  object
+    method pxp_magic_coercion() : unit = raise Not_found
+  end
 
   let dummy_entity = ( new dummy_entity : entity_id )
 

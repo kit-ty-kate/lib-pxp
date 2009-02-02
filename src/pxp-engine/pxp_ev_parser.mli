@@ -22,8 +22,8 @@
  *)
 
 
-open Pxp_types
 open Pxp_dtd
+open Pxp_types
 
 val create_entity_manager :
       ?is_document:bool ->       (* default: true *)
@@ -153,8 +153,12 @@ val process_expr :
    *    hard to change!
    *)
 
+val close_entities : Pxp_entity_manager.entity_manager -> unit
+  (** Closes all entities managed by this entity manager, and frees
+      operating system resources like open files.
+   *)
+
 val create_pull_parser :
-      ?close:((unit -> unit) ref) ->
       config -> 
       entry ->
       Pxp_entity_manager.entity_manager ->
@@ -180,13 +184,4 @@ val create_pull_parser :
    * let next = create_pull_parser cfg entry mng in
    * let stream = Stream.from(fun _ -> next())
    * ]}
-   *
-   * The optional argument [close] may be set to a variable, and the
-   * pull parser sets this variable to a function that closes the event
-   * stream immediately when invoked. This implies that all resources
-   * of the operating system (like files) are closed. The token stream
-   * is immediately ended (i.e. [None] is returned). The [close] argument
-   * exists to allow users to stop parsing at any point. If you can ensure
-   * to read from the event stream until [E_end_of_stream] or [E_error] is
-   * encountered, it is not required to care of closing the parser engine.
    *)

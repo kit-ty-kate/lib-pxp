@@ -5,7 +5,7 @@
  *)
 
 
-open Pxp_core_types
+open Pxp_core_types.I
 open Pxp_lexer_types
 
 let lexer_factories = Hashtbl.create 100;;

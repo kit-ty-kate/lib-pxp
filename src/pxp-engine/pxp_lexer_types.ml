@@ -41,10 +41,7 @@ type prolog_token =
   | Pro_eof
 
 
-type entity_id = < >
-  (* The class without properties; but you can still compare if two objects
-   * are the same.
-   *)
+type entity_id = < pxp_magic_coercion : unit -> unit >
 
 type token = 
   | Begin_entity             (* Beginning of entity *)
@@ -183,7 +180,7 @@ let string_of_tok tok =
 
 class type lexer_factory =
 object
-  method encoding : Pxp_core_types.rep_encoding
+  method encoding : Pxp_core_types.I.rep_encoding
   method open_source : Pxp_reader.lexer_source -> lexer_obj
   method open_string : string -> lexer_obj
   method open_string_inplace : string -> lexer_obj
@@ -192,7 +189,7 @@ end
 and lexer_obj =
 object
   method factory : lexer_factory
-  method encoding : Pxp_core_types.rep_encoding
+  method encoding : Pxp_core_types.I.rep_encoding
   method open_source : Pxp_reader.lexer_source -> unit
   method open_string : string -> unit
   method open_string_inplace : string -> unit

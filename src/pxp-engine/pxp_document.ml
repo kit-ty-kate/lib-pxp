@@ -87,6 +87,7 @@ class type [ 'ext ] node =
     method data : string
     method set_data : string -> unit
     method node_type : node_type
+    method entity_id : Pxp_lexer_types.entity_id
     method position : (string * int * int)
     method attribute : string -> att_value
     method attribute_names : string list
@@ -118,13 +119,17 @@ class type [ 'ext ] node =
     method encoding : rep_encoding
     method create_element :
                    ?name_pool_for_attribute_values:pool ->
+                   ?entity_id:Pxp_lexer_types.entity_id ->
                    ?position:(string * int * int) ->
 		   ?valcheck:bool ->
 		   ?att_values:( (string * att_value) list) ->
                    dtd -> node_type -> (string * string) list -> 'ext node
-    method create_data : dtd -> string -> 'ext node
-    method create_other : ?position:(string * int * int) ->  
-                          dtd -> node_type -> 'ext node
+    method create_data : 
+                   dtd -> string -> 'ext node
+    method create_other : 
+                   ?entity_id:Pxp_lexer_types.entity_id ->
+                   ?position:(string * int * int) ->  
+                   dtd -> node_type -> 'ext node
     method local_validate : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
     method validate_contents : ?use_dfa:bool -> ?check_data_nodes:bool -> unit -> unit
     method complement_attlist : unit -> unit
@@ -140,11 +145,13 @@ class type [ 'ext ] node =
     method internal_adopt : 'ext node option -> int -> unit
     method internal_set_pos : int -> unit
     method internal_delete : 'ext node -> unit
-    method internal_init : (string * int * int) ->
+    method internal_init : Pxp_lexer_types.entity_id ->
+                           (string * int * int) ->
                            pool option -> bool ->
                            dtd -> string -> (string * string) list -> 
 			   (string * att_value) list -> unit
-    method internal_init_other : (string * int * int) ->
+    method internal_init_other : Pxp_lexer_types.entity_id ->
+                                 (string * int * int) ->
                                  dtd -> node_type -> unit
     method dump : Format.formatter -> unit
   end
@@ -571,6 +578,8 @@ class virtual ['ext] no_comments_feature =
 
 (**********************************************************************)
 
+let null_entity_id = Pxp_dtd.Entity.create_entity_id() ;;
+
 let no_position = ("?", 0, 0) ;;
 
 let format_att_value fmt v =
@@ -609,15 +618,16 @@ class ['ext] data_impl an_ext : ['ext] node =
     val mutable content = ("" : string)
 
     method position = no_position
+    method entity_id = null_entity_id
 
     method data = content
     method node_type = T_data
 
-    method create_element ?name_pool_for_attribute_values ?position 
+    method create_element ?name_pool_for_attribute_values ?entity_id ?position 
                           ?valcheck ?att_values _ _ _ =
       method_na "create_element"
 
-    method create_other ?position _ _ =
+    method create_other ?entity_id ?position _ _ =
       method_na "create_other"
 
     method create_data new_dtd new_str =
@@ -643,8 +653,8 @@ class ['ext] data_impl an_ext : ['ext] node =
       let encoding = self # encoding in
       write_data_string ~from_enc:encoding ~to_enc:enc os content
 
-    method internal_init _ _ _ _ _ _ _ = assert false
-    method internal_init_other _ _ _ =   assert false
+    method internal_init _ _ _ _ _ _ _ _ = assert false
+    method internal_init_other _ _ _ _ =   assert false
 
     method dump fmt =
       Format.pp_open_hbox fmt ();
@@ -758,6 +768,8 @@ class ['ext] attribute_impl ~element ~name value init_dtd : ['ext] node =
 
     method position = no_position
 
+    method entity_id = self # parent # entity_id
+
     method previous_node =
       self # parent # nth_node (self # node_position - 1)
 
@@ -780,14 +792,15 @@ class ['ext] attribute_impl ~element ~name value init_dtd : ['ext] node =
     method remove _ =           method_na "remove"
     method extension =          method_na "extension"
     method set_data _ =         method_na "set_data"
-    method internal_init _ _ _ _ _ _ _ = assert false
-    method internal_init_other _ _ _   = assert false
+    method internal_init _ _ _ _ _ _ _ _ = assert false
+    method internal_init_other _ _ _ _   = assert false
 
-    method create_element ?name_pool_for_attribute_values ?position 
+    method create_element ?name_pool_for_attribute_values 
+                          ?entity_id ?position 
                           ?valcheck ?att_values _ _ _ =
                                 method_na "create_element"
     method create_data _ _ =    method_na "create_data"
-    method create_other ?position _ _ =   method_na "create_other"
+    method create_other ?entity_id ?position _ _ =   method_na "create_other"
     method write ?prefixes ?default ?minimization _ _ = method_na "write"
     method display ?prefixes ?minimization _ _        = method_na "display"
   end
@@ -830,10 +843,13 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
 
     val mutable position = no_position
     val mutable comment = None
+    val mutable ent_id = null_entity_id
 
     method node_type = T_comment
 
     method position = position
+
+    method entity_id = ent_id
 
     method comment = comment
 
@@ -863,12 +879,14 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
       Format.pp_print_string fmt "* T_comment";
       Format.pp_close_box fmt (); 
 
-    method create_element ?name_pool_for_attribute_values ?position 
+    method create_element ?name_pool_for_attribute_values 
+                          ?entity_id ?position 
                           ?valcheck ?att_values _ _ _ =
                                 method_na "create_element"
-    method create_data _ _ =    method_na "create_data"
+    method create_data _ _ =  method_na "create_data"
 
-    method create_other ?(position = no_position) new_dtd new_ntype =
+    method create_other ?(entity_id = null_entity_id) 
+                        ?(position = no_position) new_dtd new_ntype =
       if new_ntype <> T_comment then
 	failwith "Pxp_document.comment_impl#create_other: bad type";
       let x = extension # clone in
@@ -879,18 +897,19 @@ class [ 'ext ] comment_impl an_ext : ['ext] node =
 	    	    : 'ext #node :> 'ext node
 		) in
       x # set_node obj;
-      obj # internal_init_other position new_dtd new_ntype;
+      obj # internal_init_other entity_id position new_dtd new_ntype;
       obj
 
-    method internal_init new_pos attval_name_pool new_dtd new_name
+    method internal_init _ new_pos attval_name_pool new_dtd new_name
                          new_attlist =
       assert false
 
-    method internal_init_other new_pos new_dtd new_ntype =
+    method internal_init_other new_ent_id new_pos new_dtd new_ntype =
       (* resets the contents of the object *)
       parent <- None;
       node_position <- -1;
       position <- new_pos;
+      ent_id <- new_ent_id;
       dtd <- Some new_dtd;
       comment <- None;
 
@@ -984,10 +1003,13 @@ class [ 'ext ] pinstr_impl an_ext : ['ext] node =
 
     val mutable position = no_position
     val mutable pinstr_name = ""
+    val mutable ent_id = null_entity_id
 
     method node_type = T_pinstr pinstr_name
 
     method position = position
+
+    method entity_id = ent_id
 
     method data =
        match self # pinstr pinstr_name with
@@ -1016,12 +1038,13 @@ class [ 'ext ] pinstr_impl an_ext : ['ext] node =
 	failwith "Pxp_document.pinstr_impl # add_pinstr: the node can only contain one processing instruction";
       super # add_pinstr pi
 
-    method create_element ?name_pool_for_attribute_values ?position 
+    method create_element ?name_pool_for_attribute_values ?entity_id ?position 
                           ?valcheck ?att_values _ _ _ =
                                 method_na "create_element"
-    method create_data _ _ =    method_na "create_data"
+    method create_data _ _ = method_na "create_data"
 
-    method create_other ?(position = no_position) new_dtd new_ntype =
+    method create_other ?(entity_id = null_entity_id) 
+                        ?(position = no_position) new_dtd new_ntype =
       ( match new_ntype with
 	    T_pinstr _ -> ()
 	  | _ ->
@@ -1035,18 +1058,19 @@ class [ 'ext ] pinstr_impl an_ext : ['ext] node =
 	    	    : 'ext #node :> 'ext node
 		) in
       x # set_node obj;
-      obj # internal_init_other position new_dtd new_ntype;
+      obj # internal_init_other entity_id position new_dtd new_ntype;
       obj
 
-    method internal_init new_pos attval_name_pool new_dtd new_name
+    method internal_init _ new_pos attval_name_pool new_dtd new_name
                          new_attlist =
       assert false
 
-    method internal_init_other new_pos new_dtd new_ntype =
+    method internal_init_other new_ent_id new_pos new_dtd new_ntype =
       (* resets the contents of the object *)
       parent <- None;
       node_position <- -1;
       position <- new_pos;
+      ent_id <- new_ent_id;
       dtd <- Some new_dtd;
       pinstr <- StringMap.empty;
       (match new_ntype with
@@ -1119,8 +1143,11 @@ class virtual ['ext] container_features an_ext =
       val mutable nodes = LA_not_available
       val mutable size = 0
       val mutable position = no_position
+      val mutable ent_id = null_entity_id
 
       method position = position
+
+      method entity_id = ent_id
 
       method append_node n =
 	(* general DTD check: *)
@@ -2051,6 +2078,7 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
 
       method create_element
 	               ?name_pool_for_attribute_values
+                       ?(entity_id = null_entity_id)
                        ?(position = no_position) 
 		       ?(valcheck = true)
 		       ?(att_values = [])
@@ -2069,14 +2097,14 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
 	match new_type with
 	  | T_element name ->
 	      obj # internal_init
-                position name_pool_for_attribute_values
+                entity_id position name_pool_for_attribute_values
 		valcheck
                 new_dtd name new_attlist att_values;
 	      obj
 	  | T_none ->
 	      (* a special case to make create_no_node work *)
 	      obj # internal_init
-                position None false new_dtd "_xxx_" [] [];
+                entity_id position None false new_dtd "_xxx_" [] [];
 	      obj
 	  | _ ->
 	      failwith "create_element: Cannot create such node"
@@ -2141,7 +2169,7 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
        * Finally, init_att_vals and extra_att_vals are merged.
        *)
 
-      method internal_init new_pos attval_name_pool 
+      method internal_init new_ent_id new_pos attval_name_pool 
                            valcheck_element_exists
                            new_dtd new_name
                            new_attlist new_attvalues =
@@ -2153,6 +2181,7 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
 	size <- 0;
 	ntype <- T_element new_name;
 	position <- new_pos;
+	ent_id <- new_ent_id;
 	dtd <- Some new_dtd;
 	pinstr <- StringMap.empty;
 	
@@ -2473,7 +2502,8 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
 	    T_element n -> n
 	  | _ -> assert false
       in
-      dup # internal_init no_position None true (self#dtd) name [] atts;
+      dup # internal_init 
+	null_entity_id no_position None true (self#dtd) name [] atts;
       (* It is possible that dup has now more attributes than atts,
        * because values in atts are missing for which the DTD defines a
        * default. (This is an error.)
@@ -2591,11 +2621,11 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
        *)
       self # write ?minimization os enc
 
-    method internal_init_other new_pos new_dtd new_ntype =
+    method internal_init_other _ new_pos new_dtd new_ntype =
       method_na "internal_init_other"
 
     method set_data _ = method_na "set_data"
-    method create_other ?position _ _ =   method_na "create_other"
+    method create_other ?entity_id ?position _ _ =   method_na "create_other"
     method create_data _ _ = method_na "create_data"
   end
 ;;
@@ -2616,6 +2646,7 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
     method node_type = T_super_root
 
     method create_other
+                       ?(entity_id = null_entity_id)
                        ?(position = no_position) 
 		       new_dtd new_ntype =
       let x = extension # clone in
@@ -2630,13 +2661,13 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
       x # set_node obj;
       match new_ntype with
 	| (T_super_root) ->
-	    obj # internal_init_other position new_dtd new_ntype;
+	    obj # internal_init_other entity_id position new_dtd new_ntype;
 	    obj
 	| _ ->
 	    failwith "create_other: Cannot create such node"
 
 
-    method internal_init_other new_pos new_dtd new_ntype =
+    method internal_init_other new_ent_id new_pos new_dtd new_ntype =
       (* resets the contents of the object *)
       parent <- None;
       node_position <- -1;
@@ -2644,6 +2675,7 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
       nodes <- LA_not_available;
       size <- 0;
       position <- new_pos;
+      ent_id <- new_ent_id;
       dtd <- Some new_dtd;
       pinstr <- StringMap.empty
 
@@ -2673,16 +2705,16 @@ class [ 'ext ] super_root_impl an_ext : ['ext] node =
 	(fun n -> n # display ?prefixes ?minimization os enc)
 	(self # sub_nodes);
 
-    method create_element ?name_pool_for_attribute_values ?position 
+    method create_element ?name_pool_for_attribute_values ?entity_id ?position 
                           ?valcheck ?att_values _ _ _ =
                                 method_na "create_element"
     method create_data _ _ = method_na "create_data"
 
-    method internal_init new_pos attval_name_pool new_dtd new_name
+    method internal_init _ new_pos attval_name_pool new_dtd new_name
                          new_attlist =
       method_na "internal_init"
 
-    method set_data _ =         method_na "set_data"
+    method set_data _ =  method_na "set_data"
   end
 ;;
 
@@ -2813,19 +2845,20 @@ class [ 'ext ] namespace_impl srcprefix normprefix init_dtd : ['ext] node =
     (* Senseless methods: *)
 
      method position = no_position
+     method entity_id = null_entity_id
 
     (* Non-applicable methods: *)
 
      method extension =          method_na "extension"
-     method internal_init _ _ _ _ _ _ _ =   method_na "internal_init"
-     method internal_init_other _ _ _ = method_na "internal_init_other"
+     method internal_init _ _ _ _ _ _ _ _ =   method_na "internal_init"
+     method internal_init_other _ _ _ _ = method_na "internal_init_other"
      method set_data _ =         method_na "set_data"
      method set_namespace_scope _ = method_na "set_namespace_scope"
-     method create_element ?name_pool_for_attribute_values ?position 
+     method create_element ?name_pool_for_attribute_values ?entity_id ?position 
                            ?valcheck ?att_values _ _ _ =
                                  method_na "create_element"
      method create_data _ _ =    method_na "create_data"
-     method create_other ?position _ _ = method_na "create_other"
+     method create_other ?entity_id ?position _ _ = method_na "create_other"
      method write ?prefixes ?default ?minimization _ _ = method_na "write"
      method display ?prefixes ?minimization _ _        = method_na "display"
      method localname =          method_na "localname"
@@ -2926,13 +2959,13 @@ class [ 'ext ] namespace_element_impl an_ext =
 	| Some l ->
 	    l
 
-    method internal_init new_pos attval_name_pool valcheck_element_exists
-                         new_dtd new_name
+    method internal_init new_ent_id new_pos attval_name_pool
+                         valcheck_element_exists new_dtd new_name
                          new_attlist new_attvalues =
 
       super # internal_init
-	new_pos attval_name_pool valcheck_element_exists new_dtd new_name 
-	        new_attlist new_attvalues;
+	ent_id new_pos attval_name_pool valcheck_element_exists new_dtd 
+        new_name new_attlist new_attvalues;
 
       let (p,l) = namespace_split new_name in
       normprefix <- p;
@@ -3166,7 +3199,7 @@ let get_data_exemplar spec =
 ;;
 
 
-let create_element_node ?name_pool_for_attribute_values ?position 
+let create_element_node ?name_pool_for_attribute_values ?entity_id ?position 
                         ?valcheck ?att_values 
                         spec dtd eltype atts =
    match spec with
@@ -3174,6 +3207,7 @@ let create_element_node ?name_pool_for_attribute_values ?position
 	let exemplar = spec_table_find_exemplar tab eltype in
 	exemplar # create_element
 	    ?name_pool_for_attribute_values
+            ?entity_id
             ?position
 	    ?valcheck
 	    ?att_values
@@ -3188,14 +3222,14 @@ let get_element_exemplar spec eltype atts =
 ;;
 
 
-let create_super_root_node ?position spec dtd =
+let create_super_root_node ?entity_id ?position spec dtd =
     match spec with
       Spec_table tab ->
 	( match tab.super_root_node with
 	      None ->
 		failwith "Pxp_document.create_super_root_node: No exemplar"
 	    | Some x ->
-		x # create_other ?position:position dtd T_super_root
+		x # create_other ?entity_id ?position:position dtd T_super_root
 	)
 ;;
 
@@ -3215,22 +3249,22 @@ let get_super_root_exemplar spec =
 (* TODO: This function is broken, because an element will no longer
  * accept the type T_none
  *)
-let create_no_node ?position spec dtd =
+let create_no_node ?entity_id ?position spec dtd =
     match spec with
       Spec_table tab ->
 	let x = tab.default_element in
-	x # create_element ?position:position dtd T_none []
+	x # create_element ?entity_id ?position:position dtd T_none []
 ;;
 
 
-let create_comment_node ?position spec dtd text =
+let create_comment_node ?entity_id ?position spec dtd text =
   match spec with
       Spec_table tab ->
 	( match tab.comment_node with
 	      None ->
 		failwith "Pxp_document.create_comment_node: No exemplar"
 	    | Some x ->
-		let e = x # create_other ?position:position dtd T_comment
+		let e = x # create_other ?entity_id ?position dtd T_comment
 		in
 		e # set_comment (Some text);
 		e
@@ -3250,7 +3284,7 @@ let get_comment_exemplar spec =
 ;;
 
 
-let create_pinstr_node ?position spec dtd pi =
+let create_pinstr_node ?entity_id ?position spec dtd pi =
   let target = pi # target in
   let exemplar =
     match spec with
@@ -3268,7 +3302,7 @@ let create_pinstr_node ?position spec dtd pi =
 	  )
   in
   let el =
-    exemplar # create_other ?position:position dtd (T_pinstr target) in
+    exemplar # create_other ?entity_id ?position dtd (T_pinstr target) in
   el # add_pinstr pi;
   el
 ;;
@@ -3455,7 +3489,7 @@ let iter_tree ?(pre=(fun x -> ())) ?(post=(fun x -> ())) base =
     post n
   and iter_children l =
     match l with
-	[] -> []
+	[] -> ()
       | child :: l' ->
 	  (try
 	     iter_rec child;
@@ -3480,7 +3514,7 @@ let iter_tree_sibl ?(pre=(fun _ _ _ -> ())) ?(post=(fun _ _ _ -> ())) base =
     post l n r
   and iter_children predecessor l =
     (match l with
-	 [] -> []
+	 [] -> ()
        | child :: l' ->
 	   let successor =
 	     match l' with
@@ -4161,6 +4195,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
   let return_doc = ref None in
   let stack = Stack.create() in
   let depth = ref 0 in           (* Stack depth, without super root node *)
+  let super_root_details = ref None in
   let doc_state = ref Null in
   let super_state = ref Null in
   let root_state = ref Null in
@@ -4197,7 +4232,16 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  assert(Stack.is_empty stack);
 	  (match (!return, !return_doc) with
 	     | (Some r, Some r_doc) -> 
-		 r_doc # init_root r lit_root;
+		 let r' =
+		   match !super_root_details with
+		     | None -> 
+			 r
+		     | Some pos ->
+			 create_super_root_node
+			   ~entity_id:r#entity_id
+			   ?position:pos spec !eff_dtd in
+		 return := Some r';
+		 r_doc # init_root r' lit_root;
 	     | _ ->
 		 assert false
 	  );
@@ -4207,8 +4251,11 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  if !doc_state = Null then doc_state := NA;
 	  super_state := Start_seen;
 	  if cfg.enable_super_root_node then (
+	    super_root_details := Some !pos;
+	    (*
 	    let n = create_super_root_node ?position:!pos spec !eff_dtd in
 	    Stack.push n stack;
+	     *)
 	  )
 
       | Some E_end_super ->
@@ -4216,10 +4263,8 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	    unexpected "E_end_super";
 	  super_state := End_seen;
 	  if  cfg.enable_super_root_node then (
-	    let n = Stack.pop stack in
 	    assert(Stack.is_empty stack);
-	    assert(n#node_type = T_super_root);
-	    return := Some n;
+	    assert(!super_root_details <> None);
 	  )
 
       | Some (E_start_tag(name,atts,scope_opt,eid)) ->
@@ -4235,6 +4280,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 		    (if cfg.enable_name_pool_for_attribute_values
 		     then Some cfg.name_pool
 		     else None)
+                    ~entity_id:eid
 		    ?position:!pos
 		    spec !eff_dtd name atts in
 	  ( match scope_opt with
@@ -4280,7 +4326,7 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  );
 	  pos := None
 
-      | Some (E_pinstr(target,value,_)) ->
+      | Some (E_pinstr(target,value,eid)) ->
 	  (* A PI may occur everywhere between start_doc and end_doc.  *)
 	  if !doc_state = End_seen then unexpected "E_pinstr";
 	  if !doc_state = Null then doc_state := NA;
@@ -4292,7 +4338,8 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  )
 	  else 
 	    if cfg.enable_pinstr_nodes then (
-	      let n = create_pinstr_node ?position:!pos spec !eff_dtd pi in
+	      let n = create_pinstr_node
+                        ~entity_id:eid ?position:!pos spec !eff_dtd pi in
 	      (Stack.top stack) # append_node n
 	    )
 	    else (
@@ -4354,7 +4401,16 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
   done;
   ( match !return, !return_doc with
 	_, Some doc -> `Document doc
-      | Some n, None -> `Node n
+      | Some n, None -> 
+	  let n' =
+	    match !super_root_details with
+	      | None -> 
+		  n
+	      | Some pos ->
+		  create_super_root_node
+		    ~entity_id:n#entity_id
+		    ?position:pos spec !eff_dtd in
+	  `Node n'
       | _ -> assert false
   )
 ;;
@@ -4374,7 +4430,6 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
                  (init_fstate : 'ext flux_state) 
                  (init_node : 'ext node) =
   let fstate = ref init_fstate in
-  let eid = Pxp_dtd.Entity.create_entity_id() in
   let rec generate arg =
     match !fstate with
 	`Node_start n ->
@@ -4407,6 +4462,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 			Namespace_method_not_applicable _ -> None in
 		  let (entity,line,colpos) = n # position in
 		  let pos = E_position(entity,line,colpos) in
+		  let eid = n # entity_id in
 		  let tag = E_start_tag(name, atts, scope_opt, eid) in
 		  let out = 
 		    if omit_positions then [ tag ] else [ pos; tag ] in
@@ -4433,6 +4489,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 		  let (entity,line,colpos) = n # position in
 		  let pos = E_position(entity,line,colpos) in
 		  let value = (List.hd (n # pinstr target)) # value in
+		  let eid = n # entity_id in
 		  let ev = E_pinstr(target,value,eid) in
 		  let out =
 		    if omit_positions then [ ev ] else [ pos; ev ] in
@@ -4471,6 +4528,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 	  (* Do action for n: *)
 	  ( match n # node_type with 
 		T_element name ->
+		  let eid = n # entity_id in
 		  Some(E_end_tag(name,eid))
 	      | T_super_root ->
 		  Some E_end_super

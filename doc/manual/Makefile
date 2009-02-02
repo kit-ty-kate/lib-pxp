@@ -100,6 +100,7 @@ odoc: html/pic/done
 		-I ../../src/pxp-engine \
 		-load ../../src/pxp-engine/pxp_engine.dump \
 		-d html/ref \
+		-colorize-code \
 		-css-style style.css
 
 

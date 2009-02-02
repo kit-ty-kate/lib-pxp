@@ -21,7 +21,9 @@
  *)
 
 
-open Pxp_core_types;;
+open Pxp_core_types.I;;
+(** {fixpxpcoretypes true} *) (* Set back to false at the end of the file *)
+
 
 (** {2 Types and exceptions} *)
 
@@ -974,3 +976,6 @@ val lookup_system_id_as_string :
     resolver;;
   (* Same as the equally named class *)
 
+
+
+(** {fixpxpcoretypes false} *)
