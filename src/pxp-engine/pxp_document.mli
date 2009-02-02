@@ -554,7 +554,7 @@ class type [ 'ext ] node =
 
     method pinstr : string -> proc_instruction list
       (** [pinstr n] returns all processing instructions that are
-       *  directly contained in this object and that have a target
+       *  attached to this object and that have a target
        *  specification of [n].
        *
        * {b Domain.} All node types. However, it is only reasonable to 
@@ -571,14 +571,15 @@ class type [ 'ext ] node =
        * is added to this node, and can be queried by calling this method.
        *
        * If the mentioned config option is not active (which is the default),
-       * the [proc_instruction] object is simply added to the containing
-       * element, and the exact position of the instruction is not reflected
-       * in the tree.
+       * the [proc_instruction] object is attached to the containing
+       * element, but does not become a regular child of the element.
+       * Especially, the exact position of the instruction among the
+       * children is not reflected in the tree.
        *)
 
     method pinstr_names : string list
       (** Returns the targets of all processing instructions that are
-       * directly contained in this object. The target is the first word
+       * attached to this object. The target is the first word
        * in the processing instruction. Use the [pinstr] method to get
        * the full data of a processing instruction.
        *
@@ -849,7 +850,7 @@ class type [ 'ext ] node =
     method add_pinstr : proc_instruction -> unit
       (** [add_pinstr pi]:
        *   Adds the processing instruction [pi] to the set of
-       *   processing instructions contained in this node. If this is an
+       *   processing instructions attached to this node. If this is an
        *   element node, you can add any number of processing instructions.
        *   If it is a processing instruction node, you can put at most
        *   one processing instruction into this node.

@@ -73,12 +73,13 @@ type config =
           * If [enable_pinstr_nodes] the node for element [s] will contain
           * two additional subnodes of type [T_pinstr], one as left sibling
           * of "foo", and one as right sibling. 
-          * Aany code processing such a tree must be prepared that 
-          * processing instructions occur as normal tree members.
+          * Any code processing such a tree must be prepared that 
+          * processing instructions occur as normal tree members, and are no
+          * longer attached to the surrounding nodes.
           *
           * The event-based parser reacts on the [enable_pinstr_nodes] mode
-          * by emitting [E_pinstr] events at the locations where the PI's
-          * occur in the text.
+          * by emitting [E_pinstr] events exactly at the locations where the
+          * PI's occur in the text.
 	  *)
 
       enable_comment_nodes : bool;
@@ -652,11 +653,7 @@ type event =
   | E_char_data of  string
        (** Character data *)
   | E_pinstr of (string * string * Pxp_lexer_types.entity_id)
-       (** A processing instruction [<?target value?>] as node *)
-  | E_pinstr_member of (string * string * Pxp_lexer_types.entity_id)
-       (** A processing instruction [<?target value?>] that is to be
-           attached to the surrounding element or super root node
-	*)
+       (** A processing instruction [<?target value?>] *)
   | E_comment of string
        (** A comment node. The string does not include the delimiters *)
   | E_start_super

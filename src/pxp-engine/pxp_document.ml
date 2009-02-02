@@ -4206,6 +4206,16 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
     failwith ("Pxp_document.solidify: Unexpected " ^ txt ^ " event")
   in
 
+  let create_delayed_super_root entity_id (srpos, children, pilist) =
+    let n = create_super_root_node 
+              ~entity_id ?position:srpos spec !eff_dtd in
+    List.iter
+      (fun pi -> n # add_pinstr pi)
+      (List.rev pilist);
+    n # set_nodes (List.rev children);
+    n
+  in
+
   while not !eof do
     let ev = next_ev() in
     match ev with
@@ -4236,10 +4246,8 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 		   match !super_root_details with
 		     | None -> 
 			 r
-		     | Some pos ->
-			 create_super_root_node
-			   ~entity_id:r#entity_id
-			   ?position:pos spec !eff_dtd in
+		     | Some srparams ->
+			 create_delayed_super_root r#entity_id srparams in
 		 return := Some r';
 		 r_doc # init_root r' lit_root;
 	     | _ ->
@@ -4251,10 +4259,12 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  if !doc_state = Null then doc_state := NA;
 	  super_state := Start_seen;
 	  if cfg.enable_super_root_node then (
-	    super_root_details := Some !pos;
-	    (*
-	    let n = create_super_root_node ?position:!pos spec !eff_dtd in
-	    Stack.push n stack;
+	    (* The creation of the super root node is delayed until we
+               know the entity ID of the top element
+	     *)
+	    super_root_details := Some(!pos, [], []);
+	    (* first list: the children in reverse order
+               second list: the PI's to attach in reverse order
 	     *)
 	  )
 
@@ -4330,41 +4340,48 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	  (* A PI may occur everywhere between start_doc and end_doc.  *)
 	  if !doc_state = End_seen then unexpected "E_pinstr";
 	  if !doc_state = Null then doc_state := NA;
+	  if !super_state <> Start_seen && !root_state <> Start_seen then
+	    unexpected "E_pinstr";
 	  let pi = new proc_instruction target value !eff_dtd#encoding in
-	  if !depth = 0 && (!super_state <> Start_seen || 
-			    not cfg.enable_super_root_node) then (
-	    (* Cannot process E_pinstr here. Should be E_pinstr_member. *)
-	    ()
+	  if !depth = 0 then (
+	    if cfg.enable_super_root_node then (
+	      match !super_root_details with
+		| None ->
+		    unexpected "E_pinstr"
+		| Some (srpos, children, pilist) ->
+		    (* Add PI to super root node
+                       (attached, or as regular child)
+		     *)
+		    if cfg.enable_pinstr_nodes then (
+		      let n = create_pinstr_node
+                        ~entity_id:eid ?position:!pos spec !eff_dtd pi in
+		      super_root_details := Some(srpos, n::children, pilist)
+		    )
+		    else (
+		      super_root_details := Some(srpos, children, pi::pilist)
+		    )
+	    )
+	    else (
+	      (* Add processing instruction to document, if any *)
+	      if  not cfg.enable_super_root_node then ( 
+		match !return_doc with
+		    Some doc -> doc # add_pinstr pi
+		  | None -> ()  (* PI is lost *)
+	      );
+	    )
 	  )
-	  else 
+	  else (
+	    (* Add PI to parent element (attached, or as regular child) *)
 	    if cfg.enable_pinstr_nodes then (
 	      let n = create_pinstr_node
                         ~entity_id:eid ?position:!pos spec !eff_dtd pi in
 	      (Stack.top stack) # append_node n
 	    )
-	    else (
-	      (* Cannot process E_pinstr here. Should be E_pinstr_member. *)
-	      ()
-	    );
+	    else
+	      (Stack.top stack) # add_pinstr pi
+	  );
 	  pos := None
 
-      | Some (E_pinstr_member(target,value,_)) ->
-	  if !doc_state = End_seen then unexpected "E_pinstr";
-	  if !doc_state = Null then doc_state := NA;
-	  let pi = new proc_instruction target value !eff_dtd#encoding in
-	  if !depth = 0 && (!super_state <> Start_seen || 
-			    not cfg.enable_super_root_node) then (
-	    (* Add processing instruction to document, if any *)
-	    match !return_doc with
-		Some doc -> doc # add_pinstr pi
-	      | None -> ()  (* PI is lost *)
-	  )
-	  else 
-	    if not cfg.enable_pinstr_nodes then (
-	      (Stack.top stack) # add_pinstr pi
-	    );
-	  pos := None
-	  
       | Some (E_comment data) ->
 	  (* A comment may occur everywhere between start_doc and end_doc. 
 	   * Only below the super root or the simple root node it is 
@@ -4372,15 +4389,25 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	   *)
 	  if !doc_state = End_seen then unexpected "E_comment";
 	  if !doc_state = Null then doc_state := NA;
-	  if (cfg.enable_super_root_node && !super_state = Start_seen) ||
-	     (!root_state = Start_seen) then ( 
-	    try
-	      if cfg.enable_comment_nodes then begin
-		let n = create_comment_node ?position:!pos spec !eff_dtd data in
-		(Stack.top stack) # append_node n
-	      end
-	    with
-		Stack.Empty -> ()
+	  if !super_state <> Start_seen && !root_state <> Start_seen then
+	    unexpected "E_comment";
+	  if cfg.enable_comment_nodes then (
+	    if !depth = 0 then (
+	      if cfg.enable_super_root_node then (
+		match !super_root_details with
+		  | None ->
+		      unexpected "E_comment"
+		  | Some (srpos, children, pilist) ->
+		      (* Add comment to super root node, if enabled *)
+		      let n = create_comment_node 
+                                ?position:!pos spec !eff_dtd data in
+		      super_root_details := Some(srpos, n::children, pilist);
+	      )
+	    )
+	    else (
+	      let n = create_comment_node ?position:!pos spec !eff_dtd data in
+	      (Stack.top stack) # append_node n
+	    )
 	  );
 	  pos := None
 
@@ -4406,10 +4433,8 @@ let solidify ?dtd cfg spec next_ev : 'ext solid_xml =
 	    match !super_root_details with
 	      | None -> 
 		  n
-	      | Some pos ->
-		  create_super_root_node
-		    ~entity_id:n#entity_id
-		    ?position:pos spec !eff_dtd in
+	      | Some srparams ->
+		  create_delayed_super_root n#entity_id srparams in
 	  `Node n'
       | _ -> assert false
   )
@@ -4472,7 +4497,7 @@ let liquefy_node ?(omit_end = false) ?(omit_positions = false)
 			 (fun target ->
 			    List.map
 			      (fun pi ->
-				  E_pinstr_member(target,pi#value,eid)
+				  E_pinstr(target,pi#value,eid)
 			      )
 			      (n # pinstr target)
 			 )
@@ -4571,7 +4596,7 @@ let liquefy_doc ?(omit_end = false) ?(omit_positions = false)
 		 (fun target ->
 		    List.map
 		    (fun pi ->
-		       E_pinstr_member(target,pi#value,eid)
+		       E_pinstr(target,pi#value,eid)
 		    )
 		    (doc # pinstr target)
 		 )

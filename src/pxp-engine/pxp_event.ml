@@ -578,9 +578,6 @@ let wr_dsp do_display default_prefix dtd_style minimization out enc rep_enc get_
       | Some (E_pinstr (target, value, ent_id)) ->
 	  wms "<? "; wms target; wms " "; wms value; wms "?>";
 	  wr_dsp_event None
-      | Some (E_pinstr_member (target, value, ent_id)) ->
-	  wms "<? "; wms target; wms " "; wms value; wms "?>";
-	  wr_dsp_event None
       | Some (E_comment data) ->
 	  wms "<!--"; wms data; wms "-->";
 	  wr_dsp_event None
@@ -633,8 +630,6 @@ let string_of_event e =
 	sprintf "E_char_data(\"%s\")" (String.escaped data)
     | E_pinstr(target,data,entid) ->
 	sprintf "E_pinstr(%s,%s,<%d>)" target data (Oo.id entid)
-    | E_pinstr_member(target,data,entid) ->
-	sprintf "E_pinstr_member(%s,%s,<%d>)" target data (Oo.id entid)
     | E_comment data ->
 	sprintf "E_comment(\"%s\")" (String.escaped data)
     | E_position(ent,line,col) ->

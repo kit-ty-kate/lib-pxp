@@ -173,7 +173,7 @@ object (self)
 	ep_early_events <- ep_early_events @ ev_list
     end
     else begin
-      let ev = E_pinstr_member(target,value,ent_id) in
+      let ev = E_pinstr(target,value,ent_id) in
       if init_done then
 	event_handler ev
       else

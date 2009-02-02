@@ -63,7 +63,8 @@ possible to enable more node types by setting appropriate
 special node type for comments.
 - Processing instructions (denoted by [<? ... ?>] parentheses) are
 not ignored, but normally no nodes are created for them. The
-instructions are only gathered up, so one can check for their
+instructions are only gathered up, and attached to the surrounding
+node, so one can check for their
 presence but not for their exact location. By setting the
 config option [enable_pinstr_nodes], however, processing instructions
 are added to the tree as normal nodes. There is also a special node
@@ -127,7 +128,7 @@ are outside the regular document tree.
 
 Normally, the processing instructions are also not included
 into the document tree. They are considered as an extra property of the
-element containing them, and can be retrieved by the
+element to which they are attached, and can be retrieved by the
 {!Pxp_document.node.pinstr}
 method of the element node. If this way of handling processing instructions
 is not exact enough, the parser can optionally create processing instruction
@@ -305,7 +306,7 @@ is generated at the top of the tree. This node has type [T_super_root].}
 parser add comment nodes when it parses comments. These nodes have
 type [T_comment].}
 {- The option [enable_pinstr_nodes] changes the
-way processing instructions are added to the document. Instead of appending
+way processing instructions are added to the document. Instead of attaching
 such instructions to their containing elements as additional properties, this
 mode forces the parser to create real nodes of type [T_pinstr] for them.}
 {- The option [drop_ignorable_whitespace] (enabled by default) can
@@ -576,19 +577,21 @@ PI is called the target, and it is stored separated from the rest of the PI:
 <?target rest?>
 ]}
 
-The exact location where a PI occurs is not represented (by default). The
-parser puts the PI into the object that represents the embracing construct (an
-element, a DTD, or the whole document); that means you can find out which PIs
-occur in a certain element, in the DTD, or in the whole document, but you
-cannot lookup the exact position within the construct.
+The exact location where a PI occurs is not represented (by
+default). The parser attaches the PI to the object that represents the
+embracing construct (an element, a DTD, or the whole document); that
+means you can find out which PIs occur in a certain element, in the
+DTD, or in the whole document, but you cannot lookup the exact
+position within the construct.
 
 {b Parser option:}
 If you require the exact location of PIs, it is possible to
-create extra nodes for them. This mode is controlled by the option
+create regular nodes for them instead of attaching them to the surrounding
+node as property. This mode is controlled by the option
 [enable_pinstr_nodes]. The additional nodes have the node type
 [T_pinstr target], and are created
 from special exemplars contained in the [spec] (see
-{!Pxp_document.spec}).
+{!Pxp_document.spec}). 
 
 {3 The representation of comments}
 

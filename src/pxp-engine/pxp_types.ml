@@ -229,7 +229,6 @@ type event =
   | E_end_tag    of (string * Pxp_lexer_types.entity_id)
   | E_char_data of  string
   | E_pinstr of (string * string * Pxp_lexer_types.entity_id)
-  | E_pinstr_member of (string * string * Pxp_lexer_types.entity_id)
   | E_comment of string
   | E_start_super
   | E_end_super
