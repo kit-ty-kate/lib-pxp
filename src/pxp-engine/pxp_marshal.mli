@@ -5,12 +5,6 @@
 
 (** Marshalling of XML trees *)
 
-
-(* TODO: 
- * - namespace_info
- *)
-
-
 (** This module allows fast marshalling of subtrees. The standard O'Caml marshalling
  * implementation does not work because O'Caml does not support marshalling
  * of objects. Because of this, the objects must be transformed into a
@@ -43,9 +37,9 @@ val subtree_to_cmd_sequence :
    * [f] is called several times with the sequence of [reconstruction_cmd] values
    * that contain the contents of the subtree.
    * 
-   *   If the subtree has a namespace manager, the information contained
-   * in this object is marshaled, too. The namespace scope objects are lost,
-   * however.
+   * If the subtree has a namespace manager, the information contained
+   * in this object is marshaled, too. The namespace scope objects are
+   * also represented in the command sequence.
    *
    * [omit_positions]: If true, the position strings of the nodes which contain
    *   line numbers are omitted. Default: false
@@ -111,6 +105,8 @@ val subtree_from_cmd_sequence :
    *     If you pass an empty namespace_manager, it is guaranteed that
    *   such remapping is not necessary, so the normprefixes are the same
    *   as in the original document.
+   * The namespace scope objects are retained, and thus the display
+   * prefixes are the same as in the original tree.
    *
    * The character encoding of the node tree is set to the encoding of the
    * DTD. If necessary, the read strings are recoded.
@@ -166,6 +162,8 @@ val relocate_subtree :
    *
    * This function is optimized, and works block by block in order to avoid
    * large temporary values.
+   *
+   * See also [relocate_documents] for known problems of relocation.
    *)
 
 val relocate_document :
@@ -180,8 +178,11 @@ val relocate_document :
    * building the new document, so it is possible to change the character
    * encoding and the namespace management.
    *
-   * {b KNOWN BUG:} The new DTD is not really a copy, because the entities are
-   * missing. This will be solved when it is possible to copy entities.
+   * {b Known problems.} Although it is tried to keep as much information
+   * as possible, there are unfortunately a few losses. Especially the
+   * entities are not copied. They are missing in the copied DTD object,
+   * and also the entity ID's in the nodes are only fake ID's that are
+   * not connected with real entities.
    *)
 
 

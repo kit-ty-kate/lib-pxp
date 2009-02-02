@@ -33,11 +33,24 @@ type reconstruction_cmd =
   | Cmd_array of reconstruction_cmd array
   | Namespace_mapping of (string * string array)
     (* normprefix, URIs (the last is the primary URI) *)
+  | Namespace_scope of (int * int option * (string*string) list)
+    (* (scope_number, parent_scope_number, declaration) *)
+  | Start_element_node_with_scope of 
+       ( (string * int * int) option *  (* position *)
+         int *                          (* exemplar number *)
+         (int * att_value) list *       (* attributes *)
+         int                            (* scope number *)
+       )
 ;;
 
 (* Note: Marshalling is new in PXP 1.1 (did not exist in 1.0). The type
  * reconstruction_cmd changed several times during the development of
  * this module.
+ *
+ * In PXP 1.2.1 Namespace_scope and Start_element_with_scope have been
+ * added. This is backwards compatible, i.e. current code can read old
+ * marshalled values, but old code cannot necessarily read new marshalled
+ * values.
  *)
 
 (* A node is represented as sequence of reconstruction_cmd values in the
@@ -59,7 +72,8 @@ type reconstruction_cmd =
  * - Namespace_mapping ...
  * - ...
  *
- * The namespace_info objects are (currently) not marshalled.
+ * The namespace scopes are declared by Namespace_scope commands. Every
+ * scope needs to be declared before it is used.
  *
  * A DTD is represented as a single DTD_string command.
  *
@@ -102,7 +116,14 @@ let recode_string ~in_enc ~out_enc =
 ;;
 
 
-let subtree_to_cmd_sequence_nohead ~omit_positions ~recode write n : jobber = 
+type scope_tbl =
+    { stbl : (namespace_scope, int) Hashtbl.t;
+      mutable next_snr : int
+    }
+
+
+let subtree_to_cmd_sequence_nohead 
+       ~scope_tbl ~omit_positions ~recode write n : jobber = 
   (* Calls [write] for every command to write. The function [write] may
    * raise [Interruption] to indicate that the job should be interrupted.
    * This exception may be ignored, however, so it is necessary to raise
@@ -151,6 +172,19 @@ let subtree_to_cmd_sequence_nohead ~omit_positions ~recode write n : jobber =
     with
 	Interruption -> ()        (* Ignore here *)
   in
+  let rec do_scope s =
+    try Hashtbl.find scope_tbl.stbl s
+    with Not_found ->
+      let nr = scope_tbl.next_snr in
+      scope_tbl.next_snr <- nr+1;
+      Hashtbl.add scope_tbl.stbl s nr;
+      let p_opt =
+        match s#parent_scope with
+	  | Some s' -> Some(do_scope s')
+	  | None -> None in
+      write_nobreak (Namespace_scope(nr, p_opt, s#declaration));
+      nr
+  in
   let next_ex_number = ref 0 in
   let ex_hash = Hashtbl.create 100 in
   let next_att_number = ref 0 in
@@ -165,6 +199,12 @@ let subtree_to_cmd_sequence_nohead ~omit_positions ~recode write n : jobber =
 	  write_nobreak End_node;
 	  []
       | T_element eltype ->
+	  let scope_nr_opt =
+	    try
+	      let s = n # namespace_scope in
+	      Some(do_scope s)
+	    with
+	      | Namespace_method_not_applicable _ -> None in
 	  let eltype = recode eltype in
 	  let pos = get_position n in
 	  let atts =
@@ -202,7 +242,13 @@ let subtree_to_cmd_sequence_nohead ~omit_positions ~recode write n : jobber =
 		  write_nobreak (Declare_element_exemplar(nr,eltype));
 		  nr
 	  in
-	  write_nobreak (Start_element_node (pos, ex_nr, atts));
+	  let cmd =
+	    match scope_nr_opt with
+	      | None -> 
+		  Start_element_node (pos, ex_nr, atts)
+	      | Some scope_nr -> 
+		  Start_element_node_with_scope (pos, ex_nr, atts, scope_nr) in
+	  write_nobreak cmd;
 	  do_pinstr n;
 	  plan_subnodes n @ [ Marshal_cmd End_node ]
       | T_super_root ->
@@ -304,7 +350,12 @@ let subtree_to_cmd_sequence ?(omit_positions=false) ?enc f n =
   let encname = Netconversion.string_of_encoding enc in
   let sa = n#dtd#standalone_declaration in
   f(Head(encname,sa));
-  let r = subtree_to_cmd_sequence_nohead ~omit_positions ~recode f n in
+  let scope_tbl =
+    { stbl = Hashtbl.create 20;
+      next_snr = 0
+    } in
+  let r = 
+    subtree_to_cmd_sequence_nohead ~scope_tbl ~omit_positions ~recode f n in
   assert(r = Done)
 ;;
 
@@ -320,7 +371,7 @@ let subtree_to_channel ?(omit_positions = false) ?enc ch n =
 ;;
 
 
-let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
+let subtree_from_cmd_sequence_nohead ~rev_tbl ~recode f0 dtd spec =
   let current_array = ref( [| |] ) in
   let current_pos = ref 0 in
   let rec f() =
@@ -370,6 +421,35 @@ let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
       normprefix ^ ":" ^ l
     end
   in
+  let create_element pos nr a =
+    let pos = recode_pos pos in
+    let eltype, ex = !eltypes.(nr) in
+    (* -- saves 4% time, but questionable approach:
+	    ex # create_element 
+	      ?position:pos
+	      dtd
+	      (T_element eltype)
+	      atts
+     *)
+    let a' =
+      List.map 
+	(fun (nr, v) -> 
+	   let v' = match v with
+	       Implied_value -> Implied_value
+	     | Value s -> Value(recode s)
+	     | Valuelist l -> Valuelist(List.map recode l)
+	   in
+	   !atts.(nr), v'
+	) 
+	a in
+    create_element_node
+      ~att_values: a'
+      ?position:pos
+      spec
+      dtd
+      eltype
+      []
+  in
   let rec read_node dont_add first_cmd =
     let n =
       match first_cmd with
@@ -406,35 +486,16 @@ let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
 	    !atts.(nr) <- name';
 	    read_node true (f())
 	| Start_element_node (pos, nr, a) ->
-	    let pos = recode_pos pos in
-	    let eltype, ex = !eltypes.(nr) in
-(* -- saves 4% time, but questionable approach:
-	    ex # create_element 
-	      ?position:pos
-	      dtd
-	      (T_element eltype)
-	      atts
-*)
-	    let a' =
-	      List.map 
-		(fun (nr, v) -> 
-		   let v' = match v with
-		       Implied_value -> Implied_value
-		     | Value s -> Value(recode s)
-		     | Valuelist l -> Valuelist(List.map recode l)
-		   in
-		   !atts.(nr), v'
-		) 
-		a in
-	    let e =
-	      create_element_node
-	        ~att_values: a'
-	        ?position:pos
-		spec
-		dtd
-		eltype
-		[] in
-	    e
+	    create_element pos nr a
+	| Start_element_node_with_scope (pos, nr, a, snr) ->
+	    let n = create_element pos nr a in
+	    if enable_mng then (
+	      let s =
+		try Hashtbl.find rev_tbl snr
+		with Not_found -> failwith "Pxp_marshal: scope number not found" in
+	      n # set_namespace_scope s
+	    );
+	    n
 	| Start_super_root_node pos ->
 	    let pos = recode_pos pos in
 	    create_super_root_node ?position:pos spec dtd
@@ -475,6 +536,20 @@ let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
 	      mng_found := true;
 	    end;
 	    read_node true (f())
+	| Namespace_scope (snr, parent_snr_opt, decl) ->
+	    if Hashtbl.mem rev_tbl snr then
+	      failwith "Pxp_marshal: scope number is defined twice";
+	    let p_opt =
+	      match parent_snr_opt with
+		| None -> None
+		| Some parent_snr ->
+		    (try Some(Hashtbl.find rev_tbl parent_snr)
+		     with Not_found ->
+		       failwith "Pxp_marshal: scope number not found") in
+	    let s = 
+	      Pxp_dtd.create_namespace_scope ?parent:p_opt ~decl dest_mng in
+	    Hashtbl.add rev_tbl snr s;
+	    read_node true (f())
 	| _ ->
 	    assert false
     in
@@ -487,7 +562,9 @@ let subtree_from_cmd_sequence_nohead ~recode f0 dtd spec =
 	   Start_pinstr_node (_,_,_) |
 	   (* Declare_xxx is always followed by Start_element_node: *)
 	   Declare_element_exemplar(_,_) |
-	   Declare_attribute(_,_)) as cmd ->
+	   Declare_attribute(_,_) |
+	   Namespace_mapping(_,_) |
+           Namespace_scope(_,_,_)) as cmd ->
 	    (* Add a new sub node *)
 	    let n' = read_node false cmd in
 	    n # add_node ~force:true n';
@@ -522,8 +599,9 @@ let subtree_from_cmd_sequence f dtd spec =
 	      ~in_enc:enc
 	      ~out_enc:(dtd # encoding :> encoding)
 	in
+	let rev_tbl = Hashtbl.create 20 in
 
-	subtree_from_cmd_sequence_nohead ~recode f dtd spec
+	subtree_from_cmd_sequence_nohead ~rev_tbl ~recode f dtd spec
 
     | _ ->
 	failwith "Pxp_marshal.subtree_from_cmd_sequence"
@@ -583,7 +661,12 @@ let document_to_cmd_sequence ?(omit_positions = false) ?enc f
     )
     (doc # pinstr_names);
   f Root;
+  let scope_tbl =
+    { stbl = Hashtbl.create 20;
+      next_snr = 0
+    } in
   let r = subtree_to_cmd_sequence_nohead
+            ~scope_tbl
 	    ~omit_positions
 	    ~recode
 	    f
@@ -655,8 +738,10 @@ let document_from_cmd_sequence f config spec =
     );
     cmd := f();
   done;
+  let rev_tbl = Hashtbl.create 20 in
   let root = 
     subtree_from_cmd_sequence_nohead
+      ~rev_tbl
       ~recode
       f dtd spec in
   doc # init_root root (recode root_type);
@@ -680,6 +765,11 @@ let relocate_subtree tree new_dtd new_spec =
   let remaining_job = ref Done in
   let available_cmds = Queue.create() in
 
+  let scope_tbl =
+    { stbl = Hashtbl.create 20;
+      next_snr = 0
+    } in
+
   let continue() =
     match !remaining_job with
 	Done -> 
@@ -694,7 +784,7 @@ let relocate_subtree tree new_dtd new_spec =
 
   remaining_job :=
     subtree_to_cmd_sequence_nohead 
-      ~omit_positions:false ~recode:id 
+      ~scope_tbl ~omit_positions:false ~recode:id 
       (fun cmd ->
 	 Queue.add cmd available_cmds;
 	 raise Interruption
@@ -764,10 +854,7 @@ let relocate_document (doc : 'ext document) new_conf new_spec =
 		  ?swarner:new_conf.swarner 
 		  new_conf.warner new_conf.encoding in
   new_doc # init_xml_version (doc # xml_version);
-  let root_name = match new_dtd # root with
-      Some rn -> rn 
-    | None    -> failwith "Pxp_marshal.relocate_document"
-  in
+  let root_name = doc # raw_root_name in
   new_doc # init_root new_root root_name;
 
   new_doc
