@@ -40,8 +40,8 @@ for PXP; if you are looking for the stable distribution, please go
 <a href="&url.pxp-download;">&release.pxp;</a></p>
       </li>
       <li><p><em>Current development version:</em> 
-<a href="&url.pxp-download-dev;">&release.pxp-dev;</a>
-<!--There is currently no development version! -->
+<!--<a href="&url.pxp-download-dev;">&release.pxp-dev;</a> -->
+There is currently no development version!
 </p>
       </li>
     </ul>
@@ -51,7 +51,7 @@ for PXP; if you are looking for the stable distribution, please go
     <title>Version History</title>
     <ul>
       <li><p>There is currently no development version.</p></li>
-<--
+<!--
       <li>
         <p><em>1.2.1:</em> Revised documentation</p>
         <p>Addition: Pxp_event.unwrap_document</p>

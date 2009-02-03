@@ -51,6 +51,7 @@ f doc/manual/index.txt
 d doc/manual/src
 d doc/manual/src/pic
 p doc/manual/src/pic/.*\.fig
+f doc/manual/style.css
 
 d examples
 f examples/Makefile
