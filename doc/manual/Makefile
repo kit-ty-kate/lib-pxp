@@ -1,3 +1,36 @@
+default: odoc
+
+.PHONY: odoc
+odoc: html/pic/done
+	cd ../../src/pxp-engine && $(MAKE) doc
+	rm -rf html/ref
+	mkdir -p html/ref
+	cp style.css html/ref
+	ocamldoc -v -g ../../tools/src/odoc/chtml.cmo \
+		-t "PXP Reference" \
+		-I ../../src/pxp-engine \
+		-load ../../src/pxp-engine/pxp_engine.dump \
+		-d html/ref \
+		-colorize-code \
+		-css-style style.css -intro index.txt
+
+
+
+clean:
+	rm -rf html man ps
+	rm -f src/readme.ent
+
+CLEAN: clean
+
+distclean:
+	rm -f src/*~
+	rm -f *~
+	rm -f ps/*.aux ps/*.dvi ps/*.log ps/*.tex
+
+#-----------------------------------------------------------------
+# The following is for the old manual. No longer updated, and totally
+# out of date.
+
 # Note: The following Makefile works for _me_. The stable releases of
 # PXP contain an already built manual, so you do not need this Makefile.
 
@@ -19,8 +52,6 @@ SOURCE = ../../src/pxp-engine/pxp_document.mli \
 UPSOURCE = $(shell for x in $(SOURCE); do echo "../$$x"; done)
 
 .PHONY: html ps
-
-default: html ps
 
 html: html/book1.htm html/pic/done
 
@@ -89,29 +120,3 @@ ps/pic/done: src/pic/*.fig
 .sgml.xml: 
 	sx -xndata $< >$@; true
 
-.PHONY: odoc
-odoc: html/pic/done
-	cd ../../src/pxp-engine && $(MAKE) doc
-	rm -rf html/ref
-	mkdir -p html/ref
-	cp style.css html/ref
-	ocamldoc -v -g ../../tools/src/odoc/chtml.cmo \
-		-t "PXP Reference" \
-		-I ../../src/pxp-engine \
-		-load ../../src/pxp-engine/pxp_engine.dump \
-		-d html/ref \
-		-colorize-code \
-		-css-style style.css -intro index.txt
-
-
-
-clean:
-	rm -rf html man ps
-	rm -f src/readme.ent
-
-CLEAN: clean
-
-distclean:
-	rm -f src/*~
-	rm -f *~
-	rm -f ps/*.aux ps/*.dvi ps/*.log ps/*.tex

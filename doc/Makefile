@@ -25,7 +25,7 @@ installrel = $(H)/homepage/ocaml-programming.de/packages/documentation/pxp/index
 
 
 .PHONY: all
-all: README INSTALL ABOUT-FINDLIB SPEC EXTENSIONS PREPROCESSOR
+all: README INSTALL ABOUT-FINDLIB SPEC 
 
 README: README.xml common.xml config.xml readme.dtd
 	$(readme) -text README.xml >README

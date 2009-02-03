@@ -50,6 +50,8 @@ for PXP; if you are looking for the stable distribution, please go
   <sect1>
     <title>Version History</title>
     <ul>
+      <li><p>There is currently no development version.</p></li>
+<--
       <li>
         <p><em>1.2.1:</em> Revised documentation</p>
         <p>Addition: Pxp_event.unwrap_document</p>
@@ -199,7 +201,7 @@ instruction, only misc* element misc* or whole documents are possible).
 When an external entity A opens an external entity B, and B opens C,
 relative paths of C have been interpreted wrong.</p>
       </li>
-
+-->
 <!--
       <li><p><em>1.1:</em> This is the new stable release!</p></li>
       <li><p><em>1.0.99:</em></p>

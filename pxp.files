@@ -36,30 +36,21 @@ f doc/ABOUT-FINDLIB
 f doc/INSTALL
 f doc/README
 f doc/DEV
-f doc/EXTENSIONS
-f doc/PREPROCESSOR
-#f doc/RELEASE-NOTES
 f doc/SPEC
 f doc/design.txt
 
-#d doc/manual
-#f doc/manual/Makefile
-#d doc/manual/html
-#p doc/manual/html/.*\.html
-#p doc/manual/html/.*\.css
-#d doc/manual/html/pic
-#p doc/manual/html/pic/.*\.gif
-#d doc/manual/ps
-#f doc/manual/ps/pxp.ps
-#d doc/manual/src
-#f doc/manual/src/extract.ml
-#f doc/manual/src/getcode.ml
-#f doc/manual/src/markup.css
-#f doc/manual/src/markup.dsl
-#f doc/manual/src/markup.sgml
-#d doc/manual/src/extracted
-#d doc/manual/src/pic
-#p doc/manual/src/pic/.*\.fig
+d doc/manual
+f doc/manual/Makefile
+d doc/manual/html
+d doc/manual/html/ref
+d doc/manual/html/pic
+p doc/manual/html/ref/.*\.html
+p doc/manual/html/ref/.*\.css
+p doc/manual/html/pic/.*\.gif
+f doc/manual/index.txt
+d doc/manual/src
+d doc/manual/src/pic
+p doc/manual/src/pic/.*\.fig
 
 d examples
 f examples/Makefile
@@ -151,7 +142,6 @@ f src/pxp-engine/pxp_core_parser.mli
 f src/pxp-engine/pxp_core_parser.m2y
 f src/pxp-engine/pxp_core_types.mli
 f src/pxp-engine/pxp_core_types.ml
-f src/pxp-engine/pxp_core_types_type.mli
 f src/pxp-engine/pxp_dfa.ml
 f src/pxp-engine/pxp_dfa.mli
 f src/pxp-engine/pxp_document.ml
@@ -184,12 +174,11 @@ f src/pxp-engine/pxp_top.ml
 f src/pxp-engine/pxp_top.mli
 f src/pxp-engine/pxp_tree_parser.mli
 f src/pxp-engine/pxp_tree_parser.ml
-f src/pxp-engine/pxp_type_anchor.mli
-f src/pxp-engine/pxp_type_anchor.ml
 f src/pxp-engine/pxp_types.ml
 f src/pxp-engine/pxp_types.mli
 f src/pxp-engine/pxp_yacc.ml
 f src/pxp-engine/pxp_yacc.mli
+p src/pxp-engine/intro_.*\.txt
 
 d src/pxp-lex
 f src/pxp-lex/char_classes_generic.def
@@ -385,3 +374,7 @@ f tools/src/lexpp/uni_lexer.mll
 f tools/src/lexpp/uni_parser.mly
 f tools/src/lexpp/uni_types.ml
 f tools/src/lexpp/ucs2_to_utf8.ml
+
+d tools/src/odoc
+f tools/src/odoc/Makefile
+f tools/src/odoc/chtml.ml

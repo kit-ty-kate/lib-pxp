@@ -26,14 +26,15 @@
   <sect1>
     <title>Abstract</title>
     <p>
-<em>PXP</em> is a validating parser for XML-1.0 which has been written
-entirely in Objective Caml.
+<em>PXP</em> is an XML parser for O'Caml. It represents the parsed
+document either as tree or as stream of events. In tree mode, it is
+possible to validate the XML document against a DTD.
 </p>
 
-    <p>
-PXP means "Polymorphic XML parser" and emphasizes its most useful
-property: that the API is polymorphic and can be configured such that
-different objects are used to store different types of elements.</p>
+<p>
+The acronym PXP means Polymorphic XML Parser. This name reflects the
+ability to create XML trees with polymorphic type parameters.
+</p>
   </sect1>
 
   <sect1>
@@ -41,8 +42,8 @@ different objects are used to store different types of elements.</p>
     <p>
 You can download <em>PXP</em> as gzip'ed <a
 href="&url.pxp-download;">tarball</a>. The parser needs the <a
-href="&url.ocamlnet-project;">Netstring</a> package (0.9.3). Note that PXP
-requires O'Caml 3.00.
+href="&url.ocamlnet-project;">Ocamlnet</a> package (0.9.3). Note that PXP
+requires O'Caml 3.09 or newer.
 </p>
 
     <p>
@@ -52,11 +53,10 @@ Information about the latest development version is available
   </sect1>
 
   <sect1>
-    <title>User's Manual</title>
+    <title>PXP Reference</title>
     <p>
-The manual is included in the distribution both as Postscript document and
-bunch of HTML files. An online version can be found <a
-						       href="&url.pxp-manual;">here</a>.
+The manual is included in the distribution as bunch of HTML files.  An
+online version can be found <a href="&url.pxp-manual;">here</a>.
 </p>
   </sect1>
 
@@ -102,6 +102,10 @@ development goal to realize a standard API (industrial developers can this much
 better than I); however, the API is powerful enough to be considered as
 equivalent with DOM. More important, the interface is compatible with the
 XML information model required by many XML-related standards.
+</p>
+
+<p>There is now also an event-oriented interface comparable to SAX.
+PXP also supports the popular pull parsing model.
 </p>
 
     <sect2>
@@ -178,63 +182,158 @@ same namespaces.</p></li>
 
 
     <sect2>
-      <title>Code examples</title>
-      <p>
-This distribution contains several examples:</p>
-      <ul>
-	<li><p>
-<em>validate:</em> simply parses a
-document and prints all error messages
-</p></li>
-
-	<li><p>
-<em>readme:</em> Defines a DTD for simple "README"-like documents, and offers
-conversion to HTML and text files<footnote>This particular document is an
-example of this DTD!</footnote>.
-</p></li>
-
-	<li><p>
-<em>xmlforms:</em> This is already a
-sophisticated application that uses XML as style sheet language and data
-storage format. It shows how a Tk user interface can be configured by an
-XML style, and how data records can be stored using XML.
-</p></li>
-      </ul>
-    </sect2>
-
-    <sect2>
-      <title>Restrictions and missing features</title>
-      <p>
-The following restrictions apply that are not violations of the standard:
-</p>
-      <ul>
-	<li><p>
-The attribute "xml:lang" is not supported specially.
-  (The application can do this.)</p></li>
-
-	<li><p>
-It is currently not possible to check for interoperability with SGML.
-</p></li>
-      </ul>
-
-<p>The following features are also missing:</p>
-      <ul>
-	<li><p>There is no support for XPATH or XSLT.</p>
-	</li>
-      </ul>
-<p>However, I hope that these features will be implemented soon, either by
-myself or by contributors (who are invited to do so).</p>
-    </sect2>
-
-    <sect2>
-      <title>Release notes</title>
-      <p>The <a href="&url.pxp-relnotes;">Release Notes</a> describe problems
-and solutions that are detected shortly before or after the release.</p>
-    </sect2>
-
-    <sect2>
       <title>Recent Changes</title>
       <ul>
+      <li>
+        <p><em>1.2.1:</em> Revised documentation</p>
+        <p>Addition: Pxp_event.unwrap_document</p>
+        <p>Addition: Pxp_dtd.Entity.lookup</p>
+        <p>Addition: node method entity_id</p>
+        <p>Addition: Pxp_event.close_entities</p>
+        <p>Removed: Pxp_core_types_type, Pxp_type_anchor. Pxp_core_types
+          has now three submodules A, S, I taking over the roles</p>
+        <p>Removed: E_pinstr_member. Instead, E_pinstr events are emitted</p>
+        <p>Renaming, and addition: `Entry_content has been renamed to
+           `Entry_element_content. A new `Entry_content with different
+           semantics has been added, now conforming to a standard production.
+        </p>
+        <p>Improvement: The parser also accepts a BOM as UTF-8 sequence.
+           Also, the autodetection of the encoding for UTF-16 has been
+           enhanced</p>
+        <p>Fix: Pxp_marshal module also keeps namespace scope objects</p>
+        <p>Addition: method lexbuf in lexer_obj</p>
+      </li>
+      <li><p><em>1.2.0test*:</em> New ~minimization option for the
+        [write] and [display] methods (user wish).</p>
+        <p>Improvement: better control what is printed as DTD for
+           document#write and #display</p>
+        <p>Fix: [Pxp_document.liquefy] terminates now when invoked
+           only on a subtree of a document</p>
+        <p>Cleaned up the code a bit so fewer warnings are emitted 
+           in the build.</p>
+	<p>Ported pxp-pp to O'Caml 3.10</p>
+      </li>
+
+      <li><p><em>1.1.96:</em> Works now for O'Caml 3.09, too.</p>
+	 <p>Fix: The "root element check" is disabled
+         in Pxp_dtd. It did not work together with namespaces.</p>
+         <p>Pxp_validate: Fix for namespace mode</p>
+      </li>
+
+      <li><p><em>1.1.95:</em> Addition of ulex lexing.</p>
+	<p>Fix in Pxp_reader.combine.</p>
+	<p>Revised namespace handling: There are now namespace_scope
+	  objects keeping the scoping structure of the namespaces.
+	  The namespace_info stuff has been removed. The "display"
+	  methods can print XML while respecting the scoping structure.
+	</p>
+	<p>New exceptions Namespace_not_managed, Namespace_prefix_not_managed,
+	  Namespace_not_in_scope (all replacing Not_found). Methods
+	  of namespace_manager may raise these exceptions.
+	</p>
+	<p>The event-based representation of XML is now symmetrical
+	  to the tree-based representation, such that it is possible
+	  to convert one representation into the other without loss.
+	  The type of events had to be changed to achieve this effect.
+	</p>
+	<p>The new module Pxp_event contains functions for the event-based
+	  representation.</p>
+	<p>Addition of pxp-pp, the PXP preprocessor.</p>
+	<p><em>This release requires Ocamlnet 0.98. You should also
+	    install ulex. There are no longer precompiled wlex lexers
+	    (use ulex instead).</em></p>
+      </li>
+
+      <li><p><em>1.1.94.2:</em> Again fixes for the combination of
+3.07/wlex</p>
+      </li>
+
+      <li><p><em>1.1.94.1:</em> Fixes for 3.07 concerning the
+pregenerated wlexers. - New: Pxp_document.build_node_tree</p>
+      </li>
+
+      <li><p><em>1.1.94:</em> The Pxp_reader module has been
+completely rewritten. This fixes some problems with relative
+URLs. - Pxp_yacc has been split up into four modules: Pxp_tree_parser
+contains now the parser API returning object trees, Pxp_dtd_parser
+is the parser API returning DTDs, Pxp_ev_parser is the event-based
+API, and Pxp_core_parser is the core of the parser. Pxp_yacc is
+still available as compatibility API. As part of the module
+redesign, Pxp_types includes now parts of its interface from
+Pxp_core_types_type. I hope this style of programming is 
+comprehensible. - I think PXP can now compiled with CVS releases
+of O'Caml. - It is now possible to turn warnings into errors. -
+The event-based parser can now preprocess namespaces. Furthermore,
+there are normalization filters.</p>
+      </li>
+
+      <li><p><em>1.1.93:</em> This is a bugfix release. Sometimes
+files were not closed in previous versions, but now they are.
+There were debug statements in the pull parser code, I have
+removed them. Finally, some errors in the Makefiles have been
+corrected.</p>
+      </li>
+
+      <li><p><em>1.1.92:</em> The whole lexing stuff has been
+restructured. There is a new tool, lexpp, that generates the lexers
+from only five files. Furthermore, much more 8 bit character sets
+are now supported as internal encodings. In previous versions of
+PXP, the internal representation of the XML trees was restricted
+to either UTF-8 or ISO-8859-1. Now, a number of additional
+encodings are supported, including the whole ISO-8859 series.
+</p>
+	<p>Bugfix: If the processing instruction &lt;?xml...?&gt;
+occurs in the middle of the XML document, version 1.1.91 will
+immediately stop parsing, and ignore the rest of the file. This
+is now fixed.</p></li>
+
+      <li><p><em>1.1.91:</em> The curly braces can now even be used
+inside attributes, and escape from normal XML parsing.</p>
+
+	<p>There is a new entry point Entry_expr for event-based
+parsing that expects either a single element, a single processing
+instruction, or a single comment, or whitespace. This allows more
+fine-grained control of what is parsed.</p>
+
+	<p>There is now a "pull parser". In contrast to the "push
+parser" introduced in 1.1.90, the calling order of parser and parser user
+have been inverted, i.e. the user calls the parser to get ("pull") the next
+event instead of letting the parser call back a user function ("push").
+An interesting application is that O'Caml's lazy streams can be used
+to analyze events. An example can be found in examles/pullparser.</p>
+	<p>Pull parsing is not yet well-tested!</p>
+      </li>
+
+      <li><p><em>1.1.90:</em> This version introduces a new event-based
+interface in Pxp_yacc. For start tags, end tags, data strings, and several
+other things that are found in the XML source so-called events are generated,
+and a user function is called for every event. See the directory
+examples/eventparser for examples.</p>
+	<p>Another innovation is support for curly braces as escape characters.
+Inside elements, the left curly brace escapes from XML parsing and starts
+a foreign parser until the matching right curly brace is found:
+
+<code>
+<![CDATA[<element> ... { foreign syntax } ... </element>]]>
+</code>
+
+The curly braces are borrowed from the XQuery draft standard.
+They cannot yet be used inside attribute values. Curly braces are mostly
+useful in conjunction with event-based parsing, because it is not yet
+possible to include the "value" of the curly brace expression into
+XML trees.</p>
+
+	<p>It is even possible to call the XML parser from the foreign
+parser as subparser. However, there not yet enough entry points for the
+event-based parser (e.g. you cannot parse just the following processing
+instruction, only misc* element misc* or whole documents are possible).
+</p>
+
+	<p>A long-standing bug has been found in the entity layer.
+When an external entity A opens an external entity B, and B opens C,
+relative paths of C have been interpreted wrong.</p>
+      </li>
+
         <li>
 	  <p>Changed in 1.1.5:</p> <p>A packaging error in pxp-wlex has
 been corrected. (This is the only change.)</p>
