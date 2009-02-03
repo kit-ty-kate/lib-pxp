@@ -1,1 +1,445 @@
-TODO
+{fixpxpcoretypes true}
+
+{1 Resolving entity ID's}
+
+One of the tasks of the XML parser is to open entities. Entities can
+be external files, but also strings, or channels, or anything that can
+be considered as a stream of bytes. Entities are identified by
+ID's. PXP knows four kinds of ID's:
+
+- [SYSTEM] ID's are URL's pointing to arbitrary resources. PXP includes
+  only support for opening [file] URL's.
+- [PUBLIC] ID's are abstract names for entities, such as the well-known
+  "-//W3C//DTD HTML 4.01//EN" string. Usually, [PUBLIC] ID's are
+  accompanied by [SYSTEM] ID's to provide an alternate method for
+  getting the entity.
+- Private ID's are a specialty of PXP. These ID's are used when no
+  printable name is known, and the identity should be kept as an
+  abstract property.
+- Anonymous ID's are an early form of private ID's that were used
+  in ancient versions of PXP. They should no longer be used.
+
+Resolution means now the following. The starting point is that we find
+a [SYSTEM] or [PUBLIC] identifier in the parsed XML text, or we have a
+private or anonymous identifier that was passed down by some user
+program. The second step is to make the identifier absolute. This step
+is only meaningful for [SYSTEM] identifiers, because they can be given
+by relative URL's. These URL's are made absolute. Finally, we run a
+lookup algorithm that gives us the entity to open back as stream of
+bytes. The lookup algorithm is highly configurable in PXP, and this
+chapter of the PXP manual explains how to do this.
+
+{3 Links to other documentation}
+
+- {!Pxp_reader}
+- {!Pxp_types.from_file}
+- {!Pxp_types.from_string}
+- {!Pxp_types.from_channel}
+- {!Pxp_types.from_obj_channel}
+- {!Intro_getting_started.sources}
+
+
+{2 Various types that are involved}
+
+The simple form of an (external) entity ID is {!type:Pxp_types.ext_id}: It 
+enumerates the four cases:
+- [System url]
+- [Public(public_name, system_url)]
+- [Private p]
+- [Anonymous]
+
+During resolution, a different representation of the ID is preferred -
+{!Pxp_types.resolver_id}:
+
+{[
+type resolver_id = 
+      { rid_private: private_id option;
+        rid_public:  string option;
+        rid_system:  string option;
+        rid_system_base: string option;
+]}
+
+A value of [resolver_id] can be thought as a matching criterion:
+
+- If [rid_private] is set to [Some p], entities with 
+  an [ext_id] of [Private p] match the [resolver_id].
+- If [rid_public] is set to [Some public_name], entities with
+  an [ext_id] of [Public(public_name,_)] match the [resolver_id].
+- If [rid_system] is set to [Some url],  entities match the
+  [resolver_id] when their [ext_id] is [System url] or [Public(_,url)].
+
+It is sufficient that one of the criterions matches for associating
+the [resolver_id] with a particular entity. Note that [Anonymous] is
+missing in this list - it simply matches with any [resolver_id].
+
+The [resolver_id] value can be modified during the resolution process,
+for example by rewriting. For example, one could rewrite all URL's
+[http://sample.org] to some local [file] URL's when the contents of
+this web site are locally available.
+
+It is not said that [rid_system] is already an absolute URL when the
+resolution process starts. It is usually rewritten into an absolute
+URL during this process.  For that reason, we also remember
+[rid_system_base]. This is the base URL relative to which the URL in
+[rid_system] is to be interpreted.
+
+The resolution algorithm is expressed as {!Pxp_reader.resolver}.
+This is an object providing a method [open_rid] (open by resolver ID)
+that takes a [resolver_id] as input, and returns the opened entity.
+There are a number of predefined classes in {!Pxp_reader} for
+setting up resolver objects. Some classes can even be used to
+construct more complex resolvers from simpler ones, i.e. there is
+resolver composition.
+
+Besides {!Pxp_reader.resolver}, there are also sources, type
+{!Pxp_types.source}. Sources are concrete applications of resolvers to
+external ID's, i.e. they represent the task of opening an entity with a
+certain algorithm, applied to a certain ID. There are several ways of
+constructing sources. First, one can directly use the source values
+[Entity], [ExtID] or [XExtID]. Second, there are a number of functions
+for creating common cases of sources, e.g. {!Pxp_types.from_file}.
+
+For example, to open the [ext_id] value [e] with a resolver [r], 
+the source has to be 
+
+{[ let source = ExtID(e,r) ]}
+
+There is also [XExtID] which allows one to set the base URL in the
+[resolver_id], and for very advanced cases there is [Entity] (which
+is beyond an introduction).
+
+
+{2 How to use the following list of classes}
+
+We give a short summary of the function provided by the resolver class.
+Some classes provide quite low-level functionality, especially those
+named [resolve_to_*]. A beginner should avoid them.
+
+Every resolver matches the ID to open with some criterion of ID's the
+resolver is capable to open. If this matching is successul we also say
+the resolver accepts the ID. After being accepted the rest of the
+resolution process is deemed to be successful, e.g.  a non-existing
+file will lead to a "file not found" error. Not accepting an ID means
+that in a composed resolver another part resolver might get the
+chance, and tries to open it.
+
+We especially mention whether relative URL's are specially handled
+(i.e. converted to absolute URL's). If not, but you would like to
+support relative URL's, it is always possible to wrap the resolver
+into [norm_system_id]. This is generally recommended.
+
+Some resolvers can only be used once because the entity is "consumed"
+after it has been opened and the XML text is read. Think of reading
+from a pipe.
+
+Also note that you can combine all resolvers with the [from_*]
+functions in {!Pxp_types}, e.g.
+
+{[
+let source = Pxp_types.from_file 
+               ~alt:r
+               filename
+]}
+
+The resolver given in [alt] is tried when the resolver built-in 
+to [from_file] does not match the input ID. Here, [from_file]
+only matches [file] URL's, so everything else is passed down
+to [alt], e.g. [PUBLIC] names.
+
+
+
+
+{2 List of base resolver classes}
+
+These classes open certain entities. Some also allow you to pass
+the resolution process over to a subresolver, but the [resolver_id]
+is not modified.
+
+
+{3 [resolve_to_this_obj_channel]}
+
+- Link: {!classtype:Pxp_reader.resolve_to_this_obj_channel}
+- What is opened: An already existing [Netchannels.in_obj_channel]
+- Which ID's are opened: any [ext_id]
+- Matching criteron: The resolver is successful when the ID to open
+  is equal to a constant [ext_id] or [resolver_id]
+- Relative URL's: are not specially handled
+- Can be used several times: no
+
+{b Example.}
+
+This example matches against the [id] argument, and reads from the
+object channel [ch] when the resolver matches:
+
+{[
+let ch = new Netchannels.string_channel "<foo></foo>"
+let r = new Pxp_reader.resolve_to_this_obj_channel
+              ~id:(Public("-//FOO//", ""))
+              ()
+              ch
+]}
+
+This is a one-time resolver because the data of [ch] is consumed
+afterwards.
+
+
+{3 [resolve_to_any_obj_channel]}
+
+- Link: {!classtype:Pxp_reader.resolve_to_any_obj_channel}
+- What is opened: An [Netchannels.in_obj_channel] that is created
+  for every matched ID
+- Which ID's are opened: any [ext_id]
+- Matching criterion: An arbitrary matching function can be passed
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{3 [resolve_to_url_obj_channel]}
+
+- Link: {!classtype:Pxp_reader.resolve_to_url_obj_channel}
+- What is opened: An [Netchannels.in_obj_channel] that is created
+  for every matched ID
+- Which ID's are opened: formally any [ext_id], but this resolver is only
+  reasonable for [SYSTEM] ID's.
+- Matching criterion: Matching functions can be passed, but there
+  is already some built-in logic for URL matching
+- Relative URL's: are made absolute before matching
+- Can be used several times: yes
+
+{3 [resolve_as_file]}
+
+- Link: {!classtype:Pxp_reader.resolve_as_file}
+- What is opened: Files
+- Which ID's are opened: [SYSTEM] or [PUBLIC] ID's with an [url]
+  using [file]
+- Matching criterion: the resolver is successful for all [file] URL's,
+  no matter of whather the files exist or not (will lead later to an
+  error)
+- Relative URL's: are made absolute before matching
+- Can be used several times: yes
+
+{b Example.}
+
+{[
+let r = new Pxp_reader.resolve_as_file ()
+]}
+
+If the file "/data/foo.xml" exists, and the user wants to open
+[SYSTEM "file://localhost/data/foo.xml"] this resolver will do it.
+
+
+{3 [lookup_id]}
+
+- Link: {!classtype:Pxp_reader.lookup_id}
+- What is opened: After matching, a subresolver of any kind is invoked.
+- Which ID's are opened: any [ext_id]
+- Matching criterion: A catalog of acceptable [ext_id]'s maps to
+  the subresolvers
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{3 [lookup_id_as_file]}
+
+- Link: {!classtype:Pxp_reader.lookup_id_as_file}
+- What is opened: files
+- Which ID's are opened: any [ext_id]
+- Matching criterion: A catalog of acceptable [ext_id]'s maps to
+  file names
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{b Example.}
+
+{[
+let r = new Pxp_reader.lookup_id_as_file
+          [ System "http://foo.org/file.xml", "/data/download/foo.org/file.xml";
+            Private p, "/data/private/secret.xml"
+          ]
+]}
+
+If the user opens [SYSTEM "http://foo.org/file.xml"], the file
+[/data/download/foo.org/file.xml] is opened. Note that relative URL's
+are not handled. To enable that, wrap [r] into a [norm_system_id]
+resolver.
+
+If the user opens the private ID [p], the file [/data/private/secret.xml]
+is opened.
+
+
+{3 [lookup_id_as_string]}
+
+- Link: {!classtype:Pxp_reader.lookup_id_as_string}
+- What is opened: constant strings
+- Which ID's are opened: any [ext_id]
+- Matching criterion: A catalog of acceptable [ext_id]'s maps to
+  string constants
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{b Example.} We want to parse a private ID whose corresponding entity is
+given as constant string:
+
+{[
+let p = alloc_private_id()
+let r = new Pxp_reader.lookup_id_as_string
+          [ Private p, "<foo>data</foo>" ]
+let source = ExtID(Private p, r)
+]}
+
+
+{3 [lookup_public_id]}
+
+- Link: {!classtype:Pxp_reader.lookup_public_id}
+- What is opened: After matching, a subresolver of any kind is invoked.
+- Which ID's are opened: [PUBLIC] ID's by included [public_name]
+- Matching criterion: A catalog of acceptable [public_name]'s maps to
+  the subresolvers
+- Relative URL's: n/a
+- Can be used several times: yes
+
+{3 [lookup_public_id_as_file]}
+
+- Link: {!classtype:Pxp_reader.lookup_public_id_as_file}
+- What is opened: files
+- Which ID's are opened: [PUBLIC] ID's by included [public_name]
+- Matching criterion: A catalog of acceptable [public_name]'s maps to
+  file names
+- Relative URL's: n/a
+- Can be used several times: yes
+
+{3 [lookup_public_id_as_string]}
+
+- Link: {!classtype:Pxp_reader.lookup_public_id_as_string}
+- What is opened: constant strings
+- Which ID's are opened: [PUBLIC] ID's by included [public_name]
+- Matching criterion: A catalog of acceptable [public_name]'s maps to
+  string constants
+- Relative URL's: n/a
+- Can be used several times: yes
+
+{3 [lookup_system_id]}
+
+- Link: {!classtype:Pxp_reader.lookup_system_id}
+- What is opened: After matching, a subresolver of any kind is invoked.
+- Which ID's are opened: [SYSTEM] or [PUBLIC] ID's by included [url]
+- Matching criterion: A catalog of acceptable [url]'s maps to
+  the subresolvers
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{3 [lookup_system_id_as_file]}
+
+- Link: {!classtype:Pxp_reader.lookup_system_id_as_file}
+- What is opened: files
+- Which ID's are opened: [SYSTEM] or [PUBLIC] ID's by included [url]
+- Matching criterion: A catalog of acceptable [url]'s maps to
+  file names
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+
+{3 [lookup_system_id_as_string]}
+
+- Link: {!classtype:Pxp_reader.lookup_system_id_as_string}
+- What is opened: constant strings
+- Which ID's are opened: [SYSTEM] or [PUBLIC] ID's by included [url]
+- Matching criterion: A catalog of acceptable [url]'s maps to
+  string constants
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+{b Example.} See below at [norm_system_id]
+
+
+
+{2 List of rewriting resolver classes}
+
+These classes pass the resolution process over to a subresolver, and
+the [resolver_id] to open is rewritten before the subresolver is invoked.
+Note that the rewritten ID is only visible in the subresolver, e.g. in
+
+{[
+let r = new Pxp_reader.combine
+          [ new Pxp_reader.norm_system_id sub_r1;
+            sub_r2
+          ]
+]}
+
+the class [norm_system_id] rewrites the ID, and this is only visible in
+[sub_r1], but not in [sub_r2].
+
+
+
+{3 [norm_system_id]}
+
+- Link: {!classtype:Pxp_reader.norm_system_id}
+- What is opened: after rewriting, a subresolver of any kind is invoked
+- Which ID's are opened: any [ext_id]
+- Matching criterion: all ID's are accepted (except an error occurs during
+  ID rewriting)
+- Rewriting: ID's including an URL are made absolute
+- Relative URL's: this class exists specifically to make any relative URL's
+  absolute for the subresolver
+- Can be used several times: yes
+
+{b Example.}
+
+{[
+let r = new Pxp_reader.norm_system_id
+          (new lookup_system_id_as_string
+             [ "http://foo.org/file1.xml", "<foo>&file2;</foo>";
+               "http://foo.org/file2.xml", "<bar>data</bar>";
+	     ]
+          )
+]}
+
+We also assume here that the general entity [file2] is declared
+as [SYSTEM "file2.xml"], i.e. with a relative URL. (The declaration
+should be added to the file1 XML text to make the example complete.)
+The resolver [norm_system_id] adds the support for relative URL's
+that is otherwise missing in [lookup_system_id_as_string].
+The XML parser would read the text "<foo><bar>data</bar></foo>".
+
+Without [norm_system_id], the user can only open the ID's when they
+are exactly given as in the catalog list, e.g. as [SYSTEM
+"http://foo.org/file1.xml"].
+
+
+
+{3 [rewrite_system_id]}
+
+- Link: {!classtype:Pxp_reader.rewrite_system_id}
+- What is opened: after rewriting, a subresolver of any kind is invoked
+- Which ID's are opened: any [ext_id]
+- Matching criterion: ID's are matched against a substitution
+- Rewriting: If a matching substitution is found, it is applied
+- Relative URL's: URL's are made absolute before matching starts
+- Can be used several times: yes
+
+{b Example.} All files of [foo.org] are locally available, and so
+[foo.org] URL's can be rewritten to [file] URL's:
+
+{[
+let r =
+  new Pxp_reader.rewrite_system_id
+    [ "http://foo.org/", "file:///usr/share/foo.org/"
+    ]
+    (new Pxp_reader.resolve_as_file())
+]}
+
+
+
+{2 Alternation of resolvers}
+
+{3 [combine]}
+
+- Link: {!classtype:Pxp_reader.combine}
+- What is opened: one of a list of subresolvers is invoked
+- Which ID's are opened: any [ext_id]
+- Matching criterion: The subresolvers are tried in turn to open the
+  entity. If one of them matches against the ID, the combined resolver
+  also matches (i.e. this is an "OR" logic)
+- Relative URL's: are not specially handled
+- Can be used several times: yes
+
+
+{fixpxpcoretypes false}

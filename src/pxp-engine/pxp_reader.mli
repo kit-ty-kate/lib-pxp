@@ -331,7 +331,7 @@ class resolve_to_url_obj_channel :
     resolver
   (** When this resolver gets an ID to read from, it calls the function
    * [url_of_id] to get the corresponding URL (such IDs are normally 
-   * system IDs, but it is also possible to map system IDs to URLs). 
+   * system IDs, but it is also possible to other kinds of IDs to URLs). 
    * This URL may be a relative URL; however, a URL scheme must be used
    * which contains a path. The resolver converts the URL to an absolute 
    * URL if necessary.
@@ -372,8 +372,8 @@ class resolve_as_file :
   ?not_resolvable_if_not_found:bool ->
   unit ->
   resolver;;
-  (** Reads from the local file system. Every file name is interpreted as
-   * file name of the local file system, and the referenced file is read.
+  (** Reads from the local file system. [file] URL's are interpreted as
+   * file names of the local file system, and the referenced files are opened.
    *
    * The full form of a file URL is: [file://host/path], where
    * [host] specifies the host system where the file identified [path]
@@ -541,13 +541,13 @@ class lookup_public_id_as_string :
 class lookup_system_id :
   (string * resolver) list ->    (* catalog *)
     resolver
-  (** This is the generic builder for [SYSTEM] id catalog resolvers: The catalog 
-   * argument specifies pairs [(sysid, r)] mapping [SYSTEM] identifiers to 
+  (** This is the generic builder for URL-based catalog resolvers: The catalog 
+   * argument specifies pairs [(url, r)] mapping URL's identifiers to 
    * subresolvers.
-   * The subresolver is invoked if an entity with the corresponding [SYSTEM]
+   * The subresolver is invoked if an entity with the corresponding URL
    * id is to be opened.
    *
-   * Important note: Two [SYSTEM] IDs are considered as equal if they are
+   * Important note: Two URL's are considered as equal if they are
    * equal in their string representation. (This may not what you want
    * and may cause trouble... However, I currently do not know how to
    * implement a "semantic" comparison logic.)
@@ -561,12 +561,12 @@ class lookup_system_id_as_file :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
     resolver
-  (** Looks up resolvers for [SYSTEM] identifiers: The catalog argument specifies
-   * pairs [(sysid, filename)] mapping [SYSTEM] identifiers to filenames. The
+  (** Looks up resolvers for URL identifiers: The catalog argument specifies
+   * pairs [(url, filename)] mapping URL's to filenames. The
    * filenames must already be encoded in the character set the system uses
    * for filenames.
    *
-   * Note: [SYSTEM] IDs are simply compared literally, without making
+   * Note: URL's are simply compared literally, without making
    * relative IDs absolute. See [norm_system_id] below for improving this.
    *
    * [fixenc]: Overrides the encoding of the file contents. By default, the
@@ -578,11 +578,11 @@ class lookup_system_id_as_string :
   ?fixenc:encoding ->
   (string * string) list ->     (* catalog *)
     resolver
-  (** Looks up resolvers for [SYSTEM] identifiers: The catalog argument specifies
-   * pairs [(sysid, text)] mapping [SYSTEM] identifiers to XML text (which must
+  (** Looks up resolvers for URL identifiers: The catalog argument specifies
+   * pairs [(url, text)] mapping URL's to XML text (which must
    * begin with [<?xml ...?>]).
    *
-   * Note: [SYSTEM] IDs are simply compared literally, without making
+   * Note: URL's are simply compared literally, without making
    * relative IDs absolute. See [norm_system_id] below for how to improve this.
    *
    * [fixenc]: Overrides the encoding of the strings.
@@ -592,8 +592,8 @@ class lookup_system_id_as_string :
 (** {2 System ID normalization} *)
 
 class norm_system_id : resolver -> resolver
-  (** Normalizes the [SYSTEM] ID, and forwards the open request to the
-   * passed resolver. (Other ID's are forwarded unchanged to the subresolver.)
+  (** Normalizes URL's, and forwards the open request to the
+   * passed resolver. (Non-URL ID's are forwarded unchanged to the subresolver.)
    *
    * Normalization includes:
    * - Relative URLs are made absolute. If this fails, the problematic
@@ -624,7 +624,7 @@ class rewrite_system_id :
 	(string * string) list ->
 	resolver ->
 	  resolver
-  (** Rewrites the [SYSTEM] URL according to the list of pairs. The left
+  (** Rewrites the URL's according to the list of pairs. The left
    * component is the pattern, the right component is the substitute.
    * For example,
    *
