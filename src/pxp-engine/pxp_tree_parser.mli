@@ -7,7 +7,7 @@
 (** Calling the parser in tree mode *)
 
 (** The following functions return the parsed XML text as tree, i.e.
-    as {!Pxp_document.node} or {!Pxp_document.document}.
+    as {!Pxp_document.node} or {!classtype:Pxp_document.document}.
  *)
 
 open Pxp_dtd

@@ -18,6 +18,7 @@
 open Pxp_types
 open Pxp_dtd
 
+(** {fixpxpcoretypes true} *)
 
 (** {2 The node type} *)
 
@@ -101,6 +102,7 @@ class type [ 'node ] extension =
 ;;
 
 
+
 (** The class type [node] defines the interface of the nodes that are part
     of XML document trees. For an introduction into trees, see
     {!Intro_trees}.
@@ -119,6 +121,7 @@ class type [ 'node ] extension =
 class type [ 'ext ] node =
   object ('self)
     constraint 'ext = 'ext node #extension
+  (** {fixpxpcoretypes true} *)
 
   (** Domain
 
@@ -128,8 +131,8 @@ class type [ 'ext ] node =
       is documented below, and also any unusual reaction when the
       methods are called nevertheless. The standard rection is to raise
       either the exception
-      {!Pxp_types.Method_not_applicable} or
-      {!Pxp_types.Namespace_method_not_applicable} for namespace-specific
+      {!exception:Pxp_core_types.S.Method_not_applicable} or
+      {!exception:Pxp_core_types.S.Namespace_method_not_applicable} for namespace-specific
       methods.
    *)
 
@@ -548,6 +551,8 @@ class type [ 'ext ] node =
        *   nodes when it is first invoked after object creation or any 
        *   modification of the attribute list, and it will return the same list
        *   again in subsequent invocations.
+       *
+       * See also {!Intro_advanced.irrnodes}.
        *
        * {b Domain.} This method is only applicable to elements.
        *)
@@ -1100,7 +1105,7 @@ class type [ 'ext ] node =
 
         Namespace methods are only available in namespace-aware implementations
         of [node]. For other implementations, the exception
-        {!Pxp_types.Namespace_method_not_supported} is raised.
+        {!Pxp_core_types.S.Namespace_method_not_applicable} is raised.
 
         Keep in mind that PXP applies prefix normalization. For an
         introduction see {!Intro_namespaces}.
@@ -1223,6 +1228,8 @@ class type [ 'ext ] node =
        * The method [namespaces_as_nodes] computes the list of namespace
        * nodes when it is first invoked, and it will return the same list
        * again in subsequent invocations.
+       *
+       * See also {!Intro_advanced.irrnodes}.
        *
        * {b Domain.}  This method is only applicable to elements that
        *   support namespaces.
@@ -1709,7 +1716,7 @@ val create_no_node :
 
 
 
-(** {2 Document order} *)
+(** {2:docorder Document order} *)
 
 
 (** The functions [compare] and [ord_compare] implement the so-called
@@ -2295,3 +2302,5 @@ val liquefy :
    * - [omit_positions]: If true, no [E_position] events are generated.
    *   Default:false.
    *)
+
+(** {fixpxpcoretypes false} *)

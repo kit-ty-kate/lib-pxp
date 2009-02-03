@@ -10,8 +10,7 @@ The basic piece of code to parse "filename.xml" is:
 {[
 let config = Pxp_types.default_config
 let spec = Pxp_tree_parser.default_spec
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let doc = Pxp_tree_parser.parse_document_entity config source spec
 ]}
 
@@ -28,17 +27,18 @@ and {!Pxp_tree_parser.default_spec}). These defaults have these effects
 - No namespace processing is performed.
 
 XML does not know the concept of file names. All files (or other
-resources) are named by so-called ID's. Here we choose to convert
-the file name into a [SYSTEM] ID which is essentially a URL of the
-form [file:///dir1/.../dirN/filename.xml]. This ID can be processed -
+resources) are named by so-called ID's. Although we can pass here a
+file name to [from_file], it is immediately converted into a [SYSTEM]
+ID which is essentially a URL of the form
+[file:///dir1/.../dirN/filename.xml]. This ID can be processed -
 especially it is now clear how to treat releative [SYSTEM] ID's that
-occur in the parsed document. For instance, if another file is included
-by "filename.xml", and the [SYSTEM] ID is "parts/part1.xml", the usual
-rules for resolving relative URL's say that the effective file to read
-is [file:///dir1/.../dirN/parts/part1.xml]. Relative [SYSTEM] ID's are
-resolved relative to the URL of the file where the entity reference
-occurs that leads to the inclusion of the other file (this is comparable
-to how hyperlinks in HTML are treated).
+occur in the parsed document. For instance, if another file is
+included by "filename.xml", and the [SYSTEM] ID is "parts/part1.xml",
+the usual rules for resolving relative URL's say that the effective
+file to read is [file:///dir1/.../dirN/parts/part1.xml]. Relative
+[SYSTEM] ID's are resolved relative to the URL of the file where the
+entity reference occurs that leads to the inclusion of the other file
+(this is comparable to how hyperlinks in HTML are treated).
 
 Note that we make here some assumptions about the file system of the
 computer. {!Pxp_reader.make_file_url} has to deal with character
@@ -214,16 +214,14 @@ Also [doc] is the parsed "filename.xml" file as retrieved by
 {[
 let config = Pxp_types.default_config
 let spec = Pxp_tree_parser.default_spec
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let doc = Pxp_tree_parser.parse_wfdocument_entity config source spec
 ]}
 
 Now the validation against a different DTD is done by:
 
 {[
-let rdtd_url = Pxp_reader.make_file_url "file.dtd"
-let rdtd_source = Pxp_types.from_file (Neturl.string_of_url rdtd_url)
+let rdtd_source = Pxp_types.from_file "file.dtd"
 let rdtd = Pxp_dtd_parser.parse_dtd_entity config rdtd_source
 let () = rdtd # set_root "start"
 let vroot = Pxp_marshal.relocate_document doc#root rdtd spec
@@ -327,8 +325,7 @@ Here we show how to parse "filename.xml" with a pull parser:
 
 {[
 let config = Pxp_types.default_config
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let entmng = Pxp_ev_parser.create_entity_manager config source
 let entry = `Entry_document []
 let next = Pxp_ev_parser.create_pull_parser config entry entmng
@@ -357,8 +354,7 @@ A tree node is either an [Element(name,atts,children)] or a
 
 {[
 let config = Pxp_types.default_config
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let entmng = Pxp_ev_parser.create_entity_manager config source
 let entry = `Entry_document []
 let next = Pxp_ev_parser.create_pull_parser config entry entmng
@@ -571,8 +567,7 @@ whether [IDREF] attributes only point to existing nodes. The code:
 {[
 let config = { Pxp_types.default_config with idref_pass = true }
 let spec = Pxp_tree_parser.default_spec
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let hash_index = new Pxp_tree_parser.hash_index
 let id_index = (hash_index :> _ Pxp_tree_parser.hash_index)
 let doc = Pxp_tree_parser.parse_document_entity ~id_index config source spec

@@ -1,6 +1,6 @@
 This text explains the custom node extensions that can be attached
 to XML trees. This feature can be ignored by users that do not need
-it. We effectively comment the class type {!Pxp_document.extension}
+it. We effectively comment the class type {!classtype:Pxp_document.extension}
 here.
 
 {1 Node extensions}
@@ -10,7 +10,7 @@ extension is practically empty and only present for formal uniformity.
 However, one can also define custom extension classes, and effectively
 make new methods available to nodes.
 
-The type {!Pxp_document.extension} is:
+The type {!classtype:Pxp_document.extension} is:
 
 {[
 class type [ 'node ] extension =
@@ -65,7 +65,7 @@ data nodes.
 
 At minimum, you must define the methods [clone], [node], and
 [set_node] such that your class is compatible with the type
-{!Pxp_document.extension}. The method [set_node] is called during the
+{!classtype:Pxp_document.extension}. The method [set_node] is called during the
 initialization of the node, or after a node has been cloned; the node
 object invokes [set_node] on the extension object to tell it that this
 node is now the object the extension is linked to. The extension must
@@ -101,7 +101,7 @@ class custom_extension =
   end
 ]}
 
-This class is compatible with {!Pxp_document.extension}. The purpose
+This class is compatible with {!classtype:Pxp_document.extension}. The purpose
 of defining such a class is, of course, adding further methods; and
 you can do it without restriction.
 

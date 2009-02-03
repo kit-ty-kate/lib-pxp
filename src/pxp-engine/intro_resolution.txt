@@ -41,15 +41,22 @@ chapter of the PXP manual explains how to do this.
 
 {2 Various types that are involved}
 
-The simple form of an (external) entity ID is {!type:Pxp_types.ext_id}: It 
+The simple form of an (external) entity ID is {!Pxp_core_types.S.ext_id}: It 
 enumerates the four cases:
 - [System url]
 - [Public(public_name, system_url)]
 - [Private p]
 - [Anonymous]
 
+Tip: To create an URL from a filename, use
+
+{[
+let file_url = Pxp_reader.make_file_url filename
+let file_url_string = Neturl.string_of_url file_url
+]}
+
 During resolution, a different representation of the ID is preferred -
-{!Pxp_types.resolver_id}:
+{!Pxp_core_types.S.resolver_id}:
 
 {[
 type resolver_id = 

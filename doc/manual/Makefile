@@ -95,13 +95,13 @@ odoc: html/pic/done
 	rm -rf html/ref
 	mkdir -p html/ref
 	cp style.css html/ref
-	ocamldoc -g ../../tools/src/odoc/chtml.cmo \
+	ocamldoc -v -g ../../tools/src/odoc/chtml.cmo \
 		-t "PXP Reference" \
 		-I ../../src/pxp-engine \
 		-load ../../src/pxp-engine/pxp_engine.dump \
 		-d html/ref \
 		-colorize-code \
-		-css-style style.css
+		-css-style style.css -intro index.txt
 
 
 

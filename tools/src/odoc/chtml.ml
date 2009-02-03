@@ -128,6 +128,16 @@ prerr_endline "picture found";
 	s in
     super # create_fully_qualified_idents_links m_name s'
 
+  method html_of_Ref b name ref_opt =
+    let name' =
+      if enable_fix_pxp_core_types then (
+	(* prerr_endline ("Ref: " ^ name); *)
+	Str.global_replace pxp_core_types_re "Pxp_types." name
+      )
+      else
+	name in
+    super # html_of_Ref b name' ref_opt
+
   method add_known_type t =
     List.iter
       (fun s ->
@@ -141,7 +151,6 @@ prerr_endline "picture found";
 	 known_classes_names <- StringSet.add s known_classes_names
       )
       (split_args t)
-
 
   method html_of_custom_text b s t =
     match s with

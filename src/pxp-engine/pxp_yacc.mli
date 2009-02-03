@@ -115,7 +115,7 @@ class type [ 'ext ] index = [ 'ext ] Pxp_tree_parser.index
   (** Same as {!Pxp_tree_parser.index} *)
 
 class [ 'ext ] hash_index : [ 'ext ] Pxp_tree_parser.hash_index
-  (** Same as {!Pxp_tree_parser.hash_index} *)
+  (** Same as {!classtype:Pxp_tree_parser.hash_index} *)
 
 val default_extension : ('a node extension) as 'a
   (** Same as {!Pxp_tree_parser.default_extension} *)

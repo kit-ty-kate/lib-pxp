@@ -117,23 +117,19 @@ The parser emits events for
   Note that the short form of empty elements, [<tag/>] are emitted as
   a start tag followed by an end tag.
   }
-  {- [E_pinstr(name,value,entid)] and
-  [E_pinstr_member(name,value,entid)]: Processing instructions 
+  {- [E_pinstr(name,value,entid)]: Processing instructions 
   (PI's) - In tree mode, PI's can be represented in two ways: Either by
   attaching them to the surrounding elements, or by including them
   into the tree exactly where they occurred in the text. For symmetry,
   the same two ways of handling PI's are also present in the event
   stream representation (event streams and trees should be convertible
-  into each other without data loss). This means there are two events,
-  one ([E_pinstr_member]) indicating to attach the PI to the surrounding
-  element, and one ([E_pinstr])
-  indicating to include the PI at its position. The two events carry
-  the same information: the [name] of the PI, the [value], and a
-  reference [entid] to the entity it occurs in. Usually, user code processing
-  event streams can handle both event types in exactly the same
-  way. As in tree mode, there is the config option (see {!Pxp_types.config})
-  [enable_pinstr_nodes] controlling which type of event is emitted.
-  If [true], the parser emits [E_pinstr], otherwise [E_pinstr_member].
+  into each other without data loss). Although there is only one
+  event ([E_pinstr]), it depends on the config option
+  [enable_pinstr_nodes] where this event is placed into the event
+  stream. If the option is enabled, [E_pinstr] is always emitted where
+  the PI occurs in the XML text. If it is disabled, the emission of
+  [E_pinstr] may be delayed, but it is still guaranteed that this
+  happens in the same context (surrounding element).
   It is not possible to turn the emission of PI events completely
   off. (See {!Intro_events.filters} for an example how to filter out
   PI events in a postprocessing step.)
@@ -291,8 +287,7 @@ the parser driver.
 
 {[
 let config = Pxp_types.default_config
-let file_url = Pxp_reader.make_file_url "filename.xml"
-let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+let source = Pxp_types.from_file "filename.xml"
 let entmng = Pxp_ev_parser.create_entity_manager config source
 ]}
 
@@ -648,8 +643,7 @@ e.g. adding filters, to see the effect.
 
 {[
   let config = Pxp_types.default_config
-  let file_url = Pxp_reader.make_file_url "filename.xml"
-  let source = Pxp_types.from_file (Neturl.string_of_url file_url)
+  let source = Pxp_types.from_file "filename.xml"
   let entmng = Pxp_ev_parser.create_entity_manager config source
   let pull = create_pull_parser config entry entmng
   let () = Pxp_event.iter

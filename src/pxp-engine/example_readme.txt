@@ -1,5 +1,7 @@
 {1 The [readme] processor}
 
+{fixpxpcoretypes true}
+
 The task of the [readme] processor is to convert a document conforming
 to the XML DTD "readme.dtd" into an HTML document or a text document.
 This example especially demonstrates how to use node extensions to add
@@ -483,7 +485,7 @@ value is determined by invoking [self # node # attribute "title"] (see
 {!Pxp_document.node.attribute}). As this attribute has been declared
 as CDATA and as being required, the value has always the form [Value
 s] where [s] is the string value of the attribute. Attribute values
-have type {!Pxp_types.att_value}.
+have type {!Pxp_core_types.S.att_value}.
 
 You can also see how entity contents can be accessed. A parameter
 entity object can be looked up by [self # node # dtd # par_entity
@@ -842,3 +844,5 @@ let main() =
 let () =
   main()
 ]}
+
+{fixpxpcoretypes false}

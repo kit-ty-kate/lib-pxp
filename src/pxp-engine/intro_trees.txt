@@ -7,14 +7,16 @@ Also note that there is also a stream representation of XML. See
 
 {1 The structure of document trees}
 
-In a document parsed with the default parser settings every node represents
-either an element or a character data section. There are two classes
-implementing the two aspects of nodes: {!Pxp_document.element_impl},
-and {!Pxp_document.data_impl}. There are configurations which allow more
-node types to be created, in particular processing instruction nodes,
-comment nodes, and super root nodes, but these are discussed later.
-Note that you can always add these extra node types yourself to the node tree
-no matter what the parser configuration specifies.
+In a document parsed with the default parser settings every node
+represents either an element or a character data section. There are
+two classes implementing the two aspects of nodes:
+{!classtype:Pxp_document.element_impl}, and
+{!classtype:Pxp_document.data_impl}. There are configurations which
+allow more node types to be created, in particular processing
+instruction nodes, comment nodes, and super root nodes, but these are
+discussed later.  Note that you can always add these extra node types
+yourself to the node tree no matter what the parser configuration
+specifies.
 
 The following figure 
 shows an example how
@@ -31,6 +33,7 @@ Attributes (the clouds in the picture) do not appear as nodes of the
 tree, and one must use special access methods to get them.
 
 You would get such a tree by parsing with
+
 {[
   let config = Pxp_types.default_config
   let source = Pxp_types.from_string 
@@ -44,7 +47,7 @@ The [config] record sets a lot of parsing options. A number of these
 options are explained below. The [source] argument says from where
 the parsed text comes. For the mysterious [spec] parameter see below.
 
-The parser returns [doc], which is a {!Pxp_document.document}. You
+The parser returns [doc], which is a {!classtype:Pxp_document.document}. You
 have to call its [root] method to get the root of the tree. Note that
 there are other parsing functions that return directly nodes; these
 are intended for parsing XML fragments, however. For the usual closed
@@ -114,13 +117,13 @@ data nodes by calling the {!Pxp_document.node.attributes} method,
 although this does not
 make sense. This problem is resolved on a case-by-case basis by
 either returning an "empty value" or by raising appropriate
-exceptions (e.g. {!Pxp_types.Method_not_applicable}).
+exceptions (e.g. {!Pxp_core_types.S.Method_not_applicable}).
 For the chosen typing it is not possible to define slimmer class types
 that better fit the various node types.
 
 Attributes are usually represented as pairs
 [string * att_value] of names and values. Here,
-[att_value] is a conventional variant type. There are lots of
+{!Pxp_core_types.S.att_value} is a conventional variant type. There are lots of
 access methods for attributes, see below. It is optionally possible
 to wrap the attributes as nodes (method
 {!Pxp_document.node.attributes_as_nodes}), but even in this case the attributes
@@ -422,9 +425,10 @@ that do not impose restrictions on the document:
 
 Even such a DTD object can contain entity definitions, and can demand
 a certain way of dealing with namespaces. Also, the character encoding
-of the nodes is taken from the DTD. See {!Pxp_dtd.dtd} for DTD methods,
-and {!Pxp_dtd_parser} for convenient ways to create DTD objects. Note
-that all nodes of a tree must be connected to the same DTD object.
+of the nodes is taken from the DTD. See {!classtype:Pxp_dtd.dtd} for
+DTD methods, and {!Pxp_dtd_parser} for convenient ways to create DTD
+objects. Note that all nodes of a tree must be connected to the same
+DTD object.
 
 PXP is not restricted to using built-in classes for nodes. When the
 parser is invoked and a tree is built, it is looked up in a so-called
@@ -515,7 +519,7 @@ The XML specification allows all Unicode characters in XML
 texts. This parser can be configured such that UTF-8 is used to represent the
 characters internally; however, the default character encoding is
 ISO-8859-1. (Currently, no other encodings are possible for the internal string
-representation; the type {!Pxp_types.rep_encoding} enumerates
+representation; the type {!Pxp_core_types.S.rep_encoding} enumerates
 the possible encodings. Principally, the parser could use any encoding that is
 ASCII-compatible, but there are currently only lexical analyzers for UTF-8 and
 ISO-8859-1. It is currently impossible to use UTF-16 or UCS-4 as internal

@@ -85,7 +85,7 @@ val process_entity :
    *   Currently not supported. (But see {!Pxp_dtd_parser} for functions
    *   parsing DTDs.)
    * - [`Entry_expr]: Do not pass this entry point! There is the specially
-   *   crafted function {!Pxp_ev_parser.parse_expr} for it.
+   *   crafted function {!Pxp_ev_parser.process_expr} for it.
    *
    * The entry points have options, see {!Pxp_types.entry} for explanations.
    *

@@ -37,6 +37,8 @@ include Pxp_core_types.S
     {knowntype Pxp_types.output_stream}
     {knowntype Pxp_types.pool}
 
+    {knowntype Pxp_types.Method_not_applicable}
+
     {knownclass Pxp_types.drop_warnings}
  *)
 
@@ -110,7 +112,7 @@ type config =
           *   Note that processing instructions in the DTD part of the XML
           *   text are not meant here (i.e. instructions between the square
           *   brackets, or in an external DTD). These instructions are always
-          *   attached to the DTD object (see {!Pxp_dtd.dtd}).
+          *   attached to the DTD object (see {!classtype:Pxp_dtd.dtd}).
           * - If [enable_comment_nodes] is also true, comment nodes can 
           *   occur as children of the super root node when comments 
           *   occur before or after the root element. If [enable_comment_nodes]
