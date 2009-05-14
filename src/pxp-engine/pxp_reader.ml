@@ -6,6 +6,10 @@
 
 open Pxp_core_types.I;;
 open Netchannels;;
+open Printf
+
+let debug = ref false
+
 
 exception Not_competent = Pxp_core_types.I.Not_competent;;
 exception Not_resolvable (* of exn *) = Pxp_core_types.I.Not_resolvable;;
@@ -15,6 +19,29 @@ type lexer_source =
       lsrc_unicode_lexbuf : Netulex.ULB.unicode_lexbuf Lazy.t;
     }
 
+
+let set_debug_mode flag =
+  debug := flag
+
+let rid_string rid =  (* for debugging *)
+  sprintf
+    "<rid%s%s%s%s>"
+    ( match rid.rid_private with
+	| None -> ""
+	| Some p -> sprintf " private"
+    )
+    ( match rid.rid_public with
+	| None -> ""
+	| Some s -> sprintf " public=<%s>" s
+    )
+    ( match rid.rid_system with
+	| None -> ""
+	| Some s -> sprintf " system=<%s>" s
+    )
+    ( match rid.rid_system_base with
+	| None -> ""
+	| Some s -> sprintf " sysbase=<%s>" s
+    )
 
 
 let ensure_space_minimum p f g =
@@ -72,7 +99,7 @@ let null_resolver = resolver_id_of_ext_id Anonymous ;;
 (* All components are None *)
 
 
-class virtual resolve_general
+class virtual resolve_general real_class
  =
   object (self)
     val mutable internal_encoding = `Enc_utf8
@@ -409,6 +436,10 @@ class virtual resolve_general
     method open_rid rid =
       assert(enc_initialized && wrn_initialized);
 
+      if !debug then
+	eprintf "open_rid (%s) oid=%d rid=%s\n"
+	  real_class (Oo.id self) (rid_string rid);
+
       encoding <- `Enc_utf8;
       encoding_requested <- false;
       self # init_in rid;         (* may raise Not_competent *)
@@ -454,9 +485,11 @@ type accepted_id =
 
 let close_ch (ch : in_obj_channel) = ch # close_in() ;;
 
-class resolve_to_any_obj_channel ?(close=close_ch) ~channel_of_id () =
+class resolve_to_any_obj_channel1
+          real_class
+          ?(close=close_ch) ~channel_of_id () =
 object(self)
-    inherit resolve_general as super
+    inherit resolve_general real_class as super
 
     val f_open = channel_of_id
     val mutable current_channel = None
@@ -478,7 +511,7 @@ object(self)
 
     method private next_string s ofs len =
       match current_channel with
-	  None -> failwith "Pxp_reader.resolve_read_any_channel # next_string"
+	  None -> failwith "Pxp_reader.resolve_to_any_obj_channel # next_string"
 	| Some ch ->
 	    try
 	      ch # input s ofs len
@@ -494,15 +527,24 @@ object(self)
 	    current_channel <- None
 
     method clone =
-      let c = new resolve_to_any_obj_channel
+      if !debug then
+	eprintf "clone (%s) self oid=%d\n" real_class (Oo.id self);
+      let c = new resolve_to_any_obj_channel1 real_class
 		?close:(Some close) ~channel_of_id:f_open () in
       c # init_rep_encoding internal_encoding;
       c # init_warner swarner warner;
       (* clones <- c :: clones; *)
+      if !debug then
+	eprintf "clone (%s) clone oid=%d\n" real_class (Oo.id c);
       (c :> resolver)
 
 end
 ;;
+
+
+class resolve_to_any_obj_channel =
+  resolve_to_any_obj_channel1 "resolve_to_any_obj_channel"
+
 
 
 let rid_rid_intersection bound_rid actual_rid =
@@ -593,12 +635,14 @@ let id_intersection bound_rid_opt bound_xid_opt actual_rid =
 ;;
 
 
-class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
+class resolve_to_this_obj_channel1 is_stale real_class 
+                                   ?id ?rid ?fixenc ?close ch =
 
   let getchannel = ref (fun rid -> assert false) in
 
   object (self)
-    inherit resolve_to_any_obj_channel
+    inherit resolve_to_any_obj_channel1
+              real_class
               ?close
 	      ~channel_of_id:(fun rid -> !getchannel rid)
 	      ()
@@ -648,13 +692,17 @@ class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
       end
 
     method clone =
+      if !debug then
+	eprintf "clone (%s) self oid=%d\n" real_class (Oo.id self);
       let c = new resolve_to_this_obj_channel1
-		is_stale
+		is_stale real_class
 		?id:fixid ?rid:fixrid ?fixenc:fixenc ?close:(Some close) fixch
       in
       c # init_rep_encoding internal_encoding;
       c # init_warner swarner warner;
       (* clones <- c :: clones; *)
+      if !debug then
+	eprintf "clone (%s) clone oid=%d\n" real_class (Oo.id c);
       (c :> resolver)
 
   end
@@ -663,15 +711,17 @@ class resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch =
 
 class resolve_to_this_obj_channel ?id ?rid ?fixenc ?close ch =
   let is_stale = ref false in
-  resolve_to_this_obj_channel1 is_stale ?id ?rid ?fixenc ?close ch
+  let real_class = "resolve_to_this_obj_channel" in
+  resolve_to_this_obj_channel1 is_stale real_class ?id ?rid ?fixenc ?close ch
 ;;
 
 
-class resolve_to_url_obj_channel ?close 
+class resolve_to_url_obj_channel1 real_class ?close 
                                  ~url_of_id ~base_url_of_id ~channel_of_url () =
   let channel_of_id rid =
-    let rel_url = url_of_id rid in    (* may raise Not_competent *)
+    let catch_not_competent = ref false in
     try
+      let rel_url = url_of_id rid in    (* may raise Not_competent *)
       (* Now compute the absolute URL: *)
       let abs_url = 
 	if Neturl.url_provides ~scheme:true rel_url then
@@ -680,6 +730,8 @@ class resolve_to_url_obj_channel ?close
 	  let base_url = base_url_of_id rid in
 	  Neturl.apply_relative_url base_url rel_url in
           (* may raise Malformed_URL *)
+
+      catch_not_competent := true;
 
       (* Simple check whether 'abs_url' is really absolute: *)
       if not(Neturl.url_provides ~scheme:true abs_url)
@@ -701,11 +753,20 @@ class resolve_to_url_obj_channel ?close
 	  | _    -> active_id_opt
        ))
     with
-	Neturl.Malformed_URL -> raise (Not_resolvable Neturl.Malformed_URL)
-      | Not_competent        -> raise (Not_resolvable Not_found)
+	Neturl.Malformed_URL -> 
+	  raise (Not_resolvable Neturl.Malformed_URL)
+      | Not_competent when !catch_not_competent ->
+	  raise (Not_resolvable Not_found)
   in
-  resolve_to_any_obj_channel ?close ~channel_of_id ()
+  resolve_to_any_obj_channel1 real_class ?close ~channel_of_id ()
 ;;
+
+
+class resolve_to_url_obj_channel ?close 
+                                 ~url_of_id ~base_url_of_id ~channel_of_url () =
+  let real_class = "resolve_to_url_obj_channel" in
+  resolve_to_url_obj_channel1
+    real_class ?close ~url_of_id ~base_url_of_id ~channel_of_url ()
 
 
 let base_url_syntax =
@@ -767,6 +828,18 @@ class resolve_as_file
   in
 
   let use_private_id = ref false in
+
+  let base_url_of_id rid =
+    match rid.rid_system_base with
+	Some sysname ->
+	  Neturl.url_of_string base_url_syntax sysname
+      | None ->
+	  ( match default_base_url with
+		Some url -> url
+	      | None     -> raise Not_competent
+	  )
+  in
+
   let url_of_id rid =
     let file_url_of_sysname sysname =
       (* By convention, we can assume that sysname is a URL conforming
@@ -802,17 +875,6 @@ class resolve_as_file
     if host <> "" && host <> "localhost" then raise Not_competent;
 
     url
-  in
-
-  let base_url_of_id rid =
-    match rid.rid_system_base with
-	Some sysname ->
-	  Neturl.url_of_string base_url_syntax sysname
-      | None ->
-	  ( match default_base_url with
-		Some url -> url
-	      | None     -> raise Not_competent
-	  )
   in
 
   let channel_of_url rid url =
@@ -852,7 +914,8 @@ class resolve_as_file
     end
   in
 
-  resolve_to_url_obj_channel
+  resolve_to_url_obj_channel1
+    "resolve_as_file"
     ~url_of_id
     ~base_url_of_id
     ~channel_of_url
@@ -904,6 +967,10 @@ class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
       self # open_rid (resolver_id_of_ext_id xid)
 
     method open_rid rid =
+
+      if !debug then
+	eprintf "open_rid (lookup_id_nonorm) oid=%d rid=%s\n"
+	  (Oo.id self) (rid_string rid);
 
       if active_resolver <> None then failwith "Pxp_reader.lookup_* # open_rid";
 
@@ -966,9 +1033,13 @@ class lookup_id_nonorm (catalog : (ext_id * resolver) list) =
 
 
     method clone =
+      if !debug then
+	eprintf "clone (lookup_id_nonorm) self oid=%d\n" (Oo.id self);
       let c = new lookup_id_nonorm cat in
       c # init_rep_encoding internal_encoding;
       c # init_warner swarner warner;
+      if !debug then
+	eprintf "clone (lookup_id_nonorm) clone oid=%d\n" (Oo.id c);
       c
   end : resolver )
 ;;
@@ -1105,6 +1176,10 @@ class combine ?mode rl =
       self # open_rid (resolver_id_of_ext_id xid)
 
     method open_rid rid =
+      if !debug then
+	eprintf "open_rid (combine) oid=%d rid=%s\n"
+	  (Oo.id self) (rid_string rid);
+
       let rec find_competent_resolver_for rid' rl =
 	match rl with
 	    r :: rl' ->
@@ -1170,6 +1245,8 @@ class combine ?mode rl =
 	| Some r -> r # active_id
 
     method clone =
+      if !debug then
+	eprintf "clone (combine) self oid=%d\n" (Oo.id self);
       let c =
 	match active_resolver with
 	    None   ->
@@ -1186,6 +1263,8 @@ class combine ?mode rl =
       c # init_rep_encoding internal_encoding;
       c # init_warner swarner warner;
       (* clones <- c :: clones; *)
+      if !debug then
+	eprintf "clone (combine) clone oid=%d\n" (Oo.id c);
       c
   end
 ;;
@@ -1229,6 +1308,10 @@ object(self)
      * (3) remove .. and . from the URL path as much as possible
      * (4) all other names are left unmodified
      *)
+
+    if !debug then
+      eprintf "open_rid (norm_system_id) oid=%d rid=%s\n"
+	(Oo.id self) (rid_string rid);
 
     let norm sysname =
       try
@@ -1294,8 +1377,13 @@ object(self)
     subresolver # active_id
 
   method clone =
-    let c = subresolver # clone in
-    ( {< subresolver = c >} :> resolver )
+    if !debug then
+      eprintf "clone (norm_system_id) self oid=%d\n" (Oo.id self);
+    let sub_c = subresolver # clone in
+    let c = ( {< subresolver = sub_c >} :> resolver ) in
+    if !debug then
+      eprintf "clone (norm_system_id) clone oid=%d\n" (Oo.id c);
+    c
 end
 ;;
 

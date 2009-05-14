@@ -185,6 +185,10 @@ same namespaces.</p></li>
       <title>Recent Changes</title>
       <ul>
       <li>
+        <p><em>SVN:</em> Fixing the interaction of catalog and file resolution.</p>
+</li>
+
+      <li>
         <p><em>1.2.1:</em> Revised documentation</p>
         <p>Addition: Pxp_event.unwrap_document</p>
         <p>Addition: Pxp_dtd.Entity.lookup</p>

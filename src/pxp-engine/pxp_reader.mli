@@ -346,11 +346,12 @@ class resolve_to_url_obj_channel :
    * passed to [channel_of_url] contains the string representation of the
    * absolute URL as system ID.
    *
-   * Both functions, [url_of_id] and [channel_of_url], can raise
+   * All functions, [url_of_id], [base_url_of_id], and [channel_of_url], can raise
    * [Not_competent] to indicate that the object is not able to read from
    * the specified resource. However, there is a difference: A [Not_competent]
-   * from [url_of_id] is left as is, but a [Not_competent] from [channel_of_url]
-   * is converted to [Not_resolvable]. So only [url_of_id] decides which URLs
+   * from [url_of_id] or [base_url_of_id] is left as is, but a [Not_competent] from [channel_of_url]
+   * is converted to [Not_resolvable]. So only [url_of_id] and [base_url_of_id]
+   * decide which URLs
    * are accepted by the resolver and which not, and in the latter case,
    * other resolver can be tried. If [channel_of_url] raises [Not_competent],
    * however, the whole resolution procedure will stop, and no other resolver
@@ -979,3 +980,8 @@ val lookup_system_id_as_string :
 
 
 (** {fixpxpcoretypes false} *)
+
+
+(**/**)
+
+val set_debug_mode : bool -> unit
