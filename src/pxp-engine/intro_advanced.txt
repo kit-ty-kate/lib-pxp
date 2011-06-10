@@ -1,0 +1,130 @@
+{1 Advanced topics}
+
+
+{2:valmode How validation and well-formedness modes are implemented}
+
+Validation mainly means to check whether the XML tree fulfills a
+condition, but this is not all. Validation also performs some normalizations,
+e.g.:
+- Whitespace characters may be removed from the tree where the DTD allows it
+- Default values of attributes are added when the XML text omits them
+
+If there were no modifications of the XML tree, validation could be
+completely implemented as a property of the DTD object, which is the
+logical instance for checking such a constraint. However, this is not
+true, so many checks and normalizations have been implemented within
+the document tree, and are triggered there. Nevertheless, these checks
+and normalizations are finally controlled by the DTD, which remains
+the final controlling instance. This means that validation can be
+turned off by setting a flag in the DTD object.
+
+An example: If the DTD does not find the declaration of an element,
+attribute, or notation, it is free to react in two ways. It could
+immediately signal a validation error.  It can also indicate that the
+requested object is not found, but that the caller should accept
+that. The caller is here the document tree which tries to trigger this
+validation check by going to the DTD.  If the result of this check is
+"accept", the tree simply skips all further validation checks. This is
+how well-formedness mode is implemented.
+
+Now the validation case: If the declaration is found, the document
+tree takes it, and calls the corresponding validation check routine
+(often implemented as private methods of the tree nodes). The
+declaration is often not passed back from the DTD to the node tree in
+the form as originally parsed, but preprocessed, so that the
+validation check can run quicker. For elements, the preprocessed
+declaration is the [validation_record], defined in [pxp_dtd.ml].
+
+When default values of attributes have to be complemented, the
+[validation_record] contains a preprocessed list of attributes.
+Actually, the node tree takes this list, and looks whether the XML
+text overrides any of these, and makes the resulting list to the
+official attribute list of the element node. This kind of dealing
+with default values is optimized for the case that the are many
+default values, and overriding occurs only seldom.
+
+The basic well-formedness checks (like proper nesting of tags) are
+already implemented in the recursive-descent parser module. Neither
+the document tree nor the DTD has to check any of these.
+
+
+
+
+{2:mixedmode The mixed mode}
+
+Because well-formedness mode is achieved by turning off certain
+validation checks, it is also possible to run PXP in a mixed mode
+between both standard modes. Especially, it is possible to check
+existing declarations, but also to accept missing declarations.
+
+There are two special processing instructions one can include into
+the DTD part of a document:
+
+- [<?pxp:dtd optional-element-and-notation-declarations?>]: This
+  instruction allows to use elements and notation in the XML text
+  without declaration. These elements and notations are then handled
+  as in well-formedness mode. Existing declarations have to be obeyed,
+  however.
+- [<?pxp:dtd optional-attribute-declarations elements="e1 e2 ..."?>]
+  This instruction allows to use attributes of the mentioned elements
+  [e1], [e2], etc. without declaration. These attributes are then
+  handled as in well-formedness mode. Existing declarations have to be obeyed,
+  however. Also, attributes of elements not mentioned still need to be
+  declared.
+
+Programmatically, the same effects can also be achieved by setting
+the [allow_arbitrary] flags of declaration objects.
+
+
+{2:irrnodes Irregular nodes: namespace nodes and attribute nodes}
+
+These node types primarily exist because XML standards require them.
+For example, in [XPath] it is possible to include attributes into
+sets of nodes. Of course, this requires that attributes have the same
+type as other nodes. In order to support these standards better, the
+node types [T_attribute] and [T_namespace] have been added to the
+tree definition.
+
+Note that these node types are meant "read-only": They provide an
+alternate view of the properties of the node tree. It does not make
+sense to modify these nodes, because they are only derived from some
+original values that would remain unmodified.
+
+In order to get the attribute nodes, just call [attributes_as_node]
+(link: {!Pxp_document.node.attributes_as_nodes}). This method takes a
+snapshot of the current attribute list, turns it into the form of a
+node list, and returns it. Note that when the original attribute
+list is modified, the attribute nodes are not notified by this, and
+remain unchanged.
+
+See {!Pxp_document.node.attributes_as_nodes} for details how the
+attribute nodes work (e.g. how their value can be retrieved).
+
+Attribute nodes are irregular nodes. They are only returned by this
+special method, but do not appear in the regular list of children of
+the element. Note that this corresponds to how XML standards like
+[XPath] define attribute nodes.
+
+Namespace nodes are very similar to attribute nodes. They 
+provide an alternate view of the [namespace_scope] objects, and there
+is the method [namespaces_as_nodes] (link: 
+{!Pxp_document.node.namespaces_as_nodes}) that returns these nodes.
+As attribute nodes, namespace nodes are irregular, and once created,
+they are not automatically updated when the orginal namespace scope
+objects are changed.
+
+{3 Links to other documentation}
+
+- {!Pxp_document.node.attributes_as_nodes}
+- {!Pxp_document.node.namespaces_as_nodes}
+- {!classtype:Pxp_document.attribute_impl}
+- {!classtype:Pxp_document.namespace_attribute_impl}
+- {!classtype:Pxp_document.namespace_impl}
+- {!Pxp_document.attribute_name}
+- {!Pxp_document.attribute_value}
+- {!Pxp_document.attribute_string_value}
+- {!Pxp_document.namespace_normprefix}
+- {!Pxp_document.namespace_display_prefix}
+- {!Pxp_document.namespace_uri}
+- {!Pxp_document.docorder}
+

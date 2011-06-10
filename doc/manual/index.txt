@@ -1,0 +1,50 @@
+PXP is an XML parser for O'Caml. It represents the parsed document
+either as tree or as stream of events. In tree mode, it is possible to
+validate the XML document against a DTD.
+
+The acronym PXP means Polymorphic XML Parser. This name reflects the
+ability to create XML trees with polymorphic type parameters.
+
+{2 Introduction}
+
+- {!Intro_getting_started}: Getting started, and a list of recipes
+- {!Intro_trees}: The structure of document trees
+- {!Intro_extensions}: Node extensions
+- {!Intro_events}: XML data as stream of events (also pull parsing)
+- {!Intro_namespaces}: Namespaces
+- {!Intro_resolution}: Resolving entity ID's
+- {!Intro_preprocessor}: The PXP preprocessor
+- {!Intro_advanced}: Advanced topics
+- {!Example_readme}: A code example explained: The [readme] processor
+
+{2 Reference}
+
+{!modules:
+  Pxp_types
+  Pxp_document
+  Pxp_dtd
+  Pxp_tree_parser
+  Pxp_ev_parser
+  Pxp_dtd_parser
+  Pxp_event
+  Pxp_codewriter
+  Pxp_marshal
+  Pxp_reader
+  Pxp_core_types
+  Pxp_yacc
+}
+
+{2 Index}
+
+{!indexlist}
+
+{2 Authors}
+
+PXP has been written by Gerd Stolpmann; it contains contributions by
+Claudio Sacerdoti Coen. You may copy it as you like, you may use it
+even for commercial purposes as long as the license conditions are
+respected, see the file LICENSE coming with the distribution. It
+allows almost everything.
+
+Thanks also to Alain Frisch and Haruo Hosoya for discussions and bug
+reports.
