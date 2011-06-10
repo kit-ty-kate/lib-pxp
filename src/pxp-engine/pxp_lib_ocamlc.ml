@@ -10,7 +10,7 @@
 
 let crlf_re = Netstring_str.regexp "[\010\013]";;
 
-let search_forward = Netstring_str.search_forward ~groups:0;;
+let search_forward = Netstring_str.search_forward;;
 
 let crlf_index_from s i =
   try fst(search_forward crlf_re s i)
