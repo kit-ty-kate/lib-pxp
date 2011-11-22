@@ -203,7 +203,7 @@ validation, however, a complete DTD object is required.  The solution
 is to replace the DTD object by a different one. As the DTD object is
 referenced from all nodes of the tree, and thus intricately connected
 with it, the only way to do so is to copy the entire tree. The
-function {!Pxp_marshal.relocate_document} can be used for this type of
+function {!Pxp_marshal.relocate_subtree} can be used for this type of
 copy operation.
 
 We assume here that we can get the replacement DTD from an external
@@ -224,7 +224,7 @@ Now the validation against a different DTD is done by:
 let rdtd_source = Pxp_types.from_file "file.dtd"
 let rdtd = Pxp_dtd_parser.parse_dtd_entity config rdtd_source
 let () = rdtd # set_root "start"
-let vroot = Pxp_marshal.relocate_document doc#root rdtd spec
+let vroot = Pxp_marshal.relocate_subtree doc#root rdtd spec
 let () = Pxp_document.validate vroot
 let vdoc = new Pxp_document.document config.warner config.encoding
 let () = vdoc#init_root vroot doc#raw_root_name
