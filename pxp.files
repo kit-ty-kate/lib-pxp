@@ -378,4 +378,6 @@ f tools/src/lexpp/ucs2_to_utf8.ml
 
 d tools/src/odoc
 f tools/src/odoc/Makefile
-f tools/src/odoc/chtml.ml
+f tools/src/odoc/chtml_ocaml3.ml
+f tools/src/odoc/chtml_ocaml4.ml
+

@@ -154,11 +154,16 @@ prerr_endline "picture found";
 
   method html_of_custom_text b s t =
     match s with
-      | "{picture" -> self#html_of_picture b t
-      | "{directinclude" -> self#html_of_direct_include b t
-      | "{fixpxpcoretypes" -> self#html_of_fix_pxp_core_types b t
-      | "{knowntype" -> self#add_known_type t
-      | "{knownclass" -> self#add_known_class t
+      | "{picture"
+      | "picture" -> self#html_of_picture b t
+      | "{directinclude" 
+      | "directinclude" -> self#html_of_direct_include b t
+      | "{fixpxpcoretypes" 
+      | "fixpxpcoretypes" -> self#html_of_fix_pxp_core_types b t
+      | "{knowntype" 
+      | "knowntype" -> self#add_known_type t
+      | "{knownclass"
+      | "knownclass" -> self#add_known_class t
       | _ -> ()
 end
 

@@ -2,6 +2,7 @@ TOP_DIR = ../..
 include $(TOP_DIR)/Makefile.rules
 
 PACKAGES = netstring
+OCAMLC_OPTIONS = -I +compiler-libs
 
 OBJ =   pxp_lexing.cmo \
         pxp_core_types.cmo pxp_lexer_types.cmo \
