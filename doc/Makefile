@@ -29,12 +29,15 @@ all: README INSTALL ABOUT-FINDLIB SPEC
 
 README: README.xml common.xml config.xml readme.dtd
 	$(readme) -text README.xml >README
+	cp README ..
 
 INSTALL: INSTALL.xml common.xml config.xml readme.dtd
 	$(readme) -text INSTALL.xml >INSTALL
+	cp INSTALL ..
 
 ABOUT-FINDLIB: ABOUT-FINDLIB.xml common.xml config.xml readme.dtd
 	$(readme) -text ABOUT-FINDLIB.xml >ABOUT-FINDLIB
+	cp ABOUT-FINDLIB ..
 
 SPEC: SPEC.xml common.xml config.xml readme.dtd
 	$(readme) -text SPEC.xml >SPEC

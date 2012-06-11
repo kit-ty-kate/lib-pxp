@@ -35,7 +35,7 @@ d doc
 f doc/ABOUT-FINDLIB
 f doc/INSTALL
 f doc/README
-f doc/DEV
+#f doc/DEV
 f doc/SPEC
 f doc/design.txt
 
