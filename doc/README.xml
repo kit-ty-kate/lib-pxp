@@ -185,18 +185,19 @@ same namespaces.</p></li>
       <title>Recent Changes</title>
       <ul>
       <li>
-        <p><em>1.2.3:</em> Ported to OCaml-4.00 </p>
+        <p><em>1.2.4:</em> Fixed bug in namespace-aware parsing
+(thanks to ygrek and Thomas Leonard)</p>
       </li>
 
-
+      <li>
+        <p><em>1.2.3:</em> Ported to OCaml-4.00 </p>
+      </li>
 
       <li>
         <p><em>1.2.2:</em> Fixing the interaction of catalog and file 
 	  resolution.</p>
 	<p>Fix because of a change in Ocamlnet-3.3.1</p>
       </li>
-
-      
 
       <li>
         <p><em>1.2.1:</em> Revised documentation</p>

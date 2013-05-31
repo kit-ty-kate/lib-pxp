@@ -273,7 +273,17 @@ class virtual core_parser
 	else
 	  Some(new namespace_scope_impl mng ns_scope !mapping) in
       ns_scope <- scope;
-	
+
+      (* Clear cache - otherwise the new declarations wouldn't have any
+         effect
+       *)
+      if !mapping <> [] then
+        ns_cache <- StringMap.empty;
+
+      (* NB. normalize_namespace_prefix uses the new values for 
+	 ns_scope and ns_cache, so these vars must already be updated
+       *)
+
       (* Normalize the regular_attlist: *)
       let norm_attlist =
 	List.map
