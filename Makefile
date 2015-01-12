@@ -8,6 +8,10 @@ TOP_DIR=.
 
 include Makefile.rules
 
+.PHONY: build
+build: all
+	if ocamlopt 2>/dev/null; then $(MAKE) opt; fi
+
 .PHONY: all
 all:
 	$(MAKE) -C tools all
@@ -72,3 +76,7 @@ distclean:
 RELEASE:
 	./configure -version >RELEASE
 
+# for oasis
+.PHONY: postconf
+postconf:
+	echo 'pkg_version="$(VERSION)"' >>setup.data

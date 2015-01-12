@@ -1,0 +1,172 @@
+OASISFormat:  0.4
+Name:         ocamlnet
+Version:      1.2.6
+Synopsis:     XML parser
+Authors:      Gerd Stolpmann et al.
+ConfType:     custom (0.4)
+BuildType:    custom (0.4)
+InstallType:  custom (0.4)
+BuildTools:   make
+License:      ZLIB
+OCamlVersion: >= 4.00.0
+Homepage:     http://projects.camlcity.org/projects/pxp
+
+XCustomConf: ./configure
+PostConfCommand: make -s postconf
+XCustomBuild: make build
+XCustomInstall: make install
+XCustomUninstall: make uninstall
+
+Flag "lex"
+  Description: Enable ocamllex-based lexer
+  Default: true
+
+Flag "wlex"
+  Description: Enable wlex-based lexer (UTF-8)
+  Default: false
+
+Flag "ulex"
+  Description: Enable ulex-based lexer (UTF-8)
+  Default: false
+
+Flag "pp"
+  Description: Enable the preprocessor pxp-pp
+  Default: true
+
+Library "pxp"
+  Path: src/pxp
+  BuildDepends: pxp-engine
+  Build: true
+
+Library "pxp-engine"
+  Path: src/pxp-engine
+  BuildDepends: netstring
+  Build: true
+
+Library "pxp-pp"
+  Path: src/pxp-pp
+  BuildDepends: pxp
+  Build: false
+  if flag(pp)
+    Build: true
+
+Library "pxp-wlex"
+  Path: src/pxp-wlex
+  BuildDepends: pxp-wlex-utf8 pxp-lex-iso88591
+  Build: false
+  if flag(wlex)
+    Build: true
+
+Library "pxp-wlex-utf8"
+  Path: src/pxp-wlex-utf8
+  BuildDepends: pxp-engine wlexing
+  Build: false
+  if flag(wlex)
+    Build: true
+
+Library "pxp-ulex-utf8"
+  Path: src/pxp-ulex-utf8
+  BuildDepends: pxp-engine ulex
+  Build: false
+  if flag(ulex)
+    Build: true
+
+# assuming the default -lexlist
+
+Library "pxp-lex-iso88591"
+  Path: src/pxp-lex-iso88591
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88592"
+  Path: src/pxp-lex-iso88592
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88593"
+  Path: src/pxp-lex-iso88593
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88594"
+  Path: src/pxp-lex-iso88594
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88595"
+  Path: src/pxp-lex-iso88595
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88596"
+  Path: src/pxp-lex-iso88596
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88597"
+  Path: src/pxp-lex-iso88597
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88598"
+  Path: src/pxp-lex-iso88598
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso88599"
+  Path: src/pxp-lex-iso88599
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso885910"
+  Path: src/pxp-lex-iso885910
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso885913"
+  Path: src/pxp-lex-iso885913
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso885914"
+  Path: src/pxp-lex-iso885914
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso885915"
+  Path: src/pxp-lex-iso885915
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true
+
+Library "pxp-lex-iso885916"
+  Path: src/pxp-lex-iso885916
+  BuildDepends: pxp-engine
+  Build: false
+  if flag(lex)
+    Build: true

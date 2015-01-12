@@ -30,6 +30,8 @@ f LICENSE
 f Makefile
 f Makefile.rules
 f configure
+f _oasis
+f setup.ml
 
 d doc
 f doc/ABOUT-FINDLIB
