@@ -180,6 +180,15 @@ else
 	exit 1
 fi
 
+printf "%s" "Checking for netunidata... "
+if ocamlfind query netunidata >/dev/null 2>/dev/null; then
+        echo "found"
+        netunidata="netunidata"
+else
+        echo "not found"
+        netunidata=""
+fi
+
 ######################################################################
 # Check wlex
 
@@ -440,6 +449,7 @@ LEX_OPT = $lex_opt
 CAMLP4_LOC = $camlp4_loc
 CAMLP4_STYLE = $camlp4_style
 CAMLP4_OPTS = $camlp4_opts
+NETUNIDATA = $netunidata
 _EOF_
 
 ######################################################################
