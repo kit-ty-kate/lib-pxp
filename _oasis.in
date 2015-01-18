@@ -46,7 +46,7 @@ Library "pxp-engine"
 Library "pxp-pp"
   Path: src/pxp-pp
   BuildDepends: pxp
-  BuildDepends+ camlp4
+  BuildDepends+: camlp4
   Build: false
   if flag(pp)
     Build: true
