@@ -1,6 +1,6 @@
 OASISFormat:  0.4
 Name:         pxp
-Version:      1.2.6
+Version:      @VERSION@
 Synopsis:     XML parser
 Authors:      Gerd Stolpmann et al.
 ConfType:     custom (0.4)
@@ -18,25 +18,25 @@ XCustomInstall: make install
 XCustomUninstall: make uninstall
 
 Flag "lex"
-  Description: Enable ocamllex-based lexer
+  Description: lex: Enable ocamllex-based lexer
   Default: true
 
 Flag "wlex"
-  Description: Enable wlex-based lexer (UTF-8)
+  Description: wlex: Enable wlex-based lexer (UTF-8)
   Default: false
 
 Flag "ulex"
-  Description: Enable ulex-based lexer (UTF-8)
+  Description: ulex: Enable ulex-based lexer (UTF-8)
   Default: false
 
 Flag "pp"
-  Description: Enable the preprocessor pxp-pp
+  Description: pp: Enable the preprocessor pxp-pp
   Default: true
 
 Library "pxp"
   Path: src/pxp
-  BuildDepends: pxp-engine
   Build: true
+  BuildDepends: pxp-engine
 
 Library "pxp-engine"
   Path: src/pxp-engine
@@ -46,6 +46,7 @@ Library "pxp-engine"
 Library "pxp-pp"
   Path: src/pxp-pp
   BuildDepends: pxp
+  BuildDepends: camlp4
   Build: false
   if flag(pp)
     Build: true

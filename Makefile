@@ -77,6 +77,12 @@ RELEASE:
 	./configure -version >RELEASE
 
 # for oasis
+.PHONY: _oasis
+_oasis: _oasis.in
+	sed -e 's/@VERSION@/$(VERSION)/' _oasis.in >_oasis
+	oasis setup
+
 .PHONY: postconf
 postconf:
-	echo 'pkg_version="$(VERSION)"' >>setup.data
+	cat setup.save >>setup.data
+

@@ -9,7 +9,7 @@ with_wlex_compat=1
 with_ulex=1
 with_pp=1
 lexlist="utf8,iso88591,iso88592,iso88593,iso88594,iso88595,iso88596,iso88597,iso88598,iso88599,iso885910,iso885913,iso885914,iso885915,iso885916"
-version="1.2.6"
+version="1.2.7"
 exec_suffix=""
 
 help_lex="Enable/disable ocamllex-based lexical analyzer for the -lexlist encodings"
@@ -93,8 +93,20 @@ while [ "$#" -gt 0 ]; do
 			eval "with_$opt=1"
 			shift
 			;;
+		-enable-*)
+			opt=`echo "$1" | sed -e 's/-enable-//' -e 's/-/_/g'`
+			check_opt "$opt"
+			eval "with_$opt=1"
+			shift
+			;;
 		-without-*)
 			opt=`echo "$1" | sed -e 's/-without-//' -e 's/-/_/g'`
+			check_opt "$opt"
+			eval "with_$opt=0"
+			shift
+			;;
+		-disable-*)
+			opt=`echo "$1" | sed -e 's/-disable-//' -e 's/-/_/g'`
 			check_opt "$opt"
 			eval "with_$opt=0"
 			shift
@@ -108,6 +120,14 @@ while [ "$#" -gt 0 ]; do
 			shift
 			shift
 			;;
+                -prefix|--prefix)
+                        echo "[prefix ignored]"; shift 2 ;;
+                --prefix=)
+                        echo "[prefix ignored]"; shift ;;
+                -destdir|--destdir)
+                        echo "[destdir ignored]"; shift 2 ;;
+                --destdir=)
+                        echo "[destdir ignored]"; shift ;;
 		-version*)
 			echo "$version"
 			exit 0
@@ -451,6 +471,26 @@ CAMLP4_STYLE = $camlp4_style
 CAMLP4_OPTS = $camlp4_opts
 NETUNIDATA = $netunidata
 _EOF_
+
+######################################################################
+# make oasis happy: setup.save will be picked up by "make postconf"
+# and will be appended to setup.data. That way the config update
+# will reach oasis.
+
+rm -f setup.save
+echo "pkg_version=\"$version\"" >>setup.save
+echo "prefix=\"<not interpreted>\"" >>setup.save
+echo "destdir=\"\"" >>setup.save
+
+for opt in $options; do
+    e="o=\$with_$opt"
+    eval "$e"
+    if [ $o -gt 0 ]; then
+        echo "$opt=\"true\"" >>setup.save
+    else
+        echo "$opt=\"false\"" >>setup.save
+    fi
+done
 
 ######################################################################
 # Finish
