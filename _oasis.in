@@ -46,28 +46,28 @@ Library "pxp-engine"
 Library "pxp-pp"
   Path: src/pxp-pp
   BuildDepends: pxp
-  BuildDepends: camlp4
+  BuildDepends+ camlp4
   Build: false
   if flag(pp)
     Build: true
 
 Library "pxp-wlex"
   Path: src/pxp-wlex
-  BuildDepends: pxp-wlex-utf8 pxp-lex-iso88591
+  BuildDepends: pxp-wlex-utf8, pxp-lex-iso88591
   Build: false
   if flag(wlex)
     Build: true
 
 Library "pxp-wlex-utf8"
   Path: src/pxp-wlex-utf8
-  BuildDepends: pxp-engine wlexing
+  BuildDepends: pxp-engine, wlexing
   Build: false
   if flag(wlex)
     Build: true
 
 Library "pxp-ulex-utf8"
   Path: src/pxp-ulex-utf8
-  BuildDepends: pxp-engine ulex
+  BuildDepends: pxp-engine, ulex
   Build: false
   if flag(ulex)
     Build: true
