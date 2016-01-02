@@ -10,3 +10,5 @@ PXP is an XML parser.
 
  - [License](LICENSE)
 
+ - mailing list: please use the list at
+   [orcaware](http://www.orcaware.com/mailman/listinfo/ocaml-pxp-users)
