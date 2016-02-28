@@ -85,10 +85,10 @@ object(self)
       (self : #lexer_factory :> lexer_factory) 
       (ULB.from_string `Enc_utf8 s)
 
-  method open_string_inplace s =
+  method open_bytes_inplace s =
     new lobj 
       (self : #lexer_factory :> lexer_factory) 
-      (ULB.from_string_inplace `Enc_utf8 s)
+      (ULB.from_bytes_inplace `Enc_utf8 s)
 end
 
 and lobj factory (_ulb : ULB.unicode_lexbuf) : lexer_obj =
@@ -107,8 +107,8 @@ object(self)
     let ulb = ULB.from_string `Enc_utf8 s in
     lexbuf <- Ulexing.from_ulb_lexbuf ulb
 
-  method open_string_inplace s =
-    let ulb = ULB.from_string_inplace `Enc_utf8 s in
+  method open_bytes_inplace s =
+    let ulb = ULB.from_bytes_inplace `Enc_utf8 s in
     lexbuf <- Ulexing.from_ulb_lexbuf ulb
 
   method lexeme_length =

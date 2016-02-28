@@ -188,7 +188,7 @@ object
   method encoding : Pxp_core_types.I.rep_encoding
   method open_source : Pxp_reader.lexer_source -> lexer_obj
   method open_string : string -> lexer_obj
-  method open_string_inplace : string -> lexer_obj
+  method open_bytes_inplace : Bytes.t -> lexer_obj
 end
 
 and lexer_obj =
@@ -197,7 +197,7 @@ object
   method encoding : Pxp_core_types.I.rep_encoding
   method open_source : Pxp_reader.lexer_source -> unit
   method open_string : string -> unit
-  method open_string_inplace : string -> unit
+  method open_bytes_inplace : Bytes.t -> unit
 
   method scan_document        : unit -> (token * lexers)
   method scan_content         : unit -> (token * lexers)

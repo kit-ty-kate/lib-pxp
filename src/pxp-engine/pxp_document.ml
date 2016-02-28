@@ -1312,7 +1312,7 @@ class virtual ['ext] container_features an_ext =
 	      )
 
       method nth_node p =
-	if p < 0 or p >= size then raise Not_found;
+	if p < 0 || p >= size then raise Not_found;
 	match nodes with
 	    LA_not_available ->
 	      if rev_nodes = [] then
@@ -2239,7 +2239,7 @@ class [ 'ext ] element_impl an_ext (* : ['ext] element_node *) =
 
 	    if m > 0 then begin
 	      (* round 1 *)
-	      let att_found = Array.create m false in
+	      let att_found = Array.make m false in
 	          (* whether the declared attribute has been found *)
 	      (* First iterate over new_attlist, then over new_attvalues: *)
 	      (* new_attlist: *)

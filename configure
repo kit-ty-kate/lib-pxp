@@ -321,6 +321,19 @@ rm -f tmp.*
 
 
 ######################################################################
+# immutable strings
+
+printf "%s" "Checking for -safe-string... "
+
+string_opts=""
+if ocamlc -safe-string; then
+    echo "yes"
+    string_opts="-safe-string"
+else
+    echo "no"
+fi
+
+######################################################################
 # Check cygwin
 
 printf "%s" "Checking for cygwin... "
@@ -470,6 +483,7 @@ CAMLP4_LOC = $camlp4_loc
 CAMLP4_STYLE = $camlp4_style
 CAMLP4_OPTS = $camlp4_opts
 NETUNIDATA = $netunidata
+STRING_OPTS = $string_opts
 _EOF_
 
 ######################################################################

@@ -662,7 +662,7 @@ class dtd  ?swarner the_warner init_encoding =
       
 
     method validate =
-      if validated or allow_arbitrary then
+      if validated || allow_arbitrary then
 	()
       else begin
 	(* Validity constraint: Notations in NDATA entity declarations must
@@ -786,7 +786,7 @@ and dtd_element the_dtd the_name =
     method add_attribute aname t d extdecl =
       let swarner = dtd#swarner 
       and warner = dtd#warner in
-      if aname <> "xml:lang" & aname <> "xml:space" then
+      if aname <> "xml:lang" && aname <> "xml:space" then
 	check_name ?swarner warner aname;
       if List.mem_assoc aname attributes then
 	warn swarner warner (`W_multiple_attribute_declarations(name,aname))
@@ -878,9 +878,9 @@ and dtd_element the_dtd the_name =
       (	match vr with
 	    None ->
 	      let n = List.length attributes in
-	      let init_att_vals = Array.create n ("", Implied_value) in
+	      let init_att_vals = Array.make n ("", Implied_value) in
 	      let att_lookup = Str_hashtbl.create n in
-	      let att_info = Array.create n (A_cdata, false) in
+	      let att_info = Array.make n (A_cdata, false) in
 	      let att_required = ref [] in
 	      let k = ref 0 in
 	      List.iter
@@ -1099,7 +1099,7 @@ and dtd_element the_dtd the_name =
 	(* Validity Constraint: ID Attribute Default *)
 	if List.exists
 	     (fun (n,((t,d),_)) ->
-		t = A_id & (d <> D_required & d <> D_implied))
+		t = A_id && (d <> D_required && d <> D_implied))
 	     attributes
 	then
 	  raise(Validation_error("ID attribute must be #IMPLIED or #REQUIRED; element `" ^ name ^ "'"));

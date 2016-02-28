@@ -25,8 +25,8 @@ module Str_hashtbl = Hashtbl.Make(HashedString);;
 
 let character ?swarner enc warner k =
   assert (k>=0);
-  if (k >= 0xd800 & k < 0xe000) or (k >= 0xfffe & k <= 0xffff) or k > 0x10ffff
-     or (k < 8) or (k = 11) or (k = 12) or (k >= 14 & k <= 31)
+  if (k >= 0xd800 && k < 0xe000) || (k >= 0xfffe && k <= 0xffff) || k > 0x10ffff
+     || (k < 8) || (k = 11) || (k = 12) || (k >= 14 && k <= 31)
   then
     raise (WF_error("Code point " ^ string_of_int k ^
 		    " outside the accepted range of code points"));
@@ -54,7 +54,7 @@ let check_name ?swarner warner name =
 
 let tokens_of_content_string lfactory s =
   (* tokenizes general entities and character entities *)
-  let lexobj = lfactory # open_string_inplace s in
+  let lexobj = lfactory # open_string s in
   let scan   = lexobj # scan_content_string in
   let rec next_token () =
     match scan() with
@@ -91,7 +91,7 @@ let rec expand_attvalue_with_rec_check (lexobj : lexer_obj) l dtd entities norm_
 	let l' =
 	  try
 	    expand_attvalue_with_rec_check
-	      (lexobj # factory # open_string_inplace rtext)
+	      (lexobj # factory # open_string rtext)
 	      (String.length rtext)
 	      dtd (n :: entities) false
 	  with
@@ -135,7 +135,7 @@ let expand_attvalue (lexobj : lexer_obj) dtd s norm_crlf =
    *)
   (* print_string ("expand_attvalue \"" ^ s ^ "\" = "); *)
   try
-    lexobj # open_string_inplace s;
+    lexobj # open_string s;
     let l =
       expand_attvalue_with_rec_check
 	lexobj (String.length s) dtd [] norm_crlf in
@@ -185,7 +185,7 @@ let count_lines lc s =
 
 
 let tokens_of_xml_pi (lfactory : lexer_factory) s =
-  let lexobj = lfactory # open_string_inplace (s ^ " ") in
+  let lexobj = lfactory # open_string (s ^ " ") in
   let scan = lexobj # scan_xml_pi in
   let rec collect () =
     let t = scan() in
@@ -297,7 +297,7 @@ let check_attribute_value_lexically (lfactory:lexer_factory) x t v =
    * - t = A_enum _: v must match <nmtoken>
    * - t = A_cdata: not checked
    *)
-  let lexobj = lfactory # open_string_inplace v in
+  let lexobj = lfactory # open_string v in
   let scan = lexobj#scan_name_string in
   let rec get_name_list() =
     match scan() with
@@ -341,7 +341,7 @@ let split_attribute_value (lfactory:lexer_factory) v =
    * the names/nmtokens in 'v' is suppressed and not returned.
    *)
   (* print_string ("split_attribute_value \"" ^ v ^ "\" = "); *)
-  let lexobj = lfactory # open_string_inplace v in
+  let lexobj = lfactory # open_string v in
   let scan = lexobj # scan_name_string in
   let rec get_name_list() =
     match scan() with
@@ -366,22 +366,22 @@ let rev_concat l =
   List.iter 
     (fun s -> k := !k + String.length s) 
     l;
-  let r = String.create !k in
+  let r = Bytes.create !k in
   List.iter
     (fun s -> 
        let n = String.length s in
        k := !k - n;
-       String.(*unsafe_*)blit s 0 r !k n;
+       Bytes.(*unsafe_*)blit_string s 0 r !k n;
     )
     l;
   assert(!k = 0);
-  r
+  Bytes.to_string r
 ;;
 
 
 let normalize_line_separators (lfactory:lexer_factory) s =
   (* Note: Returns [s] if [s] does not contain LFs *)
-  let lexobj = lfactory # open_string_inplace s in
+  let lexobj = lfactory # open_string s in
   let scan = lexobj # scan_for_crlf in
   let rec get_string l =
     match scan() with
@@ -714,14 +714,14 @@ let write_markup_string ~(from_enc:rep_encoding) ~to_enc os s =
   let s' =
     if to_enc = (from_enc :> encoding)
     then s
-    else recode_string
-	         ~in_enc:(from_enc :> encoding)
-		 ~out_enc:to_enc
-		 ~subst:(fun n ->
-			   failwith
-			     ("Pxp_aux.write_markup_string: Cannot represent " ^
-			      "code point " ^ string_of_int n))
-		 s
+    else convert
+	   ~in_enc:(from_enc :> encoding)
+	   ~out_enc:to_enc
+	   ~subst:(fun n ->
+		     failwith
+		       ("Pxp_aux.write_markup_string: Cannot represent " ^
+			  "code point " ^ string_of_int n))
+	   s
   in
   write os s' 0 (String.length s')
 ;;
@@ -740,7 +740,7 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
     if to_enc = (from_enc :> encoding)
     then s
     else
-      recode_string
+      convert
         ~in_enc:(from_enc :> encoding)
         ~out_enc:to_enc
         ~subst:(fun n -> assert false)
@@ -759,7 +759,7 @@ let write_data_string ~(from_enc:rep_encoding) ~to_enc os content =
     if to_enc = (from_enc :> encoding) then
       write os content j l
     else begin
-      let s' = recode_string
+      let s' = convert
 	         ~in_enc:(from_enc :> encoding)
 	         ~out_enc:to_enc
 	         ~subst:(fun n ->

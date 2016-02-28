@@ -155,7 +155,7 @@ object
   method open_string : string -> lexer_obj
     (** Open a string as source *)
 
-  method open_string_inplace : string -> lexer_obj
+  method open_bytes_inplace : Bytes.t -> lexer_obj
     (** Open a string as source.
      * The string is physically used as lexical buffer (no copy is made)
      *)
@@ -178,7 +178,7 @@ object
   method open_string : string -> unit
     (** Drop the current source, and open the string as next source *)
 
-  method open_string_inplace : string -> unit
+  method open_bytes_inplace : Bytes.t -> unit
     (** Drop the current source, and open the string as next source.
      * The string is physically used as lexical buffer (no copy is made)
      *)

@@ -30,38 +30,14 @@ let lexeme_end = Lexing.lexeme_end
 let lexeme_len lexbuf = 
   lexbuf.lex_curr_pos - lexbuf.lex_start_pos
 
-let from_string_inplace s =
+let from_bytes_inplace s =
   (* avoids copying s *)
   let lb = from_string "" in
   { lb with
       lex_buffer = s;
-      lex_buffer_len = String.length s
+      lex_buffer_len = Bytes.length s
   }
 ;;
-
-let from_another_string_inplace lexbuf s =
-  (* uses lexbuf again for another string (avoids memory allocation) *)
-  lexbuf.lex_buffer <- s;
-  lexbuf.lex_buffer_len <- String.length s;
-  lexbuf.lex_abs_pos <- 0;
-  lexbuf.lex_start_pos <- 0;
-  lexbuf.lex_curr_pos <- 0;
-  lexbuf.lex_last_pos <- 0;
-  lexbuf.lex_last_action <- 0;
-  lexbuf.lex_eof_reached <- true;
-IFDEF LEXBUF_307
-  let zero_pos = {
-    pos_fname = "";
-    pos_lnum = 1;
-    pos_bol = 0;
-    pos_cnum = 0;
-  } in
-  lexbuf.lex_mem <- [| |];
-  lexbuf.lex_start_p <- zero_pos;
-  lexbuf.lex_curr_p <- zero_pos
-ENDIF
-;;
-
 
 let sub_lexeme lexbuf k l =
   (* = String.sub (Lexing.lexeme lexbuf) k l *)
@@ -72,9 +48,9 @@ let sub_lexeme lexbuf k l =
   let lexeme_len = lexbuf.lex_curr_pos - lexbuf.lex_start_pos in
   if (k < 0 || k > lexeme_len || l < 0 || k+l > lexeme_len) then
     invalid_arg "sub_lexeme";
-  let s = String.create l in
-  String.unsafe_blit 
+  let s = Bytes.create l in
+  Bytes.unsafe_blit 
     lexbuf.lex_buffer (lexbuf.lex_start_pos + k) s 0 l;
-  s
+  Bytes.unsafe_to_string s
 ;;
 

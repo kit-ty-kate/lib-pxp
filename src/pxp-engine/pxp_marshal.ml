@@ -104,7 +104,7 @@ type jobber =
 
 
 let recode_string ~in_enc ~out_enc =
-    Netconversion.recode_string 
+    Netconversion.convert
       ~in_enc
       ~out_enc
       ~subst:(fun k -> 
@@ -133,7 +133,7 @@ let subtree_to_cmd_sequence_nohead
    * and may be restarted by executing f() (resulting again in Done or Task).
    *)
   let m = 100 in
-  let current_array = Array.create m End_node in  (* Collects up to [m] cmds *)
+  let current_array = Array.make m End_node in  (* Collects up to [m] cmds *)
   let current_pos = ref 0 in                      (* next free index *)
   let write_nobreak cmd =
     (* Call [write] but ignore interruptions *)
@@ -345,7 +345,9 @@ let subtree_to_cmd_sequence ?(omit_positions=false) ?enc f n =
       None -> (n#encoding :> encoding), id
     | Some e -> e, (recode_string 
 	              ~in_enc:(n#encoding :> encoding)
-		      ~out_enc:e)
+		      ~out_enc:e
+                      ?range_pos:None
+                      ?range_len:None)
   in
   let encname = Netconversion.string_of_encoding enc in
   let sa = n#dtd#standalone_declaration in
@@ -396,8 +398,8 @@ let subtree_from_cmd_sequence_nohead ~rev_tbl ~recode f0 dtd spec =
       | Some (pos_e,pos_l,pos_p) -> Some (recode pos_e,pos_l,pos_p)
   in
   let default = get_data_exemplar spec in
-  let eltypes = ref (Array.create 100 ("",default)) in
-  let atts = ref (Array.create 100 "") in
+  let eltypes = ref (Array.make 100 ("",default)) in
+  let atts = ref (Array.make 100 "") in
   let mng = new namespace_manager in
   let mng_found = ref false in
   let enable_mng, dest_mng = 
@@ -459,7 +461,7 @@ let subtree_from_cmd_sequence_nohead ~rev_tbl ~recode f0 dtd spec =
 	    let eltype = recode eltype in
 	    if nr > Array.length !eltypes then begin
 	      eltypes := 
-	        Array.append !eltypes (Array.create 100 ("",default));
+	        Array.append !eltypes (Array.make 100 ("",default));
 	    end;
 	    let eltype' =
 	      if !mng_found then
@@ -475,7 +477,7 @@ let subtree_from_cmd_sequence_nohead ~rev_tbl ~recode f0 dtd spec =
 	    let name = recode name in
 	    if nr > Array.length !atts then begin
 	      atts := 
-	        Array.append !atts (Array.create 100 "");
+	        Array.append !atts (Array.make 100 "");
 	    end;
 	    let name' =
 	      if !mng_found then
@@ -598,6 +600,8 @@ let subtree_from_cmd_sequence f dtd spec =
 	    recode_string 
 	      ~in_enc:enc
 	      ~out_enc:(dtd # encoding :> encoding)
+              ?range_pos:None
+              ?range_len:None
 	in
 	let rev_tbl = Hashtbl.create 20 in
 
@@ -701,6 +705,8 @@ let document_from_cmd_sequence f config spec =
       recode_string 
         ~in_enc:enc
         ~out_enc:(config.encoding :> encoding)
+        ?range_pos:None
+        ?range_len:None
   in
   let cmd1 = f() in
   let xml_version =

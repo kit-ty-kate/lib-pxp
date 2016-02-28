@@ -4,8 +4,8 @@
 
 # How to invoke compilers and tools:
 
-OCAMLC    = $(OCAMLFIND) ocamlc -g $(OCAMLC_OPTIONS) -package "$(PACKAGES)"
-OCAMLOPT  = $(OCAMLFIND) ocamlopt $(OCAMLOPT_OPTIONS) -package "$(PACKAGES)"
+OCAMLC    = $(OCAMLFIND) ocamlc -g $(STRING_OPTS) $(OCAMLC_OPTIONS) -package "$(PACKAGES)"
+OCAMLOPT  = $(OCAMLFIND) ocamlopt $(STRING_OPTS) $(OCAMLOPT_OPTIONS) -package "$(PACKAGES)"
 OCAMLDEP  = ocamldep $(OCAMLDEP_OPTIONS)
 OCAMLFIND = ocamlfind
 OCAMLYACC = ocamlyacc

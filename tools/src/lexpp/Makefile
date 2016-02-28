@@ -10,7 +10,7 @@ OBJS = uni_types.cmo uni_lexer.cmo uni_parser.cmo lexpp_file.cmo \
 	mll_lexer.cmo \
        ucs2_to_utf8.cmo main.cmo
 
-PACKAGES=netstring $(NETUNIDATA)
+PACKAGES=bytes netstring $(NETUNIDATA)
 
 uni_lexer.ml: uni_lexer.mll
 	$(OCAMLLEX) uni_lexer.mll

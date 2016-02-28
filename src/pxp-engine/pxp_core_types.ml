@@ -299,9 +299,11 @@ module A = struct
   let write os str pos len =
     match os with
 	`Out_buffer b -> Buffer.add_substring b str pos len
-      | `Out_channel ch -> output ch str pos len
+      | `Out_channel ch -> output ch (Bytes.unsafe_of_string str) pos len
+           (* FIXME: use output_substring instead *)
       | `Out_function f -> f str pos len
-      | `Out_netchannel ch -> ch # really_output str pos len
+      | `Out_netchannel ch -> ch # really_output (Bytes.unsafe_of_string str) pos len
+          (* FIXME: use really_output_string instead *)
   ;;
   
 

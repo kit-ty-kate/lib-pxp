@@ -17,7 +17,7 @@ object
     failwith msg
   method open_string _ =
     failwith msg
-  method open_string_inplace _ =
+  method open_bytes_inplace _ =
     failwith msg
 end
 
@@ -56,7 +56,7 @@ let get_lexer_set (enc : rep_encoding) = (* DEPRECATED *)
 	  let src = { lsrc_lexbuf = 
 			lazy buf;
 		      lsrc_unicode_lexbuf = 
-			lazy(Netulex.ULB.from_string enc' buf.Lexing.lex_buffer)
+			lazy(Netulex.ULB.from_string enc' (Bytes.unsafe_to_string buf.Lexing.lex_buffer))
 		    } in
 	  let obj = factory # open_source src in
 	  old_obj := Some obj;

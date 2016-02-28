@@ -14,7 +14,7 @@ val from_channel : in_channel -> lexbuf
 
 val from_string : string -> lexbuf
 
-val from_function : (string -> int -> int) -> lexbuf
+val from_function : (Bytes.t -> int -> int) -> lexbuf
 
 val lexeme : lexbuf -> string
 
@@ -29,15 +29,9 @@ val lexeme_char : lexbuf -> int -> char
 val lexeme_len : lexbuf -> int
   (* = String.length(lexeme lexbuf) *)
 
-val from_string_inplace : string -> Lexing.lexbuf
+val from_bytes_inplace : Bytes.t -> Lexing.lexbuf
   (* Similar to Lexing.from_string, but does not copy the passed string
    * intially
-   *)
-
-val from_another_string_inplace : Lexing.lexbuf -> string -> unit
-  (* lexbuf: a buffer from a previous Lexing.from_string 
-   * (or from_string_inplace).
-   * Modifies lexbuf such that the lexer starts again with the passed string
    *)
 
 val sub_lexeme : Lexing.lexbuf -> int -> int -> string

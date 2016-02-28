@@ -180,17 +180,17 @@ object (self)
       | _ ->
 	  let accu = ref (String.length current_string) in
 	  List.iter (fun s -> accu := !accu + String.length s) current_data;
-	  let str = String.create !accu in
+	  let str = Bytes.create !accu in
 	  let pos = ref (!accu) in
 	  List.iter
 	    (fun s ->
 	       let l = String.length s in
 	       pos := !pos - l;
-	       String.blit s 0 str !pos l
+	       Bytes.blit_string s 0 str !pos l
 	    )
 	    current_data;
-	  String.blit current_string 0 str 0 (String.length current_string);
-	  add_node (create_data_node spec dtd str);
+	  Bytes.blit_string current_string 0 str 0 (String.length current_string);
+	  add_node (create_data_node spec dtd (Bytes.to_string str));
 	  current_string <- "";
 	  current_data <- []
 

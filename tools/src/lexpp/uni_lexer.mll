@@ -14,8 +14,9 @@ open Uni_parser
 let comment_depth = ref 0;;
 
 let charint_of_lexeme l =
- String.set l 0 '0' ;
- int_of_string l
+ let b = Bytes.of_string l in
+ Bytes.set b 0 '0' ;
+ int_of_string (Bytes.to_string b)
 ;;
 }
 

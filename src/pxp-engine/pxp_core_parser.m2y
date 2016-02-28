@@ -80,7 +80,7 @@ type 't array_stack =
 
 let stack_create null =
   (* null: a dummy element *)
-  { stack_array = Array.create 100 null;
+  { stack_array = Array.make 100 null;
     stack_top = -1;
     stack_null = null;
   }
@@ -91,7 +91,7 @@ let stack_push x st =
   let top = st.stack_top + 1 in
   if top >= Array.length st.stack_array then
     st.stack_array <- Array.append
-                        st.stack_array (Array.create 100 st.stack_null);
+                        st.stack_array (Array.make 100 st.stack_null);
   st.stack_array.(top) <- x;
   st.stack_top <- top
 ;;
@@ -505,7 +505,7 @@ class virtual core_parser
 	  if config.encoding = `Enc_utf8 then
 	    s   (* No recoding necessary *)
 	  else
-	    Netconversion.recode_string
+	    Netconversion.convert
 	      ~in_enc:(config.encoding :> encoding) ~out_enc:`Enc_utf8 s
 	in
 

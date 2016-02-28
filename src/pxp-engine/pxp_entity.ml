@@ -1174,7 +1174,7 @@ class internal_entity the_dtd the_name the_swarner the_warner the_literal_value
 	    let en = v.dtd # par_entity n in
 	    let (x, extref) = en # replacement_text in
 	    contains_external_references <-
-	      contains_external_references or extref;
+	      contains_external_references || extref;
 	    x ^ scan_and_expand()
 	| Eof ->
 	    ""

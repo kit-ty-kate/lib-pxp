@@ -51,14 +51,14 @@ let ensure_space_minimum p f g =
    * that the string buffer has the minimum free space [p]. This is achieved
    * by using an auxiliary buffer.
    *)
-  let buf = String.create p in
+  let buf = Bytes.create p in
   let bufpos = ref 0 in
   let buflen = ref 0 in
   f (fun s n ->
        assert(n>0);
        if !buflen > 0 then (
 	 let m = min n !buflen in
-	 String.blit buf !bufpos s 0 m;
+	 Bytes.blit buf !bufpos s 0 m;
 	 bufpos := !bufpos + m;
 	 buflen := !buflen - m;
 	 m
@@ -67,7 +67,7 @@ let ensure_space_minimum p f g =
 	 if n < p then (
 	   let l = g buf p in
 	   let m = min l n in
-	   String.blit buf 0 s 0 m;
+	   Bytes.blit buf 0 s 0 m;
 	   bufpos := m;
 	   buflen := l-m;
 	   m
@@ -140,8 +140,8 @@ class virtual resolve_general real_class
       (* Called if a character not representable has been found.
        * k is the character code.
        *)
-	if k < 0xd800 or (k >= 0xe000 & k <= 0xfffd) or
-	   (k >= 0x10000 & k <= 0x10ffff) then begin
+	if k < 0xd800 || (k >= 0xe000 && k <= 0xfffd) ||
+	   (k >= 0x10000 && k <= 0x10ffff) then begin
 	     warn swarner warner (`W_code_point_cannot_be_represented k);
 	   end
 	else
@@ -158,23 +158,23 @@ class virtual resolve_general real_class
        *
        * Returns the number of bytes to eat up in the buffer
        *)
-      if String.sub s 0 2 = "\254\255" then (
+      if Bytes.sub s 0 2 = Bytes.of_string "\254\255" then (
 	encoding <- `Enc_utf16_be;
 	2
       )
-      else if String.sub s 0 4 = "\000\060\000\063" then (
+      else if Bytes.sub s 0 4 = Bytes.of_string "\000\060\000\063" then (
 	encoding <- `Enc_utf16_be;
 	0
       )
-      else if String.sub s 0 2 = "\255\254" then (
+      else if Bytes.sub s 0 2 = Bytes.of_string "\255\254" then (
 	encoding <- `Enc_utf16_le;
 	2
       )
-      else if String.sub s 0 4 = "\060\000\063\000" then (
+      else if Bytes.sub s 0 4 = Bytes.of_string "\060\000\063\000" then (
 	encoding <- `Enc_utf16_le;
 	0
       )
-      else if String.sub s 0 3 = "\239\187\191" then (
+      else if Bytes.sub s 0 3 = Bytes.of_string "\239\187\191" then (
 	(* That's the unusual case of a byte order mark in UTF-8 encoding.
            This is not mentioned in the XML standard, but Unicode allows it.
 	 *)
@@ -187,7 +187,7 @@ class virtual resolve_general real_class
       )
 
 
-    method private virtual next_string : string -> int -> int -> int
+    method private virtual next_string : Bytes.t -> int -> int -> int
     method private virtual init_in : resolver_id -> unit
     method virtual close_in : unit
       (* must reset is_open! *)
@@ -201,7 +201,7 @@ class virtual resolve_general real_class
       let direct_reader = ref false in  (* whether to bypass the buffer *)
 
       let buf_max = 4096 in
-      let buf     = ref (String.make buf_max ' ')  in
+      let buf     = ref (Bytes.make buf_max ' ')  in
       let buf_beg = ref 0 in
       let buf_end = ref 0 in
       let buf_eof = ref false in
@@ -237,7 +237,7 @@ class virtual resolve_general real_class
 	   * at least one character.
 	   *)
 	  let m = !buf_end - !buf_beg in
-	  String.blit !buf !buf_beg !buf 0 m;
+	  Bytes.blit !buf !buf_beg !buf 0 m;
 	  buf_beg := 0;
 	  buf_end := m;
 	  refill();
@@ -255,9 +255,9 @@ class virtual resolve_general real_class
 	)
 	else (
 	  let (n_in, n_out, encoding') =
-	    Netconversion.recode
+	    Netconversion.recode_tstring
 	      ~in_enc:encoding
-	      ~in_buf:!buf
+	      ~in_buf:(`Bytes !buf)
 	      ~in_pos:!buf_beg
 	      ~in_len:m
 	      ~out_enc:(internal_encoding : rep_encoding :> encoding)
@@ -319,7 +319,7 @@ class virtual resolve_general real_class
 		 if !buf_beg < !buf_end then (
 		   (* There are still bytes in [buf], return them first *)
 		   let m = min n (!buf_end - !buf_beg) in
-		   String.blit !buf !buf_beg s 0 m;
+		   Bytes.blit !buf !buf_beg s 0 m;
 		   buf_beg := !buf_beg + m;
 		   m
 		 )
@@ -327,7 +327,7 @@ class virtual resolve_general real_class
 		   (* Either we are already at EOF, or we can switch to
 		    * [direct_reader].
 		    *)
-		   buf := "";  (* Free buf, it will never be used again *)
+		   buf := Bytes.of_string "";  (* Free buf, it will never be used again *)
 		   if !buf_eof then
 		     0
 		   else (
@@ -372,7 +372,7 @@ class virtual resolve_general real_class
 	  buf_eof := (n=0)
 	done;
 	if Netbuffer.length buf >= 4  then (
-	  let n_skip = self # autodetect (Netbuffer.contents buf) in
+	  let n_skip = self # autodetect (Netbuffer.to_bytes buf) in
 	  Netbuffer.delete buf 0 n_skip
 	)
       );
@@ -403,8 +403,8 @@ class virtual resolve_general real_class
 		 *)
 		
 		if Netbuffer.length buf > 0 then (
-		  let c = (Netbuffer.contents buf).[0] in
-		  s.[p] <- c;
+		  let c = Netbuffer.get buf 0 in
+		  Bytes.set s p c;
 		  Netbuffer.delete buf 0 1;
 		  1
 		)
@@ -811,7 +811,7 @@ class resolve_as_file
     if base_url_defaults_to_cwd then begin
       let cwd = Sys.getcwd() in
       let cwd_utf8 = 
-	Netconversion.recode_string
+	Netconversion.convert
 	  ~in_enc: system_encoding
 	  ~out_enc: `Enc_utf8 
 	  cwd in
@@ -894,7 +894,7 @@ class resolve_as_file
 	(* Note: it is only assumed that the path is UTF-8 *)
 	      
 	let path =
-	  Netconversion.recode_string
+	  Netconversion.convert
 	    ~in_enc:  `Enc_utf8
 	    ~out_enc: system_encoding
 	    path_utf8 in
@@ -925,7 +925,7 @@ class resolve_as_file
 
 let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
   let utf8_filename =
-    Netconversion.recode_string
+    Netconversion.convert
     ~in_enc: enc
     ~out_enc: `Enc_utf8 
       filename
@@ -934,7 +934,7 @@ let make_file_url ?(system_encoding = `Enc_utf8) ?(enc = `Enc_utf8) filename =
   let getcwd() =
     let cwd = Sys.getcwd() in
     let cwd_utf8 = 
-      Netconversion.recode_string
+      Netconversion.convert
 	~in_enc: system_encoding
 	~out_enc: `Enc_utf8 
 	cwd in

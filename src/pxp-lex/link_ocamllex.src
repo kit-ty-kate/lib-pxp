@@ -29,44 +29,35 @@ object(self)
   method open_source src = 
     new lobj 
       (self : #lexer_factory :> lexer_factory) 
-      (Lazy.force src.lsrc_lexbuf) false
+      (Lazy.force src.lsrc_lexbuf)
 
   method open_string s =
     new lobj 
       (self : #lexer_factory :> lexer_factory) 
-      (Lexing.from_string s) true
+      (Lexing.from_string s)
 
-  method open_string_inplace s =
+  method open_bytes_inplace s =
     new lobj 
       (self : #lexer_factory :> lexer_factory) 
-      (Pxp_lexing.from_string_inplace s) true
+      (Pxp_lexing.from_bytes_inplace s)
 end
 
-and lobj factory _lexbuf _lexbuf_from_string : lexer_obj =
+and lobj factory _lexbuf : lexer_obj =
 object(self)
   val mutable lexbuf = _lexbuf
-  val mutable lexbuf_from_string = _lexbuf_from_string
 
   method factory = factory
 
   method encoding = `Enc_${encoding}
 
   method open_source src =
-    lexbuf <- Lazy.force src.lsrc_lexbuf;
-    lexbuf_from_string <- false
+    lexbuf <- Lazy.force src.lsrc_lexbuf
 
   method open_string s =
-    lexbuf <- Lexing.from_string s;
-    lexbuf_from_string <- true
+    lexbuf <- Lexing.from_string s
 
-  method open_string_inplace s =
-    if lexbuf_from_string then (
-      Pxp_lexing.from_another_string_inplace lexbuf s
-    )
-    else (
-      lexbuf <- Pxp_lexing.from_string_inplace s;
-      lexbuf_from_string <- true
-    )
+  method open_bytes_inplace s =
+    lexbuf <- Pxp_lexing.from_bytes_inplace s
 
   method lexeme_length =
     if Netconversion.is_single_byte `Enc_${encoding} then
