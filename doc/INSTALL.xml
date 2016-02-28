@@ -13,9 +13,9 @@
     <sect2><title>Prerequisites</title>
       <p>
 &m; requires that the <a
-href="&url.ocamlnet-project;">ocamlnet/netstring package </a> is
-already installed (version 0.98 required). &m; works only with O'Caml
->= 3.07.  The installation procedure defined in the Makefile requires
+href="&url.ocamlnet-project;">ocamlnet library</a> is
+already installed (version 4.1 required). &m; works only with O'Caml
+>= 4.01.  The installation procedure defined in the Makefile requires
 <a href="&url.findlib-project;">findlib</a> to
 work<footnote><em>Findlib</em> is a package manager, see the file
 ABOUT-FINDLIB.</footnote>. &m; may be optionally compiled with
