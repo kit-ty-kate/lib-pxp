@@ -6,8 +6,6 @@ make _oasis
 
 version=`./configure -version 2>/dev/null`
 destdir="pxp-$version"
-trunk="https://godirepo.camlcity.org/svn/lib-pxp/trunk"
-tag="https://godirepo.camlcity.org/svn/lib-pxp/tags/$destdir"
 
 #echo "Ensure the gensrc-pre lexers are up to date!"
 
@@ -19,18 +17,25 @@ touch "packages/$destdir/gensrc/pxp-wlex-utf8/gen_done"
 
 # Checking for svn:
 
-status=$(svn status | grep -v '^\?' || true )
+master="$(git branch | grep '* master')"
+if [ -z "$master" ]; then
+    echo "Error: not on master branch"
+    exit 1
+fi
+
+status="$(git status -uno -s)"
 
 if [ -n "$status" ]; then
-    echo "Error: svn status not clean"
+    echo "Error: git status not clean"
     exit 1
 else
     printf "Tag revision (y/n)? "
     read answer
     case "$answer" in
         y|Y|yes|YES)
-            svn cp "$trunk" "$tag"
-            echo "New tag: $tag"
+            git tag -s pxp-$version
+            git push origin master
+            echo "New tag: pxp-$version"
             ;;
         *)
             echo "Nothing tagged."
