@@ -103,9 +103,7 @@ f examples/xmlforms/ds_style.ml
 d examples/xmlforms/styles
 f examples/xmlforms/styles/Makefile
 f examples/xmlforms/styles/address-style.xml
-f examples/xmlforms/styles/address
 f examples/xmlforms/styles/crazy-style.xml
-f examples/xmlforms/styles/crazy
 f examples/xmlforms/styles/ds-object.dtd
 f examples/xmlforms/styles/ds-style.dtd
 

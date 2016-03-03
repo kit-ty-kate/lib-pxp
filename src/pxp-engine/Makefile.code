@@ -1,7 +1,7 @@
 TOP_DIR = ../..
 include $(TOP_DIR)/Makefile.rules
 
-PACKAGES = netstring
+PACKAGES = netstring,bytes
 OCAMLC_OPTIONS = -I +compiler-libs
 
 OBJ =   pxp_lexing.cmo \
