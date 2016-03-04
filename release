@@ -33,8 +33,8 @@ else
     read answer
     case "$answer" in
         y|Y|yes|YES)
-            git tag -a pxp-$version
-            git push origin master
+            git tag -a -m "pxp-$version" pxp-$version
+            git push --tags origin master
             echo "New tag: pxp-$version"
             ;;
         *)
