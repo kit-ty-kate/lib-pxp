@@ -3398,8 +3398,6 @@ let find_all_elements ?deeply eltype base =
 ;;
 
 
-exception Skip;;
-
 let map_tree ~pre ?(post=(fun x -> x)) base =
   let rec map_rec n =
     let n' = pre n in
