@@ -184,6 +184,7 @@ same namespaces.</p></li>
     <sect2>
       <title>Recent Changes</title>
       <ul>
+      <li><p><em>1.2.9:</em> Build with OCaml-4.04.0</p></li>
       <li><p><em>1.2.8:</em> Build against ocamlnet-4.1.
         Support -safe-string</p></li>
       <li><p><em>1.2.7:</em> tweaking support for oasis.</p></li>
