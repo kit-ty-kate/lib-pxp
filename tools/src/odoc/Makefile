@@ -6,6 +6,8 @@ OBJ = $(SRC:.ml=.cmo)
 OCAMLC_OPTIONS += -I +ocamldoc
 CLEAN_LIST += chtml.ml
 
+PACKAGES = compiler-libs.common
+
 .PHONY: all
 all: chtml.cmo
 

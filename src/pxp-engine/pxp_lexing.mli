@@ -10,11 +10,11 @@
 
 type lexbuf = Lexing.lexbuf
 
-val from_channel : in_channel -> lexbuf
+val from_channel : ?with_positions:bool -> in_channel -> lexbuf
 
-val from_string : string -> lexbuf
+val from_string : ?with_positions:bool -> string -> lexbuf
 
-val from_function : (Bytes.t -> int -> int) -> lexbuf
+val from_function : ?with_positions:bool -> (Bytes.t -> int -> int) -> lexbuf
 
 val lexeme : lexbuf -> string
 
